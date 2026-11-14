@@ -17,8 +17,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.16.0
-      - name: Execute MRP and shared purchasing valuation tests
-        run: node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs
+      - name: Execute all domain and platform identity tests
+        run: node --experimental-transform-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/health.test.mjs lib/domain/platform-identity.test.mjs
 
   application-build:
     name: Full application source and build
