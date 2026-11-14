@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: 22.16.0
       - name: Execute all domain and platform identity tests
-        run: node --experimental-transform-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/health.test.mjs lib/domain/platform-identity.test.mjs
+        run: node --experimental-transform-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/health.test.mjs lib/domain/platform-identity.test.mjs lib/domain/railway-scope.test.mjs
 
   application-build:
     name: Full application source and build
