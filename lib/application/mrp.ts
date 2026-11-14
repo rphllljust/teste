@@ -1,0 +1,3 @@
+export type MrpMaterialInput={available:number;minimum:number;reserved?:number;incoming?:number};
+export type MrpMaterialResult=MrpMaterialInput&{netRequirement:number;projectedBalance:number;explanation:string};
+export function calculateMaterialRequirement(input:MrpMaterialInput):MrpMaterialResult{const available=input.available-(input.reserved??0)+(input.incoming??0);const netRequirement=Math.max(0,input.minimum-available);return {...input,netRequirement,projectedBalance:available-netRequirement,explanation:netRequirement>0?'Saldo projetado abaixo do mínimo; reposição recomendada.':'Saldo projetado cobre o mínimo configurado.'};}
