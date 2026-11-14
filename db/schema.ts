@@ -132,3 +132,22 @@ export const procurementCommands = sqliteTable('procurement_commands', {
 
 export const mrpRuns=sqliteTable('mrp_runs',{id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),actorId:text('actor_id').notNull(),horizonDays:integer('horizon_days').notNull().default(30),status:text('status').notNull().default('completed'),evaluatedMaterials:integer('evaluated_materials').notNull().default(0),shortages:integer('shortages').notNull().default(0),recommendations:integer('recommendations').notNull().default(0),startedAt:text('started_at').notNull(),completedAt:text('completed_at'),error:text('error')},t=>[index('mrp_runs_owner_started').on(t.ownerId,t.startedAt)]);
 export const mrpRecommendations=sqliteTable('mrp_recommendations',{id:text('id').primaryKey(),runId:text('run_id').notNull().references(()=>mrpRuns.id),ownerId:text('owner_id').notNull(),materialId:text('material_id').notNull().references(()=>inventoryItems.id),available:integer('available').notNull(),minimum:integer('minimum').notNull(),netRequirement:integer('net_requirement').notNull(),unit:text('unit').notNull(),status:text('status').notNull().default('draft'),purchaseOrderId:text('purchase_order_id'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),rowVersion:integer('row_version').notNull().default(1)},t=>[uniqueIndex('mrp_recommendation_run_material').on(t.runId,t.materialId),index('mrp_recommendations_owner_status').on(t.ownerId,t.status)]);
+
+export const mrpEvents=sqliteTable('mrp_events',{
+ id:text('id').primaryKey(),
+ recommendationId:text('recommendation_id').notNull().references(()=>mrpRecommendations.id),
+ ownerId:text('owner_id').notNull(),
+ actorId:text('actor_id').notNull(),
+ command:text('command').notNull(),
+ fromStatus:text('from_status').notNull(),
+ toStatus:text('to_status').notNull(),
+ purchaseOrderId:text('purchase_order_id'),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ index('mrp_events_recommendation_time').on(t.recommendationId,t.createdAt),
+ index('mrp_events_owner_time').on(t.ownerId,t.createdAt),
+ check('mrp_events_command_valid',sql`${t.command} IN ('approve','reject','convert')`),
+ check('mrp_events_from_valid',sql`${t.fromStatus} IN ('draft','approved')`),
+ check('mrp_events_to_valid',sql`${t.toStatus} IN ('approved','rejected','converted')`),
+]);
