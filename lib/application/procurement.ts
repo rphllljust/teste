@@ -5,40 +5,22 @@ import { procurementReceipt } from '../api/procurement-commands';
 // Shared purchase-order command: both the Procurement screen and MRP use the
 // same valuation, line-writing and durable procurement-command contract.
 // Quantities are integer thousandths; monetary amounts are integer ten-thousandths.
-export type PurchaseLine = {
- id: string; itemId: string; quantity: number; unitPrice: number;
- discount: number; tax: number;
-};
-export type PurchaseOrderInput = {
- id: string; supplierId: string; reference: string; expectedOn: string;
- lines: PurchaseLine[]; freight: number; additionalCosts: number;
-};
+import { pricePurchaseOrder, PurchasePricingError, type PurchaseOrderInput } from '../domain/purchase-order-pricing';
 export type MrpPurchaseSource = {
  recommendationId: string; expectedVersion: number; materialId: string; quantity: number;
 };
-
-export function pricePurchaseOrder(input: PurchaseOrderInput) {
- if (!input.lines.length || input.lines.length > 30) throw new ApiError(400, 'VALIDATION_FAILED', 'O pedido precisa conter de 1 a 30 itens.');
- for (const amount of [input.freight, input.additionalCosts])
-  if (!Number.isSafeInteger(amount) || amount < 0) throw new ApiError(400, 'VALIDATION_FAILED', 'Encargos inválidos.');
- const lines = input.lines.map((line, position) => {
-  for (const n of [line.quantity, line.unitPrice, line.discount, line.tax])
-   if (!Number.isSafeInteger(n) || n < 0) throw new ApiError(400, 'VALIDATION_FAILED', 'Valores de item inválidos.');
-  if (!line.quantity || !line.unitPrice) throw new ApiError(400, 'VALIDATION_FAILED', 'Quantidade e preço devem ser positivos.');
-  const subtotal = Math.round(line.quantity * line.unitPrice / 1000) - line.discount + line.tax;
-  if (!Number.isSafeInteger(subtotal) || subtotal <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'Subtotal de compra inválido.');
-  return { ...line, position: position + 1, subtotal };
- });
- const total = lines.reduce((sum, line) => sum + line.subtotal, 0) + input.freight + input.additionalCosts;
- if (!Number.isSafeInteger(total) || total <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'Total do pedido inválido.');
- return { lines, total };
-}
 
 export async function createPurchaseOrder(
  context: RequestContext, input: PurchaseOrderInput, hash: string, source?: MrpPurchaseSource,
 ) {
  const db = database();
- const { lines, total } = pricePurchaseOrder(input);
+ let priced: ReturnType<typeof pricePurchaseOrder>;
+ try { priced = pricePurchaseOrder(input); }
+ catch (error) {
+  if (error instanceof PurchasePricingError) throw new ApiError(400, 'VALIDATION_FAILED', error.message);
+  throw error;
+ }
+ const { lines, total } = priced;
  if (source && (lines.length !== 1 || lines[0].itemId !== source.materialId || lines[0].quantity !== source.quantity))
   throw new ApiError(409, 'MRP_REQUIREMENT_CHANGED', 'O pedido não corresponde à recomendação aprovada.');
  const now = new Date().toISOString();
