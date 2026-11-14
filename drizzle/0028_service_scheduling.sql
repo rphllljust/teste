@@ -25,27 +25,7 @@ CREATE TABLE IF NOT EXISTS service_schedules (
 CREATE INDEX IF NOT EXISTS service_schedules_owner_time ON service_schedules(owner_id,start_utc,end_utc);
 CREATE INDEX IF NOT EXISTS service_schedules_order ON service_schedules(order_id,created_at);
 CREATE INDEX IF NOT EXISTS service_schedules_assignee_time ON service_schedules(owner_id,assignee_type,assignee_id,start_utc,end_utc);
-CREATE TRIGGER IF NOT EXISTS service_schedules_no_overlap_insert
-BEFORE INSERT ON service_schedules
-WHEN NEW.assignee_id IS NOT NULL AND NEW.status IN ('scheduled','confirmed')
-BEGIN
- SELECT RAISE(ABORT,'SCHEDULE_CONFLICT')
- WHERE EXISTS (
-   SELECT 1 FROM service_schedules s
-   WHERE s.owner_id=NEW.owner_id AND s.assignee_type=NEW.assignee_type AND s.assignee_id=NEW.assignee_id
-     AND s.status IN ('scheduled','confirmed')
-     AND s.start_utc < NEW.end_utc AND s.end_utc > NEW.start_utc
- );
-END;
-CREATE TRIGGER IF NOT EXISTS service_schedules_no_overlap_update
-BEFORE UPDATE OF start_utc,end_utc,assignee_type,assignee_id,status ON service_schedules
-WHEN NEW.assignee_id IS NOT NULL AND NEW.status IN ('scheduled','confirmed')
-BEGIN
- SELECT RAISE(ABORT,'SCHEDULE_CONFLICT')
- WHERE EXISTS (
-   SELECT 1 FROM service_schedules s
-   WHERE s.id<>NEW.id AND s.owner_id=NEW.owner_id AND s.assignee_type=NEW.assignee_type AND s.assignee_id=NEW.assignee_id
-     AND s.status IN ('scheduled','confirmed')
-     AND s.start_utc < NEW.end_utc AND s.end_utc > NEW.start_utc
- );
-END;
+
+-- Responsáveis ainda não existem no modelo CISNE. Agendamentos são deliberadamente sem responsável nesta versão.
+-- Conflitos por técnico/equipe serão adicionados em uma migração posterior, quando os cadastros reais
+-- de pessoas e equipes forem integrados. Não declarar essa regra como homologada antes disso.
