@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { Clock3 } from 'lucide-react';
+import { BusinessStatus } from './EnterprisePrimitives';
 
 /**
  * Adapted from NextCRM's components/crm/audit-log/Timeline.tsx
@@ -14,5 +15,5 @@ export function ActivityTimeline({ entries, emptyLabel = 'Nenhuma atividade regi
  const [items, setItems] = useState(entries); const [pending, startTransition] = useTransition();
  if (!items.length) return <p className="enterprise-muted">{emptyLabel}</p>;
  const loadMore=()=>startTransition(async()=>{if(onLoadMore){const more=await onLoadMore();setItems(prev=>[...prev,...more])}});
- return <div className="enterprise-timeline">{items.map(entry => <div className="enterprise-timeline-row" key={entry.id}><span className={'enterprise-timeline-dot '+(entry.tone||'neutral')} /><div><strong>{entry.title}</strong><small>{entry.detail}</small><time>{entry.timestamp}</time></div></div>)}{onLoadMore&&<button className="enterprise-timeline-more" disabled={pending} onClick={loadMore}>{pending?'Carregando…':'Carregar mais'}</button>}<Clock3 size={14} className="enterprise-timeline-icon" /></div>;
+ return <div className="enterprise-timeline">{items.map(entry => <div className="enterprise-timeline-row" key={entry.id}><span className={'enterprise-timeline-dot '+(entry.tone||'neutral')} /><div><strong>{entry.title}</strong><small>{entry.detail}</small><time>{entry.timestamp}</time><BusinessStatus status={entry.tone==='positive'?'completed':entry.tone==='warning'?'warning':'in_progress'} /></div></div>)}{onLoadMore&&<button className="enterprise-timeline-more" disabled={pending} onClick={loadMore}>{pending?'Carregando…':'Carregar mais'}</button>}<Clock3 size={14} className="enterprise-timeline-icon" /></div>;
 }

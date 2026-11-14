@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Check, ClipboardCheck, Package, RefreshCw, ShoppingCart, TriangleAlert, X } from 'lucide-react';
+import { BusinessStatus } from './components/enterprise/EnterprisePrimitives';
 
 type Recommendation = {
  recommendationId: string; runId: string; materialId: string; sku: string; name: string;
@@ -136,7 +137,7 @@ export default function MRPWorkspace({
       <span>{quantity(rec.minimum)} {rec.unit}</span>
       <strong>{quantity(rec.netRequirement)} {rec.unit}</strong>
       <div className="mrp-row-actions">
-       <span className="object-status">{statusText[rec.approvalStatus]}</span>
+       <BusinessStatus status={rec.approvalStatus==='draft'?'draft':rec.approvalStatus==='approved'?'approved':rec.approvalStatus==='converted'?'completed':'cancelled'} label={statusText[rec.approvalStatus]} />
        {rec.approvalStatus === 'draft' && <>
         <button className="secondary" disabled={busy} onClick={() => void decide(rec, 'approve')}>Aprovar</button>
         <button className="text-button" disabled={busy} onClick={() => void decide(rec, 'reject')}>Rejeitar</button>
