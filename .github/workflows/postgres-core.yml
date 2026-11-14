@@ -1,0 +1,51 @@
+name: CISNE PostgreSQL core migration
+
+on:
+  pull_request:
+    paths:
+      - 'db/postgres/**'
+      - '.github/workflows/postgres-core.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-core:
+    name: PostgreSQL 17 isolated schema and integrity
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: cisne_ci
+          POSTGRES_PASSWORD: ci-only-do-not-reuse
+          POSTGRES_DB: cisne_core_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cisne_ci -d cisne_core_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Find disposable PostgreSQL service
+        id: postgres
+        shell: bash
+        run: |
+          set -euo pipefail
+          container="$(docker ps --filter 'ancestor=postgres:17' --format '{{.ID}}' | head -n 1)"
+          test -n "$container"
+          echo "container=$container" >> "$GITHUB_OUTPUT"
+      - name: Apply core schema twice to verify idempotent DDL
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i "${{ steps.postgres.outputs.container }}" psql -U cisne_ci -d cisne_core_ci -v ON_ERROR_STOP=1 < db/postgres/migrations/0001_core.sql
+          docker exec -i "${{ steps.postgres.outputs.container }}" psql -U cisne_ci -d cisne_core_ci -v ON_ERROR_STOP=1 < db/postgres/migrations/0001_core.sql
+      - name: Test foreign keys, scaled values and OS invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker exec -i "${{ steps.postgres.outputs.container }}" psql -U cisne_ci -d cisne_core_ci -v ON_ERROR_STOP=1 < db/postgres/tests/0001_core_smoke.sql
