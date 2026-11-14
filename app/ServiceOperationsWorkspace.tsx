@@ -2,7 +2,7 @@
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Activity, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Clock3, Plus, RefreshCw, Search, TriangleAlert} from 'lucide-react';
-import {EnterprisePageHeader,WorkQueue,BusinessStatus} from './components/enterprise/EnterprisePrimitives';
+
 
 type Order={id:string;title:string;client:string;category:string;description:string;status:string;due_date:string|null;created_at:string;availableCommands?:{id:string;label:string;primary?:boolean}[];relations?:{measurements:number;invoices:number;receivables:number}};
 
@@ -24,4 +24,4 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
   </div>}
  </section>;
 }
-export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void}){return <div className="enterprise-module service-enterprise"><EnterprisePageHeader eyebrow="OPERAÇÕES DE SERVIÇO" title="Centro de execução" description="Ordens, responsáveis e próximas ações com contexto operacional."/><WorkQueue label="Fila de ordens de serviço"><BusinessStatus status="in_progress" label="Execução operacional"/></WorkQueue><ServiceOperationsWorkspaceView {...props}/></div>}
+export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void}){return <ServiceOperationsWorkspaceView {...props}/>;}
