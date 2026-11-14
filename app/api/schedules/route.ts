@@ -2,58 +2,13 @@ import {z} from 'zod';
 import {database} from '../../../db/raw';
 import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../lib/api/http';
 
-const input=z.object({
- id:z.string().uuid(),
- orderId:z.string().uuid(),
- startAt:z.string().datetime({offset:true}),
- endAt:z.string().datetime({offset:true}),
- timezone:z.string().trim().min(1).max(64).default('America/Porto_Velho'),
- assigneeType:z.enum(['person','team']).nullable().optional(),
- assigneeId:z.string().uuid().nullable().optional(),
- notes:z.string().trim().max(2000).nullable().optional(),
-}).strict();
+const input=z.object({id:z.string().uuid(),orderId:z.string().uuid(),startAt:z.string().datetime({offset:true}),endAt:z.string().datetime({offset:true}),timezone:z.string().trim().min(1).max(64).default('America/Porto_Velho'),assigneeType:z.enum(['person','team']).nullable().optional(),assigneeId:z.string().uuid().nullable().optional(),notes:z.string().trim().max(2000).nullable().optional()}).strict();
+const pageParams=z.object({from:z.string().datetime({offset:true}).optional(),to:z.string().datetime({offset:true}).optional(),page:z.coerce.number().int().min(1).max(10000).default(1),pageSize:z.coerce.number().int().min(1).max(100).default(50),status:z.enum(['scheduled','confirmed','cancelled','completed']).optional(),orderId:z.string().uuid().optional()});
 
-function assertWindow(startAt:string,endAt:string){
- const start=Date.parse(startAt),end=Date.parse(endAt);
- if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)throw new ApiError(400,'VALIDATION_FAILED','O término deve ser posterior ao início.');
-}
+function utc(value:string){const parsed=Date.parse(value);if(!Number.isFinite(parsed))throw new ApiError(400,'VALIDATION_FAILED','Data inválida.');return new Date(parsed).toISOString();}
+function assertTimezone(value:string){try{new Intl.DateTimeFormat('en-US',{timeZone:value}).format();}catch{throw new ApiError(400,'VALIDATION_FAILED','Fuso horário IANA inválido.');}}
+function assertWindow(startAt:string,endAt:string){const start=Date.parse(startAt),end=Date.parse(endAt);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)throw new ApiError(400,'VALIDATION_FAILED','O término deve ser posterior ao início.');}
 
-export async function GET(request:Request){
- let context:RequestContext|undefined;
- try{
-  context=requestContext(request);
-  const url=new URL(request.url), orderId=url.searchParams.get('orderId'), status=url.searchParams.get('status');
-  const predicates=['s.owner_id=?']; const values:[string,...string[]]=[context.actorId];
-  if(orderId){predicates.push('s.order_id=?');values.push(orderId);}
-  if(status){predicates.push('s.status=?');values.push(status);}
-  const rows=await database().prepare('SELECT s.*,o.title,o.client,o.status AS order_status FROM service_schedules s JOIN service_orders o ON o.id=s.order_id WHERE '+predicates.join(' AND ')+' ORDER BY s.start_at ASC,s.id ASC').bind(...values).all();
-  return respond({schedules:rows.results},context);
- }catch(error){return failure(error,context);}
-}
+export async function GET(request:Request){let context:RequestContext|undefined;try{context=requestContext(request);const url=new URL(request.url),params=pageParams.safeParse(Object.fromEntries(url.searchParams));if(!params.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros de agenda inválidos.');const p=params.data;const predicates=['s.owner_id=?'];const values:[string,...(string|number)[]]=[context.actorId];if(p.from){predicates.push('s.end_utc>?');values.push(utc(p.from));}if(p.to){predicates.push('s.start_utc<?');values.push(utc(p.to));}if(p.status){predicates.push('s.status=?');values.push(p.status);}if(p.orderId){predicates.push('s.order_id=?');values.push(p.orderId);}const db=database(),where=predicates.join(' AND '),count=await db.prepare('SELECT COUNT(*) AS total FROM service_schedules s WHERE '+where).bind(...values).first<{total:number}>(),rows=await db.prepare('SELECT s.*,o.title,o.client,o.status AS order_status FROM service_schedules s JOIN service_orders o ON o.id=s.order_id WHERE '+where+' ORDER BY s.start_utc ASC,s.id ASC LIMIT ? OFFSET ?').bind(...values,p.pageSize,(p.page-1)*p.pageSize).all();const total=Number(count?.total??0);return respond({schedules:rows.results,page:p.page,pageSize:p.pageSize,total,hasMore:p.page*p.pageSize<total},context);}catch(error){return failure(error,context);}}
 
-export async function POST(request:Request){
- let context:RequestContext|undefined;
- try{
-  context=requestContext(request,true);
-  const parsed=input.safeParse(await jsonBody(request));
-  if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Confira os dados do agendamento.');
-  const p=parsed.data; assertWindow(p.startAt,p.endAt);
-  if((p.assigneeType&&!p.assigneeId)||(!p.assigneeType&&p.assigneeId))throw new ApiError(400,'VALIDATION_FAILED','Responsável e tipo devem ser informados em conjunto.');
-  const hash=await fingerprint({actor:context.actorId,scope:'serviceSchedule',command:'create',payload:p});
-  const prior=await database().prepare('SELECT result FROM business_commands WHERE entity_type=? AND entity_id=? AND command=? AND request_hash=?').bind('serviceSchedule',p.id,'create',hash).first<{result:string}>();
-  if(prior)return respond(JSON.parse(prior.result),context,201);
-  const order=await database().prepare('SELECT id,status FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(p.orderId,context.actorId).first<{id:string;status:string}>();
-  if(!order)throw new ApiError(404,'NOT_FOUND','Ordem de serviço não encontrada.');
-  if(['cancelled','completed'].includes(order.status))throw new ApiError(409,'INVALID_STATE','A ordem não aceita novos agendamentos.');
-  const conflict=await database().prepare("SELECT id FROM service_schedules WHERE owner_id=? AND assignee_type IS ? AND assignee_id IS ? AND status IN ('scheduled','confirmed') AND start_at < ? AND end_at > ? LIMIT 1").bind(context.actorId,p.assigneeType??null,p.assigneeId??null,p.endAt,p.startAt).first<{id:string}>();
-  if(conflict)throw new ApiError(409,'SCHEDULE_CONFLICT','O responsável já possui um agendamento sobreposto.');
-  const now=new Date().toISOString(),result={ok:true,id:p.id,resource:{type:'serviceSchedule',id:p.id,rowVersion:1},refreshPolicy:['serviceOrders.schedule']};
-  const db=database();
-  const write=await db.batch([
-   db.prepare('INSERT INTO service_schedules(id,owner_id,order_id,start_at,end_at,timezone,assignee_type,assignee_id,status,notes,version,created_at,updated_at,actor_id,request_hash,correlation_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(p.id,context.actorId,p.orderId,p.startAt,p.endAt,p.timezone,p.assigneeType??null,p.assigneeId??null,'scheduled',p.notes??null,1,now,now,context.actorId,hash,context.correlationId),
-   db.prepare('INSERT INTO business_commands(id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),context.actorId,'serviceSchedule',p.id,'create',hash,JSON.stringify(result),context.correlationId,now),
-  ]);
-  if(!write[0].meta.changes)throw new ApiError(409,'VERSION_CONFLICT','Este agendamento já existe.');
-  return respond(result,context,201);
- }catch(error){return failure(error,context);}
-}
+export async function POST(request:Request){let context:RequestContext|undefined;try{context=requestContext(request,true);const parsed=input.safeParse(await jsonBody(request));if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Confira os dados do agendamento.');const p=parsed.data;assertWindow(p.startAt,p.endAt);assertTimezone(p.timezone);if(p.assigneeType||p.assigneeId)throw new ApiError(409,'DEPENDENCY_UNAVAILABLE','Cadastros de pessoas e equipes ainda não estão disponíveis para atribuição.');const startUtc=utc(p.startAt),endUtc=utc(p.endAt);const hash=await fingerprint({actor:context.actorId,scope:'serviceSchedule',command:'create',payload:p});const db=database();const prior=await db.prepare('SELECT request_hash,result FROM business_commands WHERE entity_type=? AND entity_id=? AND command=? ORDER BY created_at DESC LIMIT 1').bind('serviceSchedule',p.id,'create').first<{request_hash:string;result:string}>();if(prior){if(prior.request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','A chave do agendamento já foi usada com outro conteúdo.');return respond(JSON.parse(prior.result),context,201);}const order=await db.prepare('SELECT id,status FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(p.orderId,context.actorId).first<{id:string;status:string}>();if(!order)throw new ApiError(404,'NOT_FOUND','Ordem de serviço não encontrada.');if(!['draft','authorized','executing'].includes(order.status))throw new ApiError(409,'INVALID_STATE','A ordem não aceita novos agendamentos.');const now=new Date().toISOString(),result={ok:true,id:p.id,resource:{type:'serviceSchedule',id:p.id,rowVersion:1},refreshPolicy:['serviceOrders.schedule']};try{const write=await db.batch([db.prepare('INSERT INTO service_schedules(id,owner_id,order_id,start_at,end_at,start_utc,end_utc,timezone,assignee_type,assignee_id,status,notes,version,created_at,updated_at,actor_id,request_hash,correlation_id) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)').bind(p.id,context.actorId,p.orderId,p.startAt,p.endAt,startUtc,endUtc,p.timezone,null,null,'scheduled',p.notes??null,1,now,now,context.actorId,hash,context.correlationId),db.prepare('INSERT INTO business_commands(id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at) VALUES(?,?,?,?,?,?,?,?,?)').bind(crypto.randomUUID(),context.actorId,'serviceSchedule',p.id,'create',hash,JSON.stringify(result),context.correlationId,now)]);if(!write[0].meta.changes)throw new ApiError(409,'VERSION_CONFLICT','Este agendamento já existe.');}catch(error){if(error instanceof Error&&error.message.includes('SCHEDULE_CONFLICT'))throw new ApiError(409,'SCHEDULE_CONFLICT','O responsável já possui um agendamento sobreposto.');throw error;}return respond(result,context,201);}catch(error){return failure(error,context);}}
