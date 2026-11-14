@@ -17,7 +17,7 @@ Choose a **modular monolith** rather than premature microservices. Keep Next.js/
 
 Initial boundaries: identity, customers, commercial, contracts, field-service, scheduling, inventory, procurement, MRP, billing, finance, treasury and accounting. Each entity has one owning domain. Cross-domain operations use typed application contracts and transactions, not duplicate master records.
 
-A separate `vite.railway.config.ts` tests standalone Node output, without using the Cloudflare Vite plugin. Legacy D1 bindings are **deliberately unavailable** on this target. This does not make the ERP fully operational: independent authentication, actual PostgreSQL repositories, tested migrations and data reconciliation are still required.
+A separate `vite.railway.config.ts` builds a Node-targeted Vite bundle without the Cloudflare Vite plugin. The `pnpm start:railway` command runs vinext's Node production server but is deliberately restricted to the approved Railway `staging` environment. CI executes real HTTP liveness and spoofed-auth rejection smoke tests. This is a **migration preview**, not a standalone distributable artifact and not a functional PostgreSQL-backed ERP. Legacy D1 bindings are deliberately unavailable; independent authentication, PostgreSQL repositories, tested migrations and data reconciliation remain required.
 
 ## Security decisions
 
