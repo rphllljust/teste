@@ -63,5 +63,30 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build isolated Node artifact
         run: pnpm build:railway
-      - name: Verify standalone Node entry
-        run: test -f dist/standalone/server.js
+      - name: Verify Node server bundle
+        run: test -f dist/server/index.js
+      - name: Exercise staging Node runtime and fail-closed auth
+        run: |
+          set -euo pipefail
+          export RAILWAY_PROJECT_ID=1f68621a-d07b-476b-87cc-26de71473a3c
+          export RAILWAY_ENVIRONMENT_ID=ci-isolated
+          export RAILWAY_ENVIRONMENT_NAME=staging
+          export PORT=3421
+          node scripts/railway-start.mjs > /tmp/cisne-railway-node.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" 2>/dev/null || true' EXIT
+          ready=0
+          for i in $(seq 1 40); do
+            if curl --silent --fail http://127.0.0.1:3421/api/health > /tmp/cisne-health.json; then
+              ready=1
+              break
+            fi
+            if ! kill -0 "$pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ready" -ne 1 ]; then
+            cat /tmp/cisne-railway-node.log
+            exit 1
+          fi
+          node --input-type=module -e "import assert from 'node:assert/strict'; const base='http://127.0.0.1:3421'; const health=await fetch(base+'/api/health'); assert.equal(health.status,200); assert.equal((await health.json()).check,'liveness'); const spoofed=await fetch(base+'/api/orders',{headers:{'oai-authenticated-user-id':'untrusted'}}); assert.equal(spoofed.status,503); const body=await spoofed.json(); assert.equal(body.code,'AUTH_PROVIDER_UNAVAILABLE');"
+  
