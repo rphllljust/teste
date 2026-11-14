@@ -2,7 +2,7 @@
 
 import {useCallback, useEffect, useMemo, useState} from 'react';
 import {Activity, ArrowRight, CalendarDays, CheckCircle2, ClipboardList, Clock3, Plus, RefreshCw, Search, TriangleAlert} from 'lucide-react';
-import {EnterprisePageHeader,WorkQueue,BusinessStatus} from './components/enterprise/EnterprisePrimitives';
+
 
 type Order={id:string;title:string;client:string;category:string;description:string;status:string;due_date:string|null;created_at:string;availableCommands?:{id:string;label:string;primary?:boolean}[];relations?:{measurements:number;invoices:number;receivables:number}};
 
@@ -14,7 +14,7 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
  useEffect(()=>{const t=setTimeout(()=>void load(),160);return()=>clearTimeout(t);},[load]);
  const selected=useMemo(()=>orders.find(o=>o.id===selectedId)??null,[orders,selectedId]);
  const groups=useMemo(()=>({priority:orders.filter(o=>['IN_PROGRESS','PREPARED'].includes(o.status)),attention:orders.filter(o=>['DRAFT'].includes(o.status)),closed:orders.filter(o=>['COMPLETED','CANCELLED'].includes(o.status))}),[orders]);
- return <section className="service-operations" aria-label="Centro de operações de serviços"><div className="process-board-inline"><span className="eyebrow">PROCESSO EMPRESARIAL</span><strong>Cliente → proposta → ordem → execução → financeiro</strong><div>{['Clientes e propostas','Ordens de serviço','Estoque e compras','Medições','Financeiro'].map((step,i)=><button key={step} onClick={()=>onOpen(step==='Ordens de serviço'?'': '')}>{String(i+1).padStart(2,'0')} {step}</button>)}</div></div>
+ return <section className="service-operations" aria-label="Centro de operações de serviços">
   <header className="service-operations-header"><div><span className="eyebrow">OPERAÇÃO · ORDENS DE SERVIÇO</span><h2>Centro de operações</h2><p>Priorize execução, exceções e continuidade comercial a partir de uma única fila.</p></div><div className="service-operations-actions"><button className="secondary" onClick={()=>void load()} disabled={loading}><RefreshCw size={16}/>Atualizar</button><button className="primary" onClick={onCreate}><Plus size={17}/>Nova ordem</button></div></header>
   <div className="service-operations-toolbar"><label className="search-input"><Search size={16}/><input aria-label="Buscar ordens de serviço" placeholder="Buscar por ordem, cliente ou atividade" value={query} onChange={e=>setQuery(e.target.value)}/></label><span className="toolbar-count">{loading?'Consultando…':`${orders.length} ordens no contexto atual`}</span></div>
   {error?<div className="empty" role="alert"><TriangleAlert size={22}/><h3>Fila indisponível</h3><p>{error}</p><button className="secondary" onClick={()=>void load()}>Tentar novamente</button></div>:<div className="service-operations-grid">
@@ -24,4 +24,4 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
   </div>}
  </section>;
 }
-export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void}){return <div className="enterprise-module service-enterprise"><EnterprisePageHeader eyebrow="OPERAÇÕES DE SERVIÇO" title="Centro de execução" description="Ordens, responsáveis e próximas ações com contexto operacional."/><WorkQueue label="Fila de ordens de serviço"><BusinessStatus status="in_progress" label="Execução operacional"/></WorkQueue><ServiceOperationsWorkspaceView {...props}/></div>}
+export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void}){return <ServiceOperationsWorkspaceView {...props}/>;}
