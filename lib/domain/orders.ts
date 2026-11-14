@@ -1,0 +1,6 @@
+export const statusNames:Record<string,string>={draft:'Rascunho',authorized:'Autorizada',executing:'Em execução',completed:'Concluída',cancelled:'Cancelada'};
+export const transitions:Record<string,{from:string[];to:string;label:string}>={authorize:{from:['draft'],to:'authorized',label:'Autorizar ordem'},start:{from:['authorized'],to:'executing',label:'Iniciar execução'},complete:{from:['executing'],to:'completed',label:'Concluir execução'},cancel:{from:['draft','authorized'],to:'cancelled',label:'Cancelar ordem'}};
+export function money(amount:number){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:4}).format(amount/10000);}
+export function parseAmount(value:string){if(!/^\d{1,10}(,\d{1,4})?$/.test(value))return null;const [whole,fraction='']=value.split(',');const scaled=Number(whole)*10000+Number(fraction.padEnd(4,'0'));return Number.isSafeInteger(scaled)&&scaled>0?scaled:null;}
+// Decimal wire values stay strings; formatting never converts money to a float.
+export function moneyScaled(value:string|null|undefined){if(value==null||!/^\d+$/.test(value))return '—';const amount=BigInt(value),whole=amount/BigInt(10000),fraction=(amount%BigInt(10000)).toString().padStart(4,'0').replace(/0{1,2}$/,'');return 'R$ '+new Intl.NumberFormat('pt-BR').format(whole)+','+fraction.padEnd(2,'0');}
