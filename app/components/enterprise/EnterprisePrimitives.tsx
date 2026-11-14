@@ -28,3 +28,20 @@ export function EnterpriseFilterBar({ children, onReset }: { children: ReactNode
 export function WorkQueue({ children, label }: { children: ReactNode; label: string }) {
  return <section className="enterprise-work-queue" aria-label={label}>{children}</section>;
 }
+
+
+export function ObjectSection({title,eyebrow,children,actions}:{title:string;eyebrow?:string;children:ReactNode;actions?:ReactNode}){
+ return <section className="enterprise-object-section"><header className="enterprise-object-section-header"><div>{eyebrow&&<span className="eyebrow">{eyebrow}</span>}<h3>{title}</h3></div>{actions&&<div className="enterprise-object-section-actions">{actions}</div>}</header>{children}</section>;
+}
+
+export function EmptyState({title,description,action}:{title:string;description?:string;action?:ReactNode}){
+ return <div className="enterprise-empty-state" role="status"><h3>{title}</h3>{description&&<p>{description}</p>}{action}</div>;
+}
+
+export function LoadingState({label='Carregando dados…'}:{label?:string}){
+ return <div className="enterprise-loading-state" role="status" aria-live="polite">{label}</div>;
+}
+
+export function ErrorState({message,onRetry}:{message:string;onRetry?:()=>void}){
+ return <div className="enterprise-error-state" role="alert"><strong>Não foi possível concluir</strong><p>{message}</p>{onRetry&&<button className="secondary" onClick={onRetry}>Tentar novamente</button>}</div>;
+}
