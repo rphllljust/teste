@@ -1,0 +1,48 @@
+name: CISNE full-stack checks
+on:
+  pull_request:
+  push:
+    branches:
+      - feat/enterprise-mrp-wave5
+
+permissions:
+  contents: read
+
+jobs:
+  domain-invariants:
+    name: Domain invariants (Node 22)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Execute MRP and shared purchasing valuation tests
+        run: node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs
+
+  application-build:
+    name: Full application source and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Verify tracked application source
+        run: |
+          test -f scripts/run-framework.mjs
+          test -f scripts/sites-env.mjs
+          test -f build/sites-vite-plugin.ts
+          test -f build/connector-preview-plugin.mjs
+          test -f .openai/hosting.json
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+      - name: TypeScript
+        run: pnpm exec tsc --noEmit
+      - name: ESLint
+        run: pnpm lint
+      - name: Production build
+        run: pnpm build
