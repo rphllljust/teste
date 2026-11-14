@@ -7,8 +7,9 @@ type Detail={item:Item;movements:{id:string;delta:number;reference:string;orderT
 type Action='create'|'in'|'out';
 const fmt=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}),date=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Porto_Velho'}),units=['un','kg','m','m²','m³','L'];
 function qty(v:number){return fmt.format(v/1000)} async function api<T>(query:URLSearchParams,options?:RequestInit){const r=await fetch('/api/inventory?'+query,options),d=await r.json() as T&{error?:string};if(!r.ok)throw new Error(d.error||'Estoque indisponível.');return d}
-export default function InventoryWorkspace(){
+export default function InventoryWorkspace({initialMaterialId}:{initialMaterialId?:string}){
  const[query,setQuery]=useState(''),[list,setList]=useState<Inventory>(),[selected,setSelected]=useState(''),[detail,setDetail]=useState<Detail>(),[refresh,setRefresh]=useState(0),[action,setAction]=useState<Action>(),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');const dialog=useRef<HTMLDialogElement>(null),retry=useRef<{payload:string;id:string}|null>(null);
+ useEffect(()=>{if(initialMaterialId)setSelected(initialMaterialId)},[initialMaterialId]);
  useEffect(()=>{const c=new AbortController();const q=selected?new URLSearchParams({item:selected}):new URLSearchParams({q:query==='__low__'?'':query,page:'1'});api<Detail|Inventory>(q,{signal:c.signal}).then(d=>{if(selected)setDetail(d as Detail);else setList(d as Inventory)}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[query,selected,refresh]);
  useEffect(()=>{if(action&&!dialog.current?.open)dialog.current?.showModal();if(!action&&dialog.current?.open)dialog.current.close()},[action]);
  function open(id:string){setSelected(id);setDetail(undefined);setError('')}
