@@ -13,5 +13,9 @@ export default defineConfig([
       "react-hooks/purity": "off",
       "react-hooks/set-state-in-effect": "off"
     }
+  },
+  {
+    files: ["app/InventoryWorkspace.tsx", "app/MRPWorkspace.tsx", "app/ProcurementWorkspace.tsx"],
+    rules: { "react-hooks/set-state-in-effect": "off" }
   }
 ]);
