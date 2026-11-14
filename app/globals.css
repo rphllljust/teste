@@ -267,8 +267,8 @@ h1,.operational-workspace h1{font-size:32px;letter-spacing:-1.1px;line-height:1.
 .chain-scroll::before{background:linear-gradient(90deg,var(--canvas) 45%,transparent)}
 .chain-scroll::after{background:linear-gradient(270deg,var(--canvas) 45%,transparent)}
 .chain-navigation{background:var(--canvas);color:var(--teal);border-color:#cad5cc}
-.operational-workspace .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;border:0;margin:0 0 26px;background:transparent}
-.operational-workspace .metrics>button,.operational-workspace .metrics>button:first-child,.operational-workspace .metrics>button:last-child{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;gap:0 12px;align-items:center;padding:20px 22px;text-align:left;background:#fff;border:1px solid #e0e6e0;border-radius:8px;min-height:140px;box-shadow:0 2px 3px #223a2603}
+.operational-workspace .metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;border:0;margin:0 0 18px;background:transparent}
+.operational-workspace .metrics>button,.operational-workspace .metrics>button:first-child,.operational-workspace .metrics>button:last-child{position:relative;display:grid;grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;gap:0 10px;align-items:center;padding:14px 16px;text-align:left;background:#fff;border:1px solid #e0e6e0;border-radius:8px;min-height:104px;box-shadow:0 2px 3px #223a2603}
 .operational-workspace .metrics>button:hover{border-color:#b8cabc;background:#fcfdfc}
 .operational-workspace .metrics>button[aria-pressed='true']{border-color:#a9bfad}
 .operational-workspace .metrics>button[aria-pressed='true']::after{height:2px;left:22px;right:22px;bottom:-1px;background:#477759}
@@ -451,3 +451,9 @@ tr:has(td):hover{background:#f5f9f5}
 .supply-workspace,.supply-workspace [role="tabpanel"]{min-width:0}
 @media(max-width:1100px){.enterprise-operations-access{align-items:flex-start}.enterprise-grid{grid-template-columns:minmax(0,1fr)}.inventory-layout,.procurement-layout{grid-template-columns:minmax(220px,1fr) minmax(0,1.6fr)}.inventory-inspector,.procurement-context{grid-column:1/-1}}
 @media(max-width:700px){.enterprise-operations-access{flex-direction:column;align-items:stretch}.enterprise-operations-access .secondary{align-self:flex-start}.supply-view-tabs{width:100%}.supply-view-tabs button{flex:1;white-space:normal}.inventory-layout,.procurement-layout{grid-template-columns:minmax(0,1fr)}.inventory-inspector,.procurement-context{grid-column:auto}.main main{padding:16px 14px 22px}}
+
+/* Dashboard KPIs: use a complete row, never a lonely fourth tile. */
+@media(min-width:1201px){.operational-workspace .metrics{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(min-width:701px) and (max-width:1200px){.operational-workspace .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.operational-workspace .metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.operational-workspace .metrics>button,.operational-workspace .metrics>button:first-child,.operational-workspace .metrics>button:last-child{min-height:96px;padding:12px}}
+@media(max-width:420px){.operational-workspace .metrics{grid-template-columns:minmax(0,1fr)}}
