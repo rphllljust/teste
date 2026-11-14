@@ -86,11 +86,19 @@ export async function createPurchaseOrder(
   ...lineStatements,
   procurementReceipt(context, { key: input.id, type: 'supplierPurchaseOrder', id: input.id,
    command: 'register', hash, result, now }),
+  ...(source ? [db.prepare(`INSERT INTO mrp_events
+    (id,recommendation_id,owner_id,actor_id,command,from_status,to_status,purchase_order_id,correlation_id,created_at)
+    SELECT ?,?,?,?,?,?,?,?,?,? FROM mrp_recommendations r
+    WHERE r.id=? AND r.owner_id=? AND r.purchase_order_id=? AND r.status='converted'
+      AND r.row_version=? AND changes()=1`)
+    .bind(crypto.randomUUID(),source.recommendationId,context.actorId,context.actorId,'convert',
+      'approved','converted',input.id,context.correlationId,now,
+      source.recommendationId,context.actorId,input.id,source.expectedVersion+1)] : []),
  ];
  const outcomes = await db.batch(statements);
  // If the compare-and-swap failed, no purchasing statement could insert a row.
  // A missing source order must never be reported as a successful conversion.
- if (source && (outcomes[0].meta.changes !== 1 || outcomes[1].meta.changes !== 1))
+ if (source && (outcomes[0].meta.changes !== 1 || outcomes[1].meta.changes !== 1 || outcomes[outcomes.length-1].meta.changes !== 1))
   throw new ApiError(409, 'VERSION_CONFLICT', 'A recomendação mudou; atualize antes de converter.');
  return result;
 }
