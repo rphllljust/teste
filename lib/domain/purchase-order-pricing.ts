@@ -1,3 +1,75 @@
-export type PurchaseOrderLine={quantity:number;unitPrice:number;discount?:number;tax?:number};
-export function calculatePurchaseOrderLine(line:PurchaseOrderLine){for(const [name,value] of Object.entries(line)){if(value!=null&&(!Number.isSafeInteger(value)||value<0))throw new Error(name+' must be a non-negative integer');}if(line.quantity<=0||line.unitPrice<=0)throw new Error('quantity and unitPrice must be positive');const gross=BigInt(line.quantity)*BigInt(line.unitPrice);const discount=BigInt(line.discount??0);const tax=BigInt(line.tax??0);const subtotal=gross-discount+tax;if(subtotal<=0n)throw new Error('line subtotal must be positive');return {gross:Number(gross),subtotal:Number(subtotal)};}
-export function calculatePurchaseOrderTotal(lines:PurchaseOrderLine[]){if(!lines.length)throw new Error('at least one line is required');return lines.reduce((sum,line)=>sum+calculatePurchaseOrderLine(line).subtotal,0);}
+export type PurchaseLine = {
+ id: string;
+ itemId: string;
+ quantity: number;
+ unitPrice: number;
+ discount: number;
+ tax: number;
+ position?: number;
+};
+
+export type PurchaseOrderInput = {
+ id: string;
+ supplierId: string;
+ reference: string;
+ expectedOn: string;
+ freight: number;
+ additionalCosts: number;
+ lines: PurchaseLine[];
+};
+
+export class PurchasePricingError extends Error {
+ constructor(message: string) {
+  super(message);
+  this.name = 'PurchasePricingError';
+ }
+}
+
+const MAX_SAFE = BigInt(Number.MAX_SAFE_INTEGER);
+function integer(name: string, value: unknown, positive = false): number {
+ if (typeof value !== 'number' || !Number.isSafeInteger(value) || (positive ? value <= 0 : value < 0)) {
+  throw new PurchasePricingError(`${name} must be ${positive ? 'a positive' : 'a non-negative'} safe integer`);
+ }
+ return value;
+}
+function moneyRoundHalfUp(product: bigint): bigint {
+ const quotient = product / 1000n;
+ const remainder = product % 1000n;
+ return quotient + (remainder >= 500n ? 1n : 0n);
+}
+function safeNumber(name: string, value: bigint): number {
+ if (value < 0n || value > MAX_SAFE) throw new PurchasePricingError(`${name} exceeds safe monetary range`);
+ return Number(value);
+}
+
+export function pricePurchaseOrder(input: PurchaseOrderInput) {
+ if (!input || typeof input !== 'object') throw new PurchasePricingError('purchase order is required');
+ if (!input.id || !input.supplierId || !input.reference || !input.expectedOn) {
+  throw new PurchasePricingError('purchase order identity and dates are required');
+ }
+ integer('freight', input.freight);
+ integer('additionalCosts', input.additionalCosts);
+ if (!Array.isArray(input.lines) || input.lines.length === 0) throw new PurchasePricingError('at least one line is required');
+ const lines = input.lines.map((line, index) => {
+  if (!line.id || !line.itemId) throw new PurchasePricingError('line identity is required');
+  const quantity = integer(`lines[${index}].quantity`, line.quantity, true);
+  const unitPrice = integer(`lines[${index}].unitPrice`, line.unitPrice, true);
+  const discount = integer(`lines[${index}].discount`, line.discount ?? 0);
+  const tax = integer(`lines[${index}].tax`, line.tax ?? 0);
+  const gross = BigInt(quantity) * BigInt(unitPrice);
+  const subtotal = moneyRoundHalfUp(gross) - BigInt(discount) + BigInt(tax);
+  if (subtotal <= 0n) throw new PurchasePricingError(`lines[${index}] subtotal must be positive`);
+  return {
+   ...line,
+   position: line.position ?? index + 1,
+   quantity,
+   unitPrice,
+   discount,
+   tax,
+   subtotal: safeNumber('line subtotal', subtotal),
+  };
+ });
+ const subtotal = lines.reduce((sum, line) => sum + BigInt(line.subtotal), 0n);
+ const total = subtotal + BigInt(input.freight) + BigInt(input.additionalCosts);
+ return { lines, subtotal: safeNumber('order subtotal', subtotal), total: safeNumber('order total', total) };
+}
