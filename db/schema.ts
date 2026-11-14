@@ -151,3 +151,33 @@ export const mrpEvents=sqliteTable('mrp_events',{
  check('mrp_events_from_valid',sql`${t.fromStatus} IN ('draft','approved')`),
  check('mrp_events_to_valid',sql`${t.toStatus} IN ('approved','rejected','converted')`),
 ]);
+
+
+export const serviceSchedules=sqliteTable('service_schedules',{
+ id:text('id').primaryKey(),
+ ownerId:text('owner_id').notNull(),
+ orderId:text('order_id').notNull().references(()=>orders.id),
+ startAt:text('start_at').notNull(),
+ endAt:text('end_at').notNull(),
+ startUtc:text('start_utc').notNull(),
+ endUtc:text('end_utc').notNull(),
+ timezone:text('timezone').notNull().default('America/Porto_Velho'),
+ assigneeType:text('assignee_type'),
+ assigneeId:text('assignee_id'),
+ status:text('status').notNull().default('scheduled'),
+ notes:text('notes'),
+ version:integer('version').notNull().default(1),
+ createdAt:text('created_at').notNull(),
+ updatedAt:text('updated_at').notNull(),
+ actorId:text('actor_id').notNull(),
+ requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),
+},t=>[
+ index('service_schedules_owner_time').on(t.ownerId,t.startUtc,t.endUtc),
+ index('service_schedules_order').on(t.orderId,t.createdAt),
+ index('service_schedules_assignee_time').on(t.ownerId,t.assigneeType,t.assigneeId,t.startUtc,t.endUtc),
+ check('service_schedule_status',sql`${t.status} IN ('scheduled','confirmed','cancelled','completed')`),
+ check('service_schedule_unassigned',sql`${t.assigneeType} IS NULL AND ${t.assigneeId} IS NULL`),
+ check('service_schedule_version',sql`${t.version}>0`),
+ check('service_schedule_window',sql`${t.endUtc}>${t.startUtc}`),
+]);
