@@ -1,4 +1,4 @@
-name: build-and-deploy
+name: build-and-verify
 
 on:
   push:
@@ -7,10 +7,6 @@ on:
 
 permissions:
   contents: read
-
-concurrency:
-  group: cisne-production
-  cancel-in-progress: false
 
 jobs:
   build:
@@ -30,24 +26,5 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
 
-  deploy:
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 11.25.0
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build
-      - name: Publish with Wrangler
-        run: pnpm exec wrangler deploy --config dist/server/wrangler.json
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+# Production publication is owned by the Sites platform. This workflow intentionally
+# verifies the source but does not invoke Wrangler with unrelated Cloudflare secrets.
