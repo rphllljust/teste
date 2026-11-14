@@ -13,5 +13,5 @@ export default defineConfig({
   resolve: {
     alias: [{find: 'cloudflare:workers', replacement: unsupportedCloudflareBinding}],
   },
-  plugins: [vinext()],
+  plugins: [vinext({nextConfig: {output: 'standalone'}})],
 });
