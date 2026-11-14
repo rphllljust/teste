@@ -38,6 +38,10 @@ Within staging only:
 6. **Performance gate**: measured CPU/memory, pool saturation, slow queries, p50/p95/p99 and load tests appropriate to staging capacity.
 7. **Release gate**: reviewed commit SHA, CI and smoke/E2E on the exact staging deployment; production change requires separate explicit approval.
 
+## CI-proven Node preview (not a release)
+
+The isolated `pnpm build:railway` / `pnpm start:railway` path has a GitHub Actions smoke that runs the Node server on a disposable CI port, checks `/api/health`, and confirms a spoofed Sites identity header is rejected with HTTP 503. The start script refuses execution unless `RAILWAY_PROJECT_ID` matches the approved project and `RAILWAY_ENVIRONMENT_NAME` is exactly `staging`. This does not demonstrate PostgreSQL migration, production availability, a public domain or a functioning login flow.
+
 ## Liveness is not readiness
 
 `GET /api/health` is a public **liveness-only** endpoint. It intentionally does not query the database or authenticate a user and must not be used to conclude that PostgreSQL, authentication or the ERP business flows are operational.
