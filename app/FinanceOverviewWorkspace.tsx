@@ -1,7 +1,7 @@
 'use client';
 import {useEffect,useState} from 'react';
 import {moneyScaled} from '../lib/domain/orders';
-import {EnterprisePageHeader,WorkQueue,BusinessStatus} from './components/enterprise/EnterprisePrimitives';
+import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 type Drilldown={viewKey:string;filters:Record<string,string>};
 type Snapshot={asOf:string;generatedAt:string;metrics:{metricId:string;label:string;value:string|null;count:number;status:string;authority:string;drilldown:Drilldown}[];warnings:string[];availableCash:{value:null;reason:string}};
 function FinanceOverviewWorkspaceView({onDrilldown}:{onDrilldown:(d:Drilldown)=>void}){
@@ -11,4 +11,4 @@ function FinanceOverviewWorkspaceView({onDrilldown}:{onDrilldown:(d:Drilldown)=>
  {error?<div className="empty" role="alert">{error}<button className="secondary" onClick={()=>{setLoading(true);setRefresh(n=>n+1);}}>Tentar novamente</button></div>:loading?<div className="empty" role="status">Consultando saldos e vencimentos…</div>:<><section className="metrics" aria-label="Saldos financeiros autoritativos">{snapshot?.metrics.map(m=><button key={m.metricId} disabled={m.status!=='available'} title={'Origem: '+m.authority} onClick={()=>onDrilldown(m.drilldown)}><span>{m.label}</span><strong>{moneyScaled(m.value)}</strong><small>{m.count} títulos · abrir fila correspondente</small></button>)}</section><div className="linked-info">Disponibilidade bancária atual: indisponível. {snapshot?.availableCash.reason}</div>{snapshot?.warnings.map(w=><p className="muted finance-source-note" key={w}>{w}</p>)}</>}
  <footer className="table-footer"><span>{!loading&&!error&&snapshot?'Consulta: '+new Date(snapshot.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Porto_Velho'}):'Resultado indisponível'}</span><span>BRL · quatro casas decimais</span></footer></section>;
 }
-export default function FinanceOverviewWorkspace(props:{onDrilldown:(d:Drilldown)=>void}){return <div className="enterprise-module finance-enterprise"><EnterprisePageHeader eyebrow="FINANCEIRO" title="Centro financeiro" description="Exceções, títulos e reconciliação priorizados por impacto."/><WorkQueue label="Fila financeira"><BusinessStatus status="pending" label="Conciliação pendente"/></WorkQueue><FinanceOverviewWorkspaceView {...props}/></div>}
+export default function FinanceOverviewWorkspace(props:{onDrilldown:(d:Drilldown)=>void}){return <section className="enterprise-module finance-enterprise"><EnterprisePageHeader eyebrow="FINANCEIRO" title="Centro financeiro" description="Exceções, títulos e reconciliação priorizados por impacto."/><FinanceOverviewWorkspaceView {...props}/></section>;}
