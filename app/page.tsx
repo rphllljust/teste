@@ -13,6 +13,7 @@ import FinanceOverviewWorkspace from './FinanceOverviewWorkspace';
 import TreasuryWorkspace from './TreasuryWorkspace';
 import LedgerWorkspace from './LedgerWorkspace';
 import BankReconciliationWorkspace from './BankReconciliationWorkspace';
+import {EnterprisePageHeader,WorkQueue,BusinessStatus} from './components/enterprise/EnterprisePrimitives';
 import AccountingWorkspace from './AccountingWorkspace';
 import CloseCenterWorkspace from './CloseCenterWorkspace';
 import InventoryWorkspace from './InventoryWorkspace';
@@ -35,7 +36,7 @@ type Event={label:string;id:string;order_id:string;command:string;created_at:str
 type ReceivableContext={evidence?:{id:string;resourceKind:string;description:string;quantityScaled:string;unit:string;effectiveDate:string;reference:string}[];evidencePageInfo?:{page:number;total:number;hasMore:boolean};availableCommands?:AvailableCommand[];identity:{id:string;title:string;subtitle:string;entityKey?:'measurements'|'invoices'|'receivables'};state?:{code:string;label:string;rowVersion:number|null};facts:{principalScaled:string;dueDate:string|null;createdAt:string;outstandingScaled:string|null;settledScaled:string|null};settlementsPageInfo?:{page:number;total:number;hasMore:boolean};settlements?:{canReverse:number;id:string;kind:'receipt'|'reversal';amountScaled:string;effectiveDate:string;reference:string;reversed:number}[];relations:{orderId:string;orderTitle:string;measurementId:string;measurementDescription:string;invoiceId:string|null;receivableId?:string|null};warnings:string[]};
 const categories=['Todas as atividades','Locação','Serviços','Transporte','Obra'];
 function date(v:string|null){return v?new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(new Date(v.length===10?v+'T12:00:00Z':v)):'Não informado';}
-export default function Home(){
+function HomeView(){
  const [mrpMaterialId,setMrpMaterialId]=useState('');
  const [mrpOrderId,setMrpOrderId]=useState('');
  const [page,setPage]=useState('Visão operacional'),[orders,setOrders]=useState<Order[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(''),[query,setQuery]=useState(''),[category,setCategory]=useState(categories[0]),[view,setView]=useState('Todas as ordens'),[selected,setSelected]=useState<Order|null>(null),[creating,setCreating]=useState(false),[saving,setSaving]=useState(false),[notice,setNotice]=useState(''),[noticeTone,setNoticeTone]=useState<'success'|'error'>('success'),[sidebar,setSidebar]=useState(false),[palette,setPalette]=useState(false),[pageNumber,setPageNumber]=useState(1),[total,setTotal]=useState(0),[summary,setSummary]=useState({total:0,drafts:0,planned:0,pendingMeasurements:0}),[operation,setOperation]=useState<{measurements:Linked[];invoices:Linked[];receivables:Linked[];events:Event[];relations:{order_id:string;measurements:number;invoices:number;receivables:number}[]}>({measurements:[],invoices:[],receivables:[],events:[],relations:[]}),[operationError,setOperationError]=useState(''),[savedViews,setSavedViews]=useState<{id:string;name:string;query:string;category:string;view:string;rowVersion:number;isDefault:boolean;compatible:boolean;definition:ViewDefinition|null}[]>([]),[savingView,setSavingView]=useState(false),[viewKey,setViewKey]=useState(''),[viewNotice,setViewNotice]=useState(''),[paletteQuery,setPaletteQuery]=useState(''),[action,setAction]=useState<{command:string;record:Order|Linked;key:string}|null>(null);
@@ -119,3 +120,4 @@ export default function Home(){
 
  </div>;
 }
+export default function Home(){return <div className="enterprise-module command-center-enterprise"><EnterprisePageHeader eyebrow="CISNE ERP" title="Command Center" description="Visão operacional unificada dos processos críticos."/><WorkQueue label="Fila executiva"><BusinessStatus status="approved" label="Ambiente operacional"/></WorkQueue><HomeView/></div>}
