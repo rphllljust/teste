@@ -14,3 +14,11 @@ CREATE TABLE IF NOT EXISTS mrp_events (
 );
 CREATE INDEX IF NOT EXISTS mrp_events_recommendation_time ON mrp_events(recommendation_id,created_at);
 CREATE INDEX IF NOT EXISTS mrp_events_owner_time ON mrp_events(owner_id,created_at);
+
+-- Decision events are immutable business facts; corrections require a new event.
+CREATE TRIGGER IF NOT EXISTS mrp_events_immutable_update
+BEFORE UPDATE ON mrp_events
+BEGIN SELECT RAISE(ABORT,'CISNE_MRP_EVENT_IMMUTABLE'); END;
+CREATE TRIGGER IF NOT EXISTS mrp_events_immutable_delete
+BEFORE DELETE ON mrp_events
+BEGIN SELECT RAISE(ABORT,'CISNE_MRP_EVENT_IMMUTABLE'); END;
