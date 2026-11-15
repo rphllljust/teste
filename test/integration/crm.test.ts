@@ -21,9 +21,9 @@ function req(method:'GET'|'POST',data?:unknown,identity?:string,extra:Record<str
 }
 type TestBody={
   error?:string; code?:string;
-  result:{state:string;rowVersion:number};
+  result:{id:string;state:string;rowVersion:number};
   leads:Array<{companyName:string}>;
-  opportunities:Array<{amountCents:string;stage:string}>;
+  opportunities:Array<{amountCents:string;stage:string;proposalId:string|null;proposalStatus:string|null}>;
   clients:Array<{legalName:string}>;
 };
 const read=async(r:Response)=>r.clone().json() as Promise<TestBody>;
@@ -285,7 +285,7 @@ test('CRM opportunity creates exactly one tenant-owned ERP proposal draft with t
   assert.equal(linked.rows[0].scope,draft.scope);
 
   const ownerResult=await read(await GET(req('GET',undefined,owner)));
-  const ownOpportunity=(ownerResult.opportunities as Array<{proposalId:string;proposalStatus:string}>)
+  const ownOpportunity=ownerResult.opportunities
     .find(o=>o.proposalId===proposalId);
   assert.equal(ownOpportunity?.proposalStatus,'draft');
   const otherResult=await read(await GET(req('GET',undefined,other)));
