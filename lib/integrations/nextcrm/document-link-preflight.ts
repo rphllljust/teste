@@ -43,7 +43,7 @@ export interface OrderDocumentLinkDependencies {
   /** Only return an explicitly authorized account mapping in this tenant. */
   findAccountMapping(erpClientId: string, tenantKey: string): Promise<MappedAccount | null>;
   /** Must validate permissions on NextCRM server for the mapped subject. */
-  verifyDocumentForLink(documentId: string, subjectId: string): Promise<AuthorizedDocumentEvidence | null>;
+  verifyDocumentForLink(documentId: string, subjectId: string, accountId: string, erpClientId: string, tenantKey: string): Promise<AuthorizedDocumentEvidence | null>;
 }
 
 export interface AuthorizedOrderDocumentLink extends NextcrmOrderDocumentLinkInput {
@@ -80,7 +80,7 @@ export async function authorizeOrderDocumentLink(
     throw new OrderDocumentLinkDenied();
   }
 
-  const document = await dependencies.verifyDocumentForLink(input.nextcrmDocumentId, identity.nextcrmSubjectId);
+  const document = await dependencies.verifyDocumentForLink(input.nextcrmDocumentId, identity.nextcrmSubjectId, account.accountId, order.clientId, identity.tenantKey);
   if (!document || !document.canLink || document.id !== input.nextcrmDocumentId ||
       document.tenantKey !== identity.tenantKey || document.accountId !== account.accountId ||
       document.version !== input.version) throw new OrderDocumentLinkDenied();
