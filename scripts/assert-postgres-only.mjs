@@ -8,7 +8,6 @@ const forbidden = [
   /drizzle-orm\/d1/,
   /\bd1_databases\b/,
   /\benv\.DB\b/,
-  /cloudflare:workers/,
 ];
 const failures = [];
 
@@ -16,6 +15,10 @@ async function inspect(file) {
   const content = await readFile(file, 'utf8');
   for (const check of forbidden) {
     if (check.test(content)) failures.push(`${relative(ROOT, file)}: ${check.source}`);
+  }
+  const sourcePath = relative(ROOT, file).replaceAll('\\', '/');
+  if (/^(db|app\/api|lib\/api)\//.test(sourcePath) && /cloudflare:workers/.test(content)) {
+    failures.push(`${sourcePath}: database/API runtime imports Cloudflare Workers`);
   }
 }
 async function visit(folder) {
