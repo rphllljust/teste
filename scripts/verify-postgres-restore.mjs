@@ -85,9 +85,11 @@ async function seed(){
 }
 
 async function verify(){
-  const pool=new Pool({
-    connectionString:process.env.DATABASE_URL.replace('/cisne_test','/'+restoreDb),max:1,
-  });
+  const restoredUrl=new URL(process.env.DATABASE_URL);
+  // Editing pathname avoids corrupting the username (the URL begins
+  // with //cisne_test) and preserves all connection settings.
+  restoredUrl.pathname='/'+restoreDb;
+  const pool=new Pool({connectionString:restoredUrl.toString(),max:1});
   copy=pool;
   const result=await pool.query(
     `SELECT c.id AS client_id,l.id AS lead_id,o.id AS opportunity_id,
