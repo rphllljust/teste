@@ -19,6 +19,8 @@ jobs:
           node-version: 22.16.0
       - name: Execute MRP and shared purchasing valuation tests
         run: node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs
+      - name: Validate staging CRM navigation and production deny-by-default
+        run: node --experimental-strip-types --test lib/integrations/nextcrm/public-navigation.test.mjs
 
   application-build:
     name: Full application source and build
