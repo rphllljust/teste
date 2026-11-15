@@ -86,6 +86,8 @@ jobs:
           pnpm test:security
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
+      - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
+        run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-owner-lookup.test.ts
       - name: Generate synthetic D1 dump with exact ERP tables (NO real data)
         shell: bash
         run: |
