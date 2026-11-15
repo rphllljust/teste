@@ -39,7 +39,7 @@ export async function GET(request:Request) {
         WHERE ${where}`).bind(...binds).first<{total:number}>(),
     ]);
     const count=total?.total??0;
-    return respond({items:list.results.map(projectProposal),
+    return respond({items:list.results.map(row=>({...projectProposal(row),availableCommands:[]})),
       pageInfo:{page:p.page,limit:p.pageSize,offset:(p.page-1)*p.pageSize,total:count,
         sourceTotal:count,hasMore:p.page*p.pageSize<count}},context);
   }catch(err){return failure(err,context);}
