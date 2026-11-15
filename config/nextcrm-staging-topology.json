@@ -36,6 +36,10 @@
       "jobs": {
         "name": "nextcrm-jobs",
         "id": "44d52ffe-c210-4321-9db2-07dd9eec026e"
+      },
+      "gateway": {
+        "name": "nextcrm-gateway",
+        "id": "bad41950-44ef-479b-8b7d-760821b7f44f"
       }
     },
     "volumes": {
@@ -59,7 +63,8 @@
         "id": "810a7347-12bd-4ced-b4d8-7b3db110b14f",
         "mountPath": "/var/lib/inngest"
       }
-    }
+    },
+    "publicEntryService": "nextcrm-gateway"
   },
   "obsoleteStagedProject": {
     "projectName": "nextcrm-hml-isolado",

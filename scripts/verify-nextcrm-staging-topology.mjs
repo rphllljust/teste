@@ -12,14 +12,15 @@ export function validateNextcrmNetworkTopology(c) {
     e.id==='c241a855-68b7-4d75-a722-b6a42c8581e9','Project/environment mismatch');
   const services=c?.nextcrm?.services??{}, erp=c?.erp??{};
   check(c?.nextcrm?.serviceUrl==='http://nextcrm-web.railway.internal:3000','Bridge must use same-project private DNS');
+  check(c?.nextcrm?.publicEntryService==='nextcrm-gateway','Only the gateway may receive a public domain');
   const serviceNames=new Set(),serviceIds=new Set();
-  for(const kind of ['web','postgres','minio','jobs']){
+  for(const kind of ['web','postgres','minio','jobs','gateway']){
     const s=services[kind]??{};
     check(s.name==='nextcrm-'+kind, 'Unexpected NextCRM service name: '+kind);
     check(UUID.test(s.id||''), 'Missing staged service ID: '+kind);
     serviceNames.add(s.name);serviceIds.add(s.id);
   }
-  check(serviceNames.size===4&&serviceIds.size===4,'NextCRM services must be distinct');
+  check(serviceNames.size===5&&serviceIds.size===5,'NextCRM services must be distinct');
   check(erp?.web?.name==='cisne-web-staging'&&UUID.test(erp?.web?.id||''),'ERP web identity missing');
   check(erp?.postgres?.name==='Postgres'&&UUID.test(erp?.postgres?.id||''),'ERP database identity missing');
   check(!serviceIds.has(erp?.web?.id)&&!serviceIds.has(erp?.postgres?.id),

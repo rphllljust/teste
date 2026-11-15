@@ -12,9 +12,9 @@ Essa separação inviabilizava a ponte baseada em `http://nextcrm-web.railway.in
 
 ## Correção efetivamente preparada
 
-No projeto existente do ERP, **`genuine-renewal/staging`**, foram criados **somente como staged-create** quatro novos serviços NextCRM (web, postgres, minio e jobs) e quatro volumes privados persistentes (web data, postgres data, MinIO e Inngest). Os nomes, IDs, mounts e escopo constam em [`config/nextcrm-staging-topology.json`](../../config/nextcrm-staging-topology.json). **Patch:** `bea8daee-e9af-47f2-ba65-afbda8505afd`.
+No projeto existente do ERP, **`genuine-renewal/staging`**, foram criados **somente como staged-create** cinco novos serviços NextCRM (web, postgres, minio, jobs e gateway) e quatro volumes privados persistentes (web data, postgres data, MinIO e Inngest). Os nomes, IDs, mounts e escopo constam em [`config/nextcrm-staging-topology.json`](../../config/nextcrm-staging-topology.json). **Patch:** `bea8daee-e9af-47f2-ba65-afbda8505afd`.
 
-O patch tem **12 alterações, nenhuma destrutiva**; os quatro serviços permanecem **sem fonte/imagem**, nenhum container foi inicializado, nenhum volume foi provisionado, não há DNS público ou migrations. Em especial, o serviço `nextcrm-web` **não** aponta para a imagem original sem a extensão HMAC. **NÃO executar `accept-deploy`** nessa configuração incompleta.
+O patch tem **13 alterações, nenhuma destrutiva**; os cinco serviços permanecem **sem fonte/imagem**, nenhum container foi inicializado, nenhum volume foi provisionado, não há DNS público ou migrations. Em especial, o serviço `nextcrm-web` **não** aponta para a imagem original sem a extensão HMAC. **NÃO executar `accept-deploy`** nessa configuração incompleta.
 
 Os serviços preexistentes `Postgres` (banco ERP) e `cisne-web-staging` foram preservados. A `production` do ERP fica na branch `main` original sem modificação.
 
@@ -37,3 +37,11 @@ O projeto `nextcrm-hml-isolado` ainda tem o patch antigo somente em `STAGED`, co
 ## Gate de integridade do inventário
 
 O script `node scripts/verify-nextcrm-staging-topology.mjs` verifica que a topologia versionada mantém ERP e NextCRM no mesmo projeto/ambiente, nomes privados, volumes independentes e patch antigo bloqueado. O teste `scripts/verify-nextcrm-staging-topology.test.mjs` contém negativos de regressão. **É um gate de configuração versionada, não substitui a consulta Railway em tempo real**.
+
+## Gate público separado do aplicativo interno
+
+A aplicação `nextcrm-web` deve permanecer **sem domínio público**, aceitando a rede Railway privada para chamadas ERP e reverse proxy. O único serviço previsto com domínio público é `nextcrm-gateway`; sua imagem Caddy customizada é definida em `integrations/nextcrm-public-gateway/`.
+
+O gateway responde `404` a `/api/internal` e `/api/internal/*` sem consultar o backend. As demais rotas são encaminhadas para `nextcrm-web.railway.internal:3000`. Ele também remove os cabeçalhos `X-Cisne-Bridge-*` em chamadas públicas. Esse bloqueio de caminho é **defesa em profundidade**: o endpoint protegido continua a exigir assinatura HMAC válida e autorização documental no próprio NextCRM.
+
+Apenas preparar a fonte/imagem e **testar a topologia após deploy** autoriza usar essa rota. Não atribuir domínio público diretamente ao `nextcrm-web` e não ativar o gateway sem verificação de TLS, X-Forwarded-Proto, sessões/OTP, limites e bloqueios de API privada.
