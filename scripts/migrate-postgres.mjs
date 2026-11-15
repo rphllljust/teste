@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for PostgreSQL migrations');
 // Apply immutable, ordered migrations; never re-run a recorded migration.
 // 0001 is additive and preserves the Field schema and all existing records.
-const migrationNames = ['0000_salty_lilith', '0001_native_crm'];
+const migrationNames = ['0000_salty_lilith', '0001_native_crm', '0002_crm_proposal_origin'];
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
 const client = await pool.connect();
 try {
