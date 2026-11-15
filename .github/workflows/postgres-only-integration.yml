@@ -71,3 +71,56 @@ jobs:
           pnpm test:security
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
+      - name: Generate synthetic D1 dump with exact ERP tables (NO real data)
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          sql = Path('drizzle-pg/0000_salty_lilith.sql').read_text('utf-8')
+          tables = [part.strip() for part in sql.split('--> statement-breakpoint') if part.strip().startswith('CREATE TABLE "')]
+          assert len(tables) == 36, f'unexpected ERP table inventory: {len(tables)}'
+          Path('cutover-private').mkdir(mode=0o700, exist_ok=True)
+          fixture = 'BEGIN TRANSACTION;\n' + '\n'.join(tables) + """
+          INSERT INTO "clients" ("id", "owner_id", "legal_name", "created_at", "updated_at")
+          VALUES ('ci-test-client', 'ci-actor', 'Fictitious Test Company', '2026-01-01T00:00:00Z', '2026-01-01T00:00:00Z');
+          COMMIT;
+          """
+          Path('cutover-private/synthetic.d1-export.sql').write_text(fixture, encoding='utf-8')
+          PY
+      - name: Insert the same synthetic fixture into ephemeral PostgreSQL
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const c = new pg.Client({connectionString:process.env.DATABASE_URL});
+          await c.connect();
+          try {
+            await c.query('INSERT INTO clients(id,owner_id,legal_name,created_at,updated_at) VALUES($1,$2,$3,$4,$5)',
+              ['ci-test-client','ci-actor','Fictitious Test Company','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z']);
+          } finally { await c.end(); }
+          JS
+      - name: Audit all tables and content hashes of synthetic source and destination
+        shell: bash
+        run: |
+          python3 scripts/d1-export-fingerprint.py \
+            --sql cutover-private/synthetic.d1-export.sql \
+            --output cutover-private/synthetic.d1-manifest.json
+          node scripts/verify-postgres-cutover.mjs \
+            --source cutover-private/synthetic.d1-manifest.json
+      - name: Reject deliberate PostgreSQL drift (negative gate)
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const c = new pg.Client({connectionString:process.env.DATABASE_URL});
+          await c.connect();
+          try {
+            await c.query('UPDATE clients SET legal_name=$1 WHERE id=$2',
+              ['ALTERED-ONLY-IN-POSTGRES','ci-test-client']);
+          } finally { await c.end(); }
+          JS
+          if node scripts/verify-postgres-cutover.mjs --source cutover-private/synthetic.d1-manifest.json; then
+            echo 'ERROR: parity script accepted a corrupted PostgreSQL record' >&2
+            exit 1
+          fi
+          echo 'The parity gate correctly rejected mismatched content.'
