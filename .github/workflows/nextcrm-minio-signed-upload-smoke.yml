@@ -91,6 +91,11 @@ jobs:
           assert.equal(new URL(putUrl).host,'127.0.0.1:19000');
           assert.ok(new URL(putUrl).searchParams.get('X-Amz-SignedHeaders')?.includes('content-type'));
 
+          const alteredMime = await fetch(putUrl,{
+            method:'PUT',headers:{'Content-Type':'text/plain'},body:payload
+          });
+          assert.equal(alteredMime.status,403,'signed upload denies tampered Content-Type');
+
           const put = await fetch(putUrl,{
             method:'PUT',headers:{'Content-Type':'application/pdf'},body:payload
           });
@@ -98,12 +103,15 @@ jobs:
           const head = await minioClient.send(new HeadObjectCommand({Bucket:bucket,Key:key}));
           assert.equal(head.ContentType,'application/pdf');
 
+          const anonymous = await fetch('http://127.0.0.1:19000/nextcrm-smoke/documents/ci/fixture.pdf');
+          assert.equal(anonymous.status,403,'document must not be anonymously accessible');
+
           const getUrl = await presignGet(key,60);
           const get = await fetch(getUrl);
           assert.equal(get.status,200,'presigned GET succeeds');
           assert.deepEqual(Buffer.from(await get.arrayBuffer()),payload);
           await minioClient.send(new DeleteObjectCommand({Bucket:bucket,Key:key}));
-          console.log('Real NextCRM signatures: private document PUT, metadata, GET, content equality, delete = PASS');
+          console.log('Real NextCRM signatures: private document PUT, tampered MIME denied, anonymous GET denied, signed GET, content equality, delete = PASS');
           SMOKE
       - name: Stop ephemeral object store
         if: always()
