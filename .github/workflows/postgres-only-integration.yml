@@ -1,0 +1,73 @@
+name: PostgreSQL-only gate and real handler integration
+on:
+  pull_request:
+    paths:
+      - '.openai/hosting.json'
+      - 'app/**'
+      - 'db/**'
+      - 'lib/**'
+      - 'drizzle.config.ts'
+      - 'drizzle-pg/**'
+      - 'cloudflare-env.d.ts'
+      - 'vite.config.ts'
+      - 'scripts/**'
+      - 'test/**'
+      - '.github/workflows/postgres-only-integration.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-only-integration:
+    name: PostgreSQL-only source + migrations + real handlers
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: cisne_ci
+          POSTGRES_PASSWORD: ci-only-isolated-database
+          POSTGRES_DB: cisne_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cisne_ci -d cisne_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://cisne_ci:ci-only-isolated-database@127.0.0.1:5432/cisne_ci
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Reject D1 bindings and require PostgreSQL persistence
+        run: node scripts/assert-postgres-only.mjs
+      - name: Compile and lint
+        run: |
+          pnpm exec tsc --noEmit
+          pnpm lint
+      - name: Verify test database is loopback before any migration
+        run: |
+          node -e "const u = new URL(process.env.DATABASE_URL); if(u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(1)"
+      - name: Migrate exclusively the ephemeral PostgreSQL database
+        run: pnpm db:migrate
+      - name: Test PostgreSQL SQL adapter and security guards
+        run: |
+          pnpm test:postgres-adapter
+          pnpm test:security
+      - name: Run real enterprise handlers against PostgreSQL
+        run: pnpm test:integration
