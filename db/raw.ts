@@ -2,10 +2,10 @@ import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg
 import { normalizeSql } from './raw-sql.mjs';
 
 type BoundStatement = { sql: string; params: unknown[] };
-type D1Result<T = Record<string, unknown>> = { results: T[]; success: true; meta: { changes: number } };
+type SqlRowsResult<T = Record<string, unknown>> = { results: T[]; success: true; meta: { changes: number } };
 let pool: Pool | undefined;
 
-function getPool(): Pool {
+export function getPool(): Pool {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured');
   pool ??= new Pool({ connectionString: process.env.DATABASE_URL, max: Number(process.env.PGPOOL_MAX ?? 10), connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000, maxUses: 10000 });
   return pool;
@@ -17,7 +17,7 @@ class Statement {
     const bound: BoundStatement = { sql: this.sql, params };
     return {
       first: async <T extends QueryResultRow = Record<string, unknown>>(): Promise<T | null> => { const result = await getPool().query<T>(normalizeSql(bound.sql, undefined, bound.params.length), bound.params); return result.rows[0] ?? null; },
-      all: async <T extends QueryResultRow = Record<string, unknown>>(): Promise<D1Result<T>> => { const result = await getPool().query<T>(normalizeSql(bound.sql, undefined, bound.params.length), bound.params); return { results: result.rows, success: true, meta: { changes: result.rowCount ?? 0 } }; },
+      all: async <T extends QueryResultRow = Record<string, unknown>>(): Promise<SqlRowsResult<T>> => { const result = await getPool().query<T>(normalizeSql(bound.sql, undefined, bound.params.length), bound.params); return { results: result.rows, success: true, meta: { changes: result.rowCount ?? 0 } }; },
       run: async (): Promise<{ success: true; meta: { changes: number } }> => { const result = await getPool().query(normalizeSql(bound.sql, undefined, bound.params.length), bound.params); return { success: true, meta: { changes: result.rowCount ?? 0 } }; },
       _bound: bound,
     };
@@ -31,7 +31,7 @@ export function database() {
     prepare(sql: string) { return new Statement(sql); },
     async batch(statements: Array<{ _bound?: BoundStatement }>) {
       const client = await getPool().connect();
-      const results: Array<D1Result> = [];
+      const results: Array<SqlRowsResult> = [];
       let previousChanges = 0;
       try {
         await client.query('BEGIN');
