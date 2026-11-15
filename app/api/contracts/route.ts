@@ -73,6 +73,9 @@ export async function POST(request:Request){
     const hash=await fingerprint({actorId:context.actorId,action:'registerContract',payload:p});
     const now=new Date().toISOString();
     const result=await database().transaction(async query=>{
+      // Serialize reference registration for the same ERP owner even when
+      // concurrent contracts come from different accepted proposals.
+      await query('SELECT pg_advisory_xact_lock(hashtext($1)::bigint)',[context!.actorId]);
       const reserved=await query(
         `INSERT INTO business_commands
          (id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at)
