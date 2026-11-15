@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
+import { PROTECTED_MIGRATION, validateRestoreAttestation } from './migration-safety.mjs';
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for PostgreSQL migrations');
 // Apply immutable, ordered migrations; never re-run a recorded migration.
@@ -11,6 +12,16 @@ try {
   await client.query('BEGIN');
   await client.query(`CREATE TABLE IF NOT EXISTS _cisne_schema_migrations (id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())`);
   await client.query('SELECT pg_advisory_xact_lock($1)', [2026111501]);
+  // Check the full restore gate before applying *any* pending migration.
+  // If 0002 is absent, rollback the transaction and leave the database
+  // unchanged until a backup has been restored and inspected elsewhere.
+  const completed=await client.query(
+    'SELECT id FROM _cisne_schema_migrations WHERE id=$1',[PROTECTED_MIGRATION]);
+  if(!completed.rowCount){
+    const sql=await readFile(
+      new URL('../drizzle-pg/'+PROTECTED_MIGRATION+'.sql',import.meta.url),'utf8');
+    validateRestoreAttestation({migrationId:PROTECTED_MIGRATION,sql});
+  }
   for (const name of migrationNames) {
     const { rows } = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [name]);
     if (rows.length) continue;
