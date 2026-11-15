@@ -86,8 +86,21 @@ jobs:
           pnpm test:security
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
+      - name: Apply additive NextCRM migration idempotently
+        run: |
+          pnpm db:migrate
+          node --input-type=module <<'JS'
+          import { Pool } from 'pg';
+          const pool = new Pool({connectionString:process.env.DATABASE_URL});
+          const r = await pool.query("SELECT id,COUNT(*)::int AS n FROM _cisne_schema_migrations GROUP BY id ORDER BY id");
+          if (r.rows.length !== 2 || r.rows.some(x => x.n !== 1) ||
+              r.rows[1]?.id !== '0001_nextcrm_order_document_links') process.exitCode=1;
+          await pool.end();
+          JS
       - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-owner-lookup.test.ts
+      - name: Test persistent NextCRM document link, idempotency and immutable audit
+        run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-document-link.test.ts
       - name: Generate synthetic D1 dump with exact ERP tables (NO real data)
         shell: bash
         run: |
