@@ -139,3 +139,33 @@ test('PO with a registered contract is not cancellable',async()=>{
   const row=await pool.query('SELECT status FROM purchase_orders WHERE id=$1',[id]);
   assert.equal(row.rows[0].status,'registered');
 });
+
+
+test('simultaneous customer PO requests with same source reference commit only once',async()=>{
+  const reference='PO-CI-RACE-2026';
+  const payload=()=>({id:randomUUID(),proposalId,proposalVersion:3,reference,receivedDate});
+  const [a,b]=await Promise.all([submitPO(payload()),submitPO(payload())]);
+  assert.deepEqual([a.status,b.status].sort(),[201,409]);
+  const result=await pool.query(
+    'SELECT count(*)::int AS n FROM purchase_orders WHERE owner_id=$1 AND proposal_id=$2 AND reference=$3',
+    [owner,proposalId,reference],
+  );
+  assert.equal(result.rows[0].n,1);
+});
+
+test('spoofed public staging identity cannot create a customer PO',async()=>{
+  const before=process.env.RAILWAY_ENVIRONMENT_NAME;
+  process.env.RAILWAY_ENVIRONMENT_NAME='staging';
+  try{
+    const spoof=new Request('http://localhost/api/purchase-orders',{
+      method:'POST',
+      headers:{'content-type':'application/json','oai-authenticated-user-id':owner},
+      body:JSON.stringify({id:randomUUID(),proposalId,proposalVersion:3,
+        reference:'PO-FAKE-CLIENT',receivedDate}),
+    });
+    assert.equal((await registerPO(spoof)).status,403);
+  }finally{
+    if(before===undefined)delete process.env.RAILWAY_ENVIRONMENT_NAME;
+    else process.env.RAILWAY_ENVIRONMENT_NAME=before;
+  }
+});
