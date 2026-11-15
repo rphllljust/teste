@@ -39,3 +39,11 @@ O instalador recusa SHA diferente, sobrescrita de arquivo upstream e ausência d
 A rota tem body pequeno com leitura limitada, requisições sem assinatura são 401, documentos negados são 404 assinados e falhas Prisma são 503 assinados. Há limitação de janela temporal, mas **não existe armazenamento distribuído de nonce**; o endpoint é estritamente de leitura e um replay no curto intervalo de 30 segundos pode repetir uma consulta. Exigir rate limit/WAF/mTLS ao expor além da rede privada.
 
 **NO-GO de deploy:** a instalação do overlay, como um build customizado, não está na imagem oficial já preparada no Railway. Não aplicar o patch antigo do NextCRM HML sem revisar e substituí-lo pelo build completo e autenticação aprovada.
+
+## Teste adicional em PostgreSQL/Prisma REAIS (CI descartável)
+
+O workflow `.github/workflows/nextcrm-bridge-prisma-integration.yml` inicializa PostgreSQL 17 com pgvector em container temporário, instala o Prisma Client NextCRM v0.41.0 e executa as migrations originais com `DATABASE_URL` fixada em `127.0.0.1:5432/nextcrm_ci`.
+
+O teste `route.integration.test.ts` grava **somente identidades e documentos fictícios** com Prisma real e executa `POST /api/internal/erp-document-authorization` diretamente pelo handler. Testa proprietário ativo, conta vinculada por `external_ref`, documento vinculado, negação de usuário externo, conta errada, usuário suspenso/banido, documento excluído e revisão.
+
+**Limitação:** teste usa uma instância NextCRM e dados sintéticos no CI. Não comprova que contas reais do staging estão mapeadas, nem substitui UAT sobre a implantação autenticada e as URLs/tokens de Railway. Não transfere dados D1.

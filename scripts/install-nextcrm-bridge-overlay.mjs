@@ -17,6 +17,8 @@ const files = [
    'app/api/internal/erp-document-authorization/route.ts'],
   ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/__tests__/route.test.ts',
    'app/api/internal/erp-document-authorization/__tests__/route.test.ts'],
+  ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/__tests__/route.integration.test.ts',
+   'app/api/internal/erp-document-authorization/__tests__/route.integration.test.ts'],
 ];
 for (const [from, to] of files) {
   const source = resolve(ROOT, from);
