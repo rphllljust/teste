@@ -5,7 +5,7 @@
 
 :8080 {
     # Health is independent of NextCRM boot status; never forwards to the app.
-    @gateway_health path /__gateway-health
+    @gateway_health path /__gateway_health
     handle @gateway_health {
         respond "ready" 200
     }

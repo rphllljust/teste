@@ -48,7 +48,7 @@ jobs:
           # The gateway must report health without forwarding to the backend.
           gateway_ready=0
           for i in $(seq 1 30); do
-            if [ "$(curl -fsS --max-time 2 http://127.0.0.1:18080/__gateway-health || true)" = ready ]; then
+            if [ "$(curl -fsS --max-time 2 http://127.0.0.1:18080/__gateway_health || true)" = ready ]; then
               gateway_ready=1; break
             fi
             sleep 1
