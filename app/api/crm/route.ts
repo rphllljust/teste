@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { commercialToday } from '../../../lib/domain/proposals';
+import { validDate } from '../../../lib/api/http';
 import { database } from '../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../lib/api/http';
 
@@ -33,8 +35,14 @@ const changeStage = z.object({
   expectedVersion: z.number().int().positive(),
   stage: z.enum(['proposal','negotiation','won','lost']),
 }).strict();
+const draftProposal = z.object({
+  action: z.literal('createDraftProposal'), key, opportunityId:id, proposalId:id,
+  expectedVersion:z.number().int().positive(),
+  scope:z.string().trim().min(3).max(4000),
+  validUntil:z.string().refine(validDate),
+}).strict();
 const crmCommand = z.discriminatedUnion('action', [
-  createLead, qualifyLead, createOpportunity, changeStage,
+  createLead, qualifyLead, createOpportunity, changeStage, draftProposal,
 ]);
 const allowedNext: Record<string,readonly string[]> = {
   discovery: ['proposal','lost'],
@@ -51,15 +59,19 @@ type LeadRow = {
 type OpportunityRow = {
   id:string; leadId:string; clientId:string|null; title:string;
   amountCents:string; stage:string; rowVersion:number; createdAt:string;
+  proposalId:string|null; proposalStatus:string|null;
 };
 const listLeadsSql = `SELECT id, contact_name AS "contactName", company_name AS "companyName",
  contact_email AS "contactEmail", source, status, client_id AS "clientId",
  row_version AS "rowVersion", created_at AS "createdAt"
  FROM crm_leads WHERE owner_id=? ORDER BY created_at DESC,id DESC LIMIT 100`;
-const listOpportunitiesSql = `SELECT id, lead_id AS "leadId", client_id AS "clientId",
- title, amount_cents::text AS "amountCents", stage, row_version AS "rowVersion",
- created_at AS "createdAt"
- FROM crm_opportunities WHERE owner_id=? ORDER BY created_at DESC,id DESC LIMIT 100`;
+const listOpportunitiesSql = `SELECT o.id, o.lead_id AS "leadId", o.client_id AS "clientId",
+ o.title, o.amount_cents::text AS "amountCents", o.stage, o.row_version AS "rowVersion",
+ o.created_at AS "createdAt", cp.proposal_id AS "proposalId", p.status AS "proposalStatus"
+ FROM crm_opportunities o
+ LEFT JOIN crm_opportunity_proposals cp ON cp.owner_id=o.owner_id AND cp.opportunity_id=o.id
+ LEFT JOIN proposals p ON p.owner_id=cp.owner_id AND p.id=cp.proposal_id
+ WHERE o.owner_id=? ORDER BY o.created_at DESC,o.id DESC LIMIT 100`;
 
 export async function GET(request:Request) {
   let context:RequestContext|undefined;
@@ -94,6 +106,8 @@ export async function POST(request:Request) {
     const command=parsed.data;
     if(command.action==='qualifyLead' && command.outcome==='disqualified' && command.clientId)
       throw new ApiError(400,'VALIDATION_FAILED','Um lead desqualificado não pode ser vinculado a cliente.');
+    if(command.action==='createDraftProposal' && command.validUntil<commercialToday())
+      throw new ApiError(400,'VALIDATION_FAILED','A validade da proposta não pode estar no passado.');
     const hash=await fingerprint({actorId:context.actorId,command});
     const now=new Date().toISOString();
     const result=await database().transaction(async query=>{
@@ -161,6 +175,70 @@ export async function POST(request:Request) {
           receipt={id:o.id,action:command.action,state:'discovery',rowVersion:1,resourceType:'opportunity'};
           break;
         }
+        case 'createDraftProposal':{
+          // The row lock and owner filter prevent concurrent conversions and
+          // cross-tenant access. A lead must already be linked to a real
+          // active ERP client; no CRM-only company name can become a contract.
+          const current=await query(
+            `SELECT id,title,client_id,stage,row_version,amount_cents::text AS amount_cents
+             FROM crm_opportunities WHERE id=$1 AND owner_id=$2 FOR UPDATE`,
+            [command.opportunityId,context!.actorId],
+          );
+          const op=current.rows[0] as {
+            id:string;title:string;client_id:string|null;stage:string;
+            row_version:number;amount_cents:string;
+          }|undefined;
+          if(!op)throw new ApiError(404,'NOT_FOUND','Oportunidade não encontrada.');
+          if(op.row_version!==command.expectedVersion)
+            throw new ApiError(409,'VERSION_CONFLICT','A oportunidade mudou. Atualize o funil.');
+          if(op.stage!=='proposal')
+            throw new ApiError(409,'INVALID_STATE','Mova a oportunidade para Proposta antes de gerar o rascunho.');
+          if(!op.client_id)
+            throw new ApiError(409,'CLIENT_REQUIRED','Vincule um cliente ativo do ERP ao lead antes de gerar a proposta.');
+          const clients=await query(
+            'SELECT id FROM clients WHERE id=$1 AND owner_id=$2 AND status=$3 FOR SHARE',
+            [op.client_id,context!.actorId,'active'],
+          );
+          if(!clients.rowCount)
+            throw new ApiError(409,'CLIENT_NOT_AVAILABLE','Cliente do ERP inativo ou não autorizado.');
+          const existing=await query(
+            'SELECT proposal_id FROM crm_opportunity_proposals WHERE owner_id=$1 AND opportunity_id=$2',
+            [context!.actorId,op.id],
+          );
+          if(existing.rowCount)
+            throw new ApiError(409,'PROPOSAL_EXISTS','Esta oportunidade já possui uma proposta vinculada.');
+          const cents=BigInt(op.amount_cents);
+          // Single-line draft pricing reuses the same exact 4-place scale
+          // used by the Field's proposal and line-item tables. The cap
+          // enforces the current domain limit: R$ 100,000 per line.
+          if(cents<=0n||cents>10000000n)
+            throw new ApiError(409,'INVALID_AMOUNT','Valor estimado deve ser maior que zero e até R$ 100.000.');
+          const total=Number(cents*100n);
+          const proposalInsert=await query(
+            `INSERT INTO proposals
+             (id,owner_id,client_id,title,scope,valid_until,status,total,created_at,updated_at)
+             VALUES($1,$2,$3,$4,$5,$6,'draft',$7,$8,$8)
+             ON CONFLICT(id) DO NOTHING RETURNING id`,
+            [command.proposalId,context!.actorId,op.client_id,op.title,
+              command.scope,command.validUntil,total,now],
+          );
+          if(!proposalInsert.rowCount)
+            throw new ApiError(409,'ALREADY_EXISTS','Identificador da proposta já utilizado.');
+          await query(
+            `INSERT INTO proposal_lines
+             (id,proposal_id,position,description,unit,quantity,unit_price,amount)
+             VALUES($1,$2,1,$3,'serviço',1000000,$4,$4)`,
+            [crypto.randomUUID(),command.proposalId,op.title,total],
+          );
+          await query(
+            `INSERT INTO crm_opportunity_proposals
+             (owner_id,opportunity_id,proposal_id,command_key,created_at)
+             VALUES($1,$2,$3,$4,$5)`,
+            [context!.actorId,op.id,command.proposalId,command.key,now],
+          );
+          receipt={id:command.proposalId,action:command.action,state:'draft',rowVersion:1,resourceType:'proposal'};
+          break;
+        }
         case 'changeStage':{
           const curr=await query('SELECT row_version,stage FROM crm_opportunities WHERE id=$1 AND owner_id=$2 FOR UPDATE',
             [command.opportunityId,context!.actorId]);
@@ -181,6 +259,6 @@ export async function POST(request:Request) {
         [JSON.stringify(receipt),receipt.id,command.key,context!.actorId]);
       return receipt;
     });
-    return respond({result},context,command.action==='createLead'||command.action==='createOpportunity'?201:200);
+    return respond({result},context,['createLead','createOpportunity','createDraftProposal'].includes(command.action)?201:200);
   }catch(error){return failure(error,context);}
 }
