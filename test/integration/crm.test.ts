@@ -1,6 +1,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, createHash } from 'node:crypto';
+import { POST as loginStaging } from '../../app/api/auth/staging-login/route';
 import { Pool } from 'pg';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET, POST } from '../../app/api/crm/route';
@@ -157,4 +158,53 @@ test('real PostgreSQL CRM lifecycle isolates owners and validates every transiti
   const stranger=await read(await GET(req('GET',undefined,other)));
   assert.deepEqual(stranger.opportunities,[]);
   assert.deepEqual(stranger.clients,[]);
+});
+
+
+test('real staging login issues a verified cookie; owner comes from session, never from spoofed headers',async()=>{
+  const names=['RAILWAY_ENVIRONMENT_NAME','CISNE_STAGING_PUBLIC_ORIGIN',
+    'CISNE_STAGING_LOGIN_HASH','CISNE_STAGING_SESSION_SECRET','CISNE_STAGING_ACTOR_ID'] as const;
+  const old=Object.fromEntries(names.map(n=>[n,process.env[n]]));
+  const origin='https://cisne-web-staging-staging.up.railway.app';
+  const passphrase='CI-fake-strong-passphrase-20261115-42-TEST';
+  process.env.RAILWAY_ENVIRONMENT_NAME='staging';
+  process.env.CISNE_STAGING_PUBLIC_ORIGIN=origin;
+  process.env.CISNE_STAGING_LOGIN_HASH=createHash('sha256').update(passphrase).digest('hex');
+  process.env.CISNE_STAGING_SESSION_SECRET='ci-only-staging-hmac-secret-20261115-long-unique';
+  process.env.CISNE_STAGING_ACTOR_ID=owner;
+  const signIn=(password:string,reqOrigin=origin)=>loginStaging(new Request(origin+'/api/auth/staging-login',{
+    method:'POST',headers:{origin:reqOrigin,'content-type':'application/json'},
+    body:JSON.stringify({passphrase:password}),
+  }));
+  try{
+    assert.equal((await signIn(passphrase,'https://evil.invalid')).status,403);
+    assert.equal((await signIn('not-the-valid-password-12345678')).status,401);
+    const response=await signIn(passphrase);
+    assert.equal(response.status,200);
+    const cookie=response.headers.get('set-cookie')??'';
+    assert.match(cookie,/__Host-cisne_staging=/);
+    assert.match(cookie,/HttpOnly/);
+    assert.match(cookie,/SameSite=Lax/);
+    const cookieHeader=cookie.split(';')[0];
+
+    // In-process identity 'other' must be ignored; only the verified cookie
+    // binds the owner to the data.
+    const secured=await GET(req('GET',undefined,other,{
+      cookie:cookieHeader,'oai-authenticated-user-id':other,
+    }));
+    assert.equal(secured.status,200,JSON.stringify(await read(secured)));
+    const body=await read(secured);
+    assert.ok(body.leads.some(l=>l.companyName==='Empresa CI'));
+    assert.ok(body.opportunities.some(o=>o.stage==='won'));
+
+    const noCookie=await GET(req('GET',undefined,owner));
+    assert.equal(noCookie.status,403);
+    const wrongCookie=await GET(req('GET',undefined,owner,{cookie:cookieHeader+'tampered'}));
+    assert.equal(wrongCookie.status,403);
+  }finally{
+    for(const name of names){
+      if(old[name]===undefined)delete process.env[name];
+      else process.env[name]=old[name];
+    }
+  }
 });
