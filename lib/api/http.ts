@@ -1,7 +1,10 @@
+import { stagingBoundaryError } from './staging-access.mjs';
 export class ApiError extends Error{constructor(public status:number,public code:string,message:string){super(message);}}
 export type RequestContext={actorId:string;correlationId:string};
 export function requestContext(request:Request,mutation=false):RequestContext{
  const incoming=request.headers.get('x-correlation-id'),correlationId=incoming&&/^[a-zA-Z0-9_-]{8,64}$/.test(incoming)?incoming:crypto.randomUUID();
+ const boundaryError=stagingBoundaryError(request);
+ if(boundaryError)throw new ApiError(boundaryError.status,boundaryError.code,boundaryError.message);
  const actorId=request.headers.get('oai-authenticated-user-id');
  if(!actorId||actorId.length>200)throw new ApiError(401,'AUTHENTICATION_REQUIRED','Entre com sua conta para acessar a operação.');
  if(mutation){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)throw new ApiError(403,'FORBIDDEN','Origem não autorizada.');}
