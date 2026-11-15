@@ -121,8 +121,9 @@ jobs:
           import { Pool } from 'pg';
           const pool = new Pool({connectionString:process.env.DATABASE_URL});
           const r = await pool.query("SELECT id,COUNT(*)::int AS n FROM _cisne_schema_migrations GROUP BY id ORDER BY id");
-          if (r.rows.length !== 2 || r.rows.some(x => x.n !== 1) ||
-              r.rows[1]?.id !== '0001_nextcrm_order_document_links') process.exitCode=1;
+          if (r.rows.length !== 3 || r.rows.some(x => x.n !== 1) ||
+              r.rows[1]?.id !== '0001_nextcrm_order_document_links' ||
+              r.rows[2]?.id !== '0002_nextcrm_verified_mappings') process.exitCode=1;
           await pool.end();
           JS
       - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
