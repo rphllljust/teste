@@ -1,0 +1,56 @@
+name: NextCRM custom bridge image build (ephemeral, no publish)
+
+on:
+  pull_request:
+    paths:
+      - '.gitmodules'
+      - 'integrations/nextcrm-bridge-overlay/**'
+      - 'lib/integrations/nextcrm/bridge-protocol.ts'
+      - 'scripts/install-nextcrm-bridge-overlay.mjs'
+      - '.github/workflows/nextcrm-bridge-image-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-bridge-image:
+    name: Build customized NextCRM bridge image (no registry, no database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact NextCRM upstream revision
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Verify gitlink pin and install opt-in bridge overlay
+        run: |
+          set -euo pipefail
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = d3bead9b44efe2cf94d0dfc2948af0f2c9270deb
+          node scripts/install-nextcrm-bridge-overlay.mjs
+          test -s integrations/nextcrm-upstream/lib/erp-bridge/bridge-protocol.ts
+          test -s integrations/nextcrm-upstream/app/api/internal/erp-document-authorization/route.ts
+      - name: Build upstream Dockerfile with added signed ERP bridge route
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --progress=plain \
+            -f integrations/nextcrm-upstream/Dockerfile \
+            -t nextcrm-bridge-ci:verify \
+            integrations/nextcrm-upstream
+      - name: Verify private bridge exists in compiled standalone application
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh nextcrm-bridge-ci:verify -ec '
+            test -f /app/server.js
+            test -d /app/.next/server/app/api/internal/erp-document-authorization
+            find /app/.next/server/app/api/internal/erp-document-authorization -type f -name "*.js" | grep -q .
+            echo "Custom NextCRM bridge route compiled in standalone runner image."
+          '
+      - name: No push, staging mutation or persistent resources
+        run: echo 'CI image exists only within this ephemeral GitHub runner; no DB, migrations, Railway or GHCR pushes.'
