@@ -56,5 +56,12 @@ jobs:
             'lib/documents/__tests__/file-key.test.ts' \
             'lib/authz/__tests__/scopes-document-read.test.ts' \
             'app/api/documents/[documentId]/file/__tests__/route.test.ts'
+      - name: Overlay reviewed signed ERP bridge into pinned NextCRM source (CI only)
+        run: node scripts/install-nextcrm-bridge-overlay.mjs
+      - name: Test NextCRM's bridge route using mocked Prisma and original scope contracts
+        working-directory: integrations/nextcrm-upstream
+        run: |
+          pnpm exec jest --runInBand --no-coverage --runTestsByPath \
+            'app/api/internal/erp-document-authorization/__tests__/route.test.ts'
       - name: Confirm no database ever participated in this workflow
         run: echo 'Unreachable DATABASE_URL only; Prisma generate and Jest do not migrate, seed, deploy or connect to Railway.'
