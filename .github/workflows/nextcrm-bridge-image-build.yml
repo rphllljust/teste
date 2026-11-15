@@ -39,6 +39,8 @@ jobs:
           test -s integrations/nextcrm-upstream/app/api/internal/erp-document-authorization/route.ts
       - name: Fail-closed NextCRM staging readiness contract (synthetic, no secrets)
         run: node --test scripts/nextcrm-staging-preflight.test.mjs
+      - name: Verify Resend OTP errors are not mistaken for delivery (synthetic)
+        run: node --experimental-strip-types --test test/nextcrm-otp-delivery.test.mjs
       - name: Verify custom root-context Dockerfile matches immutable upstream source
         run: node scripts/verify-nextcrm-dockerfile-derivation.mjs
       - name: Build exact Railway source Dockerfile with signed ERP bridge

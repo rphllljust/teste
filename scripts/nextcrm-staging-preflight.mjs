@@ -41,6 +41,7 @@ export function validateNextcrmStagingPredeploy(env) {
   requireField('MINIO_SECRET_KEY', typeof env.MINIO_SECRET_KEY === 'string' && env.MINIO_SECRET_KEY.length >= 24);
   requireField('MINIO_PUBLIC_ENDPOINT', httpsUrl(env.MINIO_PUBLIC_ENDPOINT));
   requireField('BETTER_AUTH_URL', httpsUrl(env.BETTER_AUTH_URL));
+  requireField('APP_URL', httpsUrl(env.APP_URL) && env.APP_URL === env.BETTER_AUTH_URL);
   requireField('NEXT_PUBLIC_APP_URL', httpsUrl(env.NEXT_PUBLIC_APP_URL) &&
     env.NEXT_PUBLIC_APP_URL === env.BETTER_AUTH_URL);
   requireField('RESEND_API_KEY', typeof env.RESEND_API_KEY === 'string' && /^re_[A-Za-z0-9_-]{8,}$/.test(env.RESEND_API_KEY));
