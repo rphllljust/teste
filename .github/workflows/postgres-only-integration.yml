@@ -63,7 +63,35 @@ jobs:
       - name: Verify test database is loopback before any migration
         run: |
           node -e "const u = new URL(process.env.DATABASE_URL); if(u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(1)"
-      - name: Migrate exclusively the ephemeral PostgreSQL database
+      - name: Restore legacy 36-table PostgreSQL baseline in throwaway CI database
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import { readFile } from 'node:fs/promises';
+          import { Pool } from 'pg';
+          const url = new URL(process.env.DATABASE_URL);
+          if (url.hostname !== '127.0.0.1' || url.pathname !== '/cisne_ci') {
+            throw new Error('NO-GO: only ephemeral CI database is permitted');
+          }
+          const sql = await readFile('drizzle-pg/0000_salty_lilith.sql','utf8');
+          const queries = sql.split('--> statement-breakpoint').map(s=>s.trim()).filter(Boolean);
+          const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+          const c = await pool.connect();
+          try {
+            await c.query('BEGIN');
+            await c.query('CREATE TABLE _cisne_schema_migrations(id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
+            for (const statement of queries) await c.query(statement);
+            await c.query("INSERT INTO _cisne_schema_migrations(id) VALUES('0000_salty_lilith')");
+            await c.query('COMMIT');
+            const count = await c.query("SELECT COUNT(*)::int AS n FROM information_schema.tables WHERE table_schema='public' AND table_name NOT LIKE '\\_%' ESCAPE '\\'");
+            if (count.rows[0].n !== 36) throw new Error('Legacy baseline is not 36 tables');
+            console.log('Legacy baseline installed: 36 domain tables, no NextCRM link tables');
+          } catch (e) {
+            await c.query('ROLLBACK').catch(()=>{});
+            throw e;
+          } finally { c.release(); await pool.end(); }
+          JS
+      - name: Upgrade existing PostgreSQL schema with additive NextCRM migration
         run: pnpm db:migrate
       - name: Read-only SQL inventory against ephemeral PostgreSQL (same SQL as future HML)
         shell: bash
