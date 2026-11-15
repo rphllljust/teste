@@ -36,12 +36,8 @@ jobs:
           docker network create nextcrm-public-gw-test
           docker run -d --rm --name nextcrm-public-backend-ci \
             --network nextcrm-public-gw-test --network-alias nextcrm-web.railway.internal \
-            busybox:1.36 sh -ec '
-              mkdir -p /www/api/internal;
-              printf "NEXTCRM_PUBLIC_OK" >/www/index.html;
-              printf "PRIVATE_PATH_WAS_LEAKED" >/www/api/internal/erp-document-authorization;
-              exec httpd -f -p 3000 -h /www
-            '
+            -v "$PWD/integrations/nextcrm-public-gateway/ci-upstream.mjs:/ci-upstream.mjs:ro" \
+            node:22-alpine node /ci-upstream.mjs
           docker run -d --rm --name nextcrm-public-gateway-ci \
             --network nextcrm-public-gw-test -e NEXTCRM_UPSTREAM=nextcrm-web.railway.internal:3000 \
             -p 127.0.0.1:18080:8080 nextcrm-public-gateway-ci:verify
@@ -68,6 +64,31 @@ jobs:
               ! grep -q PRIVATE_PATH_WAS_LEAKED /tmp/nextcrm-blocked-body
             done
           done
+          # Regression: Railway edge HTTPS must remain HTTPS on the upstream,
+          # and NextCRM must never send the browser to its internal :3000.
+          host=nextcrm-gateway-staging.up.railway.app
+          origin_probe="$(curl -fsS -H "Host: $host" \
+            -H 'X-Forwarded-Proto: https' \
+            'http://127.0.0.1:18080/__origin_probe')"
+          echo "$origin_probe" | grep -Fq '"host":"nextcrm-gateway-staging.up.railway.app"'
+          echo "$origin_probe" | grep -Fq '"forwardedHost":"nextcrm-gateway-staging.up.railway.app"'
+          echo "$origin_probe" | grep -Fq '"forwardedProto":"https"'
+          echo "$origin_probe" | grep -Fq '"forwardedPort":"443"'
+
+          for scenario in __bad_redirect __bad_http_redirect; do
+            location="$(curl -sS -o /dev/null -D - -H "Host: $host" \
+              "http://127.0.0.1:18080/$scenario" \
+              | awk 'tolower($1)=="location:" { gsub("\\r", "", $2); print $2 }')"
+            case "$location" in
+              https://nextcrm-gateway-staging.up.railway.app/en/sign-in*) ;;
+              *) echo "NO-GO: invalid public redirect ($scenario): $location" >&2; exit 1 ;;
+            esac
+          done
+          oauth_location="$(curl -sS -o /dev/null -D - -H "Host: $host" \
+              'http://127.0.0.1:18080/__oauth_redirect' \
+              | awk 'tolower($1)=="location:" { gsub("\\r", "", $2); print $2 }')"
+          test "$oauth_location" = 'https://accounts.google.com/o/oauth2/v2/auth?client_id=synthetic'
+          echo 'PASS: HTTPS public origin, no leaked :3000, external OAuth target unchanged.'
           echo "PASS: public NextCRM gateway forwards pages but denies /api/internal/* before backend."
       - name: No public domain, registry push, database write or Railway deployment
         run: echo 'Ephemeral gateway tests only; not deployed.'
