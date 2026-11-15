@@ -53,12 +53,13 @@ jobs:
           echo 'Source-only verification; no install, migrations, secrets, network services or deployments.'
 
   document-link-contract:
-    name: Validate safe OS/document link contract (no DB)
+    name: Validate OS/document contract and real NextCRM file helpers (no DB)
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
         with:
+          submodules: recursive
           persist-credentials: false
       - uses: pnpm/action-setup@v4
         with:
