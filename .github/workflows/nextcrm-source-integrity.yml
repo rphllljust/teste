@@ -1,0 +1,74 @@
+name: NextCRM upstream source integrity
+
+on:
+  pull_request:
+    paths:
+      - .gitmodules
+      - integrations/**
+      - lib/integrations/nextcrm/**
+      - docs/integrations/nextcrm-*.md
+      - .github/workflows/nextcrm-source-integrity.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-nextcrm-upstream:
+    name: Verify pinned NextCRM source (no build, no DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Checkout with public submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Require exact reviewed upstream commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED=d3bead9b44efe2cf94d0dfc2948af0f2c9270deb
+          test -f .gitmodules
+          test -f integrations/nextcrm-upstream/LICENSE
+          ACTUAL="$(git -C integrations/nextcrm-upstream rev-parse HEAD)"
+          test "$ACTUAL" = "$EXPECTED" || { echo "Unexpected NextCRM revision: $ACTUAL" >&2; exit 1; }
+          GITLINK="$(git ls-tree HEAD integrations/nextcrm-upstream | awk '{print $3}')"
+          test "$GITLINK" = "$EXPECTED" || { echo "Submodule gitlink differs from pin" >&2; exit 1; }
+          grep -qi 'MIT License' integrations/nextcrm-upstream/LICENSE
+          echo "Verified NextCRM SHA $ACTUAL and upstream MIT notice"
+      - name: Verify document features present in source
+        shell: bash
+        run: |
+          set -euo pipefail
+          UPSTREAM=integrations/nextcrm-upstream
+          test -f "$UPSTREAM/package.json"
+          test -f "$UPSTREAM/pnpm-lock.yaml"
+          test -f "$UPSTREAM/prisma/schema.prisma"
+          test -f "$UPSTREAM/actions/documents/create-document.ts"
+          test -f "$UPSTREAM/actions/documents/create-document-version.ts"
+          test -f "$UPSTREAM/actions/documents/get-documents-by-contactId.ts"
+          test -f "$UPSTREAM/docker-compose-coolify.yml"
+          node -e "const p=require('./integrations/nextcrm-upstream/package.json'); if(p.name!=='nextcrm-app'||!p.dependencies?.['@prisma/client']||!p.dependencies?.['next'])process.exit(1); console.log('NextCRM manifest and document source checks passed')"
+          echo 'Source-only verification; no install, migrations, secrets, network services or deployments.'
+
+  document-link-contract:
+    name: Validate OS/document contract and real NextCRM file helpers (no DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - name: Install project deps without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Run deterministic contract tests
+        run: node --experimental-strip-types --test lib/integrations/nextcrm/*.test.mjs
