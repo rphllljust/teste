@@ -20,6 +20,18 @@ const substitutions=[
   [
     "COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh",
     "COPY --from=build --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh\nCOPY --chown=nextjs:nodejs scripts/nextcrm-staging-preflight.mjs ./nextcrm-staging-preflight.mjs"
+  ],
+  [
+    "FROM node:22-alpine AS deps",
+    "FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS deps"
+  ],
+  [
+    "FROM node:22-alpine AS build",
+    "FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS build"
+  ],
+  [
+    "FROM node:22-alpine AS runner",
+    "FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS runner"
   ]
 ];
 let expected=upstream;

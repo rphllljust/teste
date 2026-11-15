@@ -49,3 +49,13 @@ Apenas preparar a fonte/imagem e **testar a topologia após deploy** autoriza us
 ## Gateway readiness independente
 
 O Caddy responde `GET /__gateway_health` com HTTP 200 e corpo `ready` **sem encaminhar requisições ao NextCRM**. No Railway, configurar `healthcheckPath=/__gateway_health` para o serviço `nextcrm-gateway`. Isso comprova somente que o proxy está ativo, **não** que NextCRM, banco, OTP ou a ponte estejam funcionais. Um segundo healthcheck/UAT deve testar o fluxo via proxy com o NextCRM ligado.
+
+## Gateway base-image digest lock
+
+The Caddy foundation is pinned to the manifest observed in successful GitHub Actions build `132860014459`:
+
+```
+caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d
+```
+
+Update this digest only through a reviewed branch and a fresh public-path isolation test; do not replace it with a mutable tag or expose `nextcrm-web` directly.

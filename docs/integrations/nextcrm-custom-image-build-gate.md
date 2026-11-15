@@ -52,3 +52,13 @@ node /app/nextcrm-staging-preflight.mjs
 It refuses any environment other than `staging`, an unexpected database host/schema, missing or malformed internal bridge HMAC secret, missing OTP credentials, missing TLS URLs for NextCRM and MinIO, missing Inngest signing keys or demo-data seeding. It prints **only variable names**, never variable values.
 
 This is only **format validation**, not proof that secrets are authentic, backups restore, DNS/TLS routes work, a sender is verified or a genuine user can log in. Keep a separate NO-GO until those checks are evidenced. The CI tests include deliberate wrong-tenant/production, insecure URL and missing-credential cases.
+
+## Pinned runtime image foundation
+
+The exact upstream Node base-image manifest digest was recorded from a successful, source-controlled GitHub Actions Docker build (`132868550359`):
+
+```
+node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a
+```
+
+All three stages of `Dockerfile.nextcrm` use this digest, and the strict derivation script now checks it as a reviewed hardening delta. Railway must build the exact Git SHA with this Dockerfile. This pins the Node OS/runtime layer, not every `apk` or `npm install` transitive download; full SBOM/attestation and digest review remain necessary before production.
