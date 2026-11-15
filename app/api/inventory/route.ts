@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   const page = Number(url.searchParams.get('page') ?? '1');
   if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) throw new ApiError(400, 'VALIDATION_FAILED', 'Página inválida.');
   const results = await db.batch([
-   db.prepare('SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND (instr(lower(sku),lower(?))>0 OR instr(lower(name),lower(?))>0) ORDER BY sku LIMIT 26 OFFSET ?').bind(context.actorId, query, query, (page - 1) * 25),
+   db.prepare("SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND (LOWER(sku) LIKE '%' || LOWER(?) || '%' OR LOWER(name) LIKE '%' || LOWER(?) || '%') ORDER BY sku LIMIT 26 OFFSET ?").bind(context.actorId, query, query, (page - 1) * 25),
    db.prepare('SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) <= minimum) AS low FROM inventory_items WHERE owner_id=?').bind(context.actorId),
   ]);
   return respond({ items: results[0].results.slice(0, 25), hasMore: results[0].results.length > 25, summary: results[1].results[0] }, context);
