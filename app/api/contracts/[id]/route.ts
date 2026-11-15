@@ -5,6 +5,7 @@ import {
 } from '../../../../lib/api/http';
 import {projectClient,type ClientRow} from '../../../../lib/domain/clients';
 import {projectContract,type ContractRow} from '../../../../lib/domain/contracts';
+import {commercialToday} from '../../../../lib/domain/proposals';
 
 export const dynamic='force-dynamic';
 type RouteContext={params:Promise<{id:string}>};
@@ -45,7 +46,9 @@ export async function GET(request:Request,{params}:RouteContext){
       // A contract only makes an order available when its client and
       // contract are both active; the OS endpoint rechecks these in SQL.
       client:projectClient(client),
-      canCreateOrder:contract.status==='active'&&client.status==='active',
+      canCreateOrder:contract.status==='active'&&client.status==='active'&&
+        contract.starts_on<=commercialToday()&&
+        (contract.ends_on===null||contract.ends_on>=commercialToday()),
       related:{orders:related??{total:0,openTotal:0}},
       history:history.results,
       warnings:[],
