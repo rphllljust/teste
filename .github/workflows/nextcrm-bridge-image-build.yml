@@ -8,6 +8,9 @@ on:
       - 'lib/integrations/nextcrm/bridge-protocol.ts'
       - 'scripts/install-nextcrm-bridge-overlay.mjs'
       - '.github/workflows/nextcrm-bridge-image-build.yml'
+      - 'Dockerfile.nextcrm'
+      - 'scripts/verify-nextcrm-dockerfile-derivation.mjs'
+      - '.dockerignore'
   workflow_dispatch:
 
 permissions:
@@ -34,14 +37,16 @@ jobs:
           node scripts/install-nextcrm-bridge-overlay.mjs
           test -s integrations/nextcrm-upstream/lib/erp-bridge/bridge-protocol.ts
           test -s integrations/nextcrm-upstream/app/api/internal/erp-document-authorization/route.ts
-      - name: Build upstream Dockerfile with added signed ERP bridge route
+      - name: Verify custom root-context Dockerfile matches immutable upstream source
+        run: node scripts/verify-nextcrm-dockerfile-derivation.mjs
+      - name: Build exact Railway source Dockerfile with signed ERP bridge
         shell: bash
         run: |
           set -euo pipefail
           docker build --progress=plain \
-            -f integrations/nextcrm-upstream/Dockerfile \
+            -f Dockerfile.nextcrm \
             -t nextcrm-bridge-ci:verify \
-            integrations/nextcrm-upstream
+            .
       - name: Verify private bridge exists in compiled standalone application
         shell: bash
         run: |
