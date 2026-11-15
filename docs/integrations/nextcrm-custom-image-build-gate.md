@@ -27,3 +27,16 @@ When the CI gate passes, the Railway `nextcrm-web` service may be configured **o
 This gives a **source-pinned deployment**, not yet an immutable base-image digest: upstream `node:22-alpine` base image tags remain mutable. After an approved staging build, record the deployed Railway image digest and verify post-deployment. Production release should additionally pin base image digests and produce attestations/SBOM.
 
 **NO-GO remains:** no CI build, however green, grants permission to apply the incomplete Railway patch or merge the production-tracked branch.
+
+## End-to-end runtime check using the actual custom image
+
+The custom image workflow now starts a **throwaway PostgreSQL 17 + pgvector**, isolated MinIO, the compiled NextCRM image and the Caddy gateway on a single local Docker network. It generates masked ephemeral secrets in GitHub Actions only.
+
+The test verifies that:
+- A signed request to the NextCRM bridge from within the isolated runtime reaches the real handler and is denied **with a valid signed 404** for an unknown user (real Prisma).
+- A request carrying a forged HMAC is denied 401.
+- The **same signed request** sent via the gateway is denied 404 **before reaching NextCRM**, with no NextCRM bridge response signature.
+- Gateway local health returns HTTP 200 independently.
+- All containers, volumes and the Docker network are deleted after the test.
+
+This is closer to an actual deployment smoke than mocked tests, but still uses **synthetic data, ephemeral services and loopback ports only**. It does not deploy to Railway, publish a GHCR image, prove email/OTP login or migrate D1 records.
