@@ -36,7 +36,7 @@ function parseMoney(input:string):number{
   return cents;
 }
 
-export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:()=>void}){
+export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(proposalId?:string)=>void}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [loading,setLoading]=useState(true),[sending,setSending]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState<Notice|null>(null);
@@ -250,6 +250,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
             <b>{money(o.amountCents)}</b>
             {o.proposalId&&<small className="cisne-crm-proposal-linked">
               Proposta ERP: {o.proposalId.slice(0,8)} · {o.proposalStatus==='draft'?'Rascunho':o.proposalStatus??'Vinculada'}
+              <button className="text-button" onClick={()=>onProposals(o.proposalId!)}>Abrir proposta no CISNE <ArrowRight size={12}/></button>
             </small>}
             {stage==='proposal'&&!o.proposalId&&!o.clientId&&<small className="cisne-crm-proposal-warning">
               Vincule um cliente ativo do ERP ao lead antes de gerar a proposta
@@ -275,7 +276,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     <footer className="cisne-crm-footer">
       <span><Users size={15}/> O CRM utiliza o mesmo proprietário e o PostgreSQL do Field.</span>
       <div><button className="text-button" onClick={onClients}>Clientes do ERP <ArrowRight size={14}/></button>
-      <button className="text-button" onClick={onProposals}>Propostas e pedidos <ArrowRight size={14}/></button></div>
+      <button className="text-button" onClick={()=>onProposals()}>Propostas e pedidos <ArrowRight size={14}/></button></div>
     </footer>
 
     {(newLeadOpen||qualifyLead||opportunityLead||proposalOpportunity)&&<div className="overlay modal-overlay" onClick={resetForms}>

@@ -5,6 +5,7 @@ import { POST as loginStaging } from '../../app/api/auth/staging-login/route';
 import { Pool } from 'pg';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET, POST } from '../../app/api/crm/route';
+import { GET as proposalDetail } from '../../app/api/proposals/[id]/route';
 
 if (process.env.NODE_ENV !== 'test' || !process.env.DATABASE_URL)
   throw new Error('CRM integration tests require NODE_ENV=test and disposable DATABASE_URL');
@@ -287,6 +288,19 @@ test('CRM opportunity creates exactly one tenant-owned ERP proposal draft with t
   assert.equal(linked.rows[0].command_key,draft.key);
   assert.equal(linked.rows[0].valid_until,validUntil);
   assert.equal(linked.rows[0].scope,draft.scope);
+  const detail=await proposalDetail(req('GET',undefined,owner),{params:Promise.resolve({id:proposalId})});
+  assert.equal(detail.status,200);
+  const projection=(await detail.json() as {
+    projection:{id:string;totalScaled:string;lines:Array<{amountScaled:string}>;
+      origin:{opportunityId:string}|null;availableCommands:unknown[]};
+  }).projection;
+  assert.equal(projection.id,proposalId);
+  assert.equal(projection.totalScaled,'12505000');
+  assert.equal(projection.lines[0].amountScaled,'12505000');
+  assert.equal(projection.origin?.opportunityId,draftOpportunity);
+  assert.deepEqual(projection.availableCommands,[]);
+  const deniedDetail=await proposalDetail(req('GET',undefined,other),{params:Promise.resolve({id:proposalId})});
+  assert.equal(deniedDetail.status,404);
 
   const ownerResult=await read(await GET(req('GET',undefined,owner)));
   const ownOpportunity=ownerResult.opportunities
