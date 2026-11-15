@@ -23,6 +23,8 @@ jobs:
         run: node --experimental-strip-types --test lib/integrations/nextcrm/public-navigation.test.mjs lib/integrations/nextcrm/native-crm-ui.test.mjs
       - name: Reject unverified production and staging migration
         run: node --test scripts/migration-safety.test.mjs
+      - name: Validate staging signed session and public HTTPS mutation origin
+        run: node --test lib/api/http-auth.test.mjs lib/api/staging-session.test.mjs lib/api/mutation-origin.test.mjs
 
   application-build:
     name: Full application source and build
