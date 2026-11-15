@@ -74,7 +74,7 @@ test('proposal API performs owner-scoped list and idempotent manual draft regist
   assert.equal(record.lines[0].unitPriceScaled,'1255000');
   assert.equal(record.lines[0].amountScaled,'2510000');
   assert.equal(record.related.purchaseOrders.total,0);
-  assert.deepEqual(record.availableCommands,[]);
+  assert.deepEqual(record.availableCommands.map(c=>(c as {id:string}).id),['revise','issue','cancel']);
   assert.equal((await detailProposal(req('GET','/api/proposals/'+proposalId,outsider),
     {params:Promise.resolve({id:proposalId})})).status,404);
 });
