@@ -45,6 +45,10 @@ test('native CRM migration is applied exactly once',async()=>{
   assert.equal(r.rows.length,1);
   const leads=await pool.query("SELECT to_regclass('public.crm_leads') AS t");
   assert.equal(leads.rows[0].t,'crm_leads');
+  const bridge=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id='0002_crm_proposal_origin'");
+  assert.equal(bridge.rows.length,1);
+  const link=await pool.query("SELECT to_regclass('public.crm_opportunity_proposals') AS t");
+  assert.equal(link.rows[0].t,'crm_opportunity_proposals');
 });
 
 test('staging denies API reads and writes even with forged identity headers',async()=>{
