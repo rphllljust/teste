@@ -43,6 +43,8 @@ COPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-docu
 COPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts
 COPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts
 COPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts
+# Connect NextCRM header back to Field ERP (staging only).
+COPY integrations/nextcrm-bridge-overlay/app/staging-header/Header.tsx ./app/[locale]/(routes)/components/Header.tsx
 COPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx
 
 # Dummy env vars for build-time validation. Next.js collects page data
