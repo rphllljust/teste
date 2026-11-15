@@ -18,7 +18,14 @@ function req(method:'GET'|'POST',data?:unknown,identity?:string,extra:Record<str
   });
   return identity?setTestIdentity(request,identity):request;
 }
-const read=async (r:Response)=>r.clone().json() as Promise<Record<string,any>>;
+type TestBody={
+  error?:string; code?:string;
+  result:{state:string;rowVersion:number};
+  leads:Array<{companyName:string}>;
+  opportunities:Array<{amountCents:string;stage:string}>;
+  clients:Array<{legalName:string}>;
+};
+const read=async(r:Response)=>r.clone().json() as Promise<TestBody>;
 const send=(body:unknown,actor=owner)=>POST(req('POST',body,actor));
 async function cleanup(){
   await pool.query('DELETE FROM crm_commands WHERE actor_id=$1 OR actor_id=$2',[owner,other]);
