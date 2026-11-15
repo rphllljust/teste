@@ -10,6 +10,9 @@ import { resolve } from 'node:path';
 const HEX64 = /^[a-f0-9]{64}$/;
 const BRIDGE_KEY = /^[a-f0-9]{64,128}$/;
 const EMAIL = /^[^\s@]+@[^\s@]+\.[a-z]{2,}$/i;
+// Staging has exactly one Railway-managed public hostname; the app must not
+// issue redirects to localhost, private DNS or :3000.
+export const PUBLIC_CRM_ORIGIN = 'https://nextcrm-gateway-staging.up.railway.app';
 
 function httpsUrl(value) {
   try {
@@ -40,10 +43,9 @@ export function validateNextcrmStagingPredeploy(env) {
   requireField('MINIO_ACCESS_KEY', typeof env.MINIO_ACCESS_KEY === 'string' && env.MINIO_ACCESS_KEY.length >= 3);
   requireField('MINIO_SECRET_KEY', typeof env.MINIO_SECRET_KEY === 'string' && env.MINIO_SECRET_KEY.length >= 24);
   requireField('MINIO_PUBLIC_ENDPOINT', httpsUrl(env.MINIO_PUBLIC_ENDPOINT));
-  requireField('BETTER_AUTH_URL', httpsUrl(env.BETTER_AUTH_URL));
-  requireField('APP_URL', httpsUrl(env.APP_URL) && env.APP_URL === env.BETTER_AUTH_URL);
-  requireField('NEXT_PUBLIC_APP_URL', httpsUrl(env.NEXT_PUBLIC_APP_URL) &&
-    env.NEXT_PUBLIC_APP_URL === env.BETTER_AUTH_URL);
+  requireField('BETTER_AUTH_URL', env.BETTER_AUTH_URL === PUBLIC_CRM_ORIGIN);
+  requireField('APP_URL', env.APP_URL === PUBLIC_CRM_ORIGIN);
+  requireField('NEXT_PUBLIC_APP_URL', env.NEXT_PUBLIC_APP_URL === PUBLIC_CRM_ORIGIN);
   requireField('RESEND_API_KEY', typeof env.RESEND_API_KEY === 'string' && /^re_[A-Za-z0-9_-]{8,}$/.test(env.RESEND_API_KEY));
   requireField('EMAIL_FROM', EMAIL.test(env.EMAIL_FROM ?? '') && !/\.(invalid|example|test)$/i.test((env.EMAIL_FROM ?? '').split('@')[1] ?? ''));
   requireField('TEST_USER_EMAIL', EMAIL.test(env.TEST_USER_EMAIL ?? '') && !/\.(invalid|example|test)$/i.test((env.TEST_USER_EMAIL ?? '').split('@')[1] ?? ''));
