@@ -42,6 +42,7 @@ COPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-docu
 # Safely report OTP delivery failures and confirm browser session before redirect.
 COPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts
 COPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts
+COPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts
 COPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx
 
 # Dummy env vars for build-time validation. Next.js collects page data
