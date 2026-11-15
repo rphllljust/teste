@@ -4,6 +4,7 @@ import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,validDate,t
 import {previousResult} from '../../../lib/api/idempotency';
 import {parseOrders,orderPredicates,orderSort} from '../../../lib/api/query';
 import {projectOrder,orderMetrics,type OrderRow} from '../../../lib/projections/orders';
+import {commercialToday} from '../../../lib/domain/proposals';
 const input=z.object({id:z.string().uuid(),title:z.string().trim().min(3).max(160),client:z.string().trim().min(2).max(200).optional(),category:z.enum(['Locação','Serviços','Transporte','Obra']),description:z.string().trim().max(4000),dueDate:z.string().nullable(),clientId:z.string().uuid(),clientVersion:z.number().int().positive(),contractId:z.string().uuid().optional(),contractVersion:z.number().int().positive().optional()}).strict();
 export async function GET(request:Request){let context:RequestContext|undefined;try{context=requestContext(request);const p=parseOrders(request),{where:baseWhere,values:baseValues}=orderPredicates(p),where=baseWhere+(baseWhere?' AND ':' WHERE ')+'(owner_id IS NULL OR owner_id=?)',values=[...baseValues,context.actorId],db=database();if(p.contractId&&!await db.prepare('SELECT id FROM contracts WHERE id=? AND owner_id=?').bind(p.contractId,context.actorId).first())throw new ApiError(404,'NOT_FOUND','Contrato não encontrado.');if(p.clientId&&!await db.prepare('SELECT id FROM clients WHERE id=? AND owner_id=?').bind(p.clientId,context.actorId).first())throw new ApiError(404,'NOT_FOUND','Cliente não encontrado.');const r=await db.batch([db.prepare('SELECT * FROM service_orders'+where+' ORDER BY '+orderSort(p.sort)+' LIMIT ? OFFSET ?').bind(...values,p.pageSize,(p.page-1)*p.pageSize),db.prepare('SELECT COUNT(*) AS total FROM service_orders'+where).bind(...values),db.prepare("SELECT COUNT(*) AS total,SUM(CASE WHEN status='draft' THEN 1 ELSE 0 END) AS drafts,SUM(CASE WHEN due_date IS NOT NULL THEN 1 ELSE 0 END) AS planned,SUM(CASE WHEN status='completed' AND NOT EXISTS(SELECT 1 FROM measurements m WHERE m.order_id=service_orders.id) THEN 1 ELSE 0 END) AS \"pendingMeasurements\" FROM service_orders WHERE owner_id IS NULL OR owner_id=?").bind(context.actorId)]);const items=(r[0].results as OrderRow[]).map(projectOrder),total=Number((r[1].results[0] as {total:number}).total),summary=r[2].results[0] as {total:number;drafts:number|null;planned:number|null;pendingMeasurements:number|null},generatedAt=new Date().toISOString();return respond({items,orders:items,total,summary,page:p.page,pageSize:p.pageSize,pageInfo:{page:p.page,limit:p.pageSize,offset:(p.page-1)*p.pageSize,total,sourceTotal:summary.total,hasMore:p.page*p.pageSize<total},aggregates:orderMetrics(summary,generatedAt),generatedAt,query:p},context);}catch(error){return failure(error,context);}}
 export async function POST(request:Request){let context:RequestContext|undefined;try{context=requestContext(request,true);const parsed=input.safeParse(await jsonBody(request));if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Confira os campos da ordem.');const p=parsed.data;if(p.dueDate&&!validDate(p.dueDate))throw new ApiError(400,'VALIDATION_FAILED','Data prevista inválida.');const hash=await fingerprint({actor:context.actorId,scope:'serviceOrder',command:'create',payload:p});const prior=await previousResult(p.id,hash);if(prior)return respond(prior,context,201);if(p.contractId){
@@ -13,18 +14,21 @@ export async function POST(request:Request){let context:RequestContext|undefined
   // close() obtains FOR UPDATE on the same row and cannot race the INSERT.
   const result=await database().transaction(async query=>{
     const contractRows=await query(
-      `SELECT status,row_version,client_id FROM contracts
+      `SELECT status,row_version,client_id,starts_on,ends_on FROM contracts
        WHERE id=$1 AND owner_id=$2 FOR SHARE`,
       [p.contractId,context!.actorId],
     );
     const contract=contractRows.rows[0] as {
-      status:string;row_version:number;client_id:string;
+      status:string;row_version:number;client_id:string;starts_on:string;ends_on:string|null;
     }|undefined;
     if(!contract)throw new ApiError(404,'NOT_FOUND','Contrato não encontrado.');
     if(contract.row_version!==p.contractVersion)
       throw new ApiError(409,'VERSION_CONFLICT','Contrato alterado. Atualize o contexto.');
     if(contract.status!=='active'||contract.client_id!==p.clientId)
       throw new ApiError(409,'INVALID_STATE','Contrato indisponível para este cliente.');
+    const today=commercialToday();
+    if(contract.starts_on>today||(contract.ends_on!==null&&contract.ends_on<today))
+      throw new ApiError(409,'OUTSIDE_CONTRACT_TERM','A OS deve respeitar a vigência contratual.');
     const clientRows=await query(
       `SELECT legal_name,row_version,status FROM clients
        WHERE id=$1 AND owner_id=$2 FOR SHARE`,
