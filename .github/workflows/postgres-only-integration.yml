@@ -65,6 +65,21 @@ jobs:
           node -e "const u = new URL(process.env.DATABASE_URL); if(u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(1)"
       - name: Migrate exclusively the ephemeral PostgreSQL database
         run: pnpm db:migrate
+      - name: Read-only SQL inventory against ephemeral PostgreSQL (same SQL as future HML)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network host --read-only \
+            -e PGHOST=127.0.0.1 -e PGPORT=5432 -e PGUSER=cisne_ci \
+            -e PGPASSWORD=ci-only-isolated-database -e PGDATABASE=cisne_ci \
+            -e PGOPTIONS='-c default_transaction_read_only=on -c statement_timeout=12000' \
+            -v "$PWD/scripts/audit-postgres-staging-readonly.sql:/audit.sql:ro" \
+            postgres:18 psql -X --set ON_ERROR_STOP=1 --no-align --tuples-only \
+            --field-separator='|' --file=/audit.sql > /tmp/cisne-pg-readonly-audit.txt
+          grep -Fx 'READ_ONLY|session|on' /tmp/cisne-pg-readonly-audit.txt
+          grep -Fx 'TABLES_PRESENT|public|36' /tmp/cisne-pg-readonly-audit.txt
+          test "$(grep -c '^ROW_COUNT|' /tmp/cisne-pg-readonly-audit.txt)" -eq 36
+          echo 'Read-only audit: expected 36 tables and counts all readable; no row values exported.'
       - name: Test PostgreSQL SQL adapter and security guards
         run: |
           pnpm test:postgres-adapter
