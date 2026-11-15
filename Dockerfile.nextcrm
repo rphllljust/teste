@@ -39,6 +39,10 @@ COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authoriza
 # Optional AI must not block NextCRM startup or document ingestion.
 COPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts
 COPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-document.ts ./inngest/functions/documents/enrich-document.ts
+# Safely report OTP delivery failures and confirm browser session before redirect.
+COPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts
+COPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts
+COPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx
 
 # Dummy env vars for build-time validation. Next.js collects page data
 # during build, which imports modules that check env vars at load time.
