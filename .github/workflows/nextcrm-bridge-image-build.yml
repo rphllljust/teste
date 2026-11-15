@@ -198,6 +198,21 @@ jobs:
           assert.equal(await health.text(), 'ready');
           console.log('PASS: custom NextCRM runtime + PostgreSQL + MinIO + gateway: internal signed deny, forged deny, public bridge blocked.');
           JS
+      - name: Assert NextCRM auth and Inngest imports do not require an AI key
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No OPENAI_API_KEY is set in this ephemeral container. Page/auth/API
+          # imports must still work; AI job execution is tested separately.
+          curl --silent --show-error --max-time 10 --output /dev/null http://127.0.0.1:13100/en/sign-in
+          curl --silent --show-error --max-time 10 --output /dev/null http://127.0.0.1:13100/api/inngest
+          sleep 1
+          if docker logs nextcrm-runtime-app 2>&1 | grep -Fq 'Missing credentials. Please pass an'; then
+            echo 'NO-GO: NextCRM instantiated OpenAI without a configured key' >&2
+            exit 1
+          fi
+          echo 'PASS: NextCRM startup and handler imports work without OPENAI_API_KEY.'
+
       - name: Destroy disposable application, databases, gateway and Docker network
         if: always()
         shell: bash
