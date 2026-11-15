@@ -44,9 +44,9 @@ export async function GET(request:Request,{params}:RouteContext) {
     const result=projectProposal(proposal);
     return respond({projection:{
       ...result,
-      // Commands are enabled when each business transition has an implemented
-      // and tested handler. This read API must never promise a dead action.
-      availableCommands:[],
+      // The revision-cloning workflow remains unavailable until its
+      // own unique-origin and lineage invariants have been implemented.
+      availableCommands:result.availableCommands.filter(c=>c.id!=='revision'),
       lines:lines.results,
       related:{purchaseOrders:{total:related?.total??0},revisionId:revision?.id??null},
       history:history.results,
