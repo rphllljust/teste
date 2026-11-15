@@ -56,7 +56,7 @@ export async function GET(request:Request){
     ]);
     const total=totalResult?.total??0;
     return respond({
-      items:items.results.map(row=>({...projectContract(row),availableCommands:[]})),
+      items:items.results.map(projectContract),
       pageInfo:{page:p.page,limit:p.pageSize,offset:(p.page-1)*p.pageSize,
         total,sourceTotal:total,hasMore:p.page*p.pageSize<total},
     },context);
