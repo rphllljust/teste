@@ -74,7 +74,10 @@ Railway não permite ler os backups/PITR nem executar uma restauração.
 Portanto o bloqueio humano permanece até documentação verificável do
 backup e restore do banco persistente.
 
-O CI executa uma prova independente com **PostgreSQL 16 descartável**:
+O CI executa uma matriz de recuperação com **PostgreSQL 16 e 18 descartáveis**:
+a imagem confirmada para o serviço real Postgres do Railway staging é
+`ghcr.io/railwayapp-templates/postgres-ssl:18` (major 18). A matriz evita
+aprovar um restore apenas na versão 16 e mantém a compatibilidade anterior.
 semeia cliente, lead, oportunidade, proposta, PO, contrato e OS; exporta
 via `pg_dump --format=custom`; restaura em outro banco com
 `pg_restore --exit-on-error`; verifica a cadeia completa de IDs,
