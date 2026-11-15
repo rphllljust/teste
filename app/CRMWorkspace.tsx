@@ -11,6 +11,7 @@ type Lead = {
 type Opportunity = {
   id:string; leadId:string; clientId:string|null; title:string; amountCents:string;
   stage:'discovery'|'proposal'|'negotiation'|'won'|'lost'; rowVersion:number; createdAt:string;
+  proposalId:string|null;proposalStatus:string|null;
 };
 type Client = {id:string;legalName:string};
 type Snapshot = {
@@ -45,6 +46,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
   const [newLeadOpen,setNewLeadOpen]=useState(false);
   const [qualifyLead,setQualifyLead]=useState<Lead|null>(null);
   const [opportunityLead,setOpportunityLead]=useState<Lead|null>(null);
+  const [proposalOpportunity,setProposalOpportunity]=useState<Opportunity|null>(null);
   const [qualifyClient,setQualifyClient]=useState('');
   const [attempt,setAttempt]=useState<{key:string;encoded:string}|null>(null);
   const busy=useRef(false);
@@ -106,7 +108,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
   },[attempt,load]);
   function resetForms(){
     if(sending)return;
-    setNewLeadOpen(false);setQualifyLead(null);setOpportunityLead(null);setQualifyClient('');
+    setNewLeadOpen(false);setQualifyLead(null);setOpportunityLead(null);setProposalOpportunity(null);setQualifyClient('');
     setAttempt(null);
   }
 
@@ -148,6 +150,21 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
         resetForms();setTab('opportunities');
       }
     }catch(e){setNotice({message:e instanceof Error?e.message:'Valor inválido.',error:true});}
+  }
+  async function submitDraftProposal(e:React.FormEvent<HTMLFormElement>){
+    e.preventDefault();
+    if(!proposalOpportunity)return;
+    const fields=new FormData(e.currentTarget);
+    const command={
+      action:'createDraftProposal',key:attempt?.key??crypto.randomUUID(),
+      opportunityId:proposalOpportunity.id,proposalId:crypto.randomUUID(),
+      expectedVersion:proposalOpportunity.rowVersion,
+      scope:String(fields.get('scope')||'').trim(),
+      validUntil:String(fields.get('validUntil')||''),
+    };
+    if(await send(attempt?JSON.parse(attempt.encoded) as Record<string,unknown>:command)){
+      resetForms();setTab('opportunities');
+    }
   }
   async function moveOpportunity(op:Opportunity,stage:Opportunity['stage']){
     const data={action:'changeStage',key:crypto.randomUUID(),
@@ -231,7 +248,18 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
             <strong>{o.title}</strong>
             <small>{snapshot.leads.find(l=>l.id===o.leadId)?.companyName??'Lead de origem'}</small>
             <b>{money(o.amountCents)}</b>
+            {o.proposalId&&<small className="cisne-crm-proposal-linked">
+              Proposta ERP: {o.proposalId.slice(0,8)} · {o.proposalStatus==='draft'?'Rascunho':o.proposalStatus??'Vinculada'}
+            </small>}
+            {stage==='proposal'&&!o.proposalId&&!o.clientId&&<small className="cisne-crm-proposal-warning">
+              Vincule um cliente ativo do ERP ao lead antes de gerar a proposta
+            </small>}
             <div className="cisne-crm-deal-actions">
+              {stage==='proposal'&&!o.proposalId&&o.clientId&&
+                <button className="secondary" disabled={sending}
+                  onClick={()=>{resetForms();setProposalOpportunity(o);}}>
+                  Gerar proposta <ArrowRight size={13}/>
+                </button>}
               {nextStage[stage]&&<button className="secondary" disabled={sending}
                 onClick={()=>void moveOpportunity(o,nextStage[stage]!)}>
                 {nextStage[stage]==='won'?'Marcar ganha':'Avançar'} <ArrowRight size={13}/>
@@ -250,10 +278,10 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
       <button className="text-button" onClick={onProposals}>Propostas e pedidos <ArrowRight size={14}/></button></div>
     </footer>
 
-    {(newLeadOpen||qualifyLead||opportunityLead)&&<div className="overlay modal-overlay" onClick={resetForms}>
+    {(newLeadOpen||qualifyLead||opportunityLead||proposalOpportunity)&&<div className="overlay modal-overlay" onClick={resetForms}>
       <section className="modal cisne-crm-modal" role="dialog" aria-modal="true" aria-label="Ação comercial"
         onClick={e=>e.stopPropagation()}>
-        <header><h2>{newLeadOpen?'Novo lead':qualifyLead?'Classificar lead':'Nova oportunidade'}</h2>
+        <header><h2>{newLeadOpen?'Novo lead':qualifyLead?'Classificar lead':opportunityLead?'Nova oportunidade':'Rascunho de proposta'}</h2>
           <button className="icon-button" aria-label="Fechar" disabled={sending} onClick={resetForms}><X size={19}/></button>
         </header>
         {newLeadOpen&&<form onSubmit={e=>void submitLead(e)}>
@@ -279,6 +307,16 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
           <p className="muted">O vínculo é validado pelo servidor e não cria um cliente duplicado.</p>
           <footer><button type="button" className="secondary" onClick={resetForms}>Cancelar</button>
             <button className="primary" disabled={sending}>{sending?'Registrando…':'Confirmar'}</button></footer>
+        </form>}
+        {proposalOpportunity&&<form onSubmit={e=>void submitDraftProposal(e)}>
+          <p><strong>{proposalOpportunity.title}</strong></p>
+          <p className="muted">Valor estimado: {money(proposalOpportunity.amountCents)}. A conversão cria somente um rascunho; não registra aceite nem cria ordem de serviço.</p>
+          <label>Escopo dos serviços<textarea name="scope" required minLength={3} maxLength={4000}
+            rows={5} placeholder="Descreva os serviços da proposta a revisar."/></label>
+          <label>Validade da proposta<input name="validUntil" type="date" required/></label>
+          <p className="muted">Requer cliente ativo vinculado. Cada oportunidade admite uma proposta nesta etapa.</p>
+          <footer><button type="button" className="secondary" disabled={sending} onClick={resetForms}>Cancelar</button>
+            <button className="primary" disabled={sending}>{sending?'Registrando…':'Criar rascunho'}</button></footer>
         </form>}
         {opportunityLead&&<form onSubmit={e=>void submitOpportunity(e)}>
           <p>Lead de origem: {opportunityLead.companyName}</p>
