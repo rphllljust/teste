@@ -65,16 +65,20 @@ export async function GET(request:Request) {
   let context:RequestContext|undefined;
   try {
     context=requestContext(request);
-    const [leads,opportunities,totals]=await Promise.all([
+    const [leads,opportunities,clients,totals]=await Promise.all([
       database().prepare(listLeadsSql).bind(context.actorId).all<LeadRow>(),
       database().prepare(listOpportunitiesSql).bind(context.actorId).all<OpportunityRow>(),
+      database().prepare(`SELECT id,legal_name AS "legalName"
+        FROM clients WHERE owner_id=? AND status='active'
+        ORDER BY legal_name,id LIMIT 100`)
+        .bind(context.actorId).all<{id:string;legalName:string}>(),
       database().prepare(`SELECT
         (SELECT count(*)::int FROM crm_leads WHERE owner_id=?) AS "leads",
         (SELECT count(*)::int FROM crm_opportunities WHERE owner_id=?) AS "opportunities"`)
         .bind(context.actorId,context.actorId).first<{leads:number;opportunities:number}>(),
     ]);
     return respond({
-      leads:leads.results, opportunities:opportunities.results,
+      leads:leads.results, opportunities:opportunities.results, clients:clients.results,
       totals:totals??{leads:0,opportunities:0},
       limits:{leads:100,opportunities:100},
     },context);
