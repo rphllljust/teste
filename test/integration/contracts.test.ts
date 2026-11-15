@@ -53,7 +53,7 @@ test('contract registration requires accepted, owner-matched proposal and active
       validUntil:'2099-12-31',
       lines:[{description:'Atendimento técnico',unit:'un',quantity:'1',unitPrice:'125,50'}]}}));
   assert.equal(p.status,201);
-  assert.equal((await registerContract(post('/api/contracts',actor,input))).status,404);
+  assert.equal((await registerContract(post('/api/contracts',actor,input))).status,409);
   const issue=await actionProposal(post('/api/proposals/'+proposalId+'/commands',actor,
     {key:randomUUID(),version:1,command:'issue'}),param(proposalId));
   assert.equal(issue.status,200);
