@@ -99,8 +99,6 @@ jobs:
           JS
       - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-owner-lookup.test.ts
-      - name: Test persistent NextCRM document link, idempotency and immutable audit
-        run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-document-link.test.ts
       - name: Generate synthetic D1 dump with exact ERP tables (NO real data)
         shell: bash
         run: |
@@ -154,3 +152,7 @@ jobs:
             exit 1
           fi
           echo 'The parity gate correctly rejected mismatched content.'
+      # Link/audit fixtures are immutable and intentionally remain in the disposable DB.
+      # Run these AFTER D1-to-PG parity checks, which expect only one synthetic row.
+      - name: Test persistent NextCRM document link, idempotency and immutable audit
+        run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-document-link.test.ts
