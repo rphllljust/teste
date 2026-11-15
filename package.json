@@ -12,7 +12,7 @@
     "start": "node --import ./scripts/sites-env.mjs ./node_modules/wrangler/bin/wrangler.js dev --config dist/server/wrangler.json --local --persist-to .wrangler/state --ip 0.0.0.0 --port ${PORT:-8787} --inspector-port 0",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:security": "node --experimental-strip-types --test lib/api/http-auth.test.mjs lib/api/error-diagnostics.test.mjs",
-    "test:postgres-adapter": "node --test db/raw-sql.test.mjs",
+    "test:postgres-adapter": "node --test db/raw-sql.test.mjs db/postgres-query.test.mjs",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs",

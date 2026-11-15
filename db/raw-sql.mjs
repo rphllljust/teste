@@ -1,4 +1,4 @@
-/** Translate the D1 subset used by CISNE while ignoring quoted SQL and comments. */
+/** Translate the D1/SQLite subset used by CISNE while ignoring quoted SQL and comments. */
 export function normalizeSql(sql, previousChanges, parameterCount) {
   let output = '';
   let placeholders = 0;
@@ -8,7 +8,6 @@ export function normalizeSql(sql, previousChanges, parameterCount) {
     if (ch === "'") {
       const start = i++;
       while (i < sql.length) {
-        if (sql[i] === "\\") { i += 2; continue; }
         if (sql[i] === "'" && sql[i + 1] === "'") { i += 2; continue; }
         if (sql[i++] === "'") break;
       }

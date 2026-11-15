@@ -12,6 +12,11 @@ test('leaves question marks and D1 words in strings, identifiers, and comments u
   assert.equal(normalizeSql(sql, undefined, 1), "SELECT '?' AS literal, \"changes()?\" FROM clients -- ? changes()\nWHERE owner_id=$1 AND note='instr(lower(x), lower(?))' /* ? */");
 });
 
+test('handles SQLite ESCAPE backslashes without swallowing following placeholders', () => {
+  const sql = "SELECT id FROM clients WHERE name LIKE ? ESCAPE '\\' AND owner_id=?";
+  assert.equal(normalizeSql(sql, undefined, 2), "SELECT id FROM clients WHERE name LIKE $1 ESCAPE '\\' AND owner_id=$2");
+});
+
 test('translates changes() using the immediately preceding statement row count', () => {
   assert.equal(normalizeSql('INSERT INTO order_events(id) SELECT id FROM service_orders WHERE changes()=1', 1, 0), 'INSERT INTO order_events(id) SELECT id FROM service_orders WHERE 1=1');
   assert.equal(normalizeSql('INSERT INTO order_events(id) SELECT id FROM service_orders WHERE changes()=1', 0, 0), 'INSERT INTO order_events(id) SELECT id FROM service_orders WHERE 0=1');
