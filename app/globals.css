@@ -367,6 +367,9 @@ tr:has(td):hover{background:#f5f9f5}
 .modal footer{padding-top:20px;border-color:#e2eadd}
 .modal form>p{font-size:16px;line-height:1.75;color:#576d51}
 .notice{border-radius:7px;background:#eaf4e8;border-color:#c9dec4;color:#385f31;font-size:14px}
+.app-mode-pill{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 12px;border:1px solid #dce7dc;border-radius:999px;background:#f7faf6;color:#3e6545;font-size:12px;font-weight:600;letter-spacing:.01em}
+.app-mode-pill>span{width:7px;height:7px;border-radius:50%;background:#63966b;box-shadow:0 0 0 3px #63966b1c}
+@media(max-width:560px){.app-mode-pill{min-height:30px;padding:0 9px;font-size:11px}.top-actions{gap:8px}}
 .notice-error,.form-error{color:#a04235}
 .notice-error{background:#fcf0ed;border-color:#efd0c6}
 .palette{width:min(660px,100%);border:1px solid #dce6d6;border-radius:11px;background:#fff;box-shadow:0 30px 110px #10251d40;max-height:85dvh;overflow-y:auto}
