@@ -6,6 +6,10 @@ import {
   verifyBridgeResponse,
   NEXTCRM_BRIDGE_PATH,
 } from "@/lib/erp-bridge/bridge-protocol";
+// Isolate only the unused browser/session login module from Jest's CommonJS
+// loader (better-auth is ESM-only). Prisma and document/account scope modules
+// remain REAL and are never mocked in this integration test.
+jest.mock("@/lib/auth-server", () => ({ getSession: jest.fn() }));
 import { POST } from "../route";
 
 // Separate from mocked-Jest contract tests: this test uses original Prisma
