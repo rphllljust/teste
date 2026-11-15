@@ -44,14 +44,14 @@ export async function GET(request:Request,{params}:RouteContext) {
     const result=projectProposal(proposal);
     return respond({projection:{
       ...result,
-      // Commands are enabled when each business transition has an implemented
-      // and tested handler. This read API must never promise a dead action.
-      availableCommands:[],
+      // The revision-cloning workflow remains unavailable until its
+      // own unique-origin and lineage invariants have been implemented.
+      availableCommands:result.availableCommands.filter(c=>c.id!=='revision'),
       lines:lines.results,
       related:{purchaseOrders:{total:related?.total??0},revisionId:revision?.id??null},
       history:history.results,
       origin:origin?{kind:'crmOpportunity',opportunityId:origin.opportunityId}:null,
-      warnings:['Ações de emissão e aceite serão habilitadas após homologação da API de comandos.'],
+      warnings:['Criação de revisão e registro de PO permanecem indisponíveis até implementação e homologação específicas.'],
     }},context);
   }catch(err){return failure(err,context);}
 }
