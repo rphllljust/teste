@@ -70,4 +70,4 @@ jobs:
       - name: Install project deps without lifecycle scripts
         run: pnpm install --frozen-lockfile --ignore-scripts
       - name: Run deterministic contract tests
-        run: node --experimental-strip-types --test lib/integrations/nextcrm/document-link-contract.test.mjs
+        run: node --experimental-strip-types --test lib/integrations/nextcrm/*.test.mjs
