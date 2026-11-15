@@ -17,6 +17,9 @@ if(process.env.NODE_ENV!=='test'||process.env.GITHUB_ACTIONS!=='true'||
   throw Error('DISPOSABLE_DB_REQUIRED: restore drill is restricted to the GitHub CI fixture');
 }
 
+const major=process.env.CISNE_TEST_POSTGRES_MAJOR;
+if(!['16','18'].includes(major))
+  throw Error('DISPOSABLE_DB_REQUIRED: fixture requires PostgreSQL major 16 or 18');
 const restoreDb='cisne_restore_'+randomUUID().replace(/-/g,'').slice(0,16);
 const actor=randomUUID(),clientId=randomUUID(),leadId=randomUUID();
 const opportunityId=randomUUID(),proposalId=randomUUID();
@@ -28,7 +31,7 @@ let copy;
 let created=false;
 const docker=(args)=>execFileSync('docker',[
   'run','--rm','--network','host','--env','PGPASSWORD=cisne_test',
-  '--volume',folder+':/backups','postgres:16',...args,
+  '--volume',folder+':/backups','postgres:'+major,...args,
 ],{stdio:['ignore','pipe','pipe'],encoding:'utf8',timeout:90000});
 
 async function seed(){
@@ -133,7 +136,7 @@ try{
     '-d',restoreDb,'--no-owner','--no-privileges','--exit-on-error',
     '/backups/cisne.dump']);
   await verify();
-  process.stdout.write('RESTORE_DRILL_SUCCESS: PostgreSQL 16 custom-format backup, isolated restore, full CRM-to-OS data, ledger and owner FKs checked\n');
+  process.stdout.write('RESTORE_DRILL_SUCCESS: PostgreSQL '+major+' custom-format backup, isolated restore, full CRM-to-OS data, ledger and owner FKs checked\n');
 }finally{
   if(copy)await copy.end();
   if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'" WITH (FORCE)');
