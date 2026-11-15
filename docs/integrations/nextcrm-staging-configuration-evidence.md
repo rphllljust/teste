@@ -1,55 +1,71 @@
-# Registro de configuração de homologação — NextCRM (15/11/2026)
+# NextCRM — evidência de staging e decisão técnica (15/11/2026)
 
-## Situação REAL: somente STAGED, não provisionado
+**Estado:** preparação de infraestrutura **STAGED**, sem aceitação do patch Railway. A existência dos serviços na tela de alterações pendentes **NÃO** significa que estão implantados.
 
-- Projeto Railway **privado**: `nextcrm-hml-isolado`, ambiente `staging` exclusivo.
-- Railway patch de alterações pendentes: `cdfec4e5-1e02-4005-a8e5-5cfd46eef466`.
-- Verificado pelo inventário Railway: `STAGED`, sem deploys, sem mudanças destrutivas.
-- Serviços: `nextcrm-postgres` (`pgvector/pgvector:pg17`), `nextcrm-web` (vazio, sem imagem/source), `nextcrm-jobs` (vazio, sem imagem/source).
-- Volumes persistentes preparados: `nextcrm-postgres-data` em `/var/lib/postgresql/data` e `nextcrm-jobs-data` em `/var/lib/inngest`.
-- Bucket `nextcrm-documents` preparado mas NÃO provisionado; sua conexão S3 ainda NÃO pôde ser obtida.
-- Nenhum recurso NextCRM está ativo; NÃO foram aplicadas migrações, seeds nem testes de storage.
-- Produção do ERP (`genuine-renewal/production`, serviço `teste`) permanece fora do escopo.
+## Escopo e proveniência
 
-## Variáveis Railway preparadas (NOMES SOMENTE, sem valores)
+- ERP: `rphllljust/teste`, PR #16 em `DRAFT/NO-GO`.
+- NextCRM upstream: `pdovhomilja/nextcrm-app`, SHA `d3bead9b44efe2cf94d0dfc2948af0f2c9270deb`, release `v0.41.0` e licença MIT.
+- Infraestrutura Railway exclusiva: projeto privado `nextcrm-hml-isolado`, ambiente `staging`, patch `cdfec4e5-1e02-4005-a8e5-5cfd46eef466`.
+- Revisão do patch: `STAGED`, 61 mudanças pendentes e nenhuma alteração marcada como destrutiva. **Ainda não foi aplicado.**
+- Produção ERP `genuine-renewal/production` não foi alterada.
 
-**DB:** `POSTGRES_USER`, `POSTGRES_DB`, `POSTGRES_PASSWORD`, `PGDATA`, `POSTGRES_INITDB_ARGS`.
+## Recursos preparados em Railway — NÃO ATIVOS
 
-**Web:** `DATABASE_URL` por referência ao serviço DB, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `BETTER_AUTH_SECRET`, `EMAIL_ENCRYPTION_KEY`, `MINIO_ENDPOINT`, `MINIO_PUBLIC_ENDPOINT`, `MINIO_BUCKET`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `INNGEST_SIGNING_KEY`, `INNGEST_EVENT_KEY`, `INNGEST_BASE_URL`, `INNGEST_DEV`, `NEXT_PUBLIC_APP_NAME`, `NODE_ENV`, `SEED_DEMO_DATA`.
+| Recurso | Configuração preparada | Observação |
+|---|---|---|
+| nextcrm-web | `ghcr.io/pdovhomilja/nextcrm-app:v0.41.0` | Imagem na release original; digest de execução ainda não verificado |
+| nextcrm-postgres | `pgvector/pgvector:pg17` | Volume `nextcrm-postgres-data` em `/var/lib/postgresql/data` |
+| nextcrm-minio | `pgsty/minio:RELEASE.2026-08-04T00-00-00Z` | Volume `nextcrm-minio-data` em `/data`; comando MinIO preparado |
+| nextcrm-jobs | `inngest/inngest:v1.53.0` | Volume `nextcrm-jobs-data` em `/var/lib/inngest`; comando do servidor Inngest preparado |
+| nextcrm-documents | Bucket Railway S3 **LEGADO, STAGED e NÃO PROVISIONADO** | Não está referenciado pelo web service. **Remover de alterações pendentes antes de qualquer apply**, senão provisionaria recurso duplicado. O conector disponível recusa excluir bucket ainda não provisionado. |
 
-**Jobs:** `INNGEST_SIGNING_KEY` e `INNGEST_EVENT_KEY`. Os mesmos segredos são referenciados pela aplicação; não foram duplicados como valores em dois serviços.
+**Nota:** não foi criada nenhuma URL pública; não há serviços live nem banco inicializado.
 
-Os valores secretos foram gerados aleatoriamente e enviados apenas às variáveis do Railway. **A configuração staged ainda é mutável e não está selada.** Recomenda-se selar os segredos na UI antes de habilitar a aplicação, se o Railway permitir.
+## Variáveis e secrets em staging
 
-## Ponto bloqueante: Railway Bucket vs cliente MinIO do NextCRM
+- Senhas do Postgres e MinIO, segredo de sessão Better Auth, chave de criptografia de e-mail e chaves Inngest foram gerados com CSPRNG e enviados apenas às variáveis de serviço do Railway.
+- Aplicação usa referências aos serviços para PostgreSQL, MinIO e Inngest. Não foram inseridos valores de credenciais no Git.
+- `NEXT_PUBLIC_APP_URL`, `BETTER_AUTH_URL`, `MINIO_PUBLIC_ENDPOINT`, `TEST_USER_EMAIL` e `MINIO_API_CORS_ALLOW_ORIGIN` são **placeholders em domínios reservados .invalid**. **Obrigatório substituí-los por endereços reais protegidos antes de qualquer deploy.**
+- `RESEND_API_KEY`/`EMAIL_FROM` não foram configurados, portanto não existe comprovação de login por OTP.
+- Nenhum `ADMIN_EMAIL` real foi autorizado. Não usar o default do upstream como conta empresarial de produção.
+- A aplicação NextCRM original roda `prisma migrate deploy` e pode rodar `prisma db seed` no **ENTRYPOINT**. Jamais iniciá-la apontando para o banco do ERP ou uma base compartilhada.
 
-Observação direta no upstream NextCRM `lib/minio.ts` no SHA fixado `d3bead9...`: `new S3Client()` está hardcoded com `forcePathStyle: true` e `region: 'us-east-1'`. O navegador utiliza URLs assinadas emitidas por esse cliente.
+## Compatibilidade S3: decisão tomada e evidência
 
-A documentação oficial Railway informa que cada bucket tem `urlStyle` (`path` ou `virtual-host`), região do endpoint e credenciais por referências. A compatibilidade do NextCRM NÃO pode ser assumida até ler os detalhes da instância provisionada e fazer upload/download teste com CORS:
-- https://docs.railway.com/storage-buckets
-- https://docs.railway.com/storage-buckets/uploading-serving
-- https://docs.railway.com/variables/reference
+- Railway Storage Buckets novos são `virtual-hosted-style`; upstream NextCRM `lib/minio.ts` exige `forcePathStyle: true` e `region: 'us-east-1'`. Portanto, **não usar diretamente o bucket Railway sem adaptação auditada**.
+- O staging adota MinIO exclusivo, conforme o `docker-compose-coolify.yml` original, conservando a API atual.
+- O workflow `.github/workflows/nextcrm-minio-signed-upload-smoke.yml` iniciou um MinIO descartável em GitHub Actions e confirmou `presignPut` + `presignGet` reais, tamanho/tipo, igualdade do conteúdo e exclusão de arquivo de teste.
+- **Atenção:** o teste no CI não comprova URL pública, CORS real, TLS, restrições do domínio ou integração Railway; estes são gates separados.
+- O upstream define políticas de objetos documentais privados; depois de ativar, validar bloqueio de URLs anônimas a `documents/`, `images/` e `uploads/` (ver `docs/deployment/private-document-files.md` do NextCRM). Apenas `avatars/` pode ter leitura anônima no padrão.
 
-**Condição:** se Railway declarar `urlStyle=virtual-host`, o NextCRM atual com `forcePathStyle=true` exige adaptação auditada ou MinIO dedicado. Verificar assinatura e região, nunca alterar apenas hostname de URL presignada. Mesmo com estilo `path`, fazer testes reais do SDK e do browser.
+## Evidências CI / homologação de container
 
-**Nota de isolamento:** os buckets são privados por ACL, mas o endpoint S3 trafega pela rede pública do provedor; 'isolado' aqui significa credenciais/bucket exclusivos e autorização, não transporte pelo private networking.
+No commit `604607d03413639833a1811894bf54c0f3341a6d`, as 8 verificações passaram:
 
-## Gate de ativação (NÃO SATISFEITO)
+1. Build do ERP.
+2. Quality / types / lint.
+3. Invariantes de domínio ERP.
+4. Integridade do submodule NextCRM e SHA.
+5. Contrato e helpers de documento.
+6. Suíte Jest original de documentos/autorização do NextCRM (banco inacessível por design).
+7. MinIO efêmero com PUT/GET assinados de documento real de teste.
+8. Boot de **container oficial NextCRM v0.41.0** com PostgreSQL pgvector e MinIO temporários, execução de migrações **SOMENTE no banco efêmero**, resposta HTTP e bloqueio **401** de download anônimo de documento. Contêineres e rede eliminados ao final.
 
-1. Revisar o patch exato antes de qualquer `accept-deploy` e obter autorização explícita para implantar staging.
-2. Pin de **digest** de imagens PG/NextCRM/Inngest; não usar tags mutáveis como única garantia de reprodutibilidade.
-3. Definir `APP_URL`, `BETTER_AUTH_URL`, remetente e provedor de e-mail real para autenticação, além de identidade administrativa de teste autorizada; não usar endereço padrão.
-4. Proteger perímetro antes de expor a aplicação: sem URLs públicas até concluir proteção.
-5. Garantir que banco de dados é exclusivamente NextCRM e não tem conexão com o ERP; verificar extensões e backup/restore.
-6. Resolver compatibilidade de storage S3 (estilo, região, CORS, URLs temporárias, upload e download) ou usar MinIO compatível.
-7. Definir e testar a imagem/comando do processador Inngest, porta/healthcheck e persistência.
-8. Só então autorizar o entrypoint: ele executa automaticamente `prisma migrate deploy` e pode executar `prisma db seed` na primeira inicialização.
-9. Validar RBAC/tenant e documentos de pessoas/OS com arquivos fictícios, sem dados sensíveis.
+**Não provados:** acesso por navegador autenticado com e-mail real, compatibilidade em Railway, persistência entre deploys, HA/backup, CORS público, tenants, autorização cruzada ERP↔NextCRM, assinatura eletrônica e E2E de OS.
 
-## Estado CI e risco de merge
+## Gates para próxima aprovação de deploy STAGING — ainda NÃO satisfeitos
 
-- Os cinco checks do PR #16 foram confirmados verdes no commit `72de9902f63964bf3166b1910a7958367b6c8c1b`.
-- Qualquer novo commit **invalida** esse status; revalidar o HEAD exato antes de merge.
-- O PR deve permanecer **DRAFT/NO-GO**: ainda não existe deployment NextCRM, integração funcional, migração real ou teste E2E.
+1. Cancelar o bucket S3 Railway `nextcrm-documents` da lista `STAGED` para evitar um componente não utilizado e cobrança.
+2. Verificar digests/assinaturas dos quatro container images para deployment reprodutível; usar tags de versão apenas como referência inicial.
+3. Registrar domínio privado/protegido para NextCRM, endpoint HTTPS de MinIO apropriado para presigned URLs e origem CORS exata; substituir todos os `.invalid`.
+4. Configurar identidade administrativa de HML e serviço de envio OTP autorizado, sem dados reais e sem credenciais padrão.
+5. Configurar healthchecks, TLS, egress, rotas e DNS interno; confirmar o app só usa DB/bucket exclusivos. Restringir o console MinIO à rede privada.
+6. Comprovar backups/restore dos três volumes e política de retenção. Avaliar versão mantida do MinIO/SILO antes da produção.
+7. Validar patch final do Railway no ambiente exclusivo, sem alterações destrutivas, e obter **aprovação explícita de implantação**. Não aplicar `accept-deploy` automaticamente.
+8. Testar login, CRUD, upload/download, permissão por tenant, falhas de rede, auditoria e integração OS↔documentos **no staging real**.
+9. Manter PR #16 como DRAFT/NO-GO para merge até cumprir gates e revisar seus efeitos de deploy automático.
 
-**Rollback do staging não implantado:** abandonar/reverter o patch staged no projeto NextCRM (sem tocar no ERP); não há dados a recuperar porque os serviços não foram provisionados.
+## Reversão
+
+Até aqui não existem dados NextCRM remotos nem deploys no Railway. Cancelar o patch staged e reverter o PR remove preparação de código e recursos; os testes GitHub Actions usam bancos e armazenamento descartáveis.
