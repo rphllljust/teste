@@ -105,6 +105,7 @@ COPY --from=build --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Copy and set permissions for entrypoint in one command
 COPY --from=build --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --chown=nextjs:nodejs scripts/nextcrm-staging-preflight.mjs ./nextcrm-staging-preflight.mjs
 RUN chmod +x docker-entrypoint.sh
 
 # Write a Docker-specific prisma.config.ts that does not import dotenv

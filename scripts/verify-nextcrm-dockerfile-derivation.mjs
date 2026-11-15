@@ -19,7 +19,7 @@ const substitutions=[
   ],
   [
     "COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh",
-    "COPY --from=build --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh"
+    "COPY --from=build --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh\nCOPY --chown=nextjs:nodejs scripts/nextcrm-staging-preflight.mjs ./nextcrm-staging-preflight.mjs"
   ]
 ];
 let expected=upstream;

@@ -40,3 +40,15 @@ The test verifies that:
 - All containers, volumes and the Docker network are deleted after the test.
 
 This is closer to an actual deployment smoke than mocked tests, but still uses **synthetic data, ephemeral services and loopback ports only**. It does not deploy to Railway, publish a GHCR image, prove email/OTP login or migrate D1 records.
+
+## Railway pre-deploy fail-closed guard
+
+The root Dockerfile includes `/app/nextcrm-staging-preflight.mjs`, copied from `scripts/nextcrm-staging-preflight.mjs`. Configure the Railway **nextcrm-web** service with the pre-deploy command:
+
+```text
+node /app/nextcrm-staging-preflight.mjs
+```
+
+It refuses any environment other than `staging`, an unexpected database host/schema, missing or malformed internal bridge HMAC secret, missing OTP credentials, missing TLS URLs for NextCRM and MinIO, missing Inngest signing keys or demo-data seeding. It prints **only variable names**, never variable values.
+
+This is only **format validation**, not proof that secrets are authentic, backups restore, DNS/TLS routes work, a sender is verified or a genuine user can log in. Keep a separate NO-GO until those checks are evidenced. The CI tests include deliberate wrong-tenant/production, insecure URL and missing-credential cases.
