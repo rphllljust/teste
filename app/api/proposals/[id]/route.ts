@@ -51,7 +51,7 @@ export async function GET(request:Request,{params}:RouteContext) {
       related:{purchaseOrders:{total:related?.total??0},revisionId:revision?.id??null},
       history:history.results,
       origin:origin?{kind:'crmOpportunity',opportunityId:origin.opportunityId}:null,
-      warnings:['Ações de emissão e aceite serão habilitadas após homologação da API de comandos.'],
+      warnings:['Criação de revisão e registro de PO permanecem indisponíveis até implementação e homologação específicas.'],
     }},context);
   }catch(err){return failure(err,context);}
 }
