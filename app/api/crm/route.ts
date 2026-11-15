@@ -20,9 +20,7 @@ const qualifyLead = z.object({
   expectedVersion: z.number().int().positive(),
   outcome: z.enum(['qualified','disqualified']),
   clientId: id.nullable(),
-}).strict().refine(v => v.outcome === 'qualified' || v.clientId === null, {
-  message: 'Um lead desqualificado não pode ser vinculado a cliente.',
-});
+}).strict();
 const createOpportunity = z.object({
   action: z.literal('createOpportunity'), key,
   opportunity: z.object({
@@ -90,6 +88,8 @@ export async function POST(request:Request) {
     const parsed=crmCommand.safeParse(await jsonBody(request));
     if(!parsed.success) throw new ApiError(400,'VALIDATION_FAILED','Revise os dados do comando comercial.');
     const command=parsed.data;
+    if(command.action==='qualifyLead' && command.outcome==='disqualified' && command.clientId)
+      throw new ApiError(400,'VALIDATION_FAILED','Um lead desqualificado não pode ser vinculado a cliente.');
     const hash=await fingerprint({actorId:context.actorId,command});
     const now=new Date().toISOString();
     const result=await database().transaction(async query=>{
