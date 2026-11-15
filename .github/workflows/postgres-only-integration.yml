@@ -185,3 +185,5 @@ jobs:
       # Run these AFTER D1-to-PG parity checks, which expect only one synthetic row.
       - name: Test persistent NextCRM document link, idempotency and immutable audit
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-document-link.test.ts
+      - name: Test approved PostgreSQL mappings through signed HTTP bridge and persisted audit
+        run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-mapped-bridge.test.ts
