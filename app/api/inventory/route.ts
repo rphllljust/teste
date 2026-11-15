@@ -33,7 +33,7 @@ export async function GET(request: Request) {
    if (!id.safeParse(itemId).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Material inválido.');
    const results = await db.batch([
     db.prepare('SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND id=?').bind(context.actorId, itemId),
-    db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS orderId, m.procurement_order_id AS procurementOrderId, m.procurement_receipt_line_id AS receiptLineId, o.title AS orderTitle, m.created_at AS createdAt FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
+    db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS "orderId", m.procurement_order_id AS "procurementOrderId", m.procurement_receipt_line_id AS "receiptLineId", o.title AS "orderTitle", m.created_at AS "createdAt" FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
     db.prepare("SELECT id, title FROM service_orders WHERE owner_id=? AND status='executing' ORDER BY created_at DESC, id DESC LIMIT 50").bind(context.actorId),
    ]);
    if (!results[0].results.length) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
