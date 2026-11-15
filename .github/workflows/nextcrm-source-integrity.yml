@@ -37,6 +37,10 @@ jobs:
           test "$GITLINK" = "$EXPECTED" || { echo "Submodule gitlink differs from pin" >&2; exit 1; }
           grep -qi 'MIT License' integrations/nextcrm-upstream/LICENSE
           echo "Verified NextCRM SHA $ACTUAL and upstream MIT notice"
+      - name: Reject cross-project staging network topology and stale patch
+        run: |
+          node scripts/verify-nextcrm-staging-topology.mjs
+          node --test scripts/verify-nextcrm-staging-topology.test.mjs
       - name: Verify document features present in source
         shell: bash
         run: |
