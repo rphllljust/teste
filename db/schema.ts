@@ -190,6 +190,7 @@ export const crmOpportunities=sqliteTable('crm_opportunities',{
  check('crm_opportunities_version_ck',sql`${t.rowVersion}>0`),
  foreignKey({columns:[t.ownerId,t.leadId],foreignColumns:[crmLeads.ownerId,crmLeads.id],name:'crm_opportunities_lead_owner_fk'}),
  foreignKey({columns:[t.ownerId,t.clientId],foreignColumns:[clients.ownerId,clients.id],name:'crm_opportunities_client_owner_fk'}),
+ uniqueIndex('crm_opportunities_owner_id_unique').on(t.ownerId,t.id),
  index('crm_opportunities_owner_stage_created').on(t.ownerId,t.stage,t.createdAt,t.id),
 ]);
 export const crmCommands=sqliteTable('crm_commands',{
@@ -202,3 +203,19 @@ export const crmCommands=sqliteTable('crm_commands',{
  correlationId:text('correlation_id').notNull(),
  createdAt:text('created_at').notNull(),
 },t=>[index('crm_commands_actor_created').on(t.actorId,t.createdAt)]);
+
+export const crmOpportunityProposals=sqliteTable('crm_opportunity_proposals',{
+ ownerId:text('owner_id').notNull(),
+ opportunityId:text('opportunity_id').notNull(),
+ proposalId:text('proposal_id').notNull(),
+ commandKey:text('command_key').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ // PostgreSQL migration 0002 defines (owner_id, opportunity_id) PK.
+ uniqueIndex('crm_opportunity_proposals_owner_opportunity_unique').on(t.ownerId,t.opportunityId),
+ uniqueIndex('crm_opportunity_proposals_proposal_unique').on(t.proposalId),
+ uniqueIndex('crm_opportunity_proposals_command_unique').on(t.commandKey),
+ foreignKey({columns:[t.ownerId,t.opportunityId],foreignColumns:[crmOpportunities.ownerId,crmOpportunities.id],name:'crm_opportunity_proposals_owner_opportunity_fk'}),
+ foreignKey({columns:[t.ownerId,t.proposalId],foreignColumns:[proposals.ownerId,proposals.id],name:'crm_opportunity_proposals_owner_proposal_fk'}),
+ index('crm_opportunity_proposals_owner_proposal').on(t.ownerId,t.proposalId),
+]);

@@ -21,14 +21,18 @@ function req(method:'GET'|'POST',data?:unknown,identity?:string,extra:Record<str
 }
 type TestBody={
   error?:string; code?:string;
-  result:{state:string;rowVersion:number};
+  result:{id:string;state:string;rowVersion:number};
   leads:Array<{companyName:string}>;
-  opportunities:Array<{amountCents:string;stage:string}>;
+  opportunities:Array<{amountCents:string;stage:string;proposalId:string|null;proposalStatus:string|null}>;
   clients:Array<{legalName:string}>;
 };
 const read=async(r:Response)=>r.clone().json() as Promise<TestBody>;
 const send=(body:unknown,actor=owner)=>POST(req('POST',body,actor));
 async function cleanup(){
+  // Proposal-origin links and proposal lines must be removed before their FK parents.
+  await pool.query('DELETE FROM crm_opportunity_proposals WHERE owner_id=$1 OR owner_id=$2',[owner,other]);
+  await pool.query('DELETE FROM proposal_lines WHERE proposal_id IN (SELECT id FROM proposals WHERE owner_id=$1 OR owner_id=$2)',[owner,other]);
+  await pool.query('DELETE FROM proposals WHERE owner_id=$1 OR owner_id=$2',[owner,other]);
   await pool.query('DELETE FROM crm_commands WHERE actor_id=$1 OR actor_id=$2',[owner,other]);
   await pool.query('DELETE FROM crm_opportunities WHERE owner_id=$1 OR owner_id=$2',[owner,other]);
   await pool.query('DELETE FROM crm_leads WHERE owner_id=$1 OR owner_id=$2',[owner,other]);
@@ -41,6 +45,10 @@ test('native CRM migration is applied exactly once',async()=>{
   assert.equal(r.rows.length,1);
   const leads=await pool.query("SELECT to_regclass('public.crm_leads') AS t");
   assert.equal(leads.rows[0].t,'crm_leads');
+  const bridge=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id='0002_crm_proposal_origin'");
+  assert.equal(bridge.rows.length,1);
+  const link=await pool.query("SELECT to_regclass('public.crm_opportunity_proposals') AS t");
+  assert.equal(link.rows[0].t,'crm_opportunity_proposals');
 });
 
 test('staging denies API reads and writes even with forged identity headers',async()=>{
@@ -207,4 +215,89 @@ test('real staging login issues a verified cookie; owner comes from session, nev
       else process.env[name]=old[name];
     }
   }
+});
+
+
+test('CRM opportunity creates exactly one tenant-owned ERP proposal draft with traced origin',async()=>{
+  await cleanup();
+  const draftLead=randomUUID(),draftOpportunity=randomUUID(),proposalId=randomUUID();
+  const today=new Date().toLocaleDateString('en-CA',{timeZone:'America/Porto_Velho'});
+  const validUntil='2027-03-10';
+  assert.ok(validUntil>=today);
+  const clientCreated=await pool.query(
+    'INSERT INTO clients(id,owner_id,legal_name,created_at,updated_at) VALUES($1,$2,$3,$4,$4) RETURNING id',
+    [clientId,owner,'Cliente ERP comercial CI',now],
+  );
+  assert.equal(clientCreated.rowCount,1);
+  const newLead=await send({action:'createLead',key:randomUUID(),lead:{
+    id:draftLead,contactName:'Lia Comercial',companyName:'Empresa de Serviço CI',
+    contactEmail:null,source:'manual',
+  }});
+  assert.equal(newLead.status,201);
+  const qual=await send({action:'qualifyLead',key:randomUUID(),leadId:draftLead,
+    expectedVersion:1,outcome:'qualified',clientId});
+  assert.equal(qual.status,200);
+  const opCreated=await send({action:'createOpportunity',key:randomUUID(),opportunity:{
+    id:draftOpportunity,leadId:draftLead,title:'Manutenção anual',amountCents:125050,
+  }});
+  assert.equal(opCreated.status,201);
+  const early=await send({action:'createDraftProposal',key:randomUUID(),
+    opportunityId:draftOpportunity,proposalId:randomUUID(),expectedVersion:1,
+    scope:'Atendimento conforme escopo validado em CRM',validUntil});
+  assert.equal(early.status,409,'must enter proposal stage before conversion');
+  const moved=await send({action:'changeStage',key:randomUUID(),opportunityId:draftOpportunity,
+    expectedVersion:1,stage:'proposal'});
+  assert.equal(moved.status,200);
+  assert.equal((await read(moved)).result.rowVersion,2);
+
+  const draft={action:'createDraftProposal',key:randomUUID(),
+    opportunityId:draftOpportunity,proposalId,expectedVersion:2,
+    scope:'Atendimento de manutenção preventiva anual em equipamentos',validUntil};
+  const foreign=await send(draft,other);
+  assert.equal(foreign.status,404);
+  const stale=await send({...draft,key:randomUUID(),expectedVersion:1});
+  assert.equal(stale.status,409);
+  const expired=await send({...draft,key:randomUUID(),validUntil:'2000-01-01'});
+  assert.equal(expired.status,400);
+  const response=await send(draft);
+  assert.equal(response.status,201,JSON.stringify(await read(response)));
+  assert.equal((await read(response)).result.state,'draft');
+  assert.equal((await read(response)).result.id,proposalId);
+  const replay=await send(draft);
+  assert.equal(replay.status,201);
+  assert.equal((await read(replay)).result.id,proposalId);
+  const duplicate=await send({...draft,key:randomUUID(),proposalId:randomUUID()});
+  assert.equal(duplicate.status,409);
+
+  const linked=await pool.query(
+    `SELECT p.id,p.owner_id,p.client_id,p.status,p.total,p.valid_until,p.scope,
+      b.opportunity_id,b.command_key,l.quantity,l.unit_price,l.amount
+     FROM proposals p JOIN crm_opportunity_proposals b ON p.id=b.proposal_id
+     JOIN proposal_lines l ON l.proposal_id=p.id
+     WHERE p.id=$1`,[proposalId]);
+  assert.equal(linked.rows.length,1);
+  assert.equal(linked.rows[0].owner_id,owner);
+  assert.equal(linked.rows[0].client_id,clientId);
+  assert.equal(linked.rows[0].status,'draft');
+  assert.equal(linked.rows[0].total,12505000);
+  assert.equal(linked.rows[0].quantity,1000000);
+  assert.equal(linked.rows[0].unit_price,12505000);
+  assert.equal(linked.rows[0].amount,12505000);
+  assert.equal(linked.rows[0].opportunity_id,draftOpportunity);
+  assert.equal(linked.rows[0].command_key,draft.key);
+  assert.equal(linked.rows[0].valid_until,validUntil);
+  assert.equal(linked.rows[0].scope,draft.scope);
+
+  const ownerResult=await read(await GET(req('GET',undefined,owner)));
+  const ownOpportunity=ownerResult.opportunities
+    .find(o=>o.proposalId===proposalId);
+  assert.equal(ownOpportunity?.proposalStatus,'draft');
+  const otherResult=await read(await GET(req('GET',undefined,other)));
+  assert.equal(otherResult.opportunities.length,0);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM crm_opportunity_proposals WHERE owner_id=$1',[owner])).rows[0].n,1);
+  await assert.rejects(pool.query(
+    `INSERT INTO crm_opportunity_proposals(owner_id,opportunity_id,proposal_id,command_key,created_at)
+     VALUES($1,$2,$3,$4,$5)`,
+    [other,draftOpportunity,randomUUID(),randomUUID(),now],
+  ));
 });
