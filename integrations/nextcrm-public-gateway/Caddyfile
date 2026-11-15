@@ -27,8 +27,8 @@
 
             # Defense in depth: normalize Location only for OUR public hostname.
             # Never rewrite OAuth redirects to third-party identity providers.
-            header_down Location "^https?://nextcrm-gateway-staging\\.up\\.railway\\.app:3000(/.*)?$" "https://nextcrm-gateway-staging.up.railway.app$1"
-            header_down Location "^http://nextcrm-gateway-staging\\.up\\.railway\\.app(/.*)?$" "https://nextcrm-gateway-staging.up.railway.app$1"
+            header_down Location "^https?://nextcrm-gateway-staging[.]up[.]railway[.]app:3000(/.*)?$" "https://nextcrm-gateway-staging.up.railway.app$1"
+            header_down Location "^http://nextcrm-gateway-staging[.]up[.]railway[.]app(/.*)?$" "https://nextcrm-gateway-staging.up.railway.app$1"
 
             header_up -X-Cisne-Bridge-Signature
             header_up -X-Cisne-Bridge-Nonce
