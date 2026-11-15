@@ -13,7 +13,7 @@
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:security": "node --experimental-strip-types --test lib/api/http-auth.test.mjs lib/api/error-diagnostics.test.mjs",
     "test:postgres-adapter": "node --test db/raw-sql.test.mjs db/postgres-query.test.mjs",
-    "test:integration": "NODE_ENV=test node --import tsx --test test/integration/handlers.test.ts",
+    "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs",
