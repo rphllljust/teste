@@ -36,7 +36,6 @@ export async function GET(request:Request,{params}:RouteContext){
       ...projectCustomerPO(row,linked===0),
       history:history.results,
       warnings:linked>0?['A PO possui contrato vinculado e não pode ser cancelada.']:[],
-      related:{contracts:{total:linked}},
     }},context);
   }catch(err){return failure(err,context);}
 }
