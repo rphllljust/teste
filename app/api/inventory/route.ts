@@ -77,8 +77,22 @@ export async function POST(request: Request) {
     await db.prepare('INSERT INTO inventory_items (id,owner_id,sku,name,unit,minimum,created_at,request_hash) VALUES (?,?,?,?,?,?,?,?)')
      .bind(data.id, context.actorId, data.sku, data.name, data.unit, data.minimum, now, hash).run();
    } else {
-    await db.prepare('INSERT INTO inventory_movements (id,item_id,owner_id,order_id,delta,reference,created_at,request_hash,correlation_id) VALUES (?,?,?,?,?,?,?,?,?)')
-     .bind(data.id, data.itemId, context.actorId, data.orderId, data.direction === 'in' ? data.quantity : -data.quantity, data.reference, now, hash, context.correlationId).run();
+    const delta = data.direction === 'in' ? data.quantity : -data.quantity;
+    await db.transaction(async query => {
+     const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
+     if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+     if (data.orderId) {
+      const order = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status='executing'", [data.orderId, context!.actorId]);
+      if (!order.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
+     }
+     const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
+     const balance = Number(stock.rows[0]?.balance ?? 0);
+     if (balance + delta < 0 || balance + delta > 1_000_000_000_000) {
+      throw new ApiError(409, 'BALANCE_CONFLICT', 'A movimentação supera o saldo disponível ou o limite de estoque.');
+     }
+     await query('INSERT INTO inventory_movements (id,item_id,owner_id,order_id,delta,reference,created_at,request_hash,correlation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [data.id, data.itemId, context!.actorId, data.orderId, delta, data.reference, now, hash, context!.correlationId]);
+    });
    }
   } catch (error) {
    if (await replay()) return respond({ id: data.id, replayed: true }, context);

@@ -1,4 +1,5 @@
 import { stagingBoundaryError } from './staging-access.mjs';
+import { getTestIdentity } from './test-identity.mjs';
 import { safeErrorDiagnostics } from './error-diagnostics.mjs';
 export class ApiError extends Error{constructor(public status:number,public code:string,message:string){super(message);}}
 export type RequestContext={actorId:string;correlationId:string};
@@ -6,7 +7,12 @@ export function requestContext(request:Request,mutation=false):RequestContext{
  const incoming=request.headers.get('x-correlation-id'),correlationId=incoming&&/^[a-zA-Z0-9_-]{8,64}$/.test(incoming)?incoming:crypto.randomUUID();
  const boundaryError=stagingBoundaryError(request);
  if(boundaryError)throw new ApiError(boundaryError.status,boundaryError.code,boundaryError.message);
- const actorId=request.headers.get('oai-authenticated-user-id');
+ // Integration tests bind identity to the in-process Request object. The
+ // binding is unavailable unless this process was started with NODE_ENV=test;
+ // HTTP headers are deliberately ignored in that mode.
+ const actorId=process.env.NODE_ENV==='test'
+  ? getTestIdentity(request)
+  : request.headers.get('oai-authenticated-user-id');
  if(!actorId||actorId.length>200)throw new ApiError(401,'AUTHENTICATION_REQUIRED','Entre com sua conta para acessar a operação.');
  if(mutation){const origin=request.headers.get('origin');if(origin&&origin!==new URL(request.url).origin)throw new ApiError(403,'FORBIDDEN','Origem não autorizada.');}
  // Sites dispatch enforces this application's existing owner-only access policy.

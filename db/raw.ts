@@ -45,6 +45,18 @@ export function database() {
         return results;
       } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
     },
+    async transaction<T>(work: (query: (sql: string, params?: unknown[]) => Promise<QueryResult>) => Promise<T>): Promise<T> {
+      const client = await getPool().connect();
+      try {
+        await client.query('BEGIN');
+        const result = await work((sql, params = []) => client.query(sql, params));
+        await client.query('COMMIT');
+        return result;
+      } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+      } finally { client.release(); }
+    },
   };
 }
 

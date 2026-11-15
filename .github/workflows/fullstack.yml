@@ -46,3 +46,38 @@ jobs:
         run: pnpm lint
       - name: Production build
         run: pnpm build
+
+  postgres-handler-integration:
+    name: PostgreSQL route-handler integration (Node 22)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: cisne_test
+          POSTGRES_PASSWORD: cisne_test
+          POSTGRES_DB: cisne_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cisne_test -d cisne_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://cisne_test:cisne_test@localhost:5432/cisne_test
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install exact dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Apply the real PostgreSQL migration
+        run: pnpm db:migrate
+      - name: Execute actual route handlers against PostgreSQL
+        run: pnpm test:integration
