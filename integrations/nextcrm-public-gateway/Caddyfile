@@ -1,0 +1,29 @@
+{
+    admin off
+    auto_https off
+}
+
+:8080 {
+    # Health is independent of NextCRM boot status; never forwards to the app.
+    @gateway_health path /__gateway_health
+    handle @gateway_health {
+        respond "ready" 200
+    }
+
+    @private_bridge path /api/internal /api/internal/*
+    handle @private_bridge {
+        respond "Not found" 404
+    }
+
+    handle {
+        reverse_proxy {$NEXTCRM_UPSTREAM:nextcrm-web.railway.internal:3000} {
+            header_up -X-Cisne-Bridge-Signature
+            header_up -X-Cisne-Bridge-Nonce
+            header_up -X-Cisne-Bridge-Timestamp
+            transport http {
+                dial_timeout 3s
+                response_header_timeout 15s
+            }
+        }
+    }
+}

@@ -1,0 +1,67 @@
+name: NextCRM upstream document security tests (isolated)
+
+on:
+  pull_request:
+    paths:
+      - .gitmodules
+      - integrations/**
+      - lib/integrations/nextcrm/**
+      - .github/workflows/nextcrm-upstream-document-tests.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upstream-document-security:
+    name: Upstream document Jest tests (no database)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      # Deliberately unreachable endpoint. Never inject Railway credentials in this job.
+      DATABASE_URL: postgresql://never:connect@127.0.0.1:1/ci_no_database
+      NODE_ENV: test
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - name: Checkout pinned NextCRM submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify immutable upstream source and no local DB configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
+          test ! -f integrations/nextcrm-upstream/.env
+          test ! -f integrations/nextcrm-upstream/.env.local
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: integrations/nextcrm-upstream/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+          cache-dependency-path: integrations/nextcrm-upstream/pnpm-lock.yaml
+      - name: Install exact NextCRM dependencies with lifecycle scripts disabled
+        working-directory: integrations/nextcrm-upstream
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Generate Prisma types without connecting to a database
+        working-directory: integrations/nextcrm-upstream
+        run: pnpm exec prisma generate
+      - name: Exercise original NextCRM document permissions and download routes
+        working-directory: integrations/nextcrm-upstream
+        run: |
+          pnpm exec jest --runInBand --no-coverage --runTestsByPath \
+            'lib/documents/__tests__/file-key.test.ts' \
+            'lib/authz/__tests__/scopes-document-read.test.ts' \
+            'app/api/documents/[documentId]/file/__tests__/route.test.ts'
+      - name: Overlay reviewed signed ERP bridge into pinned NextCRM source (CI only)
+        run: node scripts/install-nextcrm-bridge-overlay.mjs
+      - name: Test NextCRM's bridge route using mocked Prisma and original scope contracts
+        working-directory: integrations/nextcrm-upstream
+        run: |
+          pnpm exec jest --runInBand --no-coverage --runTestsByPath \
+            'app/api/internal/erp-document-authorization/__tests__/route.test.ts'
+      - name: Confirm no database ever participated in this workflow
+        run: echo 'Unreachable DATABASE_URL only; Prisma generate and Jest do not migrate, seed, deploy or connect to Railway.'

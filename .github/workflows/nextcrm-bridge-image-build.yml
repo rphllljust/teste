@@ -1,0 +1,208 @@
+name: NextCRM custom bridge end-to-end image smoke (ephemeral)
+
+on:
+  pull_request:
+    paths:
+      - '.gitmodules'
+      - 'integrations/nextcrm-bridge-overlay/**'
+      - 'lib/integrations/nextcrm/bridge-protocol.ts'
+      - 'scripts/install-nextcrm-bridge-overlay.mjs'
+      - '.github/workflows/nextcrm-bridge-image-build.yml'
+      - 'Dockerfile.nextcrm'
+      - 'scripts/verify-nextcrm-dockerfile-derivation.mjs'
+      - '.dockerignore'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-bridge-image:
+    name: Build and boot custom NextCRM + private gateway (ephemeral DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - name: Checkout exact NextCRM upstream revision
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Verify gitlink pin and install opt-in bridge overlay
+        run: |
+          set -euo pipefail
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = d3bead9b44efe2cf94d0dfc2948af0f2c9270deb
+          node scripts/install-nextcrm-bridge-overlay.mjs
+          test -s integrations/nextcrm-upstream/lib/erp-bridge/bridge-protocol.ts
+          test -s integrations/nextcrm-upstream/app/api/internal/erp-document-authorization/route.ts
+      - name: Fail-closed NextCRM staging readiness contract (synthetic, no secrets)
+        run: node --test scripts/nextcrm-staging-preflight.test.mjs
+      - name: Verify custom root-context Dockerfile matches immutable upstream source
+        run: node scripts/verify-nextcrm-dockerfile-derivation.mjs
+      - name: Build exact Railway source Dockerfile with signed ERP bridge
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --progress=plain \
+            -f Dockerfile.nextcrm \
+            -t nextcrm-bridge-ci:verify \
+            .
+      - name: Verify private bridge exists in compiled standalone application
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --entrypoint sh nextcrm-bridge-ci:verify -ec '
+            test -f /app/server.js
+            test -d /app/.next/server/app/api/internal/erp-document-authorization
+            find /app/.next/server/app/api/internal/erp-document-authorization -type f -name "*.js" | grep -q .
+            echo "Custom NextCRM bridge route compiled in standalone runner image."
+          '
+      - name: Generate masked, CI-only credentials for disposable integration network
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in CI_DB_PASSWORD CI_MINIO_PASSWORD CI_AUTH_SECRET CI_EMAIL_KEY CI_EVENT_KEY CI_SIGNING_KEY CI_BRIDGE_SECRET; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            printf '%s=%s\n' "$var" "$value" >> "$GITHUB_ENV"
+          done
+          docker network create nextcrm-bridge-runtime-ci
+      - name: Start throwaway PostgreSQL 17 and MinIO on private Docker network
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name nextcrm-runtime-db \
+            --network nextcrm-bridge-runtime-ci --network-alias postgres \
+            -e POSTGRES_USER=nextcrm -e POSTGRES_DB=nextcrm \
+            -e POSTGRES_PASSWORD="$CI_DB_PASSWORD" \
+            pgvector/pgvector:pg17
+          docker run -d --rm --name nextcrm-runtime-minio \
+            --network nextcrm-bridge-runtime-ci --network-alias minio \
+            -e MINIO_ROOT_USER=ci-nextcrm -e MINIO_ROOT_PASSWORD="$CI_MINIO_PASSWORD" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z \
+            server /data --console-address :9001
+          for i in $(seq 1 90); do
+            if docker exec nextcrm-runtime-db pg_isready -U nextcrm -d nextcrm >/dev/null 2>&1 &&
+               docker exec nextcrm-runtime-minio curl -fsS http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'CI-only NextCRM PostgreSQL/MinIO failed readiness' >&2
+          exit 1
+      - name: Boot custom NextCRM image with signed private endpoint (throwaway DB only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name nextcrm-runtime-app \
+            --network nextcrm-bridge-runtime-ci --network-alias nextcrm-web.railway.internal \
+            -p 127.0.0.1:13100:3000 \
+            -e DATABASE_URL="postgresql://nextcrm:$CI_DB_PASSWORD@postgres:5432/nextcrm" \
+            -e DB_HOST=postgres -e DB_PORT=5432 -e DB_USER=nextcrm -e DB_NAME=nextcrm \
+            -e DB_PASSWORD="$CI_DB_PASSWORD" \
+            -e MINIO_ENDPOINT=http://minio:9000 \
+            -e MINIO_PUBLIC_ENDPOINT=http://127.0.0.1:19000 \
+            -e MINIO_BUCKET=nextcrm -e MINIO_ACCESS_KEY=ci-nextcrm \
+            -e MINIO_SECRET_KEY="$CI_MINIO_PASSWORD" \
+            -e BETTER_AUTH_SECRET="$CI_AUTH_SECRET" -e EMAIL_ENCRYPTION_KEY="$CI_EMAIL_KEY" \
+            -e BETTER_AUTH_URL=http://localhost:13100 \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:13100 \
+            -e TEST_USER_EMAIL=ci-admin@example.invalid -e SEED_DEMO_DATA=0 \
+            -e INNGEST_EVENT_KEY="$CI_EVENT_KEY" -e INNGEST_SIGNING_KEY="$CI_SIGNING_KEY" \
+            -e INNGEST_DEV=1 \
+            -e CISNE_NEXTCRM_BRIDGE_SECRET="$CI_BRIDGE_SECRET" \
+            -e CISNE_NEXTCRM_INSTANCE_KEY=ci-runtime-2026 \
+            nextcrm-bridge-ci:verify
+          ready=0
+          for i in $(seq 1 150); do
+            status="$(curl -sS --max-time 3 -o /dev/null -w '%{http_code}' http://127.0.0.1:13100/ || true)"
+            case "$status" in
+              200|301|302|303|307|308) ready=1; break ;;
+            esac
+            if ! docker ps --format '{{.Names}}' | grep -qx nextcrm-runtime-app; then
+              echo 'Custom NextCRM application exited during startup' >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          test "$ready" -eq 1
+          echo 'Custom NextCRM application started with disposable PostgreSQL and MinIO.'
+      - name: Build and start private NextCRM public gateway (no public internet ports)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build -t nextcrm-gateway-ci:verify integrations/nextcrm-public-gateway
+          docker run -d --rm --name nextcrm-runtime-gateway \
+            --network nextcrm-bridge-runtime-ci \
+            -p 127.0.0.1:13180:8080 \
+            -e NEXTCRM_UPSTREAM=nextcrm-web.railway.internal:3000 \
+            nextcrm-gateway-ci:verify
+          ready=0
+          for i in $(seq 1 30); do
+            if [ "$(curl -fsS --max-time 2 http://127.0.0.1:13180/__gateway_health || true)" = ready ]; then
+              ready=1; break
+            fi
+            sleep 1
+          done
+          test "$ready" -eq 1
+      - name: Prove real NextCRM signed private API works internally and is blocked publicly
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --input-type=module <<'JS'
+          import assert from 'node:assert/strict';
+          import { randomUUID } from 'node:crypto';
+          import {
+            signBridgeRequest, verifyBridgeResponse, NEXTCRM_BRIDGE_PATH,
+          } from './lib/integrations/nextcrm/bridge-protocol.ts';
+          const secret = process.env.CI_BRIDGE_SECRET;
+          const body = JSON.stringify({
+            documentId: randomUUID(),
+            subjectId: randomUUID(),
+            accountId: randomUUID(),
+            erpClientId: randomUUID(),
+            tenantKey: 'ci-runtime-2026',
+            requestId: randomUUID(),
+          });
+          const proof = signBridgeRequest(secret, body);
+          const headers = {
+            'content-type': 'application/json',
+            'x-cisne-bridge-timestamp': proof.timestamp,
+            'x-cisne-bridge-nonce': proof.nonce,
+            'x-cisne-bridge-signature': proof.signature,
+          };
+          const internal = await fetch('http://127.0.0.1:13100' + NEXTCRM_BRIDGE_PATH, {
+            method: 'POST', headers, body, redirect: 'manual',
+          });
+          const internalBody = await internal.text();
+          assert.equal(internal.status, 404, 'unknown subject must be denied by real Prisma');
+          assert.ok(verifyBridgeResponse(secret, internalBody, internal.status, proof,
+            internal.headers.get('x-cisne-bridge-response-signature') ?? ''),
+            'NextCRM must sign the real database-backed deny response');
+          const forged = await fetch('http://127.0.0.1:13100' + NEXTCRM_BRIDGE_PATH, {
+            method: 'POST',
+            headers: { ...headers, 'x-cisne-bridge-signature': 'v1=' + '0'.repeat(64) },
+            body,
+          });
+          assert.equal(forged.status, 401, 'forged HMAC must fail before querying Prisma');
+          const edge = await fetch('http://127.0.0.1:13180' + NEXTCRM_BRIDGE_PATH, {
+            method: 'POST', headers, body,
+          });
+          assert.equal(edge.status, 404, 'public gateway must block internal endpoint');
+          assert.equal(edge.headers.get('x-cisne-bridge-response-signature'), null,
+            'denial must happen at the gateway, not within NextCRM');
+          const health = await fetch('http://127.0.0.1:13180/__gateway_health');
+          assert.equal(health.status, 200);
+          assert.equal(await health.text(), 'ready');
+          console.log('PASS: custom NextCRM runtime + PostgreSQL + MinIO + gateway: internal signed deny, forged deny, public bridge blocked.');
+          JS
+      - name: Destroy disposable application, databases, gateway and Docker network
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nextcrm-runtime-gateway nextcrm-runtime-app nextcrm-runtime-minio nextcrm-runtime-db >/dev/null 2>&1 || true
+          docker network rm nextcrm-bridge-runtime-ci >/dev/null 2>&1 || true
+      - name: No push, staging mutation or persistent resources
+        run: echo 'CI images and PostgreSQL/MinIO exist only during this GitHub runner job; no Railway or GHCR pushes.'
