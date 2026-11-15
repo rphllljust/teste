@@ -39,6 +39,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [loading,setLoading]=useState(true),[sending,setSending]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState<Notice|null>(null);
+  const [needsAuth,setNeedsAuth]=useState(false),[loginBusy,setLoginBusy]=useState(false);
   const [tab,setTab]=useState<'leads'|'opportunities'>('leads');
   const [query,setQuery]=useState('');
   const [newLeadOpen,setNewLeadOpen]=useState(false);
@@ -52,8 +53,8 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     try{
       const response=await fetch('/api/crm',{cache:'no-store'});
       const data=await response.json() as Snapshot;
-      if(!response.ok)throw new Error(data.error||'CRM indisponível.');
-      setSnapshot(data);
+      if(!response.ok){if(response.status===403||response.status===401)setNeedsAuth(true);throw new Error(data.error||'CRM indisponível.');}
+      setNeedsAuth(false);setSnapshot(data);
     }catch(e){setError(e instanceof Error?e.message:'Não foi possível consultar o CRM.');}
     finally{setLoading(false);}
   },[]);
@@ -64,6 +65,25 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     return ()=>window.clearTimeout(handle);
   },[load]);
 
+  async function login(e:React.FormEvent<HTMLFormElement>){
+    e.preventDefault();if(loginBusy)return;
+    setLoginBusy(true);setNotice(null);
+    const form=e.currentTarget;
+    const passphrase=String(new FormData(form).get('passphrase')||'');
+    try{
+      const response=await fetch('/api/auth/staging-login',{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({passphrase}),
+      });
+      const body=await response.json() as {authenticated?:boolean;error?:string};
+      if(!response.ok||!body.authenticated)throw new Error(body.error||'Acesso não autorizado.');
+      form.reset();
+      setNotice({message:'Sessão de homologação autenticada. Dados liberados conforme o proprietário autorizado.',error:false});
+      await load();
+    }catch(err){setNotice({message:err instanceof Error?err.message:'Falha na autenticação.',error:true});}
+    finally{setLoginBusy(false);}
+  }
   const send=useCallback(async(payload:Record<string,unknown>)=>{
     if(busy.current)return false;
     busy.current=true;setSending(true);setNotice(null);
@@ -156,7 +176,13 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
 
     {error&&<div role="alert" className="cisne-crm-alert">
       <CircleAlert size={19}/><span><strong>Dados do CRM não disponíveis.</strong> {error}
-      <small>As APIs operacionais do staging exigem autenticação privada. A proteção não será contornada para exibir registros.</small></span>
+      <small>Os registros só são exibidos após autenticação válida. Nenhum dado é inventado durante a falha de acesso.</small>
+      {needsAuth&&<form onSubmit={e=>void login(e)} className="cisne-crm-login">
+        <label>Credencial de homologação <input name="passphrase" type="password" autoComplete="off"
+          minLength={24} maxLength={160} placeholder="Credencial de acesso ao CISNE HML" required/></label>
+        <button className="primary" disabled={loginBusy}>{loginBusy?'Autenticando…':'Entrar no CISNE'}</button>
+        <small>Uma sessão segura de até 8 horas libera o CRM e os módulos operacionais no mesmo Field.</small>
+      </form>}</span>
     </div>}
     {notice&&<div className={'cisne-crm-notice '+(notice.error?'is-error':'is-success')} role={notice.error?'alert':'status'}>
       {notice.error?<CircleAlert size={17}/>:<CheckCircle2 size={17}/>}<span>{notice.message}</span>

@@ -567,3 +567,12 @@ tr:has(td):hover{background:#f5f9f5}
 .cisne-crm-modal input,.cisne-crm-modal select{border:1px solid var(--line);padding:9px 11px;background:#fff;color:var(--ink);width:100%;border-radius:4px}
 @media(max-width:1180px){.cisne-crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-crm-metrics>div:nth-child(2){border-right:0}.cisne-crm-metrics>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
 @media(max-width:680px){.cisne-crm-heading,.cisne-crm-toolbar,.cisne-crm-footer{align-items:stretch;flex-direction:column}.cisne-crm-heading h2{font-size:25px}.cisne-crm-actions{width:100%}.cisne-crm-actions button{flex:1}.cisne-crm-metrics>div{padding:15px}.cisne-crm-metrics strong{font-size:23px}.cisne-crm-search{width:100%}.cisne-crm-footer>div{flex-wrap:wrap}.cisne-crm-pipeline{grid-template-columns:repeat(5,210px)}}
+
+
+/* Staging-only passwordless-user-identity guard: HMAC session after high-entropy credential. */
+.cisne-crm-login{display:flex;align-items:flex-end;flex-wrap:wrap;gap:11px;margin-top:12px;background:#fff;border:1px solid #e5c9c1;padding:15px}
+.cisne-crm-login label{display:grid;gap:7px;flex:1;min-width:230px;color:#724e49;font-size:12px;font-weight:600}
+.cisne-crm-login input{border:1px solid #d4c4c0;background:#fff;padding:10px 12px;border-radius:4px;min-width:0;color:#233b36;font-size:13px}
+.cisne-crm-login button{min-height:40px;padding:8px 16px}
+.cisne-crm-login>small{flex-basis:100%;margin-top:1px;color:#876863;font-size:11px}
+@media(max-width:680px){.cisne-crm-login{display:grid}.cisne-crm-login label{min-width:0}}
