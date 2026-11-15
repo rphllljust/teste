@@ -45,3 +45,7 @@ A aplicação `nextcrm-web` deve permanecer **sem domínio público**, aceitando
 O gateway responde `404` a `/api/internal` e `/api/internal/*` sem consultar o backend. As demais rotas são encaminhadas para `nextcrm-web.railway.internal:3000`. Ele também remove os cabeçalhos `X-Cisne-Bridge-*` em chamadas públicas. Esse bloqueio de caminho é **defesa em profundidade**: o endpoint protegido continua a exigir assinatura HMAC válida e autorização documental no próprio NextCRM.
 
 Apenas preparar a fonte/imagem e **testar a topologia após deploy** autoriza usar essa rota. Não atribuir domínio público diretamente ao `nextcrm-web` e não ativar o gateway sem verificação de TLS, X-Forwarded-Proto, sessões/OTP, limites e bloqueios de API privada.
+
+## Gateway readiness independente
+
+O Caddy responde `GET /__gateway-health` com HTTP 200 e corpo `ready` **sem encaminhar requisições ao NextCRM**. No Railway, configurar `healthcheckPath=/__gateway-health` para o serviço `nextcrm-gateway`. Isso comprova somente que o proxy está ativo, **não** que NextCRM, banco, OTP ou a ponte estejam funcionais. Um segundo healthcheck/UAT deve testar o fluxo via proxy com o NextCRM ligado.
