@@ -152,6 +152,38 @@ test('contract activation requires signed evidence; linked OS is created only af
     signedReference:'SEGUNDA-ASSINATURA'})).status,409);
 });
 
+test('concurrent contract close versus OS creation cannot both succeed',async()=>{
+  const id=randomUUID(),order=randomUUID();
+  const contractPayload={id,proposalId,proposalVersion:3,purchaseOrderId:null,
+    reference:'CONTRATO-CI-CONCORRENTE',terms};
+  const created=await registerContract(post('/api/contracts',actor,contractPayload));
+  assert.equal(created.status,201);
+  const activated=await actionContract(post('/api/contracts/'+id+'/commands',actor,
+    {key:randomUUID(),version:1,command:'activate',signedReference:'ASSINATURA-CI-RACE'}),
+    param(id));
+  assert.equal(activated.status,200);
+  const orderPayload={id:order,title:'OS simultânea do contrato CI',
+    category:'Serviços',description:'Criação concorrente',dueDate:null,
+    clientId,clientVersion:1,contractId:id,contractVersion:2};
+  const [newOrder,close]=await Promise.all([
+    createOrder(post('/api/orders',actor,orderPayload)),
+    actionContract(post('/api/contracts/'+id+'/commands',actor,
+      {key:randomUUID(),version:2,command:'close'}),param(id)),
+  ]);
+  // Exactly one is allowed to succeed; the loser must observe
+  // the new contract status or an open OS.
+  assert.equal([newOrder.status,close.status].filter(x=>x>=200&&x<300).length,1);
+  assert.equal([newOrder.status,close.status].filter(x=>x===409).length,1);
+  const final=await db.query('SELECT status,row_version FROM contracts WHERE id=$1',[id]);
+  const linked=await db.query('SELECT count(*)::int AS n FROM service_orders WHERE contract_id=$1',[id]);
+  if(final.rows[0].status==='closed'){
+    assert.equal(linked.rows[0].n,0);
+  }else{
+    assert.equal(final.rows[0].status,'active');
+    assert.equal(linked.rows[0].n,1);
+  }
+});
+
 test('public staging ignores forged owner header for contract mutations',async()=>{
   const previous=process.env.RAILWAY_ENVIRONMENT_NAME;
   process.env.RAILWAY_ENVIRONMENT_NAME='staging';
