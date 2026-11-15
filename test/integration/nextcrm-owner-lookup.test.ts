@@ -39,12 +39,12 @@ test('real PostgreSQL ownership lookup and document preflight fail closed for ot
     const request = { serviceOrderId: orderId, nextcrmDocumentId: 'document_c123', documentKind: 'service_report', version: 1 };
     const deps = {
       ...reader,
-      resolveMappedIdentity: async (id) => ({
+      resolveMappedIdentity: async (id: string) => ({
         erpActorId: id, nextcrmSubjectId: id === actor ? 'crm-subject-A' : 'crm-subject-B', tenantKey: 'tenant-A',
       }),
-      findAccountMapping: async (cid, tenant) => cid === clientId && tenant === 'tenant-A'
+      findAccountMapping: async (cid: string, tenant: string) => cid === clientId && tenant === 'tenant-A'
         ? { accountId: 'account-A', tenantKey: tenant } : null,
-      verifyDocumentForLink: async (doc, sub) => sub === 'crm-subject-A'
+      verifyDocumentForLink: async (doc: string, sub: string) => sub === 'crm-subject-A'
         ? { id: doc, tenantKey: 'tenant-A', accountId: 'account-A', version: 1, sha256: null, canLink: true } : null,
     };
     const permitted = await authorizeOrderDocumentLink(request, actor, deps);
