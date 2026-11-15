@@ -5,6 +5,7 @@ on:
     paths:
       - .gitmodules
       - integrations/**
+      - lib/integrations/nextcrm/**
       - docs/integrations/nextcrm-*.md
       - .github/workflows/nextcrm-source-integrity.yml
   workflow_dispatch:
@@ -36,7 +37,7 @@ jobs:
           test "$GITLINK" = "$EXPECTED" || { echo "Submodule gitlink differs from pin" >&2; exit 1; }
           grep -qi 'MIT License' integrations/nextcrm-upstream/LICENSE
           echo "Verified NextCRM SHA $ACTUAL and upstream MIT notice"
-      - name: Verify source includes OS document integration prerequisites
+      - name: Verify document features present in source
         shell: bash
         run: |
           set -euo pipefail
@@ -50,3 +51,23 @@ jobs:
           test -f "$UPSTREAM/docker-compose-coolify.yml"
           node -e "const p=require('./integrations/nextcrm-upstream/package.json'); if(p.name!=='nextcrm-app'||!p.dependencies?.['@prisma/client']||!p.dependencies?.['next'])process.exit(1); console.log('NextCRM manifest and document source checks passed')"
           echo 'Source-only verification; no install, migrations, secrets, network services or deployments.'
+
+  document-link-contract:
+    name: Validate safe OS/document link contract (no DB)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+      - name: Install project deps without lifecycle scripts
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Run deterministic contract tests
+        run: node --experimental-strip-types --test lib/integrations/nextcrm/document-link-contract.test.mjs
