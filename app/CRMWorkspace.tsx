@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, Wallet, X } from 'lucide-react';
+import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, X } from 'lucide-react';
 
 type Lead = {
   id:string; contactName:string; companyName:string; contactEmail:string|null;
@@ -57,7 +57,12 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     }catch(e){setError(e instanceof Error?e.message:'Não foi possível consultar o CRM.');}
     finally{setLoading(false);}
   },[]);
-  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{
+    // Schedule the initial network read after commit; do not synchronously
+    // cascade a loading-state update from an effect.
+    const handle=window.setTimeout(()=>{void load();},0);
+    return ()=>window.clearTimeout(handle);
+  },[load]);
 
   const send=useCallback(async(payload:Record<string,unknown>)=>{
     if(busy.current)return false;
