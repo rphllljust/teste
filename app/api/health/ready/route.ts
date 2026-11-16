@@ -1,4 +1,4 @@
-import { databasePool } from '../../../../db/raw';
+import { Client } from 'pg';
 import { checkErpDatabaseReadiness, classifyReadinessError } from '../../../../lib/runtime/readiness.mjs';
 
 export const runtime = 'nodejs';
@@ -17,14 +17,35 @@ function warnReadiness(category: string) {
 
 export async function GET() {
   let ready = false;
+  let client: Client | undefined;
   try {
+    if (!process.env.DATABASE_URL) throw new Error('READINESS_DB_MISSING');
+    // Do not reuse an idle pg.Pool socket between different Cloudflare Worker
+    // request contexts. A stale connection can leave the request unresolved
+    // and Wrangler returns a 500 outside the route's error handler.
+    // Own and close this connection within the current request lifecycle.
+    client = new Client({
+      connectionString: process.env.DATABASE_URL,
+      options: '-c default_transaction_read_only=on -c statement_timeout=3500',
+      connectionTimeoutMillis: 4500,
+      query_timeout: 4500,
+    });
+    await client.connect();
     ready = await checkErpDatabaseReadiness(
-      (sql: string, params: readonly string[]) => databasePool().query(sql, [...params]),
+      (sql: string, params: readonly string[]) => client!.query(sql, [...params]),
       (reason: string) => warnReadiness(reason),
     );
   } catch (error) {
     warnReadiness(classifyReadinessError(error, process.env.DATABASE_URL));
-    // Fail closed: exception messages and connection details are never returned.
+    // Public response is always minimal; never leak DSN/schema/SQL details.
+  } finally {
+    if (client) {
+      try { await client.end(); }
+      catch (error) {
+        ready = false;
+        warnReadiness(classifyReadinessError(error, process.env.DATABASE_URL));
+      }
+    }
   }
   return Response.json(
     { status: ready ? 'ready' : 'unavailable' },

@@ -15,7 +15,7 @@ const guards=[
   ['POST','/api/finance/receivables/settlements','STAGING_READ_ONLY_PREVIEW'],
 ];
 const modulePath=process.env.PLAYWRIGHT_MODULE_PATH;
-assert.ok(modulePath?.startsWith('/'),'Use matching Playwright absolute module path');
+assert.ok(modulePath?.startsWith('/'),'Use matching Playwright absolute section path');
 const {chromium}=await import(modulePath);
 await mkdir(root,{recursive:true});
 const browser=await chromium.launch({args:['--no-sandbox']});
@@ -33,17 +33,17 @@ try {
       assert.equal(response?.status(),200,'UI HTTP 200 '+device.name);
       assert.match(await page.title(),/Cisne/i);
       await page.locator('main h1').waitFor({state:'visible',timeout:25000});
-      for(const module of modules){
-        await page.evaluate(x=>{window.location.hash=encodeURIComponent(x)},module);
-        await page.waitForFunction(x=>document.querySelector('main h1')?.textContent?.trim()===x,module,{timeout:15000});
+      for(const section of modules){
+        await page.evaluate(x=>{window.location.hash=encodeURIComponent(x)},section);
+        await page.waitForFunction(x=>document.querySelector('main h1')?.textContent?.trim()===x,section,{timeout:15000});
         const active=page.locator('nav[aria-label="Módulos empresariais"] button[aria-current="page"]');
-        assert.equal(await active.count(),1,'one active module '+module);
-        assert.equal((await active.locator('span').first().innerText()).trim(),module);
-        const key=module.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
+        assert.equal(await active.count(),1,'one active section '+section);
+        assert.equal((await active.locator('span').first().innerText()).trim(),section);
+        const key=section.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
         await page.screenshot({path:join(root,device.name+'-'+key+'.png'),fullPage:true,animations:'disabled'});
         const width=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-        assert.ok(width<=16,'horizontal overflow '+device.name+'/'+module+': '+width+'px');
-        findings.push({device:device.name,module,overflow:Math.max(0,width)});
+        assert.ok(width<=16,'horizontal overflow '+device.name+'/'+section+': '+width+'px');
+        findings.push({device:device.name,section,overflow:Math.max(0,width)});
       }
       await page.getByRole('button',{name:/Buscar no Cisne/}).click();
       await page.getByRole('dialog',{name:'Busca global'}).waitFor({state:'visible'});

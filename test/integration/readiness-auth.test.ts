@@ -10,10 +10,13 @@ if (process.env.NODE_ENV !== 'test') throw Error('Only the disposable PostgreSQL
 after(async () => { await closeDatabase(); });
 
 test('readiness is real: the CI PostgreSQL ledger and required ERP tables exist', async () => {
-  const result = await getReadiness();
-  assert.equal(result.status, 200, await result.clone().text());
-  assert.deepEqual(await result.json(), { status: 'ready' });
-  assert.equal(result.headers.get('Cache-Control'), 'no-store');
+  // Separate connections across repeated requests catch leaked/stale clients.
+  for (let i = 0; i < 4; i++) {
+    const result = await getReadiness();
+    assert.equal(result.status, 200, await result.clone().text());
+    assert.deepEqual(await result.json(), { status: 'ready' });
+    assert.equal(result.headers.get('Cache-Control'), 'no-store');
+  }
 });
 
 test('production Railway cannot impersonate an owner through user-controlled headers', async () => {
