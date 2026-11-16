@@ -1,5 +1,5 @@
 import { databasePool } from '../../../../db/raw';
-import { checkErpDatabaseReadiness } from '../../../../lib/runtime/readiness.mjs';
+import { checkErpDatabaseReadiness, classifyReadinessError } from '../../../../lib/runtime/readiness.mjs';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 // No authentication data, schema details, connection strings, or migration names
 // are exposed. Railway can use this endpoint as its explicit readiness probe.
 let lastOperatorWarning = 0;
-const safeConnectionCodes = new Set(['ECONNREFUSED','ENOTFOUND','ETIMEDOUT','28P01','42P01','3D000']);
 function warnReadiness(category: string) {
   const now = Date.now();
   if (now - lastOperatorWarning < 60000) return;
@@ -24,9 +23,7 @@ export async function GET() {
       (reason: string) => warnReadiness(reason),
     );
   } catch (error) {
-    const code = error && typeof error === 'object' && 'code' in error
-      ? String(error.code) : '';
-    warnReadiness(safeConnectionCodes.has(code) ? 'DB_' + code : 'DB_QUERY_FAILED');
+    warnReadiness(classifyReadinessError(error, process.env.DATABASE_URL));
     // Fail closed: exception messages and connection details are never returned.
   }
   return Response.json(
