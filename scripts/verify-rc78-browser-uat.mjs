@@ -18,6 +18,22 @@ const modulePath=process.env.PLAYWRIGHT_MODULE_PATH;
 assert.ok(modulePath?.startsWith('/'),'Use matching Playwright absolute section path');
 const {chromium}=await import(modulePath);
 await mkdir(root,{recursive:true});
+// Railway builds and assigns a new service domain asynchronously. Accept only
+// initial unpublished 404/502/503 while booting; after first 200, every
+// browser/API assertion below is strict and failures remain fail-closed.
+let published=false;
+for(let attempt=1;attempt<=36;attempt++){
+  try{
+    const response=await fetch(origin+'/',{signal:AbortSignal.timeout(8000),redirect:'manual'});
+    if(response.status===200){published=true;break;}
+    if(![404,502,503].includes(response.status))throw new Error('Unexpected boot HTTP '+response.status);
+    console.log('Waiting for Railway first publication; attempt '+attempt+' status '+response.status);
+  }catch(error){
+    console.log('Railway not available yet on attempt '+attempt+': '+(error instanceof Error?error.name:'unavailable'));
+  }
+  await new Promise(resolve=>setTimeout(resolve,10000));
+}
+assert.equal(published,true,'RC79 Railway service never published its first HTTP 200');
 const browser=await chromium.launch({args:['--no-sandbox']});
 const findings=[];
 try {
