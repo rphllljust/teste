@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { approvedStagingPublicOrigin } from '../../../lib/api/staging-public-origin.mjs';
 import { issueStagingSession, stagingSessionCookieHeader, clearedStagingSessionCookie, validateStagingSession } from '../../../lib/api/staging-session.mjs';
 export const dynamic='force-dynamic';
+export const runtime='nodejs';
 const headers={'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'};
 const input=z.object({passphrase:z.string().min(24).max(160)}).strict();
 const runtime=()=>process.env.RAILWAY_ENVIRONMENT_NAME==='staging'||process.env.CISNE_STAGING_UAT==='true';
