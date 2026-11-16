@@ -24,3 +24,7 @@ O Frontend CISNE e a UI documental NextCRM permanecem em sua integração atual,
 ## Critério para promoção futura
 
 Somente consolidar em release após branch atualizado com a main real, CI verde, Railway staging no mesmo SHA/digest, catálogo e ledger sem drift, teste real navegador/backend e evidência de backup/restore. Não considerar sucesso de build ou healthcheck `/` como aceite operacional.
+
+## Railway RC78: diagnóstico interno de prontidão
+
+A inspeção do primeiro candidato em staging confirmou `/api/health/ready=503` antes do aceite. O PR adiciona apenas **categoria sanitizada de falha nos logs privados** (`MIGRATIONS_INCOMPLETE`, `TABLES_INCOMPLETE`, `DB_QUERY_FAILED`, ou SQLSTATE de uma lista fechada), limitada a uma vez por minuto por instância. A resposta pública continua somente `ready` ou `unavailable`. Não aplicar migrações no UAT nem trocar o banco antes de classificar o bloqueio.
