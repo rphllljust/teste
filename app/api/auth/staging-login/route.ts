@@ -12,7 +12,9 @@ const jsonHeaders={'Cache-Control':'no-store, private','X-Content-Type-Options':
 const loginInput=z.object({passphrase:z.string().min(24).max(160)}).strict();
 function publicOrigin(){return approvedStagingPublicOrigin();}
 function stagingRuntime(){
-  return publicOrigin()!==null && process.env.CISNE_STAGING_ACCESS_MODE==='private';
+  return process.env.RAILWAY_ENVIRONMENT_NAME==='staging' ||
+    process.env.RAILWAY_ENVIRONMENT==='staging' ||
+    process.env.CISNE_STAGING_UAT==='true';
 }
 function configured(){
   const hash=process.env.CISNE_STAGING_LOGIN_HASH;
