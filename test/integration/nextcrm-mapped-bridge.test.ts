@@ -17,6 +17,7 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
   const subject=randomUUID(),account=randomUUID(),document=randomUUID();
   const instanceKey='cisne-hml-mapping-ci',secret=randomBytes(32).toString('hex'),now=new Date().toISOString();
   let calls=0;
+  let revokeIdentityDuringSignedResponse=false;
   const server=createServer(async(req,res)=>{
     calls++;
     const chunks:Buffer[]=[];
@@ -33,6 +34,11 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
     const b=JSON.parse(body) as Record<string,string>;
     const allowed=b.documentId===document&&b.subjectId===subject&&b.accountId===account&&
       b.erpClientId===clientId&&b.tenantKey===instanceKey;
+    if(allowed&&revokeIdentityDuringSignedResponse){
+      revokeIdentityDuringSignedResponse=false;
+      // Simulates operator revocation AFTER preflight but BEFORE ERP SQL insert.
+      await pool.query('UPDATE nextcrm_erp_identity_mappings SET active=false WHERE erp_actor_id=$1',[owner]);
+    }
     const code=allowed?200:404;
     const payload=JSON.stringify(allowed?
       {authorized:true,id:document,accountId:account,tenantKey:instanceKey,version:1,sha256:'a'.repeat(64)}:
@@ -78,14 +84,21 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
     assert.equal(calls,1);
     const result=await pool.query('SELECT COUNT(*)::int AS n FROM nextcrm_order_document_events WHERE link_id=$1',[stored.id]);
     assert.equal(result.rows[0].n,1,'Audited one persisted link');
+    revokeIdentityDuringSignedResponse=true;
+    await assert.rejects(()=>persist(),(e:unknown)=>e instanceof OrderDocumentLinkDenied,
+      'Revocation during signed response must deny even an otherwise idempotent retry');
+    assert.equal(calls,2,'Signed authorization was attempted after initially approved mapping');
+    const unchanged=await pool.query('SELECT count(*)::int AS n FROM nextcrm_order_document_links WHERE service_order_id=$1',[orderId]);
+    assert.equal(unchanged.rows[0].n,1,'Revoked identity must never add another persisted link');
+    await pool.query('UPDATE nextcrm_erp_identity_mappings SET active=true WHERE erp_actor_id=$1',[owner]);
     await assert.rejects(()=>persist(foreign),(e:unknown)=>e instanceof OrderDocumentLinkDenied);
-    assert.equal(calls,1,'Foreign user blocked before NextCRM');
+    assert.equal(calls,2,'Foreign user blocked before NextCRM');
     await pool.query('UPDATE nextcrm_erp_client_account_mappings SET active=false WHERE erp_client_id=$1',[clientId]);
     await assert.rejects(()=>persist(),(e:unknown)=>e instanceof OrderDocumentLinkDenied);
-    assert.equal(calls,1,'Disabled mapping blocked before NextCRM');
+    assert.equal(calls,2,'Disabled mapping blocked before NextCRM');
     await pool.query('UPDATE nextcrm_erp_client_account_mappings SET active=true,erp_owner_id=$1 WHERE erp_client_id=$2',[foreign,clientId]);
     await assert.rejects(()=>persist(),(e:unknown)=>e instanceof OrderDocumentLinkDenied);
-    assert.equal(calls,1,'Foreign owner mapping blocked before NextCRM');
+    assert.equal(calls,2,'Foreign owner mapping blocked before NextCRM');
   } finally {
     await pool.end();
     await new Promise<void>((resolve,reject)=>server.close(err=>err?reject(err):resolve()));
