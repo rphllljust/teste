@@ -10,7 +10,7 @@ import { OrderDocumentLinkDenied } from '../../lib/integrations/nextcrm/document
 
 if (process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('No real environment allowed');
 const url=new URL(process.env.DATABASE_URL);
-if(url.hostname!=='127.0.0.1'||url.pathname!=='/cisne_ci')throw new Error('Non-ephemeral DB prohibited');
+if(url.hostname!=='127.0.0.1'||!['/cisne_ci','/cisne_test'].includes(url.pathname))throw new Error('Non-ephemeral DB prohibited');
 test('mapped ERP identity + client + signed HTTP authorization + persisted document, all fail closed',async()=>{
   const pool=new Pool({connectionString:process.env.DATABASE_URL,max:4});
   const owner=randomUUID(),foreign=randomUUID(),clientId=randomUUID(),orderId=randomUUID();
