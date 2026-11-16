@@ -11,6 +11,7 @@ const input = z.object({
   description: z.string().trim().min(3).max(4000).optional(),
   amount: z.string().trim().regex(/^\d{1,10}(?:,\d{1,4})?$/).optional(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  evidenceIds: z.array(z.string().uuid()).max(50).optional(),
 }).strict();
 
 function eventResult(id: string, type: string, rowVersion: number) {
@@ -88,3 +89,4 @@ export async function POST(request: Request) {
     return failure(error, context);
   }
 }
+
