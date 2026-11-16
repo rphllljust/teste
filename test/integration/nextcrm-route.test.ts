@@ -8,7 +8,7 @@ import {GET,POST} from '../../app/api/orders/[id]/documents/route';
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw Error('NextCRM route tests only run in ephemeral PostgreSQL CI');
 const url=new URL(process.env.DATABASE_URL);
-if(!['localhost','127.0.0.1'].includes(url.hostname)||url.pathname!=='/cisne_test')
+if(!['localhost','127.0.0.1'].includes(url.hostname)||!['/cisne_test','/cisne_ci'].includes(url.pathname))
   throw Error('NO-GO: non-disposable PostgreSQL target');
 const db=new Pool({connectionString:process.env.DATABASE_URL,max:2});
 const actor=randomUUID(),outsider=randomUUID(),clientId=randomUUID(),orderId=randomUUID();

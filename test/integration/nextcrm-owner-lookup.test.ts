@@ -8,7 +8,7 @@ import { authorizeOrderDocumentLink, OrderDocumentLinkDenied } from '../../lib/i
 if (process.env.NODE_ENV !== 'test') throw new Error('This integration test is restricted to NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 const target = new URL(process.env.DATABASE_URL);
-if (!['localhost','127.0.0.1'].includes(target.hostname) || target.pathname !== '/cisne_test') {
+if (!['localhost','127.0.0.1'].includes(target.hostname) || !['/cisne_test','/cisne_ci'].includes(target.pathname)) {
   throw new Error('NO-GO: refuse to run integration fixtures against a non-ephemeral PostgreSQL database');
 }
 

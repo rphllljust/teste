@@ -8,6 +8,7 @@ const migration='-- immutability fixture\nCREATE TABLE example(id text);';
 const sqlHash=sqlDigest(migration);
 const now=Date.UTC(2026,10,15,23,0,0);
 const isolatedDb='postgresql://cisne_test:cisne_test@localhost:5432/cisne_test';
+const isolatedCiDb='postgresql://cisne_ci:ci-only-isolated-database@127.0.0.1:5432/cisne_ci';
 const permanentDb='postgresql://operator:secret@postgres.railway.internal:5432/cisne_db';
 const evidence={
   migrationId:PROTECTED_MIGRATION,
@@ -33,6 +34,10 @@ test('only the exact GitHub disposable CI DB can skip restore evidence',()=>{
     ...stable,CI:'true',GITHUB_ACTIONS:'true',NODE_ENV:'test',
     DATABASE_URL:isolatedDb,
   }),{kind:'ci-disposable'});
+  assert.deepEqual(inspect({
+    ...stable,CI:'true',GITHUB_ACTIONS:'true',NODE_ENV:'test',
+    DATABASE_URL:isolatedCiDb,
+  }),{kind:'ci-disposable'});
   for(const env of [
     {...stable,CI:'true',GITHUB_ACTIONS:'true',NODE_ENV:'test'},
     {...stable,CI:'true',NODE_ENV:'test',DATABASE_URL:isolatedDb},
@@ -53,7 +58,7 @@ test('staging and production fail closed without or with false evidence',()=>{
     withEvidence({...evidence,restoreTarget:'cisne_db'}),
     withEvidence({...evidence,verifiedAt:new Date(now-73*60*60_000).toISOString()}),
     withEvidence({...evidence,verifiedAt:new Date(now+6*60_000).toISOString()}),
-    withEvidence({...evidence,verifiedBy:'malicious\nlogger'}),
+    withEvidence({...evidence,verifiedBy:'malicious\\nlogger'}),
   ])assert.throws(()=>inspect(env),/MIGRATION_BACKUP_NO_GO/);
 });
 test('reviewed, fresh restore attestation accepts exact migration only',()=>{
@@ -68,7 +73,6 @@ test('reviewed, fresh restore attestation accepts exact migration only',()=>{
     sql:migration+' -- changed',env:withEvidence(),now,
   }),/MIGRATION_BACKUP_NO_GO/);
 });
-
 test('new NextCRM bridge migration requires its own matching, fresh restore evidence',()=>{
   const nextcrmMigration='0003_nextcrm_document_bridge';
   const nextcrmSql='-- synthetic NextCRM bridge migration bytes';
