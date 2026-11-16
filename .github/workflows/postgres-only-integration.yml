@@ -125,8 +125,8 @@ jobs:
             '0000_salty_lilith',
             '0001_native_crm',
             '0002_crm_proposal_origin',
-            '0003_nextcrm_document_bridge',
             '0003_finance_audit',
+            '0003_nextcrm_document_bridge',
             '0004_cash_transfers',
             '0005_finance_period_closes',
           ];
@@ -212,3 +212,4 @@ jobs:
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-document-link.test.ts
       - name: Test approved PostgreSQL mappings through signed HTTP bridge and persisted audit
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-mapped-bridge.test.ts
+
