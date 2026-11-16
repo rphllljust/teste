@@ -22,21 +22,22 @@ if (!['localhost','127.0.0.1'].includes(url.hostname) || url.pathname !== '/cisn
 test('NextCRM document link has exactly-once audit, idempotency and real PostgreSQL ownership enforcement', async () => {
   const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 5 });
   const owner = randomUUID(), outsider = randomUUID();
+  const subjectId = randomUUID(), accountId = randomUUID();
   const clientId = randomUUID(), orderId = randomUUID(), orphanId = randomUUID();
   const now = new Date().toISOString();
   const deps: OrderDocumentLinkDependencies = {
     ...createPostgresOrderOwnershipReader(pool),
     resolveMappedIdentity: async (actorId: string) => ({
       erpActorId: actorId,
-      nextcrmSubjectId: actorId === owner ? 'nextcrm-user-1' : 'nextcrm-user-foreign',
+      nextcrmSubjectId: actorId === owner ? subjectId : outsider,
       tenantKey: 'tenant-synthetic',
     }),
     findAccountMapping: async (cid: string, tenant: string) =>
       cid === clientId && tenant === 'tenant-synthetic'
-        ? { accountId: 'account-synthetic', tenantKey: tenant } : null,
+        ? { accountId, tenantKey: tenant } : null,
     verifyDocumentForLink: async (doc: string, subject: string) =>
-      subject === 'nextcrm-user-1' ? {
-        id: doc, tenantKey: 'tenant-synthetic', accountId: 'account-synthetic',
+      subject === subjectId ? {
+        id: doc, tenantKey: 'tenant-synthetic', accountId,
         version: doc === 'doc_version2' ? 2 : 1,
         sha256: 'a'.repeat(64), canLink: true,
       } : null,
@@ -64,6 +65,16 @@ test('NextCRM document link has exactly-once audit, idempotency and real Postgre
         VALUES($1,$2,$3,$4,$5,$6,$7,$8)
       `, [id, orderOwner, clientId, 'Synthetic OS', 'Synthetic enterprise', 'Serviços', 'CI only', now]);
     }
+
+    // Synthetic mappings exist ONLY in this disposable CI PostgreSQL.
+    await pool.query(`INSERT INTO nextcrm_erp_identity_mappings
+      (erp_actor_id,nextcrm_subject_id,instance_key,verified_source,verified_by,verified_at,active)
+      VALUES($1,$2,$3,$4,$5,now(),true)`,
+      [owner,subjectId,'tenant-synthetic','ci-ephemeral-only','ci-reviewer']);
+    await pool.query(`INSERT INTO nextcrm_erp_client_account_mappings
+      (erp_client_id,erp_owner_id,nextcrm_account_id,instance_key,verified_source,verified_by,verified_at,active)
+      VALUES($1,$2,$3,$4,$5,$6,now(),true)`,
+      [clientId,owner,accountId,'tenant-synthetic','ci-ephemeral-only','ci-reviewer']);
 
     const first = await perform();
     assert.equal(first.created, true);
