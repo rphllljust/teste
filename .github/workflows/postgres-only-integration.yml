@@ -67,6 +67,8 @@ jobs:
       - name: Verify test database is loopback before any migration
         run: |
           node -e "const u = new URL(process.env.DATABASE_URL); if(u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(1)"
+      - name: Rehearse finance-first and document-first NextCRM schema histories
+        run: node scripts/rehearse-nextcrm-dual-lineage.mjs
       - name: Restore legacy 36-table PostgreSQL baseline in throwaway CI database
         shell: bash
         run: |
