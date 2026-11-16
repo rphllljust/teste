@@ -1,7 +1,7 @@
 import {z} from 'zod';
 import {ApiError} from '../api/http';
 import {database} from '../../db/raw';
-const history=z.object({historyPage:z.coerce.number().int().min(1).max(100000).default(1)}).strict();
+const history=z.object({historyPage:z.coerce.number().int().min(1).max(100000).default(1)}).passthrough();
 export function parseHistoryPage(request:Request){const parsed=history.safeParse(Object.fromEntries(new URL(request.url).searchParams));if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Página de histórico inválida.');return parsed.data.historyPage;}
 export function financialHistory(kind:'receivables'|'payables',id:string,page:number){
  const db=database(),table=kind==='receivables'?'receivable_settlements':'payable_payments',parent=kind==='receivables'?'receivable_id':'payable_id',normal=kind==='receivables'?'receipt':'payment';
