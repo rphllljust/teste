@@ -99,6 +99,8 @@ jobs:
           JS
       - name: Upgrade existing PostgreSQL schema with additive NextCRM migration
         run: pnpm db:migrate
+      - name: Read-only audit of ledger and NextCRM schema after migration
+        run: node scripts/audit-nextcrm-migration-ledger-readonly.mjs
       - name: Read-only SQL inventory against ephemeral PostgreSQL (same SQL as future HML)
         shell: bash
         run: |
