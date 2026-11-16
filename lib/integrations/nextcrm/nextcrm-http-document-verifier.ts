@@ -3,11 +3,11 @@ import {
   NEXTCRM_BRIDGE_PATH,
   signBridgeRequest,
   verifyBridgeResponse,
-} from './bridge-protocol';
+} from './bridge-protocol.ts';
 import type {
   AuthorizedDocumentEvidence,
   OrderDocumentLinkDependencies,
-} from './document-link-preflight';
+} from './document-link-preflight.ts';
 
 export class NextcrmBridgeUnavailable extends Error {
   readonly code = 'NEXTCRM_BRIDGE_UNAVAILABLE';

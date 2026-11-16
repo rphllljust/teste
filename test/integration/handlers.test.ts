@@ -83,7 +83,7 @@ test('order handler creates and lists a persisted order; invalid input is reject
     const staleClient = await createOrder(req('/api/orders', 'POST', { id: randomUUID(), title: 'Stale client order', category: 'Serviços', description: 'synthetic test', dueDate: null, clientId, clientVersion: 2 }, owner));
     assert.equal(staleClient.status, 409);
     const created = await createOrder(req('/api/orders', 'POST', { id: orderId, title: 'CI integration order', category: 'Serviços', description: 'synthetic test', dueDate: null, clientId, clientVersion: 1 }, owner));
-    assert.equal(created.status, 201, JSON.stringify(await json(created)));
+    assert.equal(created.status, 201, JSON.stringify(await json(created.clone())));
     const stored = await pool.query('SELECT title,status,version FROM service_orders WHERE id=$1 AND owner_id=$2', [orderId, owner]);
     assert.equal(stored.rows[0]?.title, 'CI integration order');
     const listed = await getOrders(req('/api/orders?q=integration', 'GET', undefined, owner));
@@ -124,11 +124,11 @@ test('procurement handler persists supplier/order/lines with linked inventory', 
     const item = await inventoryCommand(req('/api/inventory','POST',{type:'create',id:itemId,sku:`PO-${itemId.slice(0,8)}`,name:'CI procurement item',unit:'un',minimum:'0'},owner));
     assert.equal(item.status,201);
     const supplier = await procurementCommand(req('/api/procurement','POST',{type:'supplier',id:supplierId,legalName:'CI Supplier',document:`CI-${supplierId}`,email:''},owner));
-    assert.equal(supplier.status,201,JSON.stringify(await json(supplier)));
+    assert.equal(supplier.status,201,JSON.stringify(await json(supplier.clone())));
     const invalidOrder = await procurementCommand(req('/api/procurement','POST',{type:'order',id:randomUUID(),supplierId,reference:'missing lines',expectedOn:'2027-01-15'},owner));
     assert.equal(invalidOrder.status,400);
     const order = await procurementCommand(req('/api/procurement','POST',{type:'order',id:orderId,supplierId,reference:`CI-${orderId.slice(0,8)}`,expectedOn:'2027-01-15',lines:[{id:lineId,itemId,quantity:'3',unitPrice:'12.50'}]},owner));
-    assert.equal(order.status,201,JSON.stringify(await json(order)));
+    assert.equal(order.status,201,JSON.stringify(await json(order.clone())));
     const list = await getProcurement(req('/api/procurement?q=CI-', 'GET', undefined, owner));
     assert.equal(list.status,200);
     assert.ok(((await json(list)) as unknown as ProcurementResponse).items.some(row=>row.id===orderId));
@@ -147,7 +147,7 @@ test('MRP runs against persisted stock, approval is versioned, and converts to a
     const supplier=await procurementCommand(req('/api/procurement','POST',{type:'supplier',id:supplierId,legalName:'CI MRP Supplier',document:`MRP-${supplierId}`,email:''},owner));
     assert.equal(supplier.status,201);
     const run=await runMrp(req('/api/mrp','POST',{horizonDays:30},owner));
-    assert.equal(run.status,201,JSON.stringify(await json(run)));
+    assert.equal(run.status,201,JSON.stringify(await json(run.clone())));
     const runBody=await json(run);
     assert.equal(runBody.evaluatedMaterials,1);
     assert.equal(runBody.shortages,1);
@@ -155,11 +155,11 @@ test('MRP runs against persisted stock, approval is versioned, and converts to a
     const recommendation=((await json(recommendations)) as unknown as MrpResponse).recommendations[0];
     assert.equal(recommendation.materialId,itemId);
     const approve=await mrpCommand(req('/api/mrp/commands','POST',{recommendationId:recommendation.recommendationId,expectedVersion:1,command:'approve'},owner));
-    assert.equal(approve.status,200,JSON.stringify(await json(approve)));
+    assert.equal(approve.status,200,JSON.stringify(await json(approve.clone())));
     const invalidSupplier=await mrpCommand(req('/api/mrp/commands','POST',{recommendationId:recommendation.recommendationId,expectedVersion:2,command:'convert',purchaseOrderId:randomUUID(),lineId:randomUUID(),supplierId:randomUUID(),reference:`MRP-${randomUUID().slice(0,8)}`,expectedOn:'2027-01-15',unitPrice:'10.00'},owner));
     assert.equal(invalidSupplier.status,409);
     const converted=await mrpCommand(req('/api/mrp/commands','POST',{recommendationId:recommendation.recommendationId,expectedVersion:2,command:'convert',purchaseOrderId:randomUUID(),lineId:randomUUID(),supplierId,reference:`MRP-${randomUUID().slice(0,8)}`,expectedOn:'2027-01-15',unitPrice:'10.00'},owner));
-    assert.equal(converted.status,201,JSON.stringify(await json(converted)));
+    assert.equal(converted.status,201,JSON.stringify(await json(converted.clone())));
     const persisted=await pool.query(`SELECT r.status,r.row_version,p.status AS po_status,l.quantity
       FROM mrp_recommendations r JOIN supplier_purchase_orders p ON p.id=r.purchase_order_id
       JOIN supplier_purchase_order_lines l ON l.order_id=p.id WHERE r.id=$1 AND r.owner_id=$2`,[recommendation.recommendationId,owner]);

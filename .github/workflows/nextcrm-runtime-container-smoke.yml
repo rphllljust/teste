@@ -1,0 +1,123 @@
+name: NextCRM release container boot smoke (ephemeral)
+
+on:
+  pull_request:
+    paths:
+      - .gitmodules
+      - integrations/**
+      - .github/workflows/nextcrm-runtime-container-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-nextcrm-boot:
+    name: Boot NextCRM v0.41.0 with throwaway PostgreSQL and MinIO
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - name: Checkout immutable source reference
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Confirm release SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
+          grep -Fq 'ghcr.io/pdovhomilja/nextcrm-app:v0.41.0' integrations/nextcrm-upstream/Dockerfile.release
+      - name: Generate CI-only credentials and create private network
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in CI_DB_PASSWORD CI_MINIO_PASSWORD CI_AUTH_SECRET CI_EMAIL_KEY CI_INNGEST_KEY CI_INNGEST_SIGNING_KEY; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            printf '%s=%s\n' "$var" "$value" >> "$GITHUB_ENV"
+          done
+          docker network create nextcrm-ci
+      - name: Start ephemeral PostgreSQL 17 with pgvector and isolated MinIO
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name nextcrm-ci-db \
+            --network nextcrm-ci --network-alias postgres \
+            -e POSTGRES_USER=nextcrm -e POSTGRES_DB=nextcrm \
+            -e POSTGRES_PASSWORD="$CI_DB_PASSWORD" \
+            pgvector/pgvector:pg17
+          docker run -d --rm --name nextcrm-ci-minio \
+            --network nextcrm-ci --network-alias minio \
+            -e MINIO_ROOT_USER=ci-nextcrm -e MINIO_ROOT_PASSWORD="$CI_MINIO_PASSWORD" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z \
+            server /data --console-address :9001
+          for i in $(seq 1 90); do
+            if docker exec nextcrm-ci-db pg_isready -U nextcrm -d nextcrm >/dev/null 2>&1 && \
+               docker exec nextcrm-ci-minio curl --silent --fail http://127.0.0.1:9000/minio/health/live >/dev/null 2>&1; then
+              echo 'Ephemeral database and MinIO are healthy.'
+              exit 0
+            fi
+            sleep 1
+          done
+          echo 'Ephemeral dependencies failed readiness.' >&2
+          exit 1
+      - name: Boot official NextCRM release image (migrations target throwaway DB only)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name nextcrm-ci-app \
+            --network nextcrm-ci \
+            -p 127.0.0.1:13000:3000 \
+            -e DATABASE_URL="postgresql://nextcrm:$CI_DB_PASSWORD@postgres:5432/nextcrm" \
+            -e DB_HOST=postgres -e DB_PORT=5432 -e DB_USER=nextcrm -e DB_NAME=nextcrm \
+            -e DB_PASSWORD="$CI_DB_PASSWORD" \
+            -e MINIO_ENDPOINT=http://minio:9000 \
+            -e MINIO_PUBLIC_ENDPOINT=http://127.0.0.1:19000 \
+            -e MINIO_BUCKET=nextcrm \
+            -e MINIO_ACCESS_KEY=ci-nextcrm -e MINIO_SECRET_KEY="$CI_MINIO_PASSWORD" \
+            -e BETTER_AUTH_SECRET="$CI_AUTH_SECRET" -e EMAIL_ENCRYPTION_KEY="$CI_EMAIL_KEY" \
+            -e BETTER_AUTH_URL=http://localhost:13000 \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:13000 \
+            -e TEST_USER_EMAIL=ci-admin@example.invalid \
+            -e SEED_DEMO_DATA=0 \
+            -e INNGEST_EVENT_KEY="$CI_INNGEST_KEY" \
+            -e INNGEST_SIGNING_KEY="$CI_INNGEST_SIGNING_KEY" \
+            -e INNGEST_DEV=1 \
+            ghcr.io/pdovhomilja/nextcrm-app:v0.41.0
+          for i in $(seq 1 150); do
+            status="$(curl --silent --max-time 3 --output /dev/null --write-out '%{http_code}' http://127.0.0.1:13000/ || true)"
+            case "$status" in
+              200|301|302|303|307|308)
+                echo "NextCRM release container responds with HTTP $status."
+                exit 0
+                ;;
+            esac
+            if ! docker ps --format '{{.Names}}' | grep -qx 'nextcrm-ci-app'; then
+              echo 'NextCRM container exited during startup.' >&2
+              exit 1
+            fi
+            sleep 2
+          done
+          echo 'NextCRM did not complete startup.' >&2
+          exit 1
+      - name: Check unauthenticated document download is refused
+        shell: bash
+        run: |
+          set -euo pipefail
+          status="$(curl --silent --max-time 15 --output /dev/null --write-out '%{http_code}' \
+            http://127.0.0.1:13000/api/documents/00000000-0000-4000-8000-000000000001/file)"
+          test "$status" = 401 || { echo "Expected 401, got HTTP $status" >&2; exit 1; }
+          echo 'Unauthenticated document download returned HTTP 401 as required.'
+      - name: Print limited logs on failure (no environment variables)
+        if: failure()
+        shell: bash
+        run: |
+          docker logs --tail 70 nextcrm-ci-app 2>&1 | sed -E 's/(postgresql:\/\/)[^@]+@/\1***@/g' || true
+          docker logs --tail 20 nextcrm-ci-db 2>&1 || true
+      - name: Destroy isolated containers and network
+        if: always()
+        shell: bash
+        run: |
+          docker rm -f nextcrm-ci-app nextcrm-ci-minio nextcrm-ci-db >/dev/null 2>&1 || true
+          docker network rm nextcrm-ci >/dev/null 2>&1 || true

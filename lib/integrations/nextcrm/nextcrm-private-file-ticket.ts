@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import {
   NEXTCRM_BRIDGE_PATH, signBridgeRequest, verifyBridgeResponse,
-} from './bridge-protocol';
+} from './bridge-protocol.ts';
 import {
   NextcrmBridgeUnavailable, type NextcrmBridgeConfig,
-} from './nextcrm-http-document-verifier';
+} from './nextcrm-http-document-verifier.ts';
 
 /**
  * A one-minute S3 file ticket is exchanged ONLY with the private HMAC route.
