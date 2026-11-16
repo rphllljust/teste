@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { closeDatabase } from '../../db/raw';
 import { GET } from '../../app/api/orders/[id]/route';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 
@@ -68,5 +69,8 @@ test('OS detail returns accurate history/relations exclusively to its actual own
     await db.query('DELETE FROM service_orders WHERE id=ANY($1::text[])',[[owned,other,ownerless]]);
     await db.query('DELETE FROM clients WHERE id=$1',[clientId]);
     await db.end();
+    // The route creates a shared server Pool; close it in this disposable
+    // test worker so node --test can exit without dangling PG sockets.
+    await closeDatabase();
   }
 });
