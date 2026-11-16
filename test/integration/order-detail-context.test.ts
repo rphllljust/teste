@@ -10,7 +10,7 @@ if (process.env.NODE_ENV !== 'test' || !process.env.DATABASE_URL)
   throw Error('NO-GO: order context requires isolated test database');
 const url = new URL(process.env.DATABASE_URL);
 if (!['localhost','127.0.0.1'].includes(url.hostname) ||
-    url.pathname !== '/cisne_test' || url.port !== '5432')
+    !['/cisne_test','/cisne_ci'].includes(url.pathname) || url.port !== '5432')
   throw Error('NO-GO: refusing data fixtures outside disposable CI PostgreSQL');
 
 test('OS detail returns accurate history/relations exclusively to its actual owner', async () => {
