@@ -38,7 +38,7 @@ try {
         await page.waitForFunction(x=>document.querySelector('main h1')?.textContent?.trim()===x,module,{timeout:15000});
         const active=page.locator('nav[aria-label="Módulos empresariais"] button[aria-current="page"]');
         assert.equal(await active.count(),1,'one active module '+module);
-        assert.equal((await active.innerText()).trim(),module);
+        assert.equal((await active.locator('span').first().innerText()).trim(),module);
         const key=module.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,'-');
         await page.screenshot({path:join(root,device.name+'-'+key+'.png'),fullPage:true,animations:'disabled'});
         const width=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
