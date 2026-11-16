@@ -88,12 +88,12 @@ test('OS, linked finance, cockpit, execution and commands exclude legacy ownerle
           {params:Promise.resolve({id:forbiddenOrder})});
         assert.equal(exec.status,404);
         const post=await postExecution(req('/api/orders/'+forbiddenOrder+'/execution',who,{
-          key:randomUUID(),command:'report',resourceKind:'equipment',description:'Synthetic report',
-          quantity:'1',unit:'un',effectiveDate:'2026-11-16',reference:'CI-BLOCK',
+          key:randomUUID(),command:'report',version:1,resourceKind:'equipment',
+          description:'Synthetic report',quantity:'1',unit:'un',
+          resourceReference:'CI-SYNTHETIC-EQUIPMENT',
+          effectiveDate:'2026-11-16',reference:'CI-BLOCK',
         }),{params:Promise.resolve({id:forbiddenOrder})});
-        // Validation may reject malformed synthetic report before ownership,
-        // but must never accept or write it.
-        assert.notEqual(post.status,201,'Cannot mutate a foreign order');
+        assert.equal(post.status,404,'Valid execution command must fail at owner boundary');
         const command=await postCommand(req('/api/commands',who,{
           id:forbiddenOrder,version:1,key:randomUUID(),command:'start',
         }));
