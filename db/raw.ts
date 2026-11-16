@@ -60,4 +60,10 @@ export function database() {
   };
 }
 
+/**
+ * Trusted server-only pool for transactional NextCRM bridge adapters.
+ * Do not import this module into client components or expose raw SQL to HTTP.
+ */
+export function databasePool(): Pool { return getPool(); }
+
 export async function closeDatabase() { if (pool) await pool.end(); pool = undefined; }
