@@ -6,6 +6,7 @@ import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { closeDatabase } from '../../db/raw';
 import { POST as settle } from '../../app/api/finance/receivables/settlements/route';
 import { POST as reverse } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
+import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Integration harness must run with NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for finance integration tests');
@@ -28,6 +29,7 @@ before(async () => {
 });
 
 after(async () => {
+  await pool.query('DELETE FROM finance_period_closes WHERE actor_id=$1', [actor]);
   await pool.query('DELETE FROM finance_audit_events WHERE actor_id=$1', [actor]);
   await pool.query('DELETE FROM receivable_settlements WHERE receivable_id=$1', [receivableId]);
   await pool.query('DELETE FROM receivables WHERE id=$1', [receivableId]);
@@ -55,4 +57,9 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   assert.deepEqual(stored.rows, [{ kind: 'receipt', amount: 4000, reverses_id: null }, { kind: 'reversal', amount: 4000, reverses_id: commandKey }]);
   const audit = await pool.query("SELECT action,entity_type,entity_id,actor_id FROM finance_audit_events WHERE entity_id=$1 ORDER BY occurred_at, id", [receivableId]);
   assert.deepEqual(audit.rows, [{ action: 'receipt_registered', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }, { action: 'receipt_reversed', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }]);
+  const periodId = randomUUID();
+  const closed = await closePeriod(req('/api/finance/periods/close', 'POST', { id: periodId, periodStart: '2026-11-01', periodEnd: '2026-11-30', reference: 'CI close' }));
+  assert.equal(closed.status, 201);
+  const blocked = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '1000', effectiveDate: '2026-11-20', reference: 'CI blocked', commandKey: randomUUID() }));
+  assert.equal(blocked.status, 409);
 });
