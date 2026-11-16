@@ -52,6 +52,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Cross-system document ACL and strict input contracts
         run: node --import tsx --test lib/integrations/nextcrm/bridge-protocol.test.mjs lib/integrations/nextcrm/document-link-contract.test.mjs lib/integrations/nextcrm/document-link-preflight.test.mjs
+      - name: Audit classification and fail-closed behavior with synthetic catalog
+        run: node --test scripts/audit-nextcrm-migration-ledger-readonly.test.mjs
       - name: TypeScript
         run: pnpm exec tsc --noEmit
       - name: ESLint
@@ -100,6 +102,8 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm db:migrate
+      - name: Read-only audit of schema ledger and NextCRM bridge catalog
+        run: node scripts/audit-nextcrm-migration-ledger-readonly.mjs
       - name: Execute actual route handlers against PostgreSQL
         run: pnpm test:integration
       - name: Prove backup and full restore into a separate disposable PostgreSQL database
