@@ -28,6 +28,12 @@ const accountId = randomUUID();
 const documentId = randomUUID();
 process.env.CISNE_NEXTCRM_BRIDGE_SECRET = secret;
 process.env.CISNE_NEXTCRM_INSTANCE_KEY = tenantKey;
+// Presigning requires no real S3 endpoint or credentials during isolated CI.
+process.env.MINIO_ENDPOINT = "http://127.0.0.1:19000";
+process.env.MINIO_PUBLIC_ENDPOINT = "https://files.example.invalid";
+process.env.MINIO_BUCKET = "ci-only";
+process.env.MINIO_ACCESS_KEY = "ci-ephemeral-only";
+process.env.MINIO_SECRET_KEY = "ci-ephemeral-secret-never-live";
 
 const basePayload = {
   documentId,
@@ -63,6 +69,11 @@ async function authorize(payload: Record<string, unknown> = basePayload, forge =
 afterAll(async () => {
   delete process.env.CISNE_NEXTCRM_BRIDGE_SECRET;
   delete process.env.CISNE_NEXTCRM_INSTANCE_KEY;
+  delete process.env.MINIO_ENDPOINT;
+  delete process.env.MINIO_PUBLIC_ENDPOINT;
+  delete process.env.MINIO_BUCKET;
+  delete process.env.MINIO_ACCESS_KEY;
+  delete process.env.MINIO_SECRET_KEY;
   await prismaBase.$disconnect();
 });
 
@@ -98,6 +109,33 @@ it("validates signed document authorization against REAL PostgreSQL and original
     });
     expect(JSON.stringify(permitted.body)).not.toContain("s3://");
 
+    // Storage requests must not receive a URL unless there is an approved
+    // bucket key. Even the document owner cannot download a fake legacy URI.
+    const noKey = await authorize({ ...basePayload, purpose: "file" });
+    expect(noKey.status).toBe(404);
+    expect(JSON.stringify(noKey.body)).not.toContain("fileUrl");
+    await prismaBase.documents.update({
+      where: { id: documentId },
+      data: {
+        key: "documents/ci-only-fictitious.pdf",
+        document_file_url: "https://files.example.invalid/ci-only/documents/ci-only-fictitious.pdf",
+      },
+    });
+    const ticket = await authorize({ ...basePayload, purpose: "file" });
+    expect(ticket.status).toBe(200);
+    expect(ticket.body).toMatchObject({
+      authorized: true, id: documentId, accountId, tenantKey, version: 1,
+      sha256: "a".repeat(64), expiresIn: 60,
+    });
+    expect(typeof ticket.body.fileUrl).toBe("string");
+    const url = new URL(ticket.body.fileUrl);
+    expect(url.origin).toBe("https://files.example.invalid");
+    expect(url.pathname).toBe("/ci-only/documents/ci-only-fictitious.pdf");
+    expect(url.searchParams.get("X-Amz-Expires")).toBe("60");
+    expect(url.searchParams.has("X-Amz-Signature")).toBe(true);
+    expect(ticket.body.fileUrl).not.toContain("ci-ephemeral-secret");
+    expect((await authorize({ ...basePayload, purpose: "file", subjectId: outsiderId })).status).toBe(404);
+
     expect((await authorize(basePayload, true)).status).toBe(401);
     expect((await authorize({ ...basePayload, subjectId: outsiderId })).status).toBe(404);
     expect((await authorize({ ...basePayload, erpClientId: randomUUID() })).status).toBe(404);
@@ -118,6 +156,7 @@ it("validates signed document authorization against REAL PostgreSQL and original
 
     await prismaBase.documents.update({ where: { id: documentId }, data: { deletedAt: new Date() } });
     expect((await authorize()).status).toBe(404);
+    expect((await authorize({ ...basePayload, purpose: "file" })).status).toBe(404);
     await prismaBase.documents.update({ where: { id: documentId }, data: { deletedAt: null, version: 2 } });
     const revision = await authorize();
     expect(revision.status).toBe(200);
