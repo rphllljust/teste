@@ -28,6 +28,7 @@ before(async () => {
 });
 
 after(async () => {
+  await pool.query('DELETE FROM finance_audit_events WHERE actor_id=$1', [actor]);
   await pool.query('DELETE FROM receivable_settlements WHERE receivable_id=$1', [receivableId]);
   await pool.query('DELETE FROM receivables WHERE id=$1', [receivableId]);
   await pool.query('DELETE FROM invoices WHERE id=$1', [invoiceId]);
@@ -52,4 +53,6 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   assert.equal(duplicate.status, 409);
   const stored = await pool.query("SELECT kind,amount,reverses_id FROM receivable_settlements WHERE receivable_id=$1 ORDER BY kind", [receivableId]);
   assert.deepEqual(stored.rows, [{ kind: 'receipt', amount: 4000, reverses_id: null }, { kind: 'reversal', amount: 4000, reverses_id: commandKey }]);
+  const audit = await pool.query("SELECT action,entity_type,entity_id,actor_id FROM finance_audit_events WHERE entity_id=$1 ORDER BY occurred_at, id", [receivableId]);
+  assert.deepEqual(audit.rows, [{ action: 'receipt_registered', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }, { action: 'receipt_reversed', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }]);
 });

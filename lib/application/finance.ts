@@ -2,6 +2,7 @@ import { database } from '../../db/raw';
 import { ApiError, type RequestContext } from '../api/http';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
+const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
 
 export type SettlementInput = {
   receivableId: string;
@@ -42,6 +43,7 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
     VALUES ($1,$2,'receipt',$3,$4,$5,$6,$7,$8,$9)`,
     [input.commandKey, input.receivableId, input.amount, input.effectiveDate, input.reference,
       new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+  await audit(query, context, 'receivable', input.receivableId, 'receipt_registered', input.requestHash, { settlementId: input.commandKey, amount: input.amount, reference: input.reference });
 
   return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount) } };
 }
@@ -67,6 +69,7 @@ export async function reverseReceivableSettlement(context: RequestContext, input
       VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
       [input.commandKey, row.receivable_id, row.amount, input.effectiveDate, input.reference, input.settlementId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    await audit(query, context, 'receivable', row.receivable_id as string, 'receipt_reversed', input.requestHash, { settlementId: input.settlementId, reversalId: input.commandKey, reference: input.reference });
     return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount) } };
   });
 }
@@ -94,6 +97,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
       VALUES ($1,$2,'payment',$3,$4,$5,$6,$7,$8,$9)`,
       [input.commandKey, input.payableId, input.amount, input.effectiveDate, input.reference,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    await audit(query, context, 'payable', input.payableId, 'payment_registered', input.requestHash, { paymentId: input.commandKey, amount: input.amount, reference: input.reference });
     return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount) } };
   });
 }
@@ -117,6 +121,7 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
       VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
       [input.commandKey, row.payable_id, row.amount, input.effectiveDate, input.reference, input.paymentId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    await audit(query, context, 'payable', row.payable_id as string, 'payment_reversed', input.requestHash, { paymentId: input.paymentId, reversalId: input.commandKey, reference: input.reference });
     return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount) } };
   });
 }

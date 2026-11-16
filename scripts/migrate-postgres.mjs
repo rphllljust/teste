@@ -11,6 +11,7 @@ const migrations = [
   { id: '0001_nextcrm_order_document_links', file: '../drizzle-pg/0001_nextcrm_order_document_links.sql' },
   { id: '0002_crm_proposal_origin', file: '../drizzle-pg/0002_crm_proposal_origin.sql' },
   { id: '0002_nextcrm_verified_mappings', file: '../drizzle-pg/0002_nextcrm_verified_mappings.sql' },
+  { id: '0003_finance_audit', file: '../drizzle-pg/0003_finance_audit.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
