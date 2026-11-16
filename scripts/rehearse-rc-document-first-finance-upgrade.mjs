@@ -37,9 +37,14 @@ function schemaScopedUrl(original, schema) {
   return url.toString();
 }
 
-async function execSqlMigration(db, name) {
-  const sql = await readFile(new URL('../drizzle-pg/' + name + '.sql', import.meta.url), 'utf8');
-  for (const statement of sql.split('--> statement-breakpoint').map(s=>s.trim()).filter(Boolean)) {
+async function execSqlMigration(db, name, schema) {
+  const sourceSql = await readFile(new URL('../drizzle-pg/' + name + '.sql', import.meta.url), 'utf8');
+  // Drizzle's historical 0000 baseline hardcodes "public" for some FK targets.
+  // Only the SYNTHETIC FIXTURE uses an isolated namespace rewrite. The real
+  // migrate-postgres.mjs child executes the repository SQL UNMODIFIED.
+  // A missing substitution would cause 42P01, so never create in public.
+  const scopedSql = sourceSql.replaceAll('"public".', '"' + schema + '".');
+  for (const statement of scopedSql.split('--> statement-breakpoint').map(s=>s.trim()).filter(Boolean)) {
     await db.query(statement);
   }
 }
@@ -51,12 +56,12 @@ const preexisting = [
   '0003_nextcrm_document_bridge',
 ];
 
-async function prepareDocumentFirst(db) {
+async function prepareDocumentFirst(db, schema) {
   await db.query('BEGIN');
   try {
     await db.query('CREATE TABLE _cisne_schema_migrations (id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now())');
     for (const migration of preexisting) {
-      await execSqlMigration(db,migration);
+      await execSqlMigration(db,migration,schema);
       await db.query('INSERT INTO _cisne_schema_migrations(id) VALUES($1)',[migration]);
     }
 
@@ -182,7 +187,7 @@ async function run() {
     const target=await scoped.query('SELECT current_schema() AS name');
     assert.equal(target.rows[0].name,schema,'refuse migrations against any other schema');
 
-    await prepareDocumentFirst(scoped);
+    await prepareDocumentFirst(scoped,schema);
     const realRunner=fileURLToPath(new URL('./migrate-postgres.mjs', import.meta.url));
     const env={...process.env,DATABASE_URL:scopedUrl};
     // This is the real migration entrypoint, not simulated statements.
