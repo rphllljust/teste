@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   let ready = false;
   try {
-    ready = await checkErpDatabaseReadiness((sql, params) => databasePool().query(sql, params));
+    ready = await checkErpDatabaseReadiness((sql: string, params: readonly string[]) => databasePool().query(sql, [...params]));
   } catch {
     // Fail closed. Database errors may contain credentials and are not returned.
   }
