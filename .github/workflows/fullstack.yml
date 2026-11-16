@@ -21,6 +21,10 @@ jobs:
         run: node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs
       - name: Validate staging CRM navigation and production deny-by-default
         run: node --experimental-strip-types --test lib/integrations/nextcrm/public-navigation.test.mjs lib/integrations/nextcrm/native-crm-ui.test.mjs
+      - name: Reject duplicate DDL across active finance and NextCRM migrations
+        run: |
+          node --test scripts/audit-active-migrations.test.mjs
+          node scripts/audit-active-migrations.mjs
       - name: Reject unverified production and staging migration
         run: node --test scripts/migration-safety.test.mjs
       - name: Validate staging signed session and public HTTPS mutation origin
