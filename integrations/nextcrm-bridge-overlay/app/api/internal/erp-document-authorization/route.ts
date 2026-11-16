@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
 import { z } from "zod";
+import { isDocumentKey } from "@/lib/documents/file-key";
 import { prismadb } from "@/lib/prisma";
 import {
   accountReadScopeWhere,
@@ -27,6 +28,9 @@ const bodySchema = z.object({
   erpClientId: uuid,
   tenantKey: z.string().regex(/^[A-Za-z0-9_-]{3,128}$/),
   requestId: uuid,
+  // Explicitly opt in to a one-minute server-to-server file ticket.
+  // Existing metadata callers are unchanged; this is never a public API.
+  purpose: z.enum(["metadata", "file"]).optional(),
 }).strict();
 
 async function smallBody(req: NextRequest): Promise<string | null> {
@@ -127,13 +131,38 @@ export async function POST(req: NextRequest) {
         accounts: { some: { account_id: accountId } },
         ...documentReadScopeWhere(actor),
       },
-      select: { id: true, version: true, content_hash: true },
+      select: { id: true, version: true, content_hash: true, key: true },
     });
     if (!document || !Number.isInteger(document.version) || document.version < 1) {
       return reply(404, { authorized: false });
     }
     const hash = document.content_hash;
     const sha256 = typeof hash === "string" && /^[a-f0-9]{64}$/.test(hash) ? hash : null;
+    if (parsed.data.purpose === "file") {
+      // Fail closed for legacy/external URLs and documents without a trusted
+      // bucket key + digest. A browser never supplies the storage key.
+      if (!sha256 || !document.key || !isDocumentKey(document.key)) {
+        return reply(404, { authorized: false });
+      }
+      const { presignGet, MINIO_BUCKET, MINIO_PUBLIC_URL } = await import("@/lib/minio");
+      const expiresIn = 60;
+      const fileUrl = await presignGet(document.key, expiresIn);
+      // The signed host and bucket must be the canonical S3 public origin.
+      // Never let a malformed endpoint become a browser redirect or SSRF.
+      const signed = new URL(fileUrl);
+      const allowedOrigin = new URL(MINIO_PUBLIC_URL);
+      if (signed.protocol !== "https:" || signed.origin !== allowedOrigin.origin ||
+          signed.username || signed.password ||
+          !signed.pathname.startsWith("/" + MINIO_BUCKET + "/documents/") ||
+          signed.hash) {
+        return reply(503, { error: "Unavailable" });
+      }
+      return reply(200, {
+        authorized: true, id: document.id, tenantKey: instanceKey,
+        accountId, version: document.version, sha256,
+        fileUrl, expiresIn,
+      });
+    }
     return reply(200, {
       authorized: true, id: document.id, tenantKey: instanceKey,
       accountId, version: document.version, sha256,
