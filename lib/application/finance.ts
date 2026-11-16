@@ -1,0 +1,47 @@
+import { database } from '../../db/raw';
+import { ApiError, type RequestContext } from '../api/http';
+
+type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
+
+export type SettlementInput = {
+  receivableId: string;
+  amount: number;
+  effectiveDate: string;
+  reference: string;
+  commandKey: string;
+  requestHash: string;
+};
+
+export async function registerReceivableSettlement(context: RequestContext, input: SettlementInput) {
+  return database().transaction(query => registerReceivableSettlementWithQuery(query, context, input));
+}
+
+export async function registerReceivableSettlementWithQuery(query: Query, context: RequestContext, input: SettlementInput) {
+  if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor da baixa deve ser positivo.');
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data da baixa é inválida.');
+  if (!input.commandKey || !input.requestHash) throw new ApiError(400, 'VALIDATION_FAILED', 'A operação precisa de idempotência.');
+
+  const prior = await query('SELECT id, receivable_id, amount, effective_date, reference, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
+  if (prior.rows.length) {
+    const row = prior.rows[0];
+    if (row.request_hash !== input.requestHash || row.receivable_id !== input.receivableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+    return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference } };
+  }
+
+  const receivable = await query(`SELECT r.id, r.amount,
+    COALESCE((SELECT SUM(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END)
+      FROM receivable_settlements s WHERE s.receivable_id=r.id),0) AS settled
+    FROM receivables r WHERE r.id=$1 FOR UPDATE`, [input.receivableId]);
+  if (!receivable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título financeiro não encontrado.');
+  const row = receivable.rows[0];
+  const balance = Number(row.amount) - Number(row.settled);
+  if (input.amount > balance) throw new ApiError(409, 'SETTLEMENT_EXCEEDS_BALANCE', 'A baixa excede o saldo do título.');
+
+  await query(`INSERT INTO receivable_settlements
+    (id, receivable_id, kind, amount, effective_date, reference, created_at, actor_id, request_hash, correlation_id)
+    VALUES ($1,$2,'receipt',$3,$4,$5,$6,$7,$8,$9)`,
+    [input.commandKey, input.receivableId, input.amount, input.effectiveDate, input.reference,
+      new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+
+  return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+}
