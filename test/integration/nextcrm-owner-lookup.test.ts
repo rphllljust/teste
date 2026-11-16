@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { createPostgresOrderOwnershipReader } from '../../lib/integrations/nextcrm/postgres-order-ownership.ts';
-import { authorizeOrderDocumentLink, OrderDocumentLinkDenied } from '../../lib/integrations/nextcrm/document-link-preflight.ts';
+import { createPostgresOrderOwnershipReader } from '../../lib/integrations/nextcrm/postgres-order-ownership';
+import { authorizeOrderDocumentLink, OrderDocumentLinkDenied } from '../../lib/integrations/nextcrm/document-link-preflight';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('This integration test is restricted to NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
