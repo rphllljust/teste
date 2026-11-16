@@ -8,7 +8,7 @@ const headers={'Cache-Control':'no-store, private','X-Content-Type-Options':'nos
 const input=z.object({passphrase:z.string().min(24).max(160)}).strict();
 const isStagingRuntime=()=>process.env.RAILWAY_ENVIRONMENT_NAME==='staging'||process.env.CISNE_STAGING_UAT==='true';
 const origin=()=>approvedStagingPublicOrigin();
-const configured=()=>runtime()&&origin()!==null&&/^[a-f0-9]{64}$/.test(process.env.CISNE_STAGING_LOGIN_HASH||'')&&(process.env.CISNE_STAGING_SESSION_SECRET||'').length>=32&&(process.env.CISNE_STAGING_ACTOR_ID||'').length>=8;
+const configured=()=>isStagingRuntime()&&origin()!==null&&/^[a-f0-9]{64}$/.test(process.env.CISNE_STAGING_LOGIN_HASH||'')&&(process.env.CISNE_STAGING_SESSION_SECRET||'').length>=32&&(process.env.CISNE_STAGING_ACTOR_ID||'').length>=8;
 const json=(d:object,s=200,h:Record<string,string>={})=>Response.json(d,{status:s,headers:{...headers,...h}});
 const allowed=(r:Request)=>r.headers.get('origin')===origin();
 export async function GET(r:Request){if(!isStagingRuntime())return json({error:'Not found'},404);return json({authenticated:configured()&&Boolean(validateStagingSession(r))});}
