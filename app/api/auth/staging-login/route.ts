@@ -10,9 +10,15 @@ export const dynamic='force-dynamic';
 const jsonHeaders={'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'};
 const loginInput=z.object({passphrase:z.string().min(24).max(160)}).strict();
 function publicOrigin(){return approvedStagingPublicOrigin();}
+function stagingRuntime(){
+  // Railway's reserved environment variable is not reliable in every
+  // isolated UAT service. The explicit flag is scoped to this UAT service.
+  return process.env.RAILWAY_ENVIRONMENT_NAME==='staging' ||
+    process.env.CISNE_STAGING_UAT==='true';
+}
 function configured(){
   const hash=process.env.CISNE_STAGING_LOGIN_HASH;
-  return process.env.RAILWAY_ENVIRONMENT_NAME==='staging'&&
+  return stagingRuntime()&&
     publicOrigin()!==null&&
     typeof hash==='string'&&/^[a-f0-9]{64}$/.test(hash)&&
     typeof process.env.CISNE_STAGING_SESSION_SECRET==='string'&&
@@ -27,7 +33,7 @@ function json(data:object,status=200,extra:Record<string,string>={}){
   return Response.json(data,{status,headers:{...jsonHeaders,...extra}});
 }
 export async function GET(request:Request){
-  if(process.env.RAILWAY_ENVIRONMENT_NAME!=='staging')
+  if(!stagingRuntime())
     return json({error:'Not found'},404);
   return json({authenticated:configured()&&Boolean(validateStagingSession(request))});
 }
