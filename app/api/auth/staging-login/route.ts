@@ -38,8 +38,8 @@ export async function GET(request:Request){
 export async function POST(request:Request){
   if(process.env.RAILWAY_ENVIRONMENT_NAME!=='staging')
     return json({error:'Not found'},404);
-  if(!configured())return json({error:'Autenticação de homologação não configurada.'},503);
   if(!allowedOrigin(request))return json({error:'Origem não autorizada.'},403);
+  if(!configured())return json({error:'Autenticação de homologação não configurada.'},503);
   // Extremely high-entropy passphrase is mandatory; never log it, its hash,
   // session values, caller identity or the contents of invalid requests.
   const raw=await request.text();
