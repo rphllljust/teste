@@ -13,7 +13,7 @@ function disposableCiDatabase(env){
     const url=new URL(env.DATABASE_URL||'');
     return url.protocol==='postgresql:'&&
       ['localhost','127.0.0.1'].includes(url.hostname)&&
-      url.pathname==='/cisne_test'&&url.port==='5432';
+    ['/cisne_test','/cisne_ci'].includes(url.pathname)&&url.port==='5432';
   }catch{return false;}
 }
 export function validateRestoreAttestation({migrationId,sql,env=process.env,now=Date.now()}){
