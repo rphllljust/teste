@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
-import { NEXTCRM_BRIDGE_PATH, verifyBridgeRequest, signBridgeResponse } from '../../lib/integrations/nextcrm/bridge-protocol.ts';
-import { createPostgresNextcrmLinkDependencies } from '../../lib/integrations/nextcrm/postgres-mapped-dependencies.ts';
-import { authorizeAndPersistOrderDocumentLink } from '../../lib/integrations/nextcrm/postgres-document-link.ts';
-import { OrderDocumentLinkDenied } from '../../lib/integrations/nextcrm/document-link-preflight.ts';
+import { NEXTCRM_BRIDGE_PATH, verifyBridgeRequest, signBridgeResponse } from '../../lib/integrations/nextcrm/bridge-protocol';
+import { createPostgresNextcrmLinkDependencies } from '../../lib/integrations/nextcrm/postgres-mapped-dependencies';
+import { authorizeAndPersistOrderDocumentLink } from '../../lib/integrations/nextcrm/postgres-document-link';
+import { OrderDocumentLinkDenied } from '../../lib/integrations/nextcrm/document-link-preflight';
 
 if (process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('No real environment allowed');
 const url=new URL(process.env.DATABASE_URL);
