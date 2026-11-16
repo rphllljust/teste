@@ -127,6 +127,9 @@ jobs:
             '0001_nextcrm_order_document_links',
             '0002_crm_proposal_origin',
             '0002_nextcrm_verified_mappings',
+            '0003_finance_audit',
+            '0004_cash_transfers',
+            '0005_finance_period_closes',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;

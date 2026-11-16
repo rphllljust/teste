@@ -1,6 +1,6 @@
 -- PostgreSQL ERP only; mapping records are disabled until explicitly approved.
 -- Does not alter NextCRM's own database and contains no secrets.
-CREATE TABLE "nextcrm_erp_identity_mappings" (
+CREATE TABLE IF NOT EXISTS "nextcrm_erp_identity_mappings" (
   "erp_actor_id" text PRIMARY KEY NOT NULL,
   "nextcrm_subject_id" text NOT NULL,
   "instance_key" text NOT NULL,
@@ -14,10 +14,10 @@ CREATE TABLE "nextcrm_erp_identity_mappings" (
   CONSTRAINT "nextcrm_identity_approval" CHECK (length("verified_by") BETWEEN 3 AND 200 AND length("verified_source") BETWEEN 8 AND 256)
 );
 --> statement-breakpoint
-CREATE INDEX "nextcrm_identity_active_idx"
+CREATE INDEX IF NOT EXISTS "nextcrm_identity_active_idx"
   ON "nextcrm_erp_identity_mappings" ("instance_key","active");
 --> statement-breakpoint
-CREATE TABLE "nextcrm_erp_client_account_mappings" (
+CREATE TABLE IF NOT EXISTS "nextcrm_erp_client_account_mappings" (
   "erp_client_id" text PRIMARY KEY NOT NULL REFERENCES "clients"("id") ON DELETE RESTRICT,
   "erp_owner_id" text NOT NULL,
   "nextcrm_account_id" text NOT NULL,
@@ -32,5 +32,5 @@ CREATE TABLE "nextcrm_erp_client_account_mappings" (
   CONSTRAINT "nextcrm_account_approval" CHECK (length("verified_by") BETWEEN 3 AND 200 AND length("verified_source") BETWEEN 8 AND 256)
 );
 --> statement-breakpoint
-CREATE INDEX "nextcrm_client_account_owner_idx"
+CREATE INDEX IF NOT EXISTS "nextcrm_client_account_owner_idx"
   ON "nextcrm_erp_client_account_mappings" ("erp_owner_id","instance_key","active");

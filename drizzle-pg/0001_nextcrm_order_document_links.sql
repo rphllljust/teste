@@ -1,6 +1,6 @@
 -- NextCRM OS/document linkage metadata only. No files or credentials stored here.
 -- This migration is additive and must never touch NextCRM's own PostgreSQL database.
-CREATE TABLE "nextcrm_order_document_links" (
+CREATE TABLE IF NOT EXISTS "nextcrm_order_document_links" (
   "id" text PRIMARY KEY NOT NULL,
   "service_order_id" text NOT NULL REFERENCES "service_orders"("id") ON DELETE RESTRICT,
   "owner_id" text NOT NULL,
@@ -24,13 +24,13 @@ CREATE TABLE "nextcrm_order_document_links" (
   CONSTRAINT "nextcrm_doc_link_logical_unique" UNIQUE ("service_order_id","owner_id","nextcrm_document_id","document_version")
 );
 --> statement-breakpoint
-CREATE INDEX "nextcrm_doc_link_order_owner_idx"
+CREATE INDEX IF NOT EXISTS "nextcrm_doc_link_order_owner_idx"
   ON "nextcrm_order_document_links" ("service_order_id","owner_id","created_at");
 --> statement-breakpoint
-CREATE INDEX "nextcrm_doc_link_tenant_idx"
+CREATE INDEX IF NOT EXISTS "nextcrm_doc_link_tenant_idx"
   ON "nextcrm_order_document_links" ("tenant_key","nextcrm_account_id");
 --> statement-breakpoint
-CREATE TABLE "nextcrm_order_document_events" (
+CREATE TABLE IF NOT EXISTS "nextcrm_order_document_events" (
   "id" text PRIMARY KEY NOT NULL,
   "link_id" text NOT NULL REFERENCES "nextcrm_order_document_links"("id") ON DELETE RESTRICT,
   "event_type" text NOT NULL,
@@ -43,10 +43,10 @@ CREATE TABLE "nextcrm_order_document_events" (
   CONSTRAINT "nextcrm_doc_event_one_linked" UNIQUE ("link_id","event_type")
 );
 --> statement-breakpoint
-CREATE INDEX "nextcrm_doc_event_link_idx"
+CREATE INDEX IF NOT EXISTS "nextcrm_doc_event_link_idx"
   ON "nextcrm_order_document_events" ("link_id","occurred_at");
 --> statement-breakpoint
-CREATE FUNCTION "nextcrm_document_immutable_guard"()
+CREATE OR REPLACE FUNCTION "nextcrm_document_immutable_guard"()
 RETURNS trigger
 LANGUAGE plpgsql
 AS $$
@@ -55,9 +55,13 @@ BEGIN
 END;
 $$;
 --> statement-breakpoint
+DROP TRIGGER IF EXISTS "nextcrm_doc_links_immutable" ON "nextcrm_order_document_links";
+--> statement-breakpoint
 CREATE TRIGGER "nextcrm_doc_links_immutable"
   BEFORE UPDATE OR DELETE ON "nextcrm_order_document_links"
   FOR EACH ROW EXECUTE FUNCTION "nextcrm_document_immutable_guard"();
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "nextcrm_doc_events_immutable" ON "nextcrm_order_document_events";
 --> statement-breakpoint
 CREATE TRIGGER "nextcrm_doc_events_immutable"
   BEFORE UPDATE OR DELETE ON "nextcrm_order_document_events"
