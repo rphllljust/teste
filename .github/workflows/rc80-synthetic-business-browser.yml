@@ -47,6 +47,8 @@ jobs:
           npm install --prefix /tmp/rc80-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
           /tmp/rc80-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Apply real migrations ONLY to disposable CI PostgreSQL
+        env:
+          NODE_ENV: test
         run: |
           node -e "const u=new URL(process.env.DATABASE_URL);if(process.env.GITHUB_ACTIONS!=='true'||u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(75)"
           pnpm db:migrate
