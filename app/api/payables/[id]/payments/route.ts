@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import { registerPayablePayment, reversePayablePayment } from '../../../../../lib/application/finance';
 
-const command = z.object({ key: z.string().uuid(), command: z.enum(['record_payment', 'reverse_payment']), amount: z.string().trim().regex(/^\d{1,12}(?:[,.]\d{1,4})?$/).optional(), effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160), reversesId: z.string().uuid().optional() }).strict();
+const command = z.object({ key: z.string().uuid(), command: z.enum(['record_payment', 'reverse_payment']), version: z.number().int().nonnegative().optional(), amount: z.string().trim().regex(/^\d{1,12}(?:[,.]\d{1,4})?$/).optional(), effectiveDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160), reversesId: z.string().uuid().optional() }).strict();
 const money = (value: string) => { const [whole, fraction = ''] = value.split(/[,.]/); return Number(whole) * 10000 + Number(fraction.padEnd(4, '0')); };
 
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
