@@ -33,7 +33,7 @@ export async function GET(request: Request) {
    if (!id.safeParse(itemId).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Material inválido.');
    const results = await db.batch([
     db.prepare('SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND id=?').bind(context.actorId, itemId),
-    db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS orderId, m.procurement_order_id AS procurementOrderId, m.procurement_receipt_line_id AS receiptLineId, o.title AS orderTitle, m.created_at AS createdAt FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
+    db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS "orderId", m.procurement_order_id AS "procurementOrderId", m.procurement_receipt_line_id AS "receiptLineId", o.title AS "orderTitle", m.created_at AS "createdAt" FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
     db.prepare("SELECT id, title FROM service_orders WHERE owner_id=? AND status='executing' ORDER BY created_at DESC, id DESC LIMIT 50").bind(context.actorId),
    ]);
    if (!results[0].results.length) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
@@ -45,7 +45,7 @@ export async function GET(request: Request) {
   const page = Number(url.searchParams.get('page') ?? '1');
   if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) throw new ApiError(400, 'VALIDATION_FAILED', 'Página inválida.');
   const results = await db.batch([
-   db.prepare('SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND (instr(lower(sku),lower(?))>0 OR instr(lower(name),lower(?))>0) ORDER BY sku LIMIT 26 OFFSET ?').bind(context.actorId, query, query, (page - 1) * 25),
+   db.prepare("SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND (LOWER(sku) LIKE '%' || LOWER(?) || '%' OR LOWER(name) LIKE '%' || LOWER(?) || '%') ORDER BY sku LIMIT 26 OFFSET ?").bind(context.actorId, query, query, (page - 1) * 25),
    db.prepare('SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) <= minimum) AS low FROM inventory_items WHERE owner_id=?').bind(context.actorId),
   ]);
   return respond({ items: results[0].results.slice(0, 25), hasMore: results[0].results.length > 25, summary: results[1].results[0] }, context);
@@ -77,8 +77,22 @@ export async function POST(request: Request) {
     await db.prepare('INSERT INTO inventory_items (id,owner_id,sku,name,unit,minimum,created_at,request_hash) VALUES (?,?,?,?,?,?,?,?)')
      .bind(data.id, context.actorId, data.sku, data.name, data.unit, data.minimum, now, hash).run();
    } else {
-    await db.prepare('INSERT INTO inventory_movements (id,item_id,owner_id,order_id,delta,reference,created_at,request_hash,correlation_id) VALUES (?,?,?,?,?,?,?,?,?)')
-     .bind(data.id, data.itemId, context.actorId, data.orderId, data.direction === 'in' ? data.quantity : -data.quantity, data.reference, now, hash, context.correlationId).run();
+    const delta = data.direction === 'in' ? data.quantity : -data.quantity;
+    await db.transaction(async query => {
+     const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
+     if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+     if (data.orderId) {
+      const order = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status='executing'", [data.orderId, context!.actorId]);
+      if (!order.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
+     }
+     const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
+     const balance = Number(stock.rows[0]?.balance ?? 0);
+     if (balance + delta < 0 || balance + delta > 1_000_000_000_000) {
+      throw new ApiError(409, 'BALANCE_CONFLICT', 'A movimentação supera o saldo disponível ou o limite de estoque.');
+     }
+     await query('INSERT INTO inventory_movements (id,item_id,owner_id,order_id,delta,reference,created_at,request_hash,correlation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [data.id, data.itemId, context!.actorId, data.orderId, delta, data.reference, now, hash, context!.correlationId]);
+    });
    }
   } catch (error) {
    if (await replay()) return respond({ id: data.id, replayed: true }, context);

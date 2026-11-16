@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   const db = database();
   const rows = await db.prepare(`SELECT id,unit,minimum,
    COALESCE((SELECT SUM(delta) FROM inventory_movements m
-     WHERE m.item_id=inventory_items.id AND m.owner_id=inventory_items.owner_id),0) AS physicalOnHand
+     WHERE m.item_id=inventory_items.id AND m.owner_id=inventory_items.owner_id),0) AS "physicalOnHand"
    FROM inventory_items WHERE owner_id=? ORDER BY sku`)
    .bind(context.actorId).all<StockRow>();
   const runId = crypto.randomUUID();
@@ -67,18 +67,18 @@ export async function GET(request: Request) {
   context = requestContext(request);
   const db = database();
   const results = await db.batch([
-   db.prepare(`SELECT r.id AS recommendationId,r.run_id AS runId,
-     r.material_id AS materialId,r.available,r.minimum,
-     r.net_requirement AS netRequirement,r.unit,r.status AS approvalStatus,
-     r.row_version AS rowVersion,r.purchase_order_id AS purchaseOrderId,
-     r.created_at AS createdAt,i.sku,i.name
+   db.prepare(`SELECT r.id AS "recommendationId",r.run_id AS "runId",
+     r.material_id AS "materialId",r.available,r.minimum,
+     r.net_requirement AS "netRequirement",r.unit,r.status AS "approvalStatus",
+     r.row_version AS "rowVersion",r.purchase_order_id AS "purchaseOrderId",
+     r.created_at AS "createdAt",i.sku,i.name
      FROM mrp_recommendations r
      JOIN inventory_items i ON i.id=r.material_id AND i.owner_id=r.owner_id
      WHERE r.owner_id=? ORDER BY r.created_at DESC,r.id DESC LIMIT 500`)
     .bind(context.actorId),
-   db.prepare(`SELECT id,horizon_days AS horizonDays,status,
-     evaluated_materials AS evaluatedMaterials,shortages,recommendations,
-     started_at AS startedAt,completed_at AS completedAt
+   db.prepare(`SELECT id,horizon_days AS "horizonDays",status,
+     evaluated_materials AS "evaluatedMaterials",shortages,recommendations,
+     started_at AS "startedAt",completed_at AS "completedAt"
      FROM mrp_runs WHERE owner_id=? ORDER BY started_at DESC,id DESC LIMIT 15`)
     .bind(context.actorId),
   ]);

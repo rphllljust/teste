@@ -367,6 +367,9 @@ tr:has(td):hover{background:#f5f9f5}
 .modal footer{padding-top:20px;border-color:#e2eadd}
 .modal form>p{font-size:16px;line-height:1.75;color:#576d51}
 .notice{border-radius:7px;background:#eaf4e8;border-color:#c9dec4;color:#385f31;font-size:14px}
+.app-mode-pill{display:inline-flex;align-items:center;gap:8px;min-height:34px;padding:0 12px;border:1px solid #dce7dc;border-radius:999px;background:#f7faf6;color:#3e6545;font-size:12px;font-weight:600;letter-spacing:.01em}
+.app-mode-pill>span{width:7px;height:7px;border-radius:50%;background:#63966b;box-shadow:0 0 0 3px #63966b1c}
+@media(max-width:560px){.app-mode-pill{min-height:30px;padding:0 9px;font-size:11px}.top-actions{gap:8px}}
 .notice-error,.form-error{color:#a04235}
 .notice-error{background:#fcf0ed;border-color:#efd0c6}
 .palette{width:min(660px,100%);border:1px solid #dce6d6;border-radius:11px;background:#fff;box-shadow:0 30px 110px #10251d40;max-height:85dvh;overflow-y:auto}
@@ -483,3 +486,99 @@ tr:has(td):hover{background:#f5f9f5}
 /* Operational agenda: derived only from persisted due dates */
 .service-agenda{border:1px solid var(--line);background:#fff;padding:18px 20px;margin:0 0 14px;box-shadow:0 2px 10px #17352d08}
 .agenda-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.agenda-heading h3{margin:5px 0 3px;font-size:16px;color:var(--ink)}.agenda-heading p{margin:0;color:var(--muted);font-size:12px}.agenda-list{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin-top:16px}.agenda-item{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;text-align:left;border:1px solid #e4ebe8;background:#fbfdfc;padding:11px 12px;min-width:0}.agenda-item:hover,.agenda-item:focus-visible{background:#f1f8f5;border-color:#a9cfc0}.agenda-item time{font-size:11px;color:#2e7763;font-weight:700;white-space:nowrap}.agenda-item strong,.agenda-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.agenda-item strong{font-size:12px}.agenda-item small{margin-top:3px;color:var(--muted);font-size:10px}.agenda-item svg{color:#4e8a75}@media(max-width:1100px){.agenda-list{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:700px){.service-agenda{padding:16px}.agenda-heading{display:block}.agenda-heading .text-button{margin-top:10px}.agenda-list{grid-template-columns:1fr}.agenda-item{grid-template-columns:58px 1fr auto}}
+
+/* Isolated Railway staging CRM launcher — navigation, not shared authentication. */
+.crm-nav{padding:11px 14px 14px;border-top:1px solid #28474f;margin-top:4px}
+.crm-nav>p{margin:0 0 8px;font-size:10px;letter-spacing:1.25px;font-weight:700;color:#8daeb5}
+.crm-nav>small{display:block;font-size:11px;line-height:1.45;color:#a2bac1;margin-top:7px}
+.crm-launch{display:inline-flex;align-items:center;justify-content:center;gap:9px;font-weight:600;border-radius:6px;line-height:1.35;white-space:nowrap;transition:background .15s ease,color .15s ease}
+.crm-launch svg:last-child{flex-shrink:0;opacity:.8}
+.crm-launch-sidebar{width:100%;padding:10px 12px;background:#214a51;color:#effefa;border:1px solid #457378;font-size:12px}
+.crm-launch-sidebar:hover{background:#31666b}
+.crm-launch-toolbar{padding:8px 11px;border:1px solid var(--line);background:#fff;color:#186369;font-size:12px}
+.crm-launch-toolbar:hover{background:#eaf4f4}
+.crm-launch-commercial{background:#157d7b;color:#fff;padding:11px 14px;font-size:13px}
+.crm-launch-commercial:hover{background:#096d6b}
+.crm-commercial-panel{display:flex;justify-content:space-between;align-items:center;gap:20px;border:1px solid #c8e2df;background:#f5fbf9;padding:17px 20px;margin-bottom:20px;border-radius:7px}
+.crm-commercial-panel strong{display:block;color:#1d4f51;font-size:14px}
+.crm-commercial-panel p{margin:4px 0 0;color:#536e73;font-size:12px;max-width:760px}
+@media(max-width:1100px){.crm-launch-toolbar{display:none}}
+@media(max-width:700px){.crm-commercial-panel{align-items:flex-start;flex-direction:column}.crm-launch-commercial{width:100%}}
+
+
+/* CISNE-native CRM: one workspace, not a separate service or iframe. */
+.cisne-crm{max-width:1560px;margin:0 auto;padding:1px 0 28px;min-width:0}
+.cisne-crm-heading{display:flex;align-items:flex-end;justify-content:space-between;gap:22px;margin-bottom:24px}
+.cisne-crm-heading h2{font-size:30px;letter-spacing:-.04em;font-weight:650;margin:6px 0 3px;color:var(--ink)}
+.cisne-crm-heading p{font-size:13px;color:var(--muted);margin:0;max-width:740px}
+.cisne-crm-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.cisne-crm-actions button{display:inline-flex;align-items:center;gap:8px;padding:10px 14px}
+.cisne-crm-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border:1px solid var(--line);background:#fff;margin-bottom:20px}
+.cisne-crm-metrics>div{min-width:0;padding:20px 22px;border-right:1px solid var(--line)}
+.cisne-crm-metrics>div:last-child{border-right:0}
+.cisne-crm-metrics span,.cisne-crm-metrics small{display:block;color:var(--muted);font-size:12px}
+.cisne-crm-metrics strong{display:block;margin:9px 0;font-size:28px;font-weight:700;letter-spacing:-.04em;color:#244c48}
+.cisne-crm-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:0 0 15px}
+.cisne-crm-tabs{display:inline-flex;gap:2px;background:#e5eeeb;padding:4px;border-radius:6px}
+.cisne-crm-tabs button{padding:8px 16px;font-size:13px;border-radius:4px;font-weight:600;color:#4c6460}
+.cisne-crm-tabs button.selected{background:#fff;color:#176b63;box-shadow:0 1px 4px #12332e22}
+.cisne-crm-search{border:1px solid var(--line);background:#fff;padding:7px 11px;display:flex;align-items:center;gap:9px;min-width:240px;color:#607f79;border-radius:5px}
+.cisne-crm-search input{border:0;outline:0;width:100%;background:transparent;font-size:13px;color:var(--ink)}
+.cisne-crm-table{border:1px solid var(--line);background:#fff;overflow:auto}
+.cisne-crm-table-head,.cisne-crm-row{min-width:650px;display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(75px,.6fr) minmax(90px,.7fr) minmax(150px,.9fr);align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.cisne-crm-table-head{background:#f7faf8;color:#6a837e;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
+.cisne-crm-row{min-height:70px;font-size:13px}
+.cisne-crm-row:last-child{border-bottom:0}
+.cisne-crm-row strong,.cisne-crm-row small{display:block;overflow-wrap:anywhere}
+.cisne-crm-row strong{font-size:13px;color:var(--ink)}
+.cisne-crm-row small{font-size:11px;color:var(--muted);margin-top:4px}
+.cisne-crm-status{border-radius:3px;padding:4px 8px;width:max-content;font-size:11px;font-weight:700;background:#edf1ef;color:#54665d}
+.cisne-crm-status.qualified{background:#e5f3ec;color:#246a4a}
+.cisne-crm-status.disqualified{background:#faebeb;color:#9c3c43}
+.cisne-crm-row-actions,.cisne-crm-deal-actions{display:flex;align-items:center;flex-wrap:wrap;gap:8px}
+.cisne-crm-row-actions button,.cisne-crm-deal-actions button{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:7px 9px}
+.cisne-crm-owner{font-size:11px;color:#617d76}
+.cisne-crm-state{text-align:center;color:var(--muted);font-size:13px;padding:45px 16px}
+.cisne-crm-pipeline{display:grid;grid-template-columns:repeat(5,minmax(190px,1fr));align-items:stretch;gap:10px;overflow-x:auto;padding-bottom:4px}
+.cisne-crm-column{background:#f3f7f5;border:1px solid #e2eae6;min-height:255px;padding:12px}
+.cisne-crm-column>header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;color:#47655c}
+.cisne-crm-column>header strong{font-size:12px}
+.cisne-crm-column>header span{background:#dfece5;color:#436e61;font-size:11px;border-radius:30px;padding:2px 7px;font-weight:700}
+.cisne-crm-deal{border:1px solid var(--line);background:#fff;padding:13px;margin-bottom:9px;box-shadow:0 1px 4px #1233250b}
+.cisne-crm-deal>strong,.cisne-crm-deal>b,.cisne-crm-deal>small{display:block;overflow-wrap:anywhere}
+.cisne-crm-deal>strong{font-size:12px}
+.cisne-crm-deal>small{color:var(--muted);font-size:11px;margin:4px 0 12px}
+.cisne-crm-deal>b{color:#20644e;font-size:16px}
+.cisne-crm-deal-actions{margin-top:12px}
+.cisne-crm-deal-actions button{font-size:11px}
+.cisne-crm-empty{font-size:12px;text-align:center;color:#81948a;padding:32px 4px}
+.cisne-crm-footer{display:flex;justify-content:space-between;align-items:center;gap:18px;margin-top:18px;padding:15px 0;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+.cisne-crm-footer>span,.cisne-crm-footer>div,.cisne-crm-footer button{display:flex;align-items:center;gap:8px}
+.cisne-crm-footer button{font-weight:600;color:#27695e}
+.cisne-crm-footnote{padding:10px 16px;color:var(--muted);font-size:11px}
+.cisne-crm-alert,.cisne-crm-notice{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;margin:0 0 18px;font-size:12px;border:1px solid #edcdc4;background:#fff7f4;color:#944e3a}
+.cisne-crm-alert strong,.cisne-crm-alert small{display:block}
+.cisne-crm-alert small{font-size:11px;margin-top:4px}
+.cisne-crm-notice{align-items:center}
+.cisne-crm-notice.is-success{border-color:#bdddcf;background:#f2faf6;color:#266849}
+.cisne-crm-notice span{flex:1}
+.cisne-crm-modal form{display:grid;gap:12px}
+.cisne-crm-modal form>label{display:grid;gap:5px}
+.cisne-crm-modal input,.cisne-crm-modal select{border:1px solid var(--line);padding:9px 11px;background:#fff;color:var(--ink);width:100%;border-radius:4px}
+@media(max-width:1180px){.cisne-crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-crm-metrics>div:nth-child(2){border-right:0}.cisne-crm-metrics>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+@media(max-width:680px){.cisne-crm-heading,.cisne-crm-toolbar,.cisne-crm-footer{align-items:stretch;flex-direction:column}.cisne-crm-heading h2{font-size:25px}.cisne-crm-actions{width:100%}.cisne-crm-actions button{flex:1}.cisne-crm-metrics>div{padding:15px}.cisne-crm-metrics strong{font-size:23px}.cisne-crm-search{width:100%}.cisne-crm-footer>div{flex-wrap:wrap}.cisne-crm-pipeline{grid-template-columns:repeat(5,210px)}}
+
+
+/* Staging-only passwordless-user-identity guard: HMAC session after high-entropy credential. */
+.cisne-crm-login{display:flex;align-items:flex-end;flex-wrap:wrap;gap:11px;margin-top:12px;background:#fff;border:1px solid #e5c9c1;padding:15px}
+.cisne-crm-login label{display:grid;gap:7px;flex:1;min-width:230px;color:#724e49;font-size:12px;font-weight:600}
+.cisne-crm-login input{border:1px solid #d4c4c0;background:#fff;padding:10px 12px;border-radius:4px;min-width:0;color:#233b36;font-size:13px}
+.cisne-crm-login button{min-height:40px;padding:8px 16px}
+.cisne-crm-login>small{flex-basis:100%;margin-top:1px;color:#876863;font-size:11px}
+@media(max-width:680px){.cisne-crm-login{display:grid}.cisne-crm-login label{min-width:0}}
+
+
+/* Traceable opportunity-to-ERP-proposal origin shown inside native CISNE CRM. */
+.cisne-crm-proposal-linked{display:block;margin-top:10px;padding:8px 9px;background:#eaf5ef;color:#215a42;border:1px solid #cde7d6;font-size:11px;overflow-wrap:anywhere}
+.cisne-crm-proposal-warning{display:block;margin-top:10px;font-size:11px;line-height:1.4;color:#855c31}
+.cisne-crm-modal textarea{width:100%;resize:vertical;min-height:110px;padding:10px 12px;border-radius:4px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit}

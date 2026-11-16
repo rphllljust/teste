@@ -1,5 +1,6 @@
 import type {parseLinked} from '../api/query';
 import {escapedLike} from '../api/query';
+import {caseInsensitiveAscending,caseInsensitiveContains} from '../api/postgres-query.mjs';
 import {measurementCommands} from './orders';
 
 export type OperationQuery=ReturnType<typeof parseLinked>;
@@ -13,13 +14,13 @@ export function operationQuery(p:OperationQuery,actorId:string){
  const due=p.kind==='measurements'?'o.due_date':alias+'.due_date';
  const clauses:string[]=['(o.owner_id IS NULL OR o.owner_id=?)'],values:(string|number)[]=[actorId];
  if(p.orderId){clauses.push('o.id=?');values.push(p.orderId);}
- if(p.q){clauses.push("(o.title LIKE ? ESCAPE '\\' OR o.client LIKE ? ESCAPE '\\' OR "+alias+".id LIKE ? ESCAPE '\\')");values.push(escapedLike(p.q),escapedLike(p.q),escapedLike(p.q));}
+ if(p.q){clauses.push(caseInsensitiveContains(['o.title','o.client',alias+'.id']));values.push(escapedLike(p.q),escapedLike(p.q),escapedLike(p.q));}
  if(p.status){clauses.push('m.status=?');values.push(p.status);}
  if(p.settlementState){const balance=outstandingExpression;clauses.push(p.settlementState==='outstanding'?balance+'>0':p.settlementState==='open'?balance+'=r.amount':p.settlementState==='settled'?balance+'=0':balance+'>0 AND '+balance+'<r.amount');}
  if(p.dueFrom){clauses.push(due+'>=?');values.push(p.dueFrom);}
  if(p.dueTo){clauses.push(due+'<=?');values.push(p.dueTo);}
  const where=clauses.length?' WHERE '+clauses.join(' AND '):'';
- const sort=p.sort==='title.asc'?'o.title COLLATE NOCASE ASC,'+alias+'.id ASC':p.sort==='dueDate.asc'?(p.kind==='measurements'?due+' IS NULL ASC,':'')+due+' ASC,'+alias+'.id ASC':alias+'.created_at '+(p.sort==='createdAt.asc'?'ASC':'DESC')+','+alias+'.id '+(p.sort==='createdAt.asc'?'ASC':'DESC');
+ const sort=p.sort==='title.asc'?caseInsensitiveAscending('o.title')+','+alias+'.id ASC':p.sort==='dueDate.asc'?(p.kind==='measurements'?due+' IS NULL ASC,':'')+due+' ASC,'+alias+'.id ASC':alias+'.created_at '+(p.sort==='createdAt.asc'?'ASC':'DESC')+','+alias+'.id '+(p.sort==='createdAt.asc'?'ASC':'DESC');
  // Explicit columns keep scaled money as strings on the wire.
  const columns=alias+'.id,'+alias+'.created_at,CAST('+alias+'.amount AS TEXT) AS amount_scaled,o.title,o.client,'+(p.kind==='measurements'?'m.order_id,m.description,m.status,m.version,o.due_date':p.kind==='invoices'?'i.order_id,i.measurement_id,i.due_date':"i.order_id,i.measurement_id,r.invoice_id,r.due_date,CAST(COALESCE((SELECT SUM(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END) FROM receivable_settlements s WHERE s.receivable_id=r.id),0) AS TEXT) settled_scaled");
  return {alias,from,where,values,sort,columns,balanceExpression:p.kind==='receivables'?outstandingExpression:null};
