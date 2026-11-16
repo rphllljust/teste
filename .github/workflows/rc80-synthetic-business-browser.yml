@@ -9,7 +9,7 @@ permissions:
 jobs:
   synthetic-authenticated:
     name: Isolated real HTTP business chain and Chromium desktop/mobile
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 28
     services:
       postgres:
