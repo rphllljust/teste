@@ -158,19 +158,24 @@ async function assertPreserved(db, expectedLedger) {
 }
 
 async function guardImmutableAudit(db) {
-  await db.query('BEGIN');
+  const client=await db.connect();
   try {
-    await db.query('SAVEPOINT verify_immutable');
+    await client.query('BEGIN');
+    await client.query('SAVEPOINT verify_immutable');
     let prevented = false;
     try {
-      await db.query("UPDATE nextcrm_order_document_links SET document_kind='photo' WHERE id='uat-link'");
+      await client.query("UPDATE nextcrm_order_document_links SET document_kind='photo' WHERE id='uat-link'");
     } catch(e) {
       prevented=String(e.message).includes('NEXTCRM_DOCUMENT_IMMUTABLE_FACT');
     }
-    await db.query('ROLLBACK TO SAVEPOINT verify_immutable');
+    await client.query('ROLLBACK TO SAVEPOINT verify_immutable');
     assert.equal(prevented,true,'audit/event links remain immutable after upgrade');
+    await client.query('COMMIT');
+  } catch(e) {
+    await client.query('ROLLBACK').catch(()=>{});
+    throw e;
   } finally {
-    await db.query('ROLLBACK');
+    client.release();
   }
 }
 
