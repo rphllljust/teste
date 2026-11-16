@@ -1,10 +1,13 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { GET as getReadiness } from '../../app/api/health/ready/route';
+import { closeDatabase } from '../../db/raw';
 import { GET as getOrders } from '../../app/api/orders/route';
 import { GET as getFinance } from '../../app/api/finance/workspace/route';
 
 if (process.env.NODE_ENV !== 'test') throw Error('Only the disposable PostgreSQL CI database is allowed');
+
+after(async () => { await closeDatabase(); });
 
 test('readiness is real: the CI PostgreSQL ledger and required ERP tables exist', async () => {
   const result = await getReadiness();
