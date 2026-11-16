@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
+import { NEXTCRM_BRIDGE_TABLES, assertNextcrmMigrationPreflight } from './nextcrm-migration-preflight.mjs';
 
 /**
  * Two legacy histories, one expected resulting catalog.
@@ -158,12 +159,44 @@ async function run() {
     await client.query('CREATE UNIQUE INDEX IF NOT EXISTS nextcrm_clients_owner_id_idx ON clients(owner_id,id)');
     await client.query('CREATE UNIQUE INDEX IF NOT EXISTS nextcrm_clients_owner_id_idx ON clients(owner_id,id)');
     const financeCatalog=await fingerprint(client,fin);
+    const financeTables=[...new Set(financeCatalog.columns.map(row=>row.table_name))];
+    assertNextcrmMigrationPreflight({
+      manifestIds:['0001_nextcrm_order_document_links','0002_nextcrm_verified_mappings'],
+      appliedIds:financeLedger,presentTables:financeTables,
+    });
+    let rejectedDocumentManifest=false;
+    try {
+      assertNextcrmMigrationPreflight({
+        manifestIds:['0003_nextcrm_document_bridge'],
+        appliedIds:financeLedger,presentTables:financeTables,
+      });
+    } catch(error) {
+      if(!String(error).includes('FINANCE_HISTORY_REQUIRES_RECONCILIATION')) throw error;
+      rejectedDocumentManifest=true;
+    }
+    if(!rejectedDocumentManifest)throw new Error('LINEAGE_GUARD_FAILED_FINANCE_FIRST');
 
     await setup(client,doc);
     await executeMigration(client,'0003_nextcrm_document_bridge.sql');
     await record(client,'0003_nextcrm_document_bridge');
     const documentsLedger=await history(client,doc);
     const docCatalog=await fingerprint(client,doc);
+    const documentTables=[...new Set(docCatalog.columns.map(row=>row.table_name))];
+    assertNextcrmMigrationPreflight({
+      manifestIds:['0003_nextcrm_document_bridge'],
+      appliedIds:documentsLedger,presentTables:documentTables,
+    });
+    let rejectedFinanceManifest=false;
+    try {
+      assertNextcrmMigrationPreflight({
+        manifestIds:['0001_nextcrm_order_document_links','0002_nextcrm_verified_mappings'],
+        appliedIds:documentsLedger,presentTables:documentTables,
+      });
+    } catch(error) {
+      if(!String(error).includes('DOCUMENT_HISTORY_REQUIRES_RECONCILIATION')) throw error;
+      rejectedFinanceManifest=true;
+    }
+    if(!rejectedFinanceManifest)throw new Error('LINEAGE_GUARD_FAILED_DOCUMENT_FIRST');
 
     if (JSON.stringify(financeCatalog)!==JSON.stringify(docCatalog)) {
       for(const k of Object.keys(financeCatalog)) {

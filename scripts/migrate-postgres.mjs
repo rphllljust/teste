@@ -1,6 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
 import { PROTECTED_MIGRATION, validateRestoreAttestation } from './migration-safety.mjs';
+import { assertNextcrmMigrationPreflight, NEXTCRM_BRIDGE_MIGRATIONS, NEXTCRM_BRIDGE_TABLES } from './nextcrm-migration-preflight.mjs';
 
 // Source-controlled, append-only migrations. Neither this script nor its
 // connection string may point to the isolated NextCRM database.
@@ -23,6 +24,22 @@ try {
   await client.query(`CREATE TABLE IF NOT EXISTS _cisne_schema_migrations (
     id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()
   )`);
+  // Preflight BEFORE running any historical migration. The finance-first and
+  // document-first ledgers use different IDs for the SAME NextCRM objects.
+  // A transaction rollback preserves the existing ledger and domain records.
+  const knownIds = Object.values(NEXTCRM_BRIDGE_MIGRATIONS);
+  const [appliedNextcrm, existingNextcrmTables] = await Promise.all([
+    client.query('SELECT id FROM _cisne_schema_migrations WHERE id = ANY($1::text[])', [knownIds]),
+    client.query(`SELECT c.relname AS name FROM pg_catalog.pg_class AS c
+      JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
+      WHERE n.nspname=current_schema() AND c.relkind IN ('r','p')
+        AND c.relname = ANY($1::text[])`, [NEXTCRM_BRIDGE_TABLES]),
+  ]);
+  assertNextcrmMigrationPreflight({
+    manifestIds: migrations.map(migration => migration.id),
+    appliedIds: appliedNextcrm.rows.map(row => row.id),
+    presentTables: existingNextcrmTables.rows.map(row => row.name),
+  });
   const completed = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [PROTECTED_MIGRATION]);
   if (!completed.rowCount) {
     const protectedSql = await readFile(new URL('../drizzle-pg/' + PROTECTED_MIGRATION + '.sql', import.meta.url), 'utf8');

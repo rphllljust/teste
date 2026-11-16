@@ -54,6 +54,8 @@ jobs:
           cache: pnpm
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+      - name: Reject incompatible NextCRM migration lineage before PostgreSQL changes
+        run: node --test scripts/nextcrm-migration-preflight.test.mjs
       - name: Reject duplicate active migration DDL before any PostgreSQL changes
         run: |
           node --test scripts/audit-active-migrations.test.mjs
