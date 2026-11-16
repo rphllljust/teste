@@ -70,3 +70,53 @@ export async function reverseReceivableSettlement(context: RequestContext, input
     return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount) } };
   });
 }
+
+export async function registerPayablePayment(context: RequestContext, input: { payableId: string; amount: number; effectiveDate: string; reference: string; commandKey: string; requestHash: string }) {
+  return database().transaction(async query => {
+    if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do pagamento é inválida.');
+    const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
+    if (prior.rows.length) {
+      const row = prior.rows[0];
+      if (row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+      return { ok: true, replayed: true, resource: { type: 'payablePayment', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
+    }
+    const payable = await query(`SELECT p.id, p.amount,
+      COALESCE((SELECT SUM(CASE WHEN x.kind='payment' THEN x.amount ELSE -x.amount END)
+        FROM payable_payments x WHERE x.payable_id=p.id),0) AS settled
+      FROM payables p WHERE p.id=$1 FOR UPDATE`, [input.payableId]);
+    if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
+    const row = payable.rows[0];
+    const balance = Number(row.amount) - Number(row.settled);
+    if (input.amount > balance) throw new ApiError(409, 'PAYMENT_EXCEEDS_BALANCE', 'O pagamento excede o saldo do título.');
+    await query(`INSERT INTO payable_payments
+      (id, payable_id, kind, amount, effective_date, reference, created_at, actor_id, request_hash, correlation_id)
+      VALUES ($1,$2,'payment',$3,$4,$5,$6,$7,$8,$9)`,
+      [input.commandKey, input.payableId, input.amount, input.effectiveDate, input.reference,
+        new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+  });
+}
+
+export async function reversePayablePayment(context: RequestContext, input: { paymentId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
+  return database().transaction(async query => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
+    const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
+    if (prior.rows.length) {
+      const row = prior.rows[0];
+      if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+      return { ok: true, replayed: true, resource: { type: 'payableReversal', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
+    }
+    const original = await query("SELECT id, payable_id, amount FROM payable_payments WHERE id=$1 AND kind='payment' FOR UPDATE", [input.paymentId]);
+    if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
+    const row = original.rows[0];
+    const alreadyReversed = await query('SELECT 1 FROM payable_payments WHERE reverses_id=$1', [input.paymentId]);
+    if (alreadyReversed.rows.length) throw new ApiError(409, 'PAYMENT_ALREADY_REVERSED', 'Este pagamento já foi estornado.');
+    await query(`INSERT INTO payable_payments
+      (id, payable_id, kind, amount, effective_date, reference, reverses_id, created_at, actor_id, request_hash, correlation_id)
+      VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [input.commandKey, row.payable_id, row.amount, input.effectiveDate, input.reference, input.paymentId,
+        new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount) } };
+  });
+}
