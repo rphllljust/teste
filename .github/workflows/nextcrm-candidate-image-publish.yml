@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - integration/erp-postgres-nextcrm-candidate-20261115
+      - release/nextcrm-file-ticket-staging-20261116
     paths:
       - '.github/workflows/nextcrm-candidate-image-publish.yml'
       - '.gitmodules'
