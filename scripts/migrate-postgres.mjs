@@ -8,9 +8,7 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for Pos
 const migrations = [
   { id: '0000_salty_lilith', file: '../drizzle-pg/0000_salty_lilith.sql' },
   { id: '0001_native_crm', file: '../drizzle-pg/0001_native_crm.sql' },
-  { id: '0001_nextcrm_order_document_links', file: '../drizzle-pg/0001_nextcrm_order_document_links.sql' },
   { id: '0002_crm_proposal_origin', file: '../drizzle-pg/0002_crm_proposal_origin.sql' },
-  { id: '0002_nextcrm_verified_mappings', file: '../drizzle-pg/0002_nextcrm_verified_mappings.sql' },
   { id: '0003_nextcrm_document_bridge', file: '../drizzle-pg/0003_nextcrm_document_bridge.sql' },
   { id: '0003_finance_audit', file: '../drizzle-pg/0003_finance_audit.sql' },
   { id: '0004_cash_transfers', file: '../drizzle-pg/0004_cash_transfers.sql' },

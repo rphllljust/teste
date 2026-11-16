@@ -124,9 +124,7 @@ jobs:
           const expected = [
             '0000_salty_lilith',
             '0001_native_crm',
-            '0001_nextcrm_order_document_links',
             '0002_crm_proposal_origin',
-            '0002_nextcrm_verified_mappings',
             '0003_nextcrm_document_bridge',
             '0003_finance_audit',
             '0004_cash_transfers',

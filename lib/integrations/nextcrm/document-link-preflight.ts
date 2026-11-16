@@ -1,7 +1,7 @@
 import {
   validateNextcrmOrderDocumentLinkInput,
   type NextcrmOrderDocumentLinkInput,
-} from './document-link-contract';
+} from './document-link-contract.ts';
 
 /**
  * Fail-closed authorization boundary; contains no database access or network
