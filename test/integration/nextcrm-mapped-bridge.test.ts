@@ -5,6 +5,9 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { closeDatabase } from '../../db/raw';
 import { GET as getOrderDetail } from '../../app/api/orders/[id]/route';
+import { POST as registerSettlement } from '../../app/api/finance/receivables/settlements/route';
+import { POST as reverseSettlement } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
+import { POST as closeFinancialPeriod } from '../../app/api/finance/periods/close/route';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { NEXTCRM_BRIDGE_PATH, verifyBridgeRequest, signBridgeResponse } from '../../lib/integrations/nextcrm/bridge-protocol';
 import { createPostgresNextcrmLinkDependencies } from '../../lib/integrations/nextcrm/postgres-mapped-dependencies';
@@ -128,6 +131,77 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
     assert.equal(json.order.finance.moneyScale,4);
     assert.equal(json.order.finance.bankBalanceAvailable,false);
     assert.equal(json.order.finance.authority,'field.persistedReceivableSettlementLedger.v1');
+
+    // Combined end-to-end gate: finance mutations operate on the EXACT OS
+    // whose NextCRM document was authorized by a signed private HMAC bridge.
+    // Actor identities are synthetic, in-process only; no browser login.
+    const financeRequest=(path:string,who:string,payload:unknown)=>
+      setTestIdentity(new Request('http://localhost'+path,{
+        method:'POST',headers:{'content-type':'application/json'},
+        body:JSON.stringify(payload),
+      }),who);
+    const extraReceiptKey=randomUUID(),extraReversalKey=randomUUID();
+    const newReceipt={
+      receivableId:receivable,amount:'25000',effectiveDate:'2026-11-16',
+      reference:'CI combined OS NextCRM partial settlement',commandKey:extraReceiptKey,
+    };
+    const settlementPath='/api/finance/receivables/settlements';
+    const deniedForeign=await registerSettlement(financeRequest(settlementPath,foreign,newReceipt));
+    assert.equal(deniedForeign.status,404,'Foreign actor cannot mutate a NextCRM-linked receivable');
+    const settled=await registerSettlement(financeRequest(settlementPath,owner,newReceipt));
+    assert.equal(settled.status,201,await settled.clone().text());
+    const receiptReplay=await registerSettlement(financeRequest(settlementPath,owner,newReceipt));
+    assert.equal(receiptReplay.status,200,'Idempotent replay must not register duplicate receipts');
+    const afterSettlement=await detailFor(owner);
+    assert.equal(afterSettlement.status,200);
+    const afterSettlementBody=await afterSettlement.json() as {order:{
+      finance:{settledScaled:string;outstandingScaled:string};
+    }};
+    assert.equal(afterSettlementBody.order.finance.settledScaled,'70000');
+    assert.equal(afterSettlementBody.order.finance.outstandingScaled,'50000');
+
+    const reversalPath=settlementPath+'/'+extraReceiptKey+'/reverse';
+    const reverseCommand={
+      commandKey:extraReversalKey,effectiveDate:'2026-11-17',
+      reference:'CI combined OS NextCRM reversal',
+    };
+    const deniedForeignReversal=await reverseSettlement(
+      financeRequest(reversalPath,foreign,reverseCommand),
+      {params:Promise.resolve({id:extraReceiptKey})},
+    );
+    assert.equal(deniedForeignReversal.status,404,'Foreign owner cannot reverse a receipt');
+    const reversed=await reverseSettlement(
+      financeRequest(reversalPath,owner,reverseCommand),
+      {params:Promise.resolve({id:extraReceiptKey})},
+    );
+    assert.equal(reversed.status,201,await reversed.clone().text());
+    const afterReversal=await detailFor(owner);
+    assert.equal(afterReversal.status,200);
+    const afterReversalBody=await afterReversal.json() as {order:{
+      finance:{settledScaled:string;outstandingScaled:string};
+    }};
+    assert.equal(afterReversalBody.order.finance.settledScaled,'45000');
+    assert.equal(afterReversalBody.order.finance.outstandingScaled,'75000');
+
+    const closed=await closeFinancialPeriod(financeRequest(
+      '/api/finance/periods/close',owner,{
+        id:randomUUID(),periodStart:'2026-11-01',periodEnd:'2026-11-30',
+        reference:'CI combined financial close',
+      },
+    ));
+    assert.equal(closed.status,201,await closed.clone().text());
+    const afterClose=await registerSettlement(financeRequest(settlementPath,owner,{
+      ...newReceipt,commandKey:randomUUID(),effectiveDate:'2026-11-20',
+    }));
+    assert.equal(afterClose.status,409,'Closed period must prohibit retroactive settlement');
+    const events=await pool.query(
+      "SELECT kind,actor_id FROM receivable_settlements WHERE id=ANY($1::text[]) ORDER BY kind",
+      [[extraReceiptKey,extraReversalKey]],
+    );
+    assert.equal(events.rows.length,2,'Ledger must contain exactly one receipt and one reversal');
+    assert.ok(events.rows.every((row:{actor_id:string})=>row.actor_id===owner));
+    assert.equal(calls,1,'Financial operations must never call the private NextCRM bridge');
+
     const linked=await pool.query(
       'SELECT id,owner_id,nextcrm_document_id FROM nextcrm_order_document_links WHERE service_order_id=$1',
       [orderId],

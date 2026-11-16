@@ -1,7 +1,6 @@
 import { stagingBoundaryError } from './staging-access.mjs';
 import { mutationOriginAllowed } from './mutation-origin.mjs';
-import { validateStagingSession } from './staging-session.mjs';
-import { getTestIdentity } from './test-identity.mjs';
+import { resolveRequestActor } from './request-identity.mjs';
 import { safeErrorDiagnostics } from './error-diagnostics.mjs';
 export class ApiError extends Error{constructor(public status:number,public code:string,message:string){super(message);}}
 export type RequestContext={actorId:string;correlationId:string};
@@ -12,15 +11,10 @@ export function requestContext(request:Request,mutation=false):RequestContext{
  // Integration tests bind identity to the in-process Request object. The
  // binding is unavailable unless this process was started with NODE_ENV=test;
  // HTTP headers are deliberately ignored in that mode.
- const actorId=process.env.RAILWAY_ENVIRONMENT_NAME==='staging'
-  ? validateStagingSession(request)
-  : process.env.NODE_ENV==='test'
-    ? getTestIdentity(request)
-    : request.headers.get('oai-authenticated-user-id');
+ const actorId=resolveRequestActor(request);
  if(!actorId||actorId.length>200)throw new ApiError(401,'AUTHENTICATION_REQUIRED','Entre com sua conta para acessar a operação.');
  if(mutation&&!mutationOriginAllowed(request))throw new ApiError(403,'FORBIDDEN','Origem não autorizada.');
- // Sites dispatch enforces this application's existing owner-only access policy.
- // Identity is forwarded by dispatch, never accepted in a request payload.
+ // Identity must originate from a verified server-side boundary, never from a public header.
  return {actorId,correlationId};
 }
 export function respond(data:object,context:RequestContext,status=200){return Response.json({...data,correlationId:context.correlationId},{status,headers:{'Cache-Control':'no-store','X-Correlation-Id':context.correlationId}});}
