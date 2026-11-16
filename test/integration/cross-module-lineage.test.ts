@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { closeDatabase } from '../../db/raw';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET as financeWorkspace } from '../../app/api/finance/workspace/route';
+import { POST as settle } from '../../app/api/finance/receivables/settlements/route';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Integration harness must run with NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for integration tests');
@@ -16,8 +17,8 @@ const measurementId = randomUUID();
 const invoiceId = randomUUID();
 const receivableId = randomUUID();
 
-const request = (path: string) =>
-  setTestIdentity(new Request('http://localhost' + path, { headers: { 'content-type': 'application/json' } }), actor);
+const request = (path: string, method = 'GET', body?: unknown) =>
+  setTestIdentity(new Request('http://localhost' + path, { method, headers: { 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), actor);
 
 before(async () => {
   const now = new Date().toISOString();
@@ -78,4 +79,19 @@ test('cross-module chain preserves OS, measurement, invoice and receivable linea
 
   const response = await financeWorkspace(request('/api/finance/workspace'));
   assert.equal(response.status, 200, await response.text());
+
+  const settlement = await settle(request('/api/finance/receivables/settlements', 'POST', {
+    receivableId,
+    amount: '25000',
+    effectiveDate: '2026-11-16',
+    reference: 'UAT partial settlement',
+    commandKey: randomUUID(),
+  }));
+  assert.equal(settlement.status, 201, await settlement.text());
+
+  const remaining = await pool.query(
+    'SELECT amount-COALESCE((SELECT SUM(amount) FROM receivable_settlements WHERE receivable_id=$1 AND kind=\'receipt\'),0) AS outstanding FROM receivables WHERE id=$1',
+    [receivableId],
+  );
+  assert.equal(Number(remaining.rows[0].outstanding), 100000);
 });
