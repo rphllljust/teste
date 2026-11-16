@@ -65,6 +65,10 @@ jobs:
           key="$(openssl rand -hex 32)"
           echo "::add-mask::$key"
           printf 'CISNE_STAGING_SESSION_SECRET=%s\n' "$key" >> "$GITHUB_ENV"
+          bridge="$(openssl rand -hex 32)"
+          echo "::add-mask::$bridge"
+          printf 'CISNE_NEXTCRM_BRIDGE_SECRET=%s\n' "$bridge" >> "$GITHUB_ENV"
+          echo 'CISNE_NEXTCRM_INSTANCE_KEY=ci_rc80_ephemeral' >> "$GITHUB_ENV"
       - name: Start real Worker app against isolated Postgres
         env:
           NODE_ENV: production

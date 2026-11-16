@@ -11,12 +11,16 @@ assert.equal(u.hostname,'127.0.0.1','Only loopback disposable Postgres');
 assert.equal(u.pathname,'/cisne_ci','Only disposable Postgres db');
 const secret=process.env.CISNE_STAGING_SESSION_SECRET??'';
 assert.ok(secret.length>=32,'Ephemeral signed session key required');
+assert.match(process.env.CISNE_NEXTCRM_BRIDGE_SECRET??'',/^[a-f0-9]{64}$/,
+  'Ephemeral CI-only NextCRM bridge key required');
 const keys={
   DATABASE_URL:process.env.DATABASE_URL,
   RAILWAY_ENVIRONMENT_NAME:'staging',
   CISNE_STAGING_ACCESS_MODE:'private',
   CISNE_STAGING_ACTOR_ID:'ci-browser-actor-rc80',
   CISNE_STAGING_SESSION_SECRET:secret,
+  CISNE_NEXTCRM_BRIDGE_SECRET:process.env.CISNE_NEXTCRM_BRIDGE_SECRET,
+  CISNE_NEXTCRM_INSTANCE_KEY:'ci_rc80_ephemeral',
   CISNE_STAGING_READ_ONLY:'false',
   NODE_ENV:'production',
 };
