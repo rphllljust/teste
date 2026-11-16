@@ -1,0 +1,36 @@
+name: RC78 isolated browser acceptance
+on:
+  push:
+    branches:
+      - integration/rc78-full-journey-browser-gate-20261116
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    name: Playwright desktop/mobile + public security
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Install exact Playwright client without modifying app dependencies
+        run: npm install --prefix /tmp/rc78-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+      - name: Test 12 screens and protected HTTP endpoints
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/rc78-browser/node_modules/playwright/index.mjs
+        run: node scripts/verify-rc78-browser-uat.mjs
+      - name: Attach screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc78-desktop-mobile-readonly
+          path: artifacts/rc78-browser/
+          if-no-files-found: warn
+          retention-days: 7
