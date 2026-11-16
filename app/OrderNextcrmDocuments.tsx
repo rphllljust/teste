@@ -3,7 +3,7 @@ import {useEffect,useState} from 'react';
 import {FileCheck2,ChevronDown,RefreshCw,ShieldCheck,Download} from 'lucide-react';
 
 type AuthorizedDocument={
-  id:string;documentId:string;kind:string;version:number;
+  id:string;kind:string;version:number;
   sha256:string|null;linkedAt:string;
 };
 type Result={
@@ -60,7 +60,7 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
       try{
         const anchor=document.createElement('a');
         anchor.href=url;
-        anchor.download='nextcrm-'+doc.documentId.slice(0,8)+'.bin';
+        anchor.download='nextcrm-'+doc.id.slice(0,8)+'.bin';
         document.body.appendChild(anchor);
         anchor.click();
         anchor.remove();
@@ -100,7 +100,7 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
           <ShieldCheck size={15} aria-label="Autorização atual verificada"/>
           {doc.kind==='attachment'&&<button type="button" className="text-button"
             disabled={downloading!==null} onClick={()=>void downloadAttachment(doc)}
-            aria-label={'Baixar anexo NextCRM '+doc.documentId.slice(0,8)}>
+            aria-label={'Baixar anexo NextCRM '+doc.id.slice(0,8)}>
             <Download size={14} aria-hidden="true"/>
             {downloading===doc.id?'Baixando…':'Baixar arquivo'}
           </button>}
