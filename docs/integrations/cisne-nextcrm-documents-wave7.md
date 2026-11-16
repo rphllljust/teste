@@ -36,7 +36,11 @@
    confirma a OS proprietária e o estado atual das aprovações. Em cada
    documento reconsulta autorização NextCRM; documentos revogados são
    omitidos, erro de transporte ou assinatura invalida toda a resposta.
-6. O segredo `CISNE_NEXTCRM_BRIDGE_SECRET` deve ser um hex seguro e
+6. A ficha de OS do Field agora possui a seção colapsável
+   **Documentos vinculados · NextCRM**, com consulta sob demanda e
+   revalidação de ACL a cada abertura/atualização. A UI nunca mostra
+   arquivos, links de download ou metadados de documento revogado.
+7. O segredo `CISNE_NEXTCRM_BRIDGE_SECRET` deve ser um hex seguro e
    exclusivo para o staging, compartilhado entre os dois serviços por
    Railway Variables, nunca pelo navegador.
 
