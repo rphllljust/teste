@@ -4,6 +4,18 @@ import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type
 
 const command = z.object({ id: z.string().uuid(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160) }).strict();
 
+export async function GET(request: Request) {
+  let context: RequestContext | undefined;
+  try {
+    context = requestContext(request);
+    const url = new URL(request.url);
+    const page = Math.max(1, Number(url.searchParams.get('page') ?? '1'));
+    const db = database();
+    const result = await db.prepare(`SELECT p.id,p.period_start AS "periodStart",p.period_end AS "periodEnd",p.status,p.closed_at AS "closedAt",COALESCE((SELECT a.metadata::jsonb->>'reference' FROM finance_audit_events a WHERE a.entity_type='finance_period' AND a.entity_id=p.id AND a.action='period_closed' ORDER BY a.occurred_at DESC LIMIT 1),'') AS reference FROM finance_period_closes p WHERE p.actor_id=? ORDER BY p.period_end DESC,p.id DESC LIMIT 26 OFFSET ?`).bind(context.actorId, (page - 1) * 25).all();
+    return respond({ items: result.results.slice(0, 25), pageInfo: { hasMore: result.results.length > 25 } }, context);
+  } catch (error) { return failure(error, context); }
+}
+
 export async function POST(request: Request) {
   let context: RequestContext | undefined;
   try {

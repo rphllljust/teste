@@ -7,6 +7,7 @@ import { closeDatabase } from '../../db/raw';
 import { POST as settle } from '../../app/api/finance/receivables/settlements/route';
 import { POST as reverse } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
 import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
+import { GET as listClosedPeriods } from '../../app/api/finance/periods/close/route';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Integration harness must run with NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for finance integration tests');
@@ -60,6 +61,9 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   const periodId = randomUUID();
   const closed = await closePeriod(req('/api/finance/periods/close', 'POST', { id: periodId, periodStart: '2026-11-01', periodEnd: '2026-11-30', reference: 'CI close' }));
   assert.equal(closed.status, 201);
+  const listed = await listClosedPeriods(req('/api/finance/periods/close', 'GET', {}));
+  assert.equal(listed.status, 200);
+  assert.equal(((await json(listed)) as { items: Array<{ id: string }> }).items[0].id, periodId);
   const blocked = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '1000', effectiveDate: '2026-11-20', reference: 'CI blocked', commandKey: randomUUID() }));
   assert.equal(blocked.status, 409);
 });
