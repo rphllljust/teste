@@ -54,6 +54,10 @@ jobs:
           cache: pnpm
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
+      - name: Reject duplicate active migration DDL before any PostgreSQL changes
+        run: |
+          node --test scripts/audit-active-migrations.test.mjs
+          node scripts/audit-active-migrations.mjs
       - name: Reject D1 bindings and require PostgreSQL persistence
         run: node scripts/assert-postgres-only.mjs
       - name: Compile and lint
