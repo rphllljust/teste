@@ -41,6 +41,7 @@ function hashLink(link: AuthorizedOrderDocumentLink): string {
     erpClientId: link.erpClientId,
     tenantKey: link.tenantKey,
     nextcrmAccountId: link.nextcrmAccountId,
+    nextcrmSubjectId: link.nextcrmSubjectId,
     nextcrmDocumentId: link.nextcrmDocumentId,
     documentKind: link.documentKind,
     version: link.version,
@@ -63,7 +64,8 @@ export async function authorizeAndPersistOrderDocumentLink(
   );
   if (authorized.ownerId !== actor || !UUID.test(authorized.serviceOrderId) ||
       !UUID.test(authorized.erpClientId) || !authorized.tenantKey ||
-      !authorized.nextcrmAccountId) throw new OrderDocumentLinkDenied();
+      !authorized.nextcrmAccountId || !UUID.test(authorized.nextcrmSubjectId))
+    throw new OrderDocumentLinkDenied();
 
   const hash = hashLink(authorized);
   const client = await db.connect();
@@ -81,6 +83,29 @@ export async function authorizeAndPersistOrderDocumentLink(
       FOR SHARE OF so, c
     `, [authorized.serviceOrderId, actor, authorized.erpClientId]);
     if (owned.rowCount !== 1) throw new OrderDocumentLinkDenied();
+
+    // Close the local TOCTOU window: approvals can be deactivated while the
+    // external NextCRM ACL check is running. Lock BOTH mappings at the exact
+    // moment of persistence, and require the exact principal/account that
+    // produced the signed external authorization.
+    const currentMappings = await client.query(`
+      SELECT 1
+      FROM nextcrm_erp_identity_mappings AS identity
+      JOIN nextcrm_erp_client_account_mappings AS account
+        ON account.erp_owner_id = identity.erp_actor_id
+      WHERE identity.erp_actor_id = $1
+        AND account.erp_client_id = $2
+        AND identity.nextcrm_subject_id = $3
+        AND account.nextcrm_account_id = $4
+        AND identity.instance_key = $5
+        AND account.instance_key = $5
+        AND identity.active = true AND account.active = true
+        AND identity.verified_at IS NOT NULL
+        AND account.verified_at IS NOT NULL
+      FOR SHARE OF identity, account
+    `, [actor, authorized.erpClientId, authorized.nextcrmSubjectId,
+      authorized.nextcrmAccountId, authorized.tenantKey]);
+    if (currentMappings.rowCount !== 1) throw new OrderDocumentLinkDenied();
 
     const existingSql = `
       SELECT id, idempotency_key, request_hash

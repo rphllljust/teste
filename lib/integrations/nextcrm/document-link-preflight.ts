@@ -52,6 +52,8 @@ export interface AuthorizedOrderDocumentLink extends NextcrmOrderDocumentLinkInp
   ownerId: string;
   erpClientId: string;
   nextcrmAccountId: string;
+  /** Exact CRM principal whose ACL proof authorized this fact. */
+  nextcrmSubjectId: string;
 }
 
 /**
@@ -95,5 +97,6 @@ export async function authorizeOrderDocumentLink(
     ownerId: trustedErpActorId,
     erpClientId: order.clientId,
     nextcrmAccountId: account.accountId,
+    nextcrmSubjectId: identity.nextcrmSubjectId,
   };
 }
