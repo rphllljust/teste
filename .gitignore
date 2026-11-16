@@ -2,3 +2,7 @@
 cutover-private/
 *.d1-export.sql
 *.d1-manifest.json
+
+# Never commit Cloudflare local Worker bindings or runtime secrets
+.dev.vars*
+.env*

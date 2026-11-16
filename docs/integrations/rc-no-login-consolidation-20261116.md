@@ -28,3 +28,9 @@ Somente consolidar em release após branch atualizado com a main real, CI verde,
 ## Railway RC78: diagnóstico interno de prontidão
 
 A inspeção do primeiro candidato em staging confirmou `/api/health/ready=503` antes do aceite. O PR adiciona apenas **categoria sanitizada de falha nos logs privados** (`MIGRATIONS_INCOMPLETE`, `TABLES_INCOMPLETE`, `DB_QUERY_FAILED`, ou SQLSTATE de uma lista fechada), limitada a uma vez por minuto por instância. A resposta pública continua somente `ready` ou `unavailable`. Não aplicar migrações no UAT nem trocar o banco antes de classificar o bloqueio.
+
+## Railway/Wrangler environment bridge (isolated RC only)
+
+Root cause confirmed in service logs: Railway Node had `DATABASE_URL`, but the `wrangler dev` Worker did not: `DATABASE_URL_MISSING`. Do not bypass the healthcheck or put database URLs into `wrangler.json` `vars` or command-line flags. The gated boot preloader `scripts/railway-wrangler-bindings.mjs` records **only approved binding names** in the generated, ephemeral `dist/server/wrangler.json` `secrets.required` declaration; Wrangler loads their values directly from the host process for local dev. Requires `CISNE_RAILWAY_WORKER_BINDINGS=restricted`, `CISNE_STAGING_READ_ONLY=true`, Railway environment `staging`, valid host DATABASE_URL and `CLOUDFLARE_INCLUDE_PROCESS_ENV=false`. Any violation refuses startup. This bridge is opt-in and does not activate on production.
+
+All real UAT business writes and authenticated browser acceptance are still outside this read-only smoke deployment.
