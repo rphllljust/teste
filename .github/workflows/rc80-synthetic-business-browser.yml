@@ -105,6 +105,12 @@ jobs:
         env:
           PLAYWRIGHT_MODULE_PATH: /tmp/rc80-browser/node_modules/playwright/index.mjs
         run: node scripts/verify-rc80-business-browser.mjs
+      - name: Report only safe API failure categories
+        if: failure()
+        run: |
+          if test -f /tmp/rc80-worker.log; then
+            grep -E 'api.failure|Workers runtime canceled|Uncaught Error' /tmp/rc80-worker.log | tail -n 20 || true
+          fi
       - name: Archive synthetic UI screenshots and evidence only
         if: always()
         uses: actions/upload-artifact@v4

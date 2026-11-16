@@ -59,8 +59,8 @@ try{
     assert.equal(initial.finance.settledScaled,'0');
     assert.equal(initial.finance.outstandingScaled,'120000');
     const documentResponse=await ctx.request.get(origin+'/api/orders/'+fixture.orderId+'/documents');
-    assert.equal(documentResponse.status(),200);
     const documents=await json(documentResponse);
+    assert.equal(documentResponse.status(),200,'Unmapped docs status '+String(documents.code??'unknown'));
     assert.equal(documents.enabled,false,'No external NextCRM mapping should leak');
     assert.equal(documents.items.length,0);
 
