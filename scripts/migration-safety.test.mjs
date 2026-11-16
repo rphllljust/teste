@@ -68,3 +68,19 @@ test('reviewed, fresh restore attestation accepts exact migration only',()=>{
     sql:migration+' -- changed',env:withEvidence(),now,
   }),/MIGRATION_BACKUP_NO_GO/);
 });
+
+test('new NextCRM bridge migration requires its own matching, fresh restore evidence',()=>{
+  const nextcrmMigration='0003_nextcrm_document_bridge';
+  const nextcrmSql='-- synthetic NextCRM bridge migration bytes';
+  const nextcrmDigest=sqlDigest(nextcrmSql);
+  const evidence0003={...evidence,migrationId:nextcrmMigration,migrationSha256:nextcrmDigest};
+  const verify=(value)=>validateRestoreAttestation({
+    migrationId:nextcrmMigration,sql:nextcrmSql,
+    env:{...stable,CISNE_DB_RESTORE_ATTESTATION:JSON.stringify(value)},now,
+  });
+  assert.throws(()=>verify(evidence),/MIGRATION_BACKUP_NO_GO/);
+  assert.throws(()=>verify({...evidence0003,migrationSha256:sqlHash}),/MIGRATION_BACKUP_NO_GO/);
+  const accepted=verify(evidence0003);
+  assert.equal(accepted.migrationId,nextcrmMigration);
+  assert.equal(accepted.digest,nextcrmDigest);
+});

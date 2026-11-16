@@ -115,15 +115,23 @@ async function verify(){
     total:2505000,contract_status:'active',order_status:'draft',
   });
   const migrations=await pool.query(
-    "SELECT id FROM _cisne_schema_migrations WHERE id IN ('0000_salty_lilith','0001_native_crm','0002_crm_proposal_origin') ORDER BY id");
+    "SELECT id FROM _cisne_schema_migrations WHERE id IN ('0000_salty_lilith','0001_native_crm','0002_crm_proposal_origin','0003_nextcrm_document_bridge') ORDER BY id");
   assert.deepEqual(migrations.rows.map(r=>r.id),[
-    '0000_salty_lilith','0001_native_crm','0002_crm_proposal_origin',
+    '0000_salty_lilith','0001_native_crm','0002_crm_proposal_origin','0003_nextcrm_document_bridge',
   ]);
   const fk=await pool.query(
     `SELECT conname FROM pg_constraint
      WHERE conname IN ('crm_opportunity_proposals_owner_opportunity_fk',
        'crm_opportunity_proposals_owner_proposal_fk')`);
   assert.equal(fk.rows.length,2,'tenant-qualified origin foreign keys must restore');
+  const tables=await pool.query(`SELECT tablename FROM pg_tables WHERE schemaname='public'
+    AND tablename IN ('nextcrm_erp_identity_mappings',
+    'nextcrm_erp_client_account_mappings','nextcrm_order_document_links',
+    'nextcrm_order_document_events')`);
+  assert.equal(tables.rows.length,4,'NextCRM approved mappings and immutable audit tables must restore');
+  const guards=await pool.query(`SELECT tgname FROM pg_trigger WHERE tgname IN
+    ('nextcrm_doc_links_immutable','nextcrm_doc_events_immutable') AND NOT tgisinternal`);
+  assert.equal(guards.rows.length,2,'document link immutability triggers must restore');
 }
 
 try{

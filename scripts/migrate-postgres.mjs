@@ -5,7 +5,7 @@ import { PROTECTED_MIGRATION, validateRestoreAttestation } from './migration-saf
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for PostgreSQL migrations');
 // Apply immutable, ordered migrations; never re-run a recorded migration.
 // 0001 is additive and preserves the Field schema and all existing records.
-const migrationNames = ['0000_salty_lilith', '0001_native_crm', '0002_crm_proposal_origin'];
+const migrationNames = ['0000_salty_lilith', '0001_native_crm', '0002_crm_proposal_origin', '0003_nextcrm_document_bridge'];
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
 const client = await pool.connect();
 try {
@@ -21,6 +21,21 @@ try {
     const sql=await readFile(
       new URL('../drizzle-pg/'+PROTECTED_MIGRATION+'.sql',import.meta.url),'utf8');
     validateRestoreAttestation({migrationId:PROTECTED_MIGRATION,sql});
+  }
+  // NextCRM identity mappings are sensitive even when disabled by default.
+  // An additional operator-approved recovery drill for the exact new SQL is
+  // mandatory in staging and production. The 0002 evidence cannot be reused.
+  const nextcrmMigration='0003_nextcrm_document_bridge';
+  const appliedNextcrm=await client.query(
+    'SELECT id FROM _cisne_schema_migrations WHERE id=$1',[nextcrmMigration]);
+  if(!appliedNextcrm.rowCount){
+    const sql=await readFile(
+      new URL('../drizzle-pg/'+nextcrmMigration+'.sql',import.meta.url),'utf8');
+    validateRestoreAttestation({
+      migrationId:nextcrmMigration,sql,
+      env:{...process.env,CISNE_DB_RESTORE_ATTESTATION:
+        process.env.CISNE_DB_RESTORE_ATTESTATION_0003},
+    });
   }
   for (const name of migrationNames) {
     const { rows } = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [name]);

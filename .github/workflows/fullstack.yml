@@ -46,6 +46,8 @@ jobs:
           test -f .openai/hosting.json
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile
+      - name: Cross-system document ACL and strict input contracts
+        run: node --import tsx --test lib/integrations/nextcrm/bridge-protocol.test.mjs lib/integrations/nextcrm/document-link-contract.test.mjs lib/integrations/nextcrm/document-link-preflight.test.mjs
       - name: TypeScript
         run: pnpm exec tsc --noEmit
       - name: ESLint
