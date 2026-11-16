@@ -18,7 +18,7 @@ const invoiceId = randomUUID();
 const receivableId = randomUUID();
 const measurementId = randomUUID();
 const orderId = randomUUID();
-const req = (path: string, method: string, body: unknown) => setTestIdentity(new Request(`http://localhost${path}`, { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }), actor);
+const req = (path: string, method: string, body?: unknown) => setTestIdentity(new Request(`http://localhost${path}`, { method, headers: { 'content-type': 'application/json' }, ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(body) }) }), actor);
 const json = async (response: Response) => response.clone().json() as Promise<Record<string, unknown>>;
 
 before(async () => {
