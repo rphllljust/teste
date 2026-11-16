@@ -1,5 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
+import { approvedStagingPublicOrigin } from '../../../../lib/api/staging-public-origin.mjs';
 import {
   issueStagingSession, stagingSessionCookieHeader,
   clearedStagingSessionCookie, validateStagingSession,
@@ -8,12 +9,11 @@ import {
 export const dynamic='force-dynamic';
 const jsonHeaders={'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'};
 const loginInput=z.object({passphrase:z.string().min(24).max(160)}).strict();
-function publicOrigin(){return process.env.CISNE_STAGING_PUBLIC_ORIGIN;}
+function publicOrigin(){return approvedStagingPublicOrigin();}
 function configured(){
   const hash=process.env.CISNE_STAGING_LOGIN_HASH;
   return process.env.RAILWAY_ENVIRONMENT_NAME==='staging'&&
-    typeof publicOrigin()==='string'&&
-    /^https:\/\/cisne-web-staging-staging[.]up[.]railway[.]app$/.test(publicOrigin()!)&&
+    publicOrigin()!==null&&
     typeof hash==='string'&&/^[a-f0-9]{64}$/.test(hash)&&
     typeof process.env.CISNE_STAGING_SESSION_SECRET==='string'&&
     process.env.CISNE_STAGING_SESSION_SECRET.length>=32&&

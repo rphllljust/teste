@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { databasePool } from '../../../../db/raw';
 import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
 import { projectOrder, type OrderRow } from '../../../../lib/projections/orders';
+import { outstandingExpression } from '../../../../lib/projections/operation';
 
 export const dynamic = 'force-dynamic';
 type RouteContext = { params: Promise<{ id: string }> };
@@ -31,7 +32,7 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
 
     // Every subquery is bound to the already verified order ID. No client,
     // actor, tenant, document URL or state from HTTP input is trusted.
-    const [relations, events, historyCount] = await Promise.all([
+    const [relations, events, historyCount, finance] = await Promise.all([
       db.query<{
         measurements:number; invoices:number; receivables:number;
       }>(`SELECT
@@ -45,8 +46,29 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
         [id],
       ),
       db.query<{n:number}>('SELECT count(*)::int AS n FROM order_events WHERE order_id=$1', [id]),
+      // Totals are scoped to the already authenticated OS, not a client,
+      // account, owner or tenant supplied by the browser. Receivable sums
+      // use the SAME persisted settlement ledger as the Financeiro module.
+      db.query<{
+        measured_scaled:string; invoiced_scaled:string;
+        receivable_scaled:string; settled_scaled:string; outstanding_scaled:string;
+      }>(`SELECT
+          (SELECT CAST(COALESCE(SUM(m.amount),0) AS TEXT)
+             FROM measurements m WHERE m.order_id=$1) AS measured_scaled,
+          (SELECT CAST(COALESCE(SUM(i.amount),0) AS TEXT)
+             FROM invoices i WHERE i.order_id=$1) AS invoiced_scaled,
+          (SELECT CAST(COALESCE(SUM(r.amount),0) AS TEXT)
+             FROM receivables r JOIN invoices i ON i.id=r.invoice_id
+             WHERE i.order_id=$1) AS receivable_scaled,
+          (SELECT CAST(COALESCE(SUM(r.amount-(${outstandingExpression})),0) AS TEXT)
+             FROM receivables r JOIN invoices i ON i.id=r.invoice_id
+             WHERE i.order_id=$1) AS settled_scaled,
+          (SELECT CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT)
+             FROM receivables r JOIN invoices i ON i.id=r.invoice_id
+             WHERE i.order_id=$1) AS outstanding_scaled`, [id]),
     ]);
     const metric = relations.rows[0];
+    const financial = finance.rows[0];
     const total = historyCount.rows[0]?.n ?? 0;
     const labels:Record<string,string> = {
       create:'OS cadastrada', authorize:'OS autorizada', start:'Execução iniciada',
@@ -65,6 +87,21 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
           measurements:metric?.measurements ?? 0,
           invoices:metric?.invoices ?? 0,
           receivables:metric?.receivables ?? 0,
+        },
+        // This is Field's own financial ledger for this service order, NOT
+        // a NextCRM invoice or a reconciled bank balance. Scaled decimal
+        // strings preserve monetary precision at the API boundary.
+        finance:{
+          measuredScaled:financial?.measured_scaled ?? '0',
+          invoicedScaled:financial?.invoiced_scaled ?? '0',
+          receivableScaled:financial?.receivable_scaled ?? '0',
+          settledScaled:financial?.settled_scaled ?? '0',
+          outstandingScaled:financial?.outstanding_scaled ?? '0',
+          moneyScale:4,
+          currency:'BRL',
+          authority:'field.persistedReceivableSettlementLedger.v1',
+          generatedAt:new Date().toISOString(),
+          bankBalanceAvailable:false,
         },
         sublists:{history:{
           items:history,
