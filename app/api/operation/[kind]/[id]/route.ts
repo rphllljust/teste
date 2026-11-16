@@ -3,6 +3,7 @@ import { ApiError, failure, requestContext, respond, type RequestContext } from 
 import { database } from '../../../../../db/raw';
 import { financialHistory, historyPageInfo, parseHistoryPage } from '../../../../../lib/projections/financial-history';
 import { outstandingExpression } from '../../../../../lib/projections/operation';
+import { measurementCommands } from '../../../../../lib/projections/orders';
 
 const kindSchema = z.enum(['measurements', 'invoices', 'receivables']);
 
@@ -41,7 +42,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
       settlementsPageInfo: kind.data === 'receivables' ? historyPageInfo(historyPage, historyTotal) : undefined,
       evidence: [],
       evidencePageInfo: { total: 0 },
-      availableCommands: kind.data === 'receivables' && BigInt(principal) > BigInt(settled) ? [{ id: 'record_receipt', label: 'Registrar recebimento', primary: true }] : [],
+      availableCommands: kind.data === 'measurements'
+        ? measurementCommands({ status: String(row.status ?? ''), version: Number(row.version ?? 1) })
+        : kind.data === 'receivables' && BigInt(principal) > BigInt(settled) ? [{ id: 'record_receipt', label: 'Registrar recebimento', primary: true }] : [],
       warnings: kind.data === 'receivables' ? ['Recebimentos informados manualmente; conciliação bancária não conectada.'] : [],
     };
     return respond({ projection }, context);
