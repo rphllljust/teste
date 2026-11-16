@@ -16,6 +16,7 @@ import {
   NextcrmBridgeUnavailable,
 } from '../../../../../lib/integrations/nextcrm/nextcrm-http-document-verifier';
 import type { NextcrmBridgeConfig } from '../../../../../lib/integrations/nextcrm/nextcrm-http-document-verifier';
+import { publicNextcrmLinkedDocument } from '../../../../../lib/integrations/nextcrm/public-document-projection';
 
 export const dynamic = 'force-dynamic';
 type RouteContext = { params: Promise<{ id: string }> };
@@ -125,11 +126,7 @@ export async function GET(request: Request, {params}: RouteContext) {
         approved.accountId!==account.accountId||
         approved.version!==link.document_version||
         (link.sha256!==null&&approved.sha256!==link.sha256))continue;
-      items.push({
-        id:link.id,documentId:link.nextcrm_document_id,
-        kind:link.document_kind,version:link.document_version,
-        sha256:approved.sha256,linkedAt:link.created_at,
-      });
+      items.push(publicNextcrmLinkedDocument(link,approved.sha256));
     }
     return respond({enabled:true,items,limit:50},context);
   }catch(error){return safeFailure(error,context);}
