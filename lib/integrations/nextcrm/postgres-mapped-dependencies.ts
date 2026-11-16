@@ -1,6 +1,6 @@
-import type { OrderDocumentLinkDependencies } from './document-link-preflight.ts';
-import { createPostgresOrderOwnershipReader, type OrderOwnershipQuery } from './postgres-order-ownership.ts';
-import { createNextcrmHttpDocumentVerifier, type NextcrmBridgeConfig } from './nextcrm-http-document-verifier.ts';
+import type { OrderDocumentLinkDependencies } from './document-link-preflight';
+import { createPostgresOrderOwnershipReader, type OrderOwnershipQuery } from './postgres-order-ownership';
+import { createNextcrmHttpDocumentVerifier, type NextcrmBridgeConfig } from './nextcrm-http-document-verifier';
 
 /** Uses only trusted, approved ERP mappings; no public API may modify them. */
 const UUID = /^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
