@@ -141,3 +141,17 @@ export async function registerCashTransfer(context: RequestContext, input: { id:
     return { ok: true, replayed: false, resource: { type: 'cashTransfer', id: input.id, amount: String(input.amount), from: input.fromAccountReference, to: input.toAccountReference } };
   });
 }
+
+export async function reverseCashTransfer(context: RequestContext, input: { transferId: string; commandKey: string; requestHash: string; reference: string }) {
+  return database().transaction(async query => {
+    const prior = await query('SELECT id,request_hash FROM finance_audit_events WHERE entity_type=$1 AND entity_id=$2 AND action=$3 AND request_hash=$4', ['cash_transfer_reversal', input.transferId, 'transfer_reversed', input.requestHash]);
+    if (prior.rows.length) return { ok: true, replayed: true, resource: { type: 'cashTransferReversal', id: input.commandKey, transferId: input.transferId } };
+    const transfer = await query("SELECT id,from_account_reference,to_account_reference,amount,status FROM cash_transfers WHERE id=$1 AND actor_id=$2 FOR UPDATE", [input.transferId, context.actorId]);
+    if (!transfer.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Transferência não encontrada.');
+    const row = transfer.rows[0];
+    if (row.status !== 'posted') throw new ApiError(409, 'TRANSFER_ALREADY_REVERSED', 'A transferência já foi estornada.');
+    await query("UPDATE cash_transfers SET status='reversed' WHERE id=$1 AND actor_id=$2 AND status='posted'", [input.transferId, context.actorId]);
+    await audit(query, context, 'cash_transfer_reversal', input.transferId, 'transfer_reversed', input.requestHash, { reversalId: input.commandKey, reference: input.reference, amount: row.amount });
+    return { ok: true, replayed: false, resource: { type: 'cashTransferReversal', id: input.commandKey, transferId: input.transferId, amount: String(row.amount) } };
+  });
+}
