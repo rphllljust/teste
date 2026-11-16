@@ -39,6 +39,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
       relations: { orderId: String(row.order_id), orderTitle: String(row.order_title ?? ''), measurementId: kind.data === 'measurements' ? id : String(row.measurement_id ?? ''), measurementDescription: String(row.description ?? ''), invoiceId: kind.data === 'receivables' ? String(row.invoice_id ?? '') : kind.data === 'invoices' ? id : null, receivableId: kind.data === 'receivables' ? id : null },
       settlements: kind.data === 'receivables' ? historyRows : [],
       settlementsPageInfo: kind.data === 'receivables' ? historyPageInfo(historyPage, historyTotal) : undefined,
+      evidence: [],
+      evidencePageInfo: { total: 0 },
       availableCommands: kind.data === 'receivables' && BigInt(principal) > BigInt(settled) ? [{ id: 'record_receipt', label: 'Registrar recebimento', primary: true }] : [],
       warnings: kind.data === 'receivables' ? ['Recebimentos informados manualmente; conciliação bancária não conectada.'] : [],
     };
