@@ -44,7 +44,7 @@ test('OS detail returns accurate history/relations exclusively to its actual own
     const response=await detail(owned,actor);
     assert.equal(response.status,200);
     assert.equal(response.headers.get('cache-control'),'no-store');
-    const payload=await response.json();
+    const payload=await response.json() as {order:{id:string;client_id:string|null;relations:{clientId:string|null;measurements:number;invoices:number;receivables:number};sublists:{history:{pageInfo:{total:number};items:Array<{id:string;label:string}>}}}};
     assert.equal(payload.order.id,owned);
     assert.equal(payload.order.client_id,clientId);
     assert.equal(payload.order.relations.clientId,clientId);
