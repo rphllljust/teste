@@ -7,14 +7,12 @@ import {
 } from '../../../../lib/api/staging-session.mjs';
 
 export const dynamic='force-dynamic';
+export const runtime='nodejs';
 const jsonHeaders={'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'};
 const loginInput=z.object({passphrase:z.string().min(24).max(160)}).strict();
 function publicOrigin(){return approvedStagingPublicOrigin();}
 function stagingRuntime(){
-  // Railway's reserved environment variable is not reliable in every
-  // isolated UAT service. The explicit flag is scoped to this UAT service.
-  return process.env.RAILWAY_ENVIRONMENT_NAME==='staging' ||
-    process.env.CISNE_STAGING_UAT==='true';
+  return publicOrigin()!==null && process.env.CISNE_STAGING_ACCESS_MODE==='private';
 }
 function configured(){
   const hash=process.env.CISNE_STAGING_LOGIN_HASH;
