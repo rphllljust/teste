@@ -6,6 +6,8 @@ import { closeDatabase } from '../../db/raw';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET as financeWorkspace } from '../../app/api/finance/workspace/route';
 import { POST as settle } from '../../app/api/finance/receivables/settlements/route';
+import { POST as reverse } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
+import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Integration harness must run with NODE_ENV=test');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for integration tests');
@@ -16,6 +18,9 @@ const orderId = randomUUID();
 const measurementId = randomUUID();
 const invoiceId = randomUUID();
 const receivableId = randomUUID();
+const settlementKey = randomUUID();
+const reversalKey = randomUUID();
+const periodId = randomUUID();
 
 const request = (path: string, method = 'GET', body?: unknown) =>
   setTestIdentity(new Request('http://localhost' + path, { method, headers: { 'content-type': 'application/json' }, ...(body === undefined ? {} : { body: JSON.stringify(body) }) }), actor);
@@ -85,7 +90,7 @@ test('cross-module chain preserves OS, measurement, invoice and receivable linea
     amount: '25000',
     effectiveDate: '2026-11-16',
     reference: 'UAT partial settlement',
-    commandKey: randomUUID(),
+    commandKey: settlementKey,
   }));
   assert.equal(settlement.status, 201, await settlement.text());
 
@@ -94,4 +99,22 @@ test('cross-module chain preserves OS, measurement, invoice and receivable linea
     [receivableId],
   );
   assert.equal(Number(remaining.rows[0].outstanding), 100000);
+
+  const reversed = await reverse(
+    request('/api/finance/receivables/settlements/' + settlementKey + '/reverse', 'POST', {
+      commandKey: reversalKey,
+      effectiveDate: '2026-11-17',
+      reference: 'UAT settlement reversal',
+    }),
+    { params: Promise.resolve({ id: settlementKey }) },
+  );
+  assert.equal(reversed.status, 201, await reversed.text());
+
+  const closed = await closePeriod(request('/api/finance/periods/close', 'POST', {
+    id: periodId,
+    periodStart: '2026-11-01',
+    periodEnd: '2026-11-30',
+    reference: 'UAT integration close',
+  }));
+  assert.equal(closed.status, 201, await closed.text());
 });
