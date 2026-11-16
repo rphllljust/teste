@@ -1,0 +1,90 @@
+name: RC80 disposable PostgreSQL real browser UAT
+on:
+  push:
+    branches:
+      - integration/rc80-ephemeral-authenticated-browser-20261116
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-authenticated:
+    name: Isolated real HTTP business chain and Chromium desktop/mobile
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    container:
+      image: mcr.microsoft.com/playwright:v1.56.1-noble
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: cisne_ci
+          POSTGRES_PASSWORD: ci-temporary-rc80-only
+          POSTGRES_DB: cisne_ci
+        options: >-
+          --health-cmd "pg_isready -U cisne_ci -d cisne_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://cisne_ci:ci-temporary-rc80-only@postgres:5432/cisne_ci
+      NEXT_TELEMETRY_DISABLED: '1'
+      CISNE_STAGING_ACTOR_ID: ci-browser-actor-rc80
+      PORT: '8787'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install locked application deps and matching Chromium client
+        run: |
+          pnpm install --frozen-lockfile
+          npm install --prefix /tmp/rc80-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+      - name: Apply real migrations ONLY to disposable CI PostgreSQL
+        run: |
+          node -e "const u=new URL(process.env.DATABASE_URL);if(process.env.GITHUB_ACTIONS!=='true'||u.hostname!=='postgres'||u.pathname!=='/cisne_ci')process.exit(75)"
+          pnpm db:migrate
+      - name: Generate complete fictitious OS to billing with actual handlers
+        env:
+          NODE_ENV: test
+        run: node --import tsx scripts/seed-rc80-browser-uat.ts
+      - name: Build actual application
+        env:
+          NODE_ENV: production
+        run: pnpm build
+      - name: Create strictly disposable signed session for local worker
+        run: |
+          echo "CISNE_STAGING_SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+      - name: Start real Worker app against isolated Postgres
+        env:
+          NODE_ENV: production
+        run: |
+          node scripts/create-rc80-local-worker-env.mjs
+          pnpm start > /tmp/rc80-worker.log 2>&1 &
+          echo $! > /tmp/rc80-worker.pid
+          for i in $(seq 1 45); do
+            if curl -fsS --max-time 5 http://localhost:8787/api/health/ready > /tmp/rc80-ready.json; then
+              grep -Fq '"ready"' /tmp/rc80-ready.json && { echo 'RC80 loopback-ready'; exit 0; }
+            fi
+            sleep 4
+          done
+          echo 'RC80 loopback app failed readiness; no business writes performed by browser'
+          tail -n 25 /tmp/rc80-worker.log
+          exit 1
+      - name: Exercise signed actor HTTP and browser with fictitious data
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/rc80-browser/node_modules/playwright/index.mjs
+        run: node scripts/verify-rc80-business-browser.mjs
+      - name: Archive synthetic UI screenshots and evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc80-ephemeral-real-business-ui
+          path: artifacts/rc80-ui/
+          if-no-files-found: warn
+          retention-days: 7
