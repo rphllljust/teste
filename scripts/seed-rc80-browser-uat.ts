@@ -13,7 +13,7 @@ if(process.env.GITHUB_ACTIONS!=='true'||process.env.CI!=='true'||process.env.NOD
 if(Object.keys(process.env).some(key=>key.startsWith('RAILWAY_')))
   throw Error('NO-GO: fixture cannot run inside Railway');
 const databaseUrl=new URL(process.env.DATABASE_URL??'about:blank');
-if(databaseUrl.hostname!=='postgres'||databaseUrl.pathname!=='/cisne_ci')
+if(databaseUrl.hostname!=='127.0.0.1'||databaseUrl.pathname!=='/cisne_ci')
   throw Error('NO-GO: only disposable GitHub Actions Postgres is allowed');
 const owner='ci-browser-actor-rc80',clientId=randomUUID(),orderId=randomUUID();
 const pool=new Pool({connectionString:process.env.DATABASE_URL,max:2});

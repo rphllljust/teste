@@ -7,7 +7,7 @@ if(process.env.GITHUB_ACTIONS!=='true'||process.env.CI!=='true')
 if(Object.keys(process.env).some(k=>k.startsWith('RAILWAY_')))
   throw Error('NO-GO: refusing Railway runtime');
 const u=new URL(process.env.DATABASE_URL??'about:blank');
-assert.equal(u.hostname,'postgres','Only disposable Postgres service');
+assert.equal(u.hostname,'127.0.0.1','Only loopback disposable Postgres');
 assert.equal(u.pathname,'/cisne_ci','Only disposable Postgres db');
 const secret=process.env.CISNE_STAGING_SESSION_SECRET??'';
 assert.ok(secret.length>=32,'Ephemeral signed session key required');

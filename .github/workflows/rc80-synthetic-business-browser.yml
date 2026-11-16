@@ -11,8 +11,6 @@ jobs:
     name: Isolated real HTTP business chain and Chromium desktop/mobile
     runs-on: ubuntu-latest
     timeout-minutes: 28
-    container:
-      image: mcr.microsoft.com/playwright:v1.56.1-noble
     services:
       postgres:
         image: postgres:18
@@ -20,6 +18,8 @@ jobs:
           POSTGRES_USER: cisne_ci
           POSTGRES_PASSWORD: ci-temporary-rc80-only
           POSTGRES_DB: cisne_ci
+        ports:
+          - 5432:5432
         options: >-
           --health-cmd "pg_isready -U cisne_ci -d cisne_ci"
           --health-interval 5s
@@ -27,7 +27,7 @@ jobs:
           --health-retries 20
     env:
       CI: 'true'
-      DATABASE_URL: postgresql://cisne_ci:ci-temporary-rc80-only@postgres:5432/cisne_ci
+      DATABASE_URL: postgresql://cisne_ci:ci-temporary-rc80-only@127.0.0.1:5432/cisne_ci
       NEXT_TELEMETRY_DISABLED: '1'
       CISNE_STAGING_ACTOR_ID: ci-browser-actor-rc80
       PORT: '8787'
@@ -45,9 +45,10 @@ jobs:
         run: |
           pnpm install --frozen-lockfile
           npm install --prefix /tmp/rc80-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          /tmp/rc80-browser/node_modules/.bin/playwright install --with-deps chromium
       - name: Apply real migrations ONLY to disposable CI PostgreSQL
         run: |
-          node -e "const u=new URL(process.env.DATABASE_URL);if(process.env.GITHUB_ACTIONS!=='true'||u.hostname!=='postgres'||u.pathname!=='/cisne_ci')process.exit(75)"
+          node -e "const u=new URL(process.env.DATABASE_URL);if(process.env.GITHUB_ACTIONS!=='true'||u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(75)"
           pnpm db:migrate
       - name: Generate complete fictitious OS to billing with actual handlers
         env:
