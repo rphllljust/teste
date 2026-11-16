@@ -62,7 +62,9 @@ jobs:
         run: pnpm build
       - name: Create strictly disposable signed session for local worker
         run: |
-          echo "CISNE_STAGING_SESSION_SECRET=$(openssl rand -hex 32)" >> "$GITHUB_ENV"
+          key="$(openssl rand -hex 32)"
+          echo "::add-mask::$key"
+          printf 'CISNE_STAGING_SESSION_SECRET=%s\n' "$key" >> "$GITHUB_ENV"
       - name: Start real Worker app against isolated Postgres
         env:
           NODE_ENV: production
@@ -78,6 +80,22 @@ jobs:
           done
           echo 'RC80 loopback app failed readiness; no business writes performed by browser'
           tail -n 25 /tmp/rc80-worker.log
+          exit 1
+      - name: Bind local HTTPS for Secure and HttpOnly browser cookies
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/rc80-local.key -out /tmp/rc80-local.cert \
+            -subj "/CN=127.0.0.1" >/dev/null 2>&1
+          chmod 600 /tmp/rc80-local.key
+          node scripts/rc80-local-tls-proxy.mjs > /tmp/rc80-local-tls.log 2>&1 &
+          for i in $(seq 1 15); do
+            if curl -skf --max-time 3 https://127.0.0.1:9443/api/health/ready >/dev/null; then
+              echo 'RC80 Secure-cookie HTTPS transport ready'
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 15 /tmp/rc80-local-tls.log
           exit 1
       - name: Exercise signed actor HTTP and browser with fictitious data
         env:

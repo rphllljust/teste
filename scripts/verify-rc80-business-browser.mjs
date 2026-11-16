@@ -9,14 +9,14 @@ const playwrightPath=process.env.PLAYWRIGHT_MODULE_PATH;
 assert.ok(playwrightPath?.startsWith('/'));
 if(process.env.CI!=='true'||process.env.GITHUB_ACTIONS!=='true')throw Error('NO-GO CI only');
 const {chromium}=await import(playwrightPath);
-const origin='http://localhost:8787';
+const origin='https://127.0.0.1:9443';
 const token=issueStagingSession(fixture.owner,process.env.CISNE_STAGING_SESSION_SECRET);
 const evidence=[];
 const chrome=await chromium.launch({headless:true,args:['--no-sandbox']});
 const json=async(response)=>{let body=await response.json();return body;};
 try{
   for(const viewport of [{name:'desktop',width:1440,height:900},{name:'mobile',width:390,height:844}]){
-    const ctx=await chrome.newContext({viewport:{width:viewport.width,height:viewport.height},
+    const ctx=await chrome.newContext({ignoreHTTPSErrors:true,viewport:{width:viewport.width,height:viewport.height},
       locale:'pt-BR',isMobile:viewport.name==='mobile',hasTouch:viewport.name==='mobile'});
     await ctx.addCookies([{
       name:CISNE_STAGING_COOKIE,value:token,url:origin,
@@ -45,7 +45,7 @@ try{
       evidence.push({viewport:viewport.name,ownedOsRendered:true,financialWorkspaceRendered:true,jsErrors:0,overflow:Math.max(0,width)});
     }finally{await ctx.close();}
   }
-  const ctx=await chrome.newContext();
+  const ctx=await chrome.newContext({ignoreHTTPSErrors:true});
   await ctx.addCookies([{name:CISNE_STAGING_COOKIE,value:token,url:origin,
     secure:true,httpOnly:true,sameSite:'Lax'}]);
   try{
@@ -98,7 +98,7 @@ try{
       afterReceiptOutstandingScaled:'95000',afterReversalOutstandingScaled:'120000',
       receiptReplayStatus:200,closedPeriodWriteDeniedStatus:409,
       nextcrmDocuments:'not_mapped_fail_closed'});
-    const publicCtx=await chrome.newContext();
+    const publicCtx=await chrome.newContext({ignoreHTTPSErrors:true});
     try{
       const anonymous=await publicCtx.request.get(origin+'/api/orders');
       assert.equal(anonymous.status(),403,'Anonymous may not read synthetic data');
