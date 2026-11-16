@@ -15,7 +15,7 @@ import { createPostgresOrderOwnershipReader } from '../../lib/integrations/nextc
 if (process.env.NODE_ENV !== 'test') throw new Error('Only ephemeral tests are allowed');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
 const url = new URL(process.env.DATABASE_URL);
-if (url.hostname !== '127.0.0.1' || !['/cisne_ci', '/cisne_test'].includes(url.pathname)) {
+if (!['localhost', '127.0.0.1'].includes(url.hostname) || !['/cisne_ci', '/cisne_test'].includes(url.pathname)) {
   throw new Error('NO-GO: this test refuses non-ephemeral PostgreSQL targets');
 }
 

@@ -162,6 +162,23 @@ jobs:
               ['ci-test-client','ci-actor','Fictitious Test Company','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z']);
           } finally { await c.end(); }
           JS
+      - name: Reset disposable ERP baseline before parity audit
+        shell: bash
+        run: |
+          node --input-type=module <<'JS'
+          import pg from 'pg';
+          const c = new pg.Client({connectionString:process.env.DATABASE_URL});
+          await c.connect();
+          try {
+            const tables = await c.query("SELECT tablename FROM pg_tables WHERE schemaname='public' AND tablename NOT LIKE 'crm_%' AND tablename <> '_cisne_schema_migrations'");
+            for (const row of tables.rows) {
+              const table = row.tablename.replaceAll('"','""');
+              await c.query(`TRUNCATE TABLE public."${table}" CASCADE`);
+            }
+            await c.query('INSERT INTO clients(id,owner_id,legal_name,created_at,updated_at) VALUES($1,$2,$3,$4,$5)',
+              ['ci-test-client','ci-actor','Fictitious Test Company','2026-01-01T00:00:00Z','2026-01-01T00:00:00Z']);
+          } finally { await c.end(); }
+          JS
       - name: Audit all tables and content hashes of synthetic source and destination
         shell: bash
         run: |
