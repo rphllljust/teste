@@ -3,6 +3,10 @@ import { ApiError, type RequestContext } from '../api/http';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
+export async function assertFinancePeriodOpen(query: Query, actorId: string, effectiveDate: string) {
+  const closed = await query("SELECT 1 FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$2 LIMIT 1", [actorId, effectiveDate]);
+  if (closed.rows.length) throw new ApiError(409, 'FINANCE_PERIOD_CLOSED', 'O período financeiro está fechado para novos lançamentos.');
+}
 
 export type SettlementInput = {
   receivableId: string;
@@ -21,6 +25,7 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor da baixa deve ser positivo.');
   if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data da baixa é inválida.');
   if (!input.commandKey || !input.requestHash) throw new ApiError(400, 'VALIDATION_FAILED', 'A operação precisa de idempotência.');
+  await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
 
   const prior = await query('SELECT id, receivable_id, amount, effective_date, reference, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
   if (prior.rows.length) {
@@ -51,6 +56,7 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
 export async function reverseReceivableSettlement(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
+    await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query('SELECT id, receivable_id, amount, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
     if (prior.rows.length) {
       const row = prior.rows[0];
@@ -78,6 +84,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
   return database().transaction(async query => {
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do pagamento é inválida.');
+    await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
     if (prior.rows.length) {
       const row = prior.rows[0];
@@ -105,6 +112,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
 export async function reversePayablePayment(context: RequestContext, input: { paymentId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
+    await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
     if (prior.rows.length) {
       const row = prior.rows[0];
@@ -130,6 +138,7 @@ export async function registerCashTransfer(context: RequestContext, input: { id:
   return database().transaction(async query => {
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor da transferência deve ser positivo.');
     if (input.fromAccountReference === input.toAccountReference) throw new ApiError(400, 'VALIDATION_FAILED', 'As contas de origem e destino devem ser diferentes.');
+    await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query('SELECT id,from_account_reference,to_account_reference,amount,request_hash,actor_id FROM cash_transfers WHERE id=$1', [input.id]);
     if (prior.rows.length) {
       const row = prior.rows[0];
