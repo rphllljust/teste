@@ -1,0 +1,121 @@
+name: RC80 disposable PostgreSQL real browser UAT
+on:
+  push:
+    branches:
+      - integration/rc80-ephemeral-authenticated-browser-20261116
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-authenticated:
+    name: Isolated real HTTP business chain and Chromium desktop/mobile
+    runs-on: ubuntu-24.04
+    timeout-minutes: 28
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: cisne_ci
+          POSTGRES_PASSWORD: ci-temporary-rc80-only
+          POSTGRES_DB: cisne_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U cisne_ci -d cisne_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://cisne_ci:ci-temporary-rc80-only@127.0.0.1:5432/cisne_ci
+      NEXT_TELEMETRY_DISABLED: '1'
+      CISNE_STAGING_ACTOR_ID: ci-browser-actor-rc80
+      PORT: '8787'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install locked application deps and matching Chromium client
+        run: |
+          pnpm install --frozen-lockfile
+          npm install --prefix /tmp/rc80-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          /tmp/rc80-browser/node_modules/.bin/playwright install --with-deps chromium
+      - name: Apply real migrations ONLY to disposable CI PostgreSQL
+        env:
+          NODE_ENV: test
+        run: |
+          node -e "const u=new URL(process.env.DATABASE_URL);if(process.env.GITHUB_ACTIONS!=='true'||u.hostname!=='127.0.0.1'||u.pathname!=='/cisne_ci')process.exit(75)"
+          pnpm db:migrate
+      - name: Generate complete fictitious OS to billing with actual handlers
+        env:
+          NODE_ENV: test
+        run: node --import tsx scripts/seed-rc80-browser-uat.ts
+      - name: Build actual application
+        env:
+          NODE_ENV: production
+        run: pnpm build
+      - name: Create strictly disposable signed session for local worker
+        run: |
+          key="$(openssl rand -hex 32)"
+          echo "::add-mask::$key"
+          printf 'CISNE_STAGING_SESSION_SECRET=%s\n' "$key" >> "$GITHUB_ENV"
+          bridge="$(openssl rand -hex 32)"
+          echo "::add-mask::$bridge"
+          printf 'CISNE_NEXTCRM_BRIDGE_SECRET=%s\n' "$bridge" >> "$GITHUB_ENV"
+          echo 'CISNE_NEXTCRM_INSTANCE_KEY=ci_rc80_ephemeral' >> "$GITHUB_ENV"
+      - name: Start real Worker app against isolated Postgres
+        env:
+          NODE_ENV: production
+        run: |
+          node scripts/create-rc80-local-worker-env.mjs
+          pnpm start > /tmp/rc80-worker.log 2>&1 &
+          echo $! > /tmp/rc80-worker.pid
+          for i in $(seq 1 45); do
+            if curl -fsS --max-time 5 http://localhost:8787/api/health/ready > /tmp/rc80-ready.json; then
+              grep -Fq '"ready"' /tmp/rc80-ready.json && { echo 'RC80 loopback-ready'; exit 0; }
+            fi
+            sleep 4
+          done
+          echo 'RC80 loopback app failed readiness; no business writes performed by browser'
+          tail -n 25 /tmp/rc80-worker.log
+          exit 1
+      - name: Bind local HTTPS for Secure and HttpOnly browser cookies
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/rc80-local.key -out /tmp/rc80-local.cert \
+            -subj "/CN=127.0.0.1" >/dev/null 2>&1
+          chmod 600 /tmp/rc80-local.key
+          node scripts/rc80-local-tls-proxy.mjs > /tmp/rc80-local-tls.log 2>&1 &
+          for i in $(seq 1 15); do
+            if curl -skf --max-time 3 https://127.0.0.1:9443/api/health/ready >/dev/null; then
+              echo 'RC80 Secure-cookie HTTPS transport ready'
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 15 /tmp/rc80-local-tls.log
+          exit 1
+      - name: Exercise signed actor HTTP and browser with fictitious data
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/rc80-browser/node_modules/playwright/index.mjs
+        run: node scripts/verify-rc80-business-browser.mjs
+      - name: Report only safe API failure categories
+        if: failure()
+        run: |
+          if test -f /tmp/rc80-worker.log; then
+            grep -E 'api.failure|Workers runtime canceled|Uncaught Error' /tmp/rc80-worker.log | tail -n 20 || true
+          fi
+      - name: Archive synthetic UI screenshots and evidence only
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc80-ephemeral-real-business-ui
+          path: artifacts/rc80-ui/
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,5 +1,6 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { normalizeSql } from './raw-sql.mjs';
+import { workerSafePoolMaxUses } from './worker-pool-policy.mjs';
 
 type BoundStatement = { sql: string; params: unknown[] };
 type SqlRowsResult<T = Record<string, unknown>> = { results: T[]; success: true; meta: { changes: number } };
@@ -15,7 +16,10 @@ export function getPool(): Pool {
   pool ??= new Pool({ connectionString: process.env.DATABASE_URL,
     ...(readOnly ? { options: '-c default_transaction_read_only=on' } : {}),
     max: Number(process.env.PGPOOL_MAX ?? 10), connectionTimeoutMillis: 5000,
-    idleTimeoutMillis: 30000, maxUses: 10000 });
+    // A global Pool can hold idle sockets in a different Cloudflare Worker
+    // request context. Close every acquired socket upon release in Railway,
+    // while preserving a single connection within each transaction.
+    idleTimeoutMillis: 30000, maxUses: workerSafePoolMaxUses(process.env) });
   return pool;
 }
 
