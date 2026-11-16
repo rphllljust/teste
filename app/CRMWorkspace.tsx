@@ -73,7 +73,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     const form=e.currentTarget;
     const passphrase=String(new FormData(form).get('passphrase')||'');
     try{
-      const response=await fetch('/api/auth/staging-login',{
+      const response=await fetch('/api/auth/login',{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
         body:JSON.stringify({passphrase}),
