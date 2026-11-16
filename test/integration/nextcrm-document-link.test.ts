@@ -5,12 +5,12 @@ import { Pool } from 'pg';
 import {
   authorizeAndPersistOrderDocumentLink,
   OrderDocumentLinkConflict,
-} from '../../lib/integrations/nextcrm/postgres-document-link.ts';
+} from '../../lib/integrations/nextcrm/postgres-document-link';
 import {
   OrderDocumentLinkDenied,
   type OrderDocumentLinkDependencies,
-} from '../../lib/integrations/nextcrm/document-link-preflight.ts';
-import { createPostgresOrderOwnershipReader } from '../../lib/integrations/nextcrm/postgres-order-ownership.ts';
+} from '../../lib/integrations/nextcrm/document-link-preflight';
+import { createPostgresOrderOwnershipReader } from '../../lib/integrations/nextcrm/postgres-order-ownership';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Only ephemeral tests are allowed');
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required');
