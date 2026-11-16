@@ -5,7 +5,7 @@ import {
   OrderDocumentLinkDenied,
   type OrderDocumentLinkDependencies,
   type AuthorizedOrderDocumentLink,
-} from './document-link-preflight.ts';
+} from './document-link-preflight';
 
 /**
  * One-way ERP metadata link. No document content, secrets, S3 URLs or NextCRM
