@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
-const origin='https://cisne-rc78-readonly-candidate-staging.up.railway.app';
+const origin='https://cisne-rc79-readonly-uat-candidate-staging.up.railway.app';
 const root='artifacts/rc78-browser';
 const screens=[{name:'desktop',width:1440,height:900,mobile:false},{name:'mobile',width:390,height:844,mobile:true}];
 const modules=['Visão operacional','Ordens de serviço','Medições','Faturamento','Financeiro','Fechamentos'];
