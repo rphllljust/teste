@@ -94,6 +94,8 @@ jobs:
           version: 11.25.0
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile
+      - name: Rehearse BOTH NextCRM migration histories in disposable schemas
+        run: node scripts/rehearse-nextcrm-dual-lineage.mjs
       - name: Apply migrations twice to prove replay safety
         run: |
           pnpm db:migrate
