@@ -25,8 +25,8 @@ jobs:
         run: node --test scripts/migration-safety.test.mjs
       - name: Validate staging signed session and public HTTPS mutation origin
         run: node --test lib/api/http-auth.test.mjs lib/api/staging-session.test.mjs lib/api/mutation-origin.test.mjs
-      - name: NextCRM private signed bridge and deny-by-default metadata contract
-        run: node --experimental-strip-types --test lib/integrations/nextcrm/bridge-protocol.test.mjs lib/integrations/nextcrm/document-link-contract.test.mjs lib/integrations/nextcrm/document-link-preflight.test.mjs
+      - name: NextCRM signed HMAC transport (dependency-free)
+        run: node --experimental-strip-types --test lib/integrations/nextcrm/bridge-protocol.test.mjs
 
   application-build:
     name: Full application source and build
@@ -48,6 +48,8 @@ jobs:
           test -f .openai/hosting.json
       - name: Install exact dependencies
         run: pnpm install --frozen-lockfile
+      - name: Cross-system document ACL and strict input contracts
+        run: node --import tsx --test lib/integrations/nextcrm/document-link-contract.test.mjs lib/integrations/nextcrm/document-link-preflight.test.mjs
       - name: TypeScript
         run: pnpm exec tsc --noEmit
       - name: ESLint
