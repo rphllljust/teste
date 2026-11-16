@@ -5,6 +5,8 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { closeDatabase } from '../../db/raw';
 import { GET as getOrderDetail } from '../../app/api/orders/[id]/route';
+import { POST as createServiceOrder } from '../../app/api/orders/route';
+import { POST as executeServiceCommand } from '../../app/api/commands/route';
 import { POST as registerSettlement } from '../../app/api/finance/receivables/settlements/route';
 import { POST as reverseSettlement } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
 import { POST as closeFinancialPeriod } from '../../app/api/finance/periods/close/route';
@@ -21,7 +23,8 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
   const pool=new Pool({connectionString:process.env.DATABASE_URL,max:4});
   const owner=randomUUID(),foreign=randomUUID(),clientId=randomUUID(),orderId=randomUUID();
   const subject=randomUUID(),account=randomUUID(),document=randomUUID();
-  const measurement=randomUUID(),invoice=randomUUID(),receivable=randomUUID(),receipt=randomUUID();
+  let measurement='',invoice='',receivable='';
+  const receipt=randomUUID();
   const instanceKey='cisne-hml-mapping-ci',secret=randomBytes(32).toString('hex'),now=new Date().toISOString();
   let calls=0;
   let revokeIdentityDuringSignedResponse=false;
@@ -69,17 +72,40 @@ test('mapped ERP identity + client + signed HTTP authorization + persisted docum
   try{
     await pool.query('INSERT INTO clients(id,owner_id,legal_name,created_at,updated_at) VALUES($1,$2,$3,$4,$4)',
       [clientId,owner,'Synthetic mapped client',now]);
-    await pool.query(`INSERT INTO service_orders(id,owner_id,client_id,title,client,category,description,created_at)
-      VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [orderId,owner,clientId,'Mapped CI OS','Synthetic mapped client','Serviços','CI only',now]);
-    // Synthetic financial facts belong to the EXACT OS used by the signed
-    // NextCRM document bridge. Nothing is written to Railway databases.
-    await pool.query('INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,$3,$4,$5,$6)',
-      [measurement,orderId,'Integrated CI measurement',120000,'approved',now]);
-    await pool.query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)',
-      [invoice,measurement,orderId,120000,'2026-12-01',now]);
-    await pool.query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)',
-      [receivable,invoice,120000,'2026-12-01',now]);
+    // Real handlers build the same OS->execution->measurement->billing chain
+    // later protected by the signed loopback NextCRM documentary bridge.
+    const ownerPost=(path:string,payload:object)=>setTestIdentity(
+      new Request('http://localhost'+path,{method:'POST',
+        headers:{'content-type':'application/json'},body:JSON.stringify(payload)}),owner);
+    const created=await createServiceOrder(ownerPost('/api/orders',{
+      id:orderId,title:'Mapped CI OS',category:'Serviços',description:'CI only',
+      dueDate:null,clientId,clientVersion:1,
+    }));
+    assert.equal(created.status,201,await created.clone().text());
+    const step=async(id:string,version:number,command:string,extra:object={})=>{
+      const response=await executeServiceCommand(ownerPost('/api/commands',{
+        id,version,key:randomUUID(),command,...extra,
+      }));
+      assert.equal(response.status,201,command+': '+await response.clone().text());
+      return response.json() as Promise<{resource:{id:string;receivableId?:string;rowVersion:number}}>;
+    };
+    await step(orderId,1,'authorize');
+    await step(orderId,2,'start');
+    await step(orderId,3,'complete');
+    const measured=await step(orderId,4,'measure',{
+      description:'Integrated CI measurement',amount:'12',
+    });
+    measurement=measured.resource.id;
+    await step(measurement,1,'approve_measurement');
+    const billed=await step(measurement,2,'invoice',{dueDate:'2026-12-01'});
+    invoice=billed.resource.id;
+    receivable=billed.resource.receivableId??'';
+    assert.ok(measurement&&invoice&&receivable,'Real command handlers must return linked IDs');
+    const facts=await pool.query(
+      'SELECT m.amount AS measured,i.amount AS invoiced,r.amount AS receivable FROM measurements m JOIN invoices i ON i.measurement_id=m.id JOIN receivables r ON r.invoice_id=i.id WHERE m.id=$1 AND m.order_id=$2 AND i.order_id=$2',
+      [measurement,orderId]);
+    assert.equal(facts.rowCount,1,'One real handler chain must persist in PostgreSQL');
+    assert.deepEqual(facts.rows[0],{measured:120000,invoiced:120000,receivable:120000});
     await pool.query(`INSERT INTO receivable_settlements
       (id,receivable_id,kind,amount,effective_date,reference,created_at,actor_id,request_hash,correlation_id)
       VALUES($1,$2,'receipt',$3,$4,$5,$6,$7,$8,$9)`,
