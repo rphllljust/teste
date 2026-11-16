@@ -30,6 +30,7 @@ A expectativa, **a confirmar por evidência atual**, é `DOCUMENT_FIRST` (migra�
 - CI dos PRs empilhados deve estar verde no HEAD exato.
 - Execução de migrações repetidas em PostgreSQL 16 e 18.
 - Ensaio do PR #66 deve começar com `0000` + `0001_native_crm` + `0002_crm_proposal_origin` + `0003_nextcrm_document_bridge`, cliente e OS fictícios, mapeamentos inativos, documento vinculado e evento imutável.
+- O fixture de schema isolado normaliza somente referências históricas explícitas a `"public"` para o namespace descartável, pois o SQL Drizzle base contém FKs com schema fixo; **o migrador real da aplicação permanece inalterado**.
 - Após o **migrador real**, ledger deve conter `0003_finance_audit`, `0004_cash_transfers`, `0005_finance_period_closes` exatamente uma vez, sem mudar o histórico documental nem os dados fictícios anteriores.
 - Comprovar restore de backup independente e reversão de versão de aplicativo sem apagar novos dados; rollback SQL deve ser modelado, não presumido.
 
