@@ -18,7 +18,7 @@ test('OS detail returns accurate history/relations exclusively to its actual own
   const actor=randomUUID(),foreign=randomUUID();
   const owned=randomUUID(),other=randomUUID(),ownerless=randomUUID();
   const clientId=randomUUID(),eventId=randomUUID(),measurementId=randomUUID();
-  const invoiceId=randomUUID(),receivableId=randomUUID();
+  const invoiceId=randomUUID(),receivableId=randomUUID(),receiptId=randomUUID();
   const now=new Date().toISOString();
   const request=(id:string,who?:string) => {
     const req=new Request('http://localhost/api/orders/'+id);
@@ -41,17 +41,38 @@ test('OS detail returns accurate history/relations exclusively to its actual own
       [invoiceId,measurementId,owned,10000,'2026-11-20',now]);
     await db.query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)',
       [receivableId,invoiceId,10000,'2026-11-20',now]);
+    // Persistent receipt: the OS and Financeiro must show the SAME net
+    // settlement facts, with no raw money floats in the response.
+    await db.query(`INSERT INTO receivable_settlements
+      (id,receivable_id,kind,amount,effective_date,reference,created_at,actor_id,request_hash,correlation_id)
+      VALUES($1,$2,'receipt',$3,$4,$5,$6,$7,$8,$9)`,
+      [receiptId,receivableId,2500,'2026-11-16','OS finance test',now,actor,'a'.repeat(64),randomUUID()]);
 
     const response=await detail(owned,actor);
     assert.equal(response.status,200);
     assert.equal(response.headers.get('cache-control'),'no-store');
-    const payload=await response.json() as {order:{id:string;client_id:string|null;relations:{clientId:string|null;measurements:number;invoices:number;receivables:number};sublists:{history:{pageInfo:{total:number};items:Array<{id:string;label:string}>}}}};
+    const payload=await response.json() as {order:{id:string;client_id:string|null;relations:{clientId:string|null;measurements:number;invoices:number;receivables:number};finance:{measuredScaled:string;invoicedScaled:string;receivableScaled:string;settledScaled:string;outstandingScaled:string;moneyScale:number;currency:string;bankBalanceAvailable:boolean};sublists:{history:{pageInfo:{total:number};items:Array<{id:string;label:string}>}}}};
     assert.equal(payload.order.id,owned);
     assert.equal(payload.order.client_id,clientId);
     assert.equal(payload.order.relations.clientId,clientId);
     assert.equal(payload.order.relations.measurements,1);
     assert.equal(payload.order.relations.invoices,1);
     assert.equal(payload.order.relations.receivables,1);
+    assert.deepEqual({
+      measured:payload.order.finance.measuredScaled,
+      invoiced:payload.order.finance.invoicedScaled,
+      principal:payload.order.finance.receivableScaled,
+      settled:payload.order.finance.settledScaled,
+      outstanding:payload.order.finance.outstandingScaled,
+    },{measured:'10000',invoiced:'10000',principal:'10000',settled:'2500',outstanding:'7500'});
+    assert.equal(payload.order.finance.moneyScale,4);
+    assert.equal(payload.order.finance.currency,'BRL');
+    assert.equal(payload.order.finance.bankBalanceAvailable,false);
+    const foreignResponse=await detail(other,foreign);
+    assert.equal(foreignResponse.status,200);
+    const foreignPayload=await foreignResponse.json() as {order:{finance:{receivableScaled:string;outstandingScaled:string}}};
+    assert.equal(foreignPayload.order.finance.receivableScaled,'0');
+    assert.equal(foreignPayload.order.finance.outstandingScaled,'0');
     assert.equal(payload.order.sublists.history.pageInfo.total,1);
     assert.equal(payload.order.sublists.history.items[0].label,'OS cadastrada');
     assert.equal(payload.order.sublists.history.items[0].id,eventId);
@@ -62,6 +83,7 @@ test('OS detail returns accurate history/relations exclusively to its actual own
     assert.equal((await detail(owned)).status,401);
     assert.equal((await detail('not-a-uuid',actor)).status,400);
   } finally {
+    await db.query('DELETE FROM receivable_settlements WHERE id=$1',[receiptId]);
     await db.query('DELETE FROM receivables WHERE id=$1',[receivableId]);
     await db.query('DELETE FROM invoices WHERE id=$1',[invoiceId]);
     await db.query('DELETE FROM measurements WHERE id=$1',[measurementId]);
