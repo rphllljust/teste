@@ -45,3 +45,28 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
 
   return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount) } };
 }
+
+export async function reverseReceivableSettlement(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
+  return database().transaction(async query => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
+    const prior = await query('SELECT id, receivable_id, amount, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
+    if (prior.rows.length) {
+      const row = prior.rows[0];
+      if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+      return { ok: true, replayed: true, resource: { type: 'receivableReversal', id: row.id, receivableId: row.receivable_id, amount: String(row.amount) } };
+    }
+    const original = await query(`SELECT s.id, s.receivable_id, s.amount, r.id AS title_id
+      FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
+      WHERE s.id=$1 AND s.kind='receipt' FOR UPDATE`, [input.settlementId]);
+    if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Baixa não encontrada.');
+    const row = original.rows[0];
+    const alreadyReversed = await query("SELECT 1 FROM receivable_settlements WHERE reverses_id=$1", [input.settlementId]);
+    if (alreadyReversed.rows.length) throw new ApiError(409, 'SETTLEMENT_ALREADY_REVERSED', 'Esta baixa já foi estornada.');
+    await query(`INSERT INTO receivable_settlements
+      (id, receivable_id, kind, amount, effective_date, reference, reverses_id, created_at, actor_id, request_hash, correlation_id)
+      VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [input.commandKey, row.receivable_id, row.amount, input.effectiveDate, input.reference, input.settlementId,
+        new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount) } };
+  });
+}
