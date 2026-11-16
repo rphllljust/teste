@@ -190,6 +190,19 @@ test('real staging login issues a verified cookie; owner comes from session, nev
     assert.equal((await signIn('not-the-valid-password-12345678')).status,401);
     const response=await signIn(passphrase);
     assert.equal(response.status,200);
+    // Independent Railway RC has a different hostname. Its login must work
+    // exclusively at its configured exact origin, never at the old staging
+    // hostname or an arbitrary Railway-owned application.
+    const preview='https://cisne-web-rc74-staging.up.railway.app';
+    process.env.CISNE_STAGING_PUBLIC_ORIGIN=preview;
+    assert.equal((await signIn(passphrase)).status,403);
+    const isolated=await loginStaging(new Request(preview+'/api/auth/staging-login',{
+      method:'POST',headers:{origin:preview,'content-type':'application/json'},
+      body:JSON.stringify({passphrase}),
+    }));
+    assert.equal(isolated.status,200,'Separate RC hostname must support secured login');
+    assert.match(isolated.headers.get('set-cookie')??'',/__Host-cisne_staging=/);
+    process.env.CISNE_STAGING_PUBLIC_ORIGIN=origin;
     const cookie=response.headers.get('set-cookie')??'';
     assert.match(cookie,/__Host-cisne_staging=/);
     assert.match(cookie,/HttpOnly/);

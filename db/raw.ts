@@ -7,7 +7,15 @@ let pool: Pool | undefined;
 
 export function getPool(): Pool {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured');
-  pool ??= new Pool({ connectionString: process.env.DATABASE_URL, max: Number(process.env.PGPOOL_MAX ?? 10), connectionTimeoutMillis: 5000, idleTimeoutMillis: 30000, maxUses: 10000 });
+  // A read-only Railway RC may inspect the existing staging ledger but must
+  // never acquire a write-capable PostgreSQL connection. This is independent
+  // of the API's mutation deny gate and applies to raw query consumers too.
+  const readOnly = process.env.RAILWAY_ENVIRONMENT_NAME === 'staging' &&
+    process.env.CISNE_STAGING_READ_ONLY === 'true';
+  pool ??= new Pool({ connectionString: process.env.DATABASE_URL,
+    ...(readOnly ? { options: '-c default_transaction_read_only=on' } : {}),
+    max: Number(process.env.PGPOOL_MAX ?? 10), connectionTimeoutMillis: 5000,
+    idleTimeoutMillis: 30000, maxUses: 10000 });
   return pool;
 }
 
