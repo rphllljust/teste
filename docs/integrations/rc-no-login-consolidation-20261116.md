@@ -34,3 +34,7 @@ A inspeção do primeiro candidato em staging confirmou `/api/health/ready=503` 
 Root cause confirmed in service logs: Railway Node had `DATABASE_URL`, but the `wrangler dev` Worker did not: `DATABASE_URL_MISSING`. Do not bypass the healthcheck or put database URLs into `wrangler.json` `vars` or command-line flags. The gated boot preloader `scripts/railway-wrangler-bindings.mjs` records **only approved binding names** in the generated, ephemeral `dist/server/wrangler.json` `secrets.required` declaration; Wrangler loads their values directly from the host process for local dev. Requires `CISNE_RAILWAY_WORKER_BINDINGS=restricted`, `CISNE_STAGING_READ_ONLY=true`, Railway environment `staging`, valid host DATABASE_URL and `CLOUDFLARE_INCLUDE_PROCESS_ENV=false`. Any violation refuses startup. This bridge is opt-in and does not activate on production.
 
 All real UAT business writes and authenticated browser acceptance are still outside this read-only smoke deployment.
+
+## Public HTTP smoke from GitHub Actions
+
+The workflow .github/workflows/rc78-railway-smoke.yml performs one anonymous readiness GET and seven denied GET/POST probes against the fixed RC78 staging HTTPS domain. Spoofed identity headers and the command/financial write boundaries are checked using invalid empty JSON bodies only. No credentials, browser cookies or real data. The CI step retries during Railway rollout and requires HTTP 200 ready and expected 403 deny codes. The operator independently validates the Railway deployment's source SHA against this PR head.

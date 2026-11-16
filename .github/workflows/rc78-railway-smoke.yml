@@ -1,0 +1,24 @@
+name: RC78 Railway public read-only smoke
+on:
+  push:
+    branches:
+      - integration/rc-field-nextcrm-finance-no-login-20261116
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  railway-rc78-http:
+    name: RC78 Railway anonymous and readiness HTTP gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.16.0'
+      - name: Verify exact staging origin and fail-closed public APIs
+        run: node scripts/verify-rc78-public-http.mjs
