@@ -15,7 +15,7 @@ export async function GET(request: Request) {
         .bind(...q.values, p.pageSize + 1, (p.page - 1) * p.pageSize),
       db.prepare(`SELECT COUNT(*) AS total,CAST(COALESCE(SUM(${q.alias}.amount),0) AS TEXT) AS amount${q.balanceExpression ? `,CAST(COALESCE(SUM(${q.balanceExpression}),0) AS TEXT) AS balance` : ''} FROM ${q.from}${q.where}`)
         .bind(...q.values),
-      db.prepare(`SELECT COUNT(*) AS source_total FROM ${q.from} WHERE (o.owner_id IS NULL OR o.owner_id=?)`).bind(context.actorId),
+      db.prepare(`SELECT COUNT(*) AS source_total FROM ${q.from} WHERE o.owner_id=?`).bind(context.actorId),
     ]);
     const rows = results[0].results as Array<Record<string, unknown>>;
     const aggregate = (results[1].results[0] ?? {}) as { total?: number | string; amount?: string | null; balance?: string | null };
