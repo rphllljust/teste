@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {FileCheck2,ChevronDown,RefreshCw,ShieldCheck} from 'lucide-react';
+import {FileCheck2,ChevronDown,RefreshCw,ShieldCheck,Download} from 'lucide-react';
 
 type AuthorizedDocument={
   id:string;documentId:string;kind:string;version:number;
@@ -20,6 +20,7 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
   const [expanded,setExpanded]=useState(false);
   const [generation,setGeneration]=useState(0);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
+  const [downloading,setDownloading]=useState<string|null>(null);
   const [result,setResult]=useState<Result|null>(null);
   useEffect(()=>{
     if(!expanded)return;
@@ -39,6 +40,35 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
     },0);
     return()=>{controller.abort();clearTimeout(t);};
   },[orderId,expanded,generation]);
+
+  async function downloadAttachment(doc:AuthorizedDocument){
+    if(downloading)return;
+    setDownloading(doc.id);
+    setError('');
+    try{
+      const path='/api/orders/'+encodeURIComponent(orderId)+'/documents/'+encodeURIComponent(doc.id)+'/file';
+      // The same-origin Field route fetches bytes only after a FRESH private
+      // NextCRM authorization. A presigned MinIO URL never reaches the browser.
+      const response=await fetch(path,{cache:'no-store',credentials:'same-origin'});
+      if(!response.ok)throw new Error('Arquivo indisponível ou acesso revogado. Atualize a consulta.');
+      const size=Number(response.headers.get('content-length')??'0');
+      if(!Number.isFinite(size)||size>8*1024*1024)
+        throw new Error('Este anexo excede o limite de homologação.');
+      const file=await response.blob();
+      if(file.size>8*1024*1024)throw new Error('Arquivo excede o limite de homologação.');
+      const url=URL.createObjectURL(file);
+      try{
+        const anchor=document.createElement('a');
+        anchor.href=url;
+        anchor.download='nextcrm-'+doc.documentId.slice(0,8)+'.bin';
+        document.body.appendChild(anchor);
+        anchor.click();
+        anchor.remove();
+      }finally{URL.revokeObjectURL(url);}
+    }catch(e){
+      setError(e instanceof Error?e.message:'Não foi possível baixar o arquivo.');
+    }finally{setDownloading(null);}
+  }
 
   return <section className="order-nextcrm-documents" aria-label="Documentos do NextCRM">
     <button type="button" className="related" aria-expanded={expanded}
@@ -68,6 +98,12 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
           <span><strong>{kindLabels[doc.kind]??'Documento'} · versão {doc.version}</strong>
             <small>Registro verificado no NextCRM · vínculo {doc.id.slice(0,8)}</small></span>
           <ShieldCheck size={15} aria-label="Autorização atual verificada"/>
+          {doc.kind==='attachment'&&<button type="button" className="text-button"
+            disabled={downloading!==null} onClick={()=>void downloadAttachment(doc)}
+            aria-label={'Baixar anexo NextCRM '+doc.documentId.slice(0,8)}>
+            <Download size={14} aria-hidden="true"/>
+            {downloading===doc.id?'Baixando…':'Baixar arquivo'}
+          </button>}
         </div>)}
     </div>}
   </section>;
