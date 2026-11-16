@@ -14,9 +14,11 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TABLE_PATTERN = re.compile(r"pgTable\('([A-Za-z_][A-Za-z0-9_]*)'")
+TABLE_PATTERN = re.compile(r'CREATE TABLE "([A-Za-z_][A-Za-z0-9_]*)"')
 def tables_from_schema():
-    tables = sorted(set(TABLE_PATTERN.findall((ROOT / 'db/schema.ts').read_text('utf-8'))))
+    # Parity covers only the immutable 36-table Field baseline. CRM/NextCRM
+    # tables are additive and have dedicated integration tests.
+    tables = sorted(set(TABLE_PATTERN.findall((ROOT / 'drizzle-pg/0000_salty_lilith.sql').read_text('utf-8'))))
     if len(tables) < 30:
         raise SystemExit('NO-GO: expected PostgreSQL domain table inventory is incomplete')
     return tables

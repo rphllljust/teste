@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer,check,index,uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, foreignKey, check, index, uniqueIndex } from 'drizzle-orm/pg-core';
 export const orders = pgTable('service_orders', {
  contractId:text('contract_id'),clientId:text('client_id'),ownerId:text('owner_id'),id: text('id').primaryKey(), title: text('title').notNull(), client: text('client').notNull(),
  category: text('category').notNull(), description: text('description').notNull(),
@@ -150,4 +150,72 @@ export const mrpEvents=pgTable('mrp_events',{
  check('mrp_events_command_valid',sql`${t.command} IN ('approve','reject','convert')`),
  check('mrp_events_from_valid',sql`${t.fromStatus} IN ('draft','approved')`),
  check('mrp_events_to_valid',sql`${t.toStatus} IN ('approved','rejected','converted')`),
+]);
+
+
+// Native CISNE CRM. The immutable SQL migration is drizzle-pg/0001_native_crm.sql.
+export const crmLeads = pgTable('crm_leads', {
+ id: text('id').primaryKey(),
+ ownerId: text('owner_id').notNull(),
+ contactName: text('contact_name').notNull(),
+ companyName: text('company_name').notNull(),
+ contactEmail: text('contact_email'),
+ source: text('source').notNull().default('manual'),
+ status: text('status').notNull().default('new'),
+ clientId: text('client_id'),
+ rowVersion: integer('row_version').notNull().default(1),
+ createdAt: text('created_at').notNull(),
+ updatedAt: text('updated_at').notNull(),
+},t=>[
+ check('crm_leads_status_ck',sql`${t.status} IN ('new','qualified','disqualified')`),
+ check('crm_leads_version_ck',sql`${t.rowVersion}>0`),
+ uniqueIndex('crm_leads_owner_id_unique').on(t.ownerId,t.id),
+ foreignKey({columns:[t.ownerId,t.clientId],foreignColumns:[clients.ownerId,clients.id],name:'crm_leads_client_owner_fk'}),
+ index('crm_leads_owner_status_created').on(t.ownerId,t.status,t.createdAt,t.id),
+]);
+export const crmOpportunities=pgTable('crm_opportunities',{
+ id: text('id').primaryKey(),
+ ownerId:text('owner_id').notNull(),
+ leadId:text('lead_id').notNull(),
+ clientId:text('client_id'),
+ title:text('title').notNull(),
+ amountCents:bigint('amount_cents',{mode:'number'}).notNull().default(0),
+ stage:text('stage').notNull().default('discovery'),
+ rowVersion:integer('row_version').notNull().default(1),
+ createdAt:text('created_at').notNull(),
+ updatedAt:text('updated_at').notNull(),
+},t=>[
+ check('crm_opportunities_stage_ck',sql`${t.stage} IN ('discovery','proposal','negotiation','won','lost')`),
+ check('crm_opportunities_amount_ck',sql`${t.amountCents} BETWEEN 0 AND 100000000000000`),
+ check('crm_opportunities_version_ck',sql`${t.rowVersion}>0`),
+ foreignKey({columns:[t.ownerId,t.leadId],foreignColumns:[crmLeads.ownerId,crmLeads.id],name:'crm_opportunities_lead_owner_fk'}),
+ foreignKey({columns:[t.ownerId,t.clientId],foreignColumns:[clients.ownerId,clients.id],name:'crm_opportunities_client_owner_fk'}),
+ uniqueIndex('crm_opportunities_owner_id_unique').on(t.ownerId,t.id),
+ index('crm_opportunities_owner_stage_created').on(t.ownerId,t.stage,t.createdAt,t.id),
+]);
+export const crmCommands=pgTable('crm_commands',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ requestHash:text('request_hash').notNull(),
+ action:text('action').notNull(),
+ resourceId:text('resource_id').notNull().default(''),
+ result:text('result').notNull().default(''),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[index('crm_commands_actor_created').on(t.actorId,t.createdAt)]);
+
+export const crmOpportunityProposals=pgTable('crm_opportunity_proposals',{
+ ownerId:text('owner_id').notNull(),
+ opportunityId:text('opportunity_id').notNull(),
+ proposalId:text('proposal_id').notNull(),
+ commandKey:text('command_key').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ // PostgreSQL migration 0002 defines (owner_id, opportunity_id) PK.
+ uniqueIndex('crm_opportunity_proposals_owner_opportunity_unique').on(t.ownerId,t.opportunityId),
+ uniqueIndex('crm_opportunity_proposals_proposal_unique').on(t.proposalId),
+ uniqueIndex('crm_opportunity_proposals_command_unique').on(t.commandKey),
+ foreignKey({columns:[t.ownerId,t.opportunityId],foreignColumns:[crmOpportunities.ownerId,crmOpportunities.id],name:'crm_opportunity_proposals_owner_opportunity_fk'}),
+ foreignKey({columns:[t.ownerId,t.proposalId],foreignColumns:[proposals.ownerId,proposals.id],name:'crm_opportunity_proposals_owner_proposal_fk'}),
+ index('crm_opportunity_proposals_owner_proposal').on(t.ownerId,t.proposalId),
 ]);

@@ -8,8 +8,8 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
 
-const schema = await readFile(new URL('../db/schema.ts', import.meta.url), 'utf8');
-const tables = [...new Set([...schema.matchAll(/pgTable\('([A-Za-z_][A-Za-z0-9_]*)'/g)].map(m => m[1]))].sort();
+const legacySql = await readFile(new URL('../drizzle-pg/0000_salty_lilith.sql', import.meta.url), 'utf8');
+const tables = [...new Set([...legacySql.matchAll(/CREATE TABLE "([A-Za-z_][A-Za-z0-9_]*)"/g)].map(m => m[1]))].sort();
 if (tables.length < 30) {
   console.error('NO-GO: PostgreSQL schema inventory incomplete');
   process.exit(2);

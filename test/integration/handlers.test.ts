@@ -26,7 +26,8 @@ const req = (path: string, method: string, body?: unknown, identity?: string, he
   });
   return identity ? setTestIdentity(request, identity) : request;
 };
-const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
+// Clone for assertions and diagnostic messages so failed-status logging cannot consume the response body.
+const json = async (response: Response) => response.clone().json() as Promise<Record<string, unknown>>;
 
 async function clean(owner: string) {
   await pool.query('DELETE FROM mrp_events WHERE owner_id=$1', [owner]);
