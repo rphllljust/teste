@@ -68,7 +68,6 @@ test('reviewed, fresh restore attestation accepts exact migration only',()=>{
     sql:migration+' -- changed',env:withEvidence(),now,
   }),/MIGRATION_BACKUP_NO_GO/);
 });
-
 test('new NextCRM bridge migration requires its own matching, fresh restore evidence',()=>{
   const nextcrmMigration='0003_nextcrm_document_bridge';
   const nextcrmSql='-- synthetic NextCRM bridge migration bytes';

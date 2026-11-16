@@ -1,0 +1,12 @@
+# Build context for Dockerfile.nextcrm: avoid local dependencies, outputs and secrets.
+.git
+**/.git
+**/node_modules
+**/.next
+**/dist
+**/coverage
+**/.env
+**/.env.*
+**/npm-debug.log
+**/pnpm-debug.log
+**/.DS_Store

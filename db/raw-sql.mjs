@@ -1,4 +1,4 @@
-/** Translate the D1/SQLite subset used by CISNE while ignoring quoted SQL and comments. */
+/** Translate the legacy SQLite SQL subset for PostgreSQL while ignoring quoted SQL and comments. */
 export function normalizeSql(sql, previousChanges, parameterCount) {
   let output = '';
   let placeholders = 0;
