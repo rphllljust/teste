@@ -125,3 +125,19 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
     return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount) } };
   });
 }
+
+export async function registerCashTransfer(context: RequestContext, input: { id: string; fromAccountReference: string; toAccountReference: string; amount: number; effectiveDate: string; reference: string; requestHash: string }) {
+  return database().transaction(async query => {
+    if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor da transferência deve ser positivo.');
+    if (input.fromAccountReference === input.toAccountReference) throw new ApiError(400, 'VALIDATION_FAILED', 'As contas de origem e destino devem ser diferentes.');
+    const prior = await query('SELECT id,from_account_reference,to_account_reference,amount,request_hash,actor_id FROM cash_transfers WHERE id=$1', [input.id]);
+    if (prior.rows.length) {
+      const row = prior.rows[0];
+      if (row.request_hash !== input.requestHash || row.actor_id && row.actor_id !== context.actorId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de transferência já utilizado.');
+      return { ok: true, replayed: true, resource: { type: 'cashTransfer', id: row.id, amount: String(row.amount) } };
+    }
+    await query(`INSERT INTO cash_transfers (id,from_account_reference,to_account_reference,amount,effective_date,reference,status,actor_id,request_hash,correlation_id,created_at) VALUES ($1,$2,$3,$4,$5,$6,'posted',$7,$8,$9,$10)`, [input.id, input.fromAccountReference, input.toAccountReference, input.amount, input.effectiveDate, input.reference, context.actorId, input.requestHash, context.correlationId, new Date().toISOString()]);
+    await audit(query, context, 'cash_transfer', input.id, 'transfer_registered', input.requestHash, { from: input.fromAccountReference, to: input.toAccountReference, amount: input.amount, reference: input.reference });
+    return { ok: true, replayed: false, resource: { type: 'cashTransfer', id: input.id, amount: String(input.amount), from: input.fromAccountReference, to: input.toAccountReference } };
+  });
+}
