@@ -100,6 +100,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Rehearse BOTH NextCRM migration histories in disposable schemas
         run: node scripts/rehearse-nextcrm-dual-lineage.mjs
+      - name: Rehearse real Financeiro upgrade over document-first staging history
+        run: node scripts/rehearse-rc-document-first-finance-upgrade.mjs
       - name: Apply migrations twice to prove replay safety
         run: |
           pnpm db:migrate
