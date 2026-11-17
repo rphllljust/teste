@@ -1,3 +1,4 @@
+import { withRC98SignedDbScope } from '../../../../../lib/api/staging-uat-db-scope.mjs';
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
@@ -16,7 +17,7 @@ export async function GET(request: Request) {
   } catch (error) { return failure(error, context); }
 }
 
-export async function POST(request: Request) {
+async function rc98PostCore(request: Request) {
   let context: RequestContext | undefined;
   try {
     context = requestContext(request, true);
@@ -36,3 +37,5 @@ export async function POST(request: Request) {
     return respond({ id: data.id, periodStart: data.periodStart, periodEnd: data.periodEnd, status: 'closed' }, context, 201);
   } catch (error) { return failure(error, context); }
 }
+
+export function POST(request: Request) { return withRC98SignedDbScope(request, ()=>rc98PostCore(request)); }
