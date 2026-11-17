@@ -1,26 +1,36 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { normalizeSql } from './raw-sql.mjs';
 import { workerSafePoolMaxUses } from './worker-pool-policy.mjs';
+import { rc98PgPoolMode } from './uat-pool-policy.mjs';
 
 type BoundStatement = { sql: string; params: unknown[] };
 type SqlRowsResult<T = Record<string, unknown>> = { results: T[]; success: true; meta: { changes: number } };
 let pool: Pool | undefined;
+let rc98UatPool: Pool | undefined;
 
 export function getPool(): Pool {
   if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is not configured');
-  // A read-only Railway RC may inspect the existing staging ledger but must
-  // never acquire a write-capable PostgreSQL connection. This is independent
-  // of the API's mutation deny gate and applies to raw query consumers too.
-  const readOnly = process.env.RAILWAY_ENVIRONMENT_NAME === 'staging' &&
-    process.env.CISNE_STAGING_READ_ONLY === 'true';
-  pool ??= new Pool({ connectionString: process.env.DATABASE_URL,
-    ...(readOnly ? { options: '-c default_transaction_read_only=on' } : {}),
-    max: Number(process.env.PGPOOL_MAX ?? 10), connectionTimeoutMillis: 5000,
-    // A global Pool can hold idle sockets in a different Cloudflare Worker
-    // request context. Close every acquired socket upon release in Railway,
-    // while preserving a single connection within each transaction.
-    idleTimeoutMillis: 30000, maxUses: workerSafePoolMaxUses(process.env) });
-  return pool;
+  // All normal staging requests continue to use the SQL-level read-only pool.
+  // Only a request-local, HMAC-validated, unexpired RC95 synthetic POST may
+  // select the separate one-connection PG writer pool. An environment flag,
+  // session cookie or JWT alone is NEVER sufficient to select the writer.
+  const decision = rc98PgPoolMode(process.env);
+  const temporaryWriter = decision.mode === 'synthetic-write';
+  const options = decision.options;
+  if (temporaryWriter && rc98UatPool) return rc98UatPool;
+  if (!temporaryWriter && pool) return pool;
+  const created = new Pool({ connectionString: process.env.DATABASE_URL,
+    ...(options ? { options } : {}),
+    max: temporaryWriter ? 1 : Number(process.env.PGPOOL_MAX ?? 10),
+    connectionTimeoutMillis: 5000,
+    // Never reuse an UAT client between requests, and preserve existing
+    // Worker maxUses=1 for all production/staging requests.
+    idleTimeoutMillis: temporaryWriter ? 1000 : 30000,
+    maxUses: temporaryWriter ? 1 : workerSafePoolMaxUses(process.env),
+  });
+  if (temporaryWriter) rc98UatPool = created;
+  else pool = created;
+  return created;
 }
 
 class Statement {
@@ -78,4 +88,10 @@ export function database() {
  */
 export function databasePool(): Pool { return getPool(); }
 
-export async function closeDatabase() { if (pool) await pool.end(); pool = undefined; }
+export async function closeDatabase() {
+  const existing = pool, temporaryWriter = rc98UatPool;
+  pool = undefined;
+  rc98UatPool = undefined;
+  if (existing) await existing.end();
+  if (temporaryWriter) await temporaryWriter.end();
+}

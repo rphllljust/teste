@@ -1,3 +1,4 @@
+import { withRC98SignedDbScope } from '../../../lib/api/staging-uat-db-scope.mjs';
 import {z} from 'zod';
 import {database} from '../../../db/raw';
 import {clientFields,projectClient,type ClientRow} from '../../../lib/domain/clients';
@@ -42,7 +43,7 @@ export async function GET(request:Request) {
   }catch(err){return failure(err,context);}
 }
 
-export async function POST(request:Request){
+async function rc98PostCore(request:Request){
   let context:RequestContext|undefined;
   try{
     context=requestContext(request,true);
@@ -85,3 +86,5 @@ export async function POST(request:Request){
     return respond(result,context,201);
   }catch(err){return failure(err,context);}
 }
+
+export function POST(request:Request) { return withRC98SignedDbScope(request, ()=>rc98PostCore(request)); }
