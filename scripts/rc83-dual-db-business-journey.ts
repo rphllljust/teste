@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import {randomUUID,createHash} from 'node:crypto';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createServer,request as proxyRequest} from 'node:http';
+import {execFileSync} from 'node:child_process';
 import {Pool} from 'pg';
 import {setTestIdentity} from '../lib/api/test-identity.mjs';
 import {closeDatabase} from '../db/raw';
@@ -200,12 +201,18 @@ try{
 
   // Simulate actual NextCRM ACL revocation in the isolated PG17 only.
   // No public or production DBs are involved.
-  const revoke=await fetch('http://127.0.0.1:13190/revoke',{
-    method:'POST',headers:{'content-type':'application/json',
-      'x-rc83-revoke-key':process.env.CI_RC83_REVOKE_KEY},
-    body:JSON.stringify({documentId:fixture.documentId,accountId:fixture.accountId}),
+  // Reuse the RC82 disposable PostgreSQL revocation fixture in a separate
+  // child process; strip Railway-like variables from its CI-only environment.
+  const revokeEnv=Object.fromEntries(Object.entries(process.env)
+    .filter(([name])=>!name.startsWith('RAILWAY_')));
+  revokeEnv.RC82_PHASE='revoke';
+  revokeEnv.RC82_DB_URL='postgresql://nextcrm:'+process.env.CI_RC82_DB_PASSWORD+
+    '@127.0.0.1:15432/nextcrm_ci';
+  revokeEnv.PYTHONPATH='/tmp/rc82-py';
+  const revokeOut=execFileSync('python3',['scripts/rc82-seed-ephemeral.py'],{
+    env:revokeEnv,encoding:'utf8',timeout:12000,
   });
-  assert.equal(revoke.status,204,'Ephemeral revoker must remove exact CRM ACL link');
+  assert.match(revokeOut,/RC82_ACL_REVOKED_IN_DISPOSABLE_POSTGRES/);
   const afterRevoke=await requestDocuments();
   assert.equal(afterRevoke.status,200);
   assert.equal(afterRevoke.body.items.length,0,'Revoked doc must vanish from ERP list');
