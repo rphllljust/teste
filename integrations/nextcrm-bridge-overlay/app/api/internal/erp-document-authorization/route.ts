@@ -166,7 +166,10 @@ export async function POST(req: NextRequest) {
       ...(process.env.RAILWAY_ENVIRONMENT_NAME==='staging'
         ? ['https://nextcrm-rc84-isolated-minio-staging.up.railway.app'] : []),
     ]);
-    if ((!isNativeBucket && (!permittedStorage.has(publicEndpoint.origin) ||
+    const nativeMode=process.env.RAILWAY_ENVIRONMENT_NAME==='staging'&&
+      process.env.CISNE_RC84_RAILWAY_BUCKET_MODE==='true';
+    if ((nativeMode&&!isNativeBucket) ||
+        (!isNativeBucket && (!permittedStorage.has(publicEndpoint.origin) ||
           bucketName!=='nextcrm')) ||
         publicEndpoint.pathname !== '/' || publicEndpoint.search ||
         publicEndpoint.hash || publicEndpoint.username || publicEndpoint.password) {
