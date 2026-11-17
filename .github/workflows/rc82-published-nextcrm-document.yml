@@ -1,0 +1,183 @@
+name: RC82 published NextCRM real document and revocation (isolated)
+on:
+  push:
+    branches:
+      - integration/rc82-published-nextcrm-real-document-e2e-20261116
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: read
+jobs:
+  signed-document:
+    name: Published digest + REAL PostgreSQL/MinIO + private file and ACL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    env:
+      CI: 'true'
+    steps:
+      - name: Checkout unchanged reviewed application bytes
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Enforce reviewed parent and ONLY new CI fixtures
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor c4273a4f1382417ddfef7f4b0e32e7123288835d HEAD
+          git diff --name-only c4273a4f1382417ddfef7f4b0e32e7123288835d HEAD | sort > /tmp/changed
+          printf '%s\n' \
+            .github/workflows/rc82-published-nextcrm-document.yml \
+            scripts/rc82-local-minio-tls.mjs \
+            scripts/rc82-published-bridge-verify.mjs \
+            scripts/rc82-seed-ephemeral.py | sort > /tmp/allowed
+          diff -u /tmp/allowed /tmp/changed
+          test "$GITHUB_REPOSITORY" = rphllljust/teste
+      - name: Generate masked disposable credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in CI_RC82_DB_PASSWORD CI_RC82_MINIO_PASSWORD CI_RC82_BRIDGE_SECRET CI_RC82_AUTH_SECRET CI_RC82_EMAIL_KEY CI_RC82_EVENT_KEY CI_RC82_SIGNING_KEY; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            printf '%s=%s\n' "$var" "$value" >> "$GITHUB_ENV"
+          done
+      - name: Install disposable Python SQL and AWS clients
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --target /tmp/rc82-py \
+            boto3==1.40.0 psycopg2-binary==2.9.10
+      - name: Authenticate only for exact GitHub OCI digest pull
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start exclusive disposable PostgreSQL and MinIO
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create rc82-isolated
+          docker run -d --rm --name rc82-pg --network rc82-isolated --network-alias postgres \
+            -p 127.0.0.1:15432:5432 \
+            -e POSTGRES_USER=nextcrm -e POSTGRES_DB=nextcrm_ci \
+            -e POSTGRES_PASSWORD="$CI_RC82_DB_PASSWORD" pgvector/pgvector:pg17
+          docker run -d --rm --name rc82-minio --network rc82-isolated --network-alias minio \
+            -p 127.0.0.1:19000:9000 \
+            -e MINIO_ROOT_USER=ci-nextcrm -e MINIO_ROOT_PASSWORD="$CI_RC82_MINIO_PASSWORD" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data --console-address :9001
+          for n in $(seq 1 90); do
+            if docker exec rc82-pg pg_isready -U nextcrm -d nextcrm_ci >/dev/null 2>&1 &&
+               curl -fsS --noproxy '*' http://127.0.0.1:19000/minio/health/live >/dev/null 2>&1; then
+              echo 'RC82_ISOLATED_DEPENDENCIES_READY'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'NO-GO isolated PostgreSQL/MinIO'
+          exit 1
+      - name: Pull and start PUBLISHED immutable RC81 image with exclusive database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+          docker run -d --rm --name rc82-app --network rc82-isolated \
+            --network-alias nextcrm-web.railway.internal \
+            -p 127.0.0.1:13100:3000 \
+            -e DATABASE_URL="postgresql://nextcrm:$CI_RC82_DB_PASSWORD@postgres:5432/nextcrm_ci" \
+            -e DB_HOST=postgres -e DB_PORT=5432 -e DB_USER=nextcrm -e DB_NAME=nextcrm_ci \
+            -e DB_PASSWORD="$CI_RC82_DB_PASSWORD" \
+            -e MINIO_ENDPOINT=http://minio:9000 \
+            -e MINIO_PUBLIC_ENDPOINT=https://nextcrm-minio-staging.up.railway.app \
+            -e MINIO_BUCKET=nextcrm -e MINIO_ACCESS_KEY=ci-nextcrm \
+            -e MINIO_SECRET_KEY="$CI_RC82_MINIO_PASSWORD" \
+            -e BETTER_AUTH_SECRET="$CI_RC82_AUTH_SECRET" \
+            -e EMAIL_ENCRYPTION_KEY="$CI_RC82_EMAIL_KEY" \
+            -e BETTER_AUTH_URL=http://localhost:13100 \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:13100 \
+            -e TEST_USER_EMAIL=rc82-test@example.invalid -e SEED_DEMO_DATA=0 \
+            -e INNGEST_EVENT_KEY="$CI_RC82_EVENT_KEY" \
+            -e INNGEST_SIGNING_KEY="$CI_RC82_SIGNING_KEY" -e INNGEST_DEV=1 \
+            -e CISNE_NEXTCRM_BRIDGE_SECRET="$CI_RC82_BRIDGE_SECRET" \
+            -e CISNE_NEXTCRM_INSTANCE_KEY=rc82_ephemeral \
+            ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+          for i in $(seq 1 150); do
+            status="$(curl -sS --noproxy '*' -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:13100/ || true)"
+            case "$status" in
+              200|301|302|303|307|308) echo 'RC82_PUBLISHED_IMAGE_BOOT_OK'; exit 0 ;;
+            esac
+            if ! docker ps --format '{{.Names}}' | grep -qx rc82-app; then
+              echo 'NO-GO published NextCRM container stopped'
+              exit 1
+            fi
+            sleep 2
+          done
+          echo 'NO-GO NextCRM HTTP unavailable'
+          exit 1
+      - name: Create private gateway and loopback HTTPS MinIO with exact S3 host
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --quiet -t rc82-gateway integrations/nextcrm-public-gateway
+          docker run -d --rm --name rc82-gateway --network rc82-isolated \
+            -p 127.0.0.1:13180:8080 \
+            -e NEXTCRM_UPSTREAM=nextcrm-web.railway.internal:3000 rc82-gateway
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/rc82-local.key -out /tmp/rc82-local.cert \
+            -subj /CN=nextcrm-minio-staging.up.railway.app \
+            -addext 'subjectAltName=DNS:nextcrm-minio-staging.up.railway.app' \
+            >/dev/null 2>&1
+          chmod 600 /tmp/rc82-local.key
+          echo '127.0.0.1 nextcrm-minio-staging.up.railway.app' | sudo tee -a /etc/hosts >/dev/null
+          sudo --preserve-env=CI,GITHUB_ACTIONS node scripts/rc82-local-minio-tls.mjs >/tmp/rc82-proxy.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl -fsS --noproxy '*' --cacert /tmp/rc82-local.cert \
+                 https://nextcrm-minio-staging.up.railway.app/minio/health/live >/dev/null 2>&1 &&
+               test "$(curl -fsS --noproxy '*' http://127.0.0.1:13180/__gateway_health)" = ready; then
+              echo 'RC82_HTTPS_SIGV4_HOST_AND_GATEWAY_READY'
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 8 /tmp/rc82-proxy.log || true
+          exit 1
+      - name: Persist harmless synthetic document in REAL PostgreSQL/MinIO
+        env:
+          RC82_PHASE: seed
+          PYTHONPATH: /tmp/rc82-py
+        shell: bash
+        run: |
+          export RC82_DB_URL="postgresql://nextcrm:$CI_RC82_DB_PASSWORD@127.0.0.1:15432/nextcrm_ci"
+          python3 scripts/rc82-seed-ephemeral.py
+      - name: Assert real private ticket, signed GET, SHA256, scopes and gateway
+        env:
+          RC82_PHASE: positive
+          NODE_EXTRA_CA_CERTS: /tmp/rc82-local.cert
+        run: node --experimental-strip-types scripts/rc82-published-bridge-verify.mjs
+      - name: Remove ONLY synthetic document-account permission in disposable DB
+        env:
+          RC82_PHASE: revoke
+          PYTHONPATH: /tmp/rc82-py
+        run: |
+          export RC82_DB_URL="postgresql://nextcrm:$CI_RC82_DB_PASSWORD@127.0.0.1:15432/nextcrm_ci"
+          python3 scripts/rc82-seed-ephemeral.py
+      - name: Assert no new signed URL after real ACL revocation
+        env:
+          RC82_PHASE: revoked
+          NODE_EXTRA_CA_CERTS: /tmp/rc82-local.cert
+        run: node --experimental-strip-types scripts/rc82-published-bridge-verify.mjs
+      - name: Upload safe machine-readable evidence, no S3 tickets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc82-published-private-document-proof
+          path: artifacts/rc82/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove every disposable Docker service
+        if: always()
+        run: |
+          docker rm -f rc82-gateway rc82-app rc82-minio rc82-pg >/dev/null 2>&1 || true
+          docker network rm rc82-isolated >/dev/null 2>&1 || true
