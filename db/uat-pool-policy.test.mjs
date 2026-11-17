@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { issueStagingSession, CISNE_STAGING_COOKIE } from '../lib/api/staging-session.mjs';
 import { issueRC95UatToken } from '../lib/api/staging-uat-mutation.mjs';
 import { stagingBoundaryError } from '../lib/api/staging-access.mjs';
+import { withRC98SignedDbScope } from '../lib/api/staging-uat-db-scope.mjs';
 import { rc98PgPoolMode } from './uat-pool-policy.mjs';
 
 const actor='rc98-specific-test-actor';
@@ -42,17 +43,26 @@ test('default staging readonly remains SQL readonly even with UAT variables arme
 
 test('only fully validated RC95 signed synthetic request can reach separate one-client writer pool',()=>{
   const e=env();
-  assert.equal(stagingBoundaryError(incoming(e),e),null);
-  assert.deepEqual(rc98PgPoolMode(e),{
+  const signed=incoming(e);
+  const decision=withRC98SignedDbScope(signed,()=>{
+    assert.equal(stagingBoundaryError(signed,e),null);
+    return rc98PgPoolMode(e);
+  },e);
+  assert.deepEqual(decision,{
     mode:'synthetic-write',options:'-c default_transaction_read_only=off',max:1});
+  assert.equal(rc98PgPoolMode(e).mode,'read-only');
   assert.equal(rc98PgPoolMode({...e,CISNE_RC95_UAT_ENABLED:'false'}).mode,'read-only');
   assert.equal(rc98PgPoolMode({...e,RAILWAY_ENVIRONMENT_ID:'production'}).mode,'read-only');
 });
 
 test('signed client cannot use write capability for next unsigned read-only request',()=>{
   const e=env();
-  stagingBoundaryError(incoming(e),e);
-  assert.equal(rc98PgPoolMode(e).mode,'synthetic-write');
+  const signed=incoming(e);
+  withRC98SignedDbScope(signed,()=>{
+    stagingBoundaryError(signed,e);
+    assert.equal(rc98PgPoolMode(e).mode,'synthetic-write');
+  },e);
+  assert.equal(rc98PgPoolMode(e).mode,'read-only');
   const get=new Request('http://field.railway.internal:8080/api/orders',{
     method:'GET',headers:{cookie:CISNE_STAGING_COOKIE+'='+
       issueStagingSession(actor,e.CISNE_STAGING_SESSION_SECRET)}});
@@ -62,7 +72,11 @@ test('signed client cannot use write capability for next unsigned read-only requ
 
 test('production and nonstaging normal mode never use RC98 temporary write pool',()=>{
   const e=env();
-  stagingBoundaryError(incoming(e),e);
+  const signed=incoming(e);
+  withRC98SignedDbScope(signed,()=>{
+    stagingBoundaryError(signed,e);
+    assert.equal(rc98PgPoolMode(e).mode,'synthetic-write');
+  },e);
   assert.equal(rc98PgPoolMode({...e,RAILWAY_ENVIRONMENT_NAME:'production'}).mode,'normal');
   assert.equal(rc98PgPoolMode({...e,CISNE_STAGING_READ_ONLY:'false'}).mode,'normal');
 });
