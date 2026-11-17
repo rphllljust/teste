@@ -102,7 +102,9 @@ test('document version or SHA changed upstream means no file',async()=>{
 });
 test('the isolated native Railway Bucket uses virtual-hosted SigV4 and never path-style fallback',async()=>{
   const old=process.env.CISNE_RC84_RAILWAY_BUCKET_MODE;
+  const previousEnvironment=process.env.RAILWAY_ENVIRONMENT_NAME;
   process.env.CISNE_RC84_RAILWAY_BUCKET_MODE='true';
+  process.env.RAILWAY_ENVIRONMENT_NAME='staging';
   try{
     const bucket='rc84-nextcrm-isolated-objects-a92f4';
     const origin='https://'+bucket+'.storage.railway.app';
@@ -125,6 +127,8 @@ test('the isolated native Railway Bucket uses virtual-hosted SigV4 and never pat
   }finally{
     if(old===undefined)delete process.env.CISNE_RC84_RAILWAY_BUCKET_MODE;
     else process.env.CISNE_RC84_RAILWAY_BUCKET_MODE=old;
+    if(previousEnvironment===undefined)delete process.env.RAILWAY_ENVIRONMENT_NAME;
+    else process.env.RAILWAY_ENVIRONMENT_NAME=previousEnvironment;
   }
 });
 test('a browser-provided or untrusted bridge host is impossible',async()=>{
