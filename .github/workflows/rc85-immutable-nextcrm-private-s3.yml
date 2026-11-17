@@ -1,0 +1,133 @@
+name: RC85 audited seedless NextCRM native S3 (NO DEPLOY)
+on:
+  push:
+    branches:
+      - integration/rc85-isolated-nextcrm-preflight-and-s3-uat-20261117
+    paths:
+      - .github/workflows/rc85-immutable-nextcrm-private-s3.yml
+permissions:
+  contents: read
+  checks: read
+  packages: write
+concurrency:
+  group: rc85-seedless-private-s3-final-20261117
+  cancel-in-progress: false
+jobs:
+  publish:
+    name: RC85 seedless entrypoint, exact-SHA gates and OCI digest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    if: github.repository == 'rphllljust/teste'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          persist-credentials: false
+      - name: Fail closed unless EXACTLY reviewed 13-of-13 source is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          git merge-base --is-ancestor a9d73b19baca922ab6d4e6d84c2b3891d36c5b54 HEAD
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
+          test "$(git diff --name-only a9d73b19baca922ab6d4e6d84c2b3891d36c5b54 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
+          node scripts/verify-nextcrm-dockerfile-derivation.mjs
+          test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
+          echo 'RC85_PRECISE_SOURCE_PRESERVED'
+      - name: Validate the isolated predeploy on this exact immutable checkout
+        run: node --test scripts/nextcrm-staging-preflight.test.mjs
+      - name: Require 14 successful ancestor gates and five independent mandatory checks on THIS SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ancestor=7a6fb72a291cca9e6abb5c3384ce44d1b50f6dff
+          git merge-base --is-ancestor "$ancestor" "$GITHUB_SHA"
+          previous="$(gh api "repos/$GITHUB_REPOSITORY/commits/$ancestor/check-runs?per_page=100")"
+          previous_total="$(jq -r '.total_count' <<<"$previous")"
+          previous_pass="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$previous")"
+          if [[ "$previous_total" != 14 || "$previous_pass" != 14 ]]; then
+            echo 'NO-GO: reviewed RC84 source not traceable to 14/14 success'
+            exit 1
+          fi
+          # The actual implementation must have all thirteen NextCRM/ERP gates,
+          # including real Prisma, MinIO and custom image; unlike a workflow-only
+          # publication commit, its source commit triggers all affected suites.
+          source_commit=a9d73b19baca922ab6d4e6d84c2b3891d36c5b54
+          for attempt in $(seq 1 55); do
+            approved="$(gh api "repos/$GITHUB_REPOSITORY/commits/$source_commit/check-runs?per_page=100")"
+            total="$(jq -r '.total_count' <<<"$approved")"
+            passed="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$approved")"
+            failure="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion!="success")] | length' <<<"$approved")"
+            if [[ "$failure" != 0 ]]; then
+              echo 'NO-GO: original implementation has failed/cancelled/skipped checks'
+              exit 1
+            fi
+            if [[ "$total" == 13 && "$passed" == 13 ]]; then
+              echo 'RC85_SOURCE_ALL_13_INDEPENDENT_CHECKS_SUCCESS'
+              break
+            fi
+            if [[ "$attempt" == 55 ]]; then
+              echo 'NO-GO: source never passed all 13 independent checks'
+              exit 1
+            fi
+            sleep 20
+          done
+          wanted='["Domain invariants (Node 22)","Full application source and build","PostgreSQL 16 handler + restore (Node 22)","PostgreSQL 18 handler + restore (Node 22)","PostgreSQL-only source + migrations + real handlers"]'
+          for i in $(seq 1 55); do
+            checks="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100")"
+            verdict="$(jq -cn --argjson required "$wanted" --argjson checks "$checks" '
+              [ $required[] as $name |
+                ($checks.check_runs | map(select(.name==$name)) |
+                  if length==1 then .[0].conclusion // "pending" else "missing" end)
+              ]')"
+            if [[ "$(jq '[.[] | select(.!="success" and .!="pending")] | length' <<<"$verdict")" != 0 ]]; then
+              echo 'NO-GO: failed, skipped, cancelled or absent mandatory check'
+              exit 1
+            fi
+            if [[ "$(jq '[.[] | select(.=="success")] | length' <<<"$verdict")" == 5 ]]; then
+              echo 'RC85_EXACT_SHA_FIVE_MANDATORY_GATES_SUCCESS'
+              exit 0
+            fi
+            sleep 20
+          done
+          echo 'NO-GO: mandatory exact-SHA checks still pending'; exit 1
+      - uses: docker/setup-buildx-action@v3
+      - name: GHCR authorization (no Railway permissions)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish content-addressed image, SBOM and provenance
+        id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.nextcrm
+          platforms: linux/amd64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ghcr.io/rphllljust/cisne-nextcrm:rc85-seedless-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/rphllljust/teste
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=rc85-seedless-private-only-s3-hml
+          cache-from: type=gha,scope=nextcrm-candidate
+          cache-to: type=gha,mode=max,scope=nextcrm-candidate
+      - name: Print immutable reference only (never secrets or deployments)
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE_DIGEST" in sha256:*) ;; *) echo 'NO-GO invalid digest'; exit 1 ;; esac
+          {
+            echo '## RC85 private-only native S3 NextCRM image candidate'
+            echo "Source commit: $GITHUB_SHA"
+            echo "Image: ghcr.io/rphllljust/cisne-nextcrm@$IMAGE_DIGEST"
+            echo 'SBOM and max provenance included in OCI publication.'
+            echo 'NO DEPLOY: requires staged Railway patch review and independent UAT.'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -26,6 +26,72 @@ function httpsUrl(value) {
 export function validateNextcrmStagingPredeploy(env) {
   const failures = [];
   function requireField(name, condition) { if (!condition) failures.push(name); }
+  // RC85 private-only, synthetic-data Railway staging. This intentionally
+  // CANNOT be used as production configuration or to reach the legacy DB/S3.
+  if (env.CISNE_RC84_RAILWAY_BUCKET_MODE === 'true') {
+    const isolatedBucket = /^rc84-nextcrm-isolated-objects-[a-z0-9]{4,16}$/;
+    const databaseHost = 'nextcrm-rc84-isolated-pg.railway.internal';
+    const privateAppUrl = 'http://localhost:3000';
+    requireField('RAILWAY_ENVIRONMENT_NAME', env.RAILWAY_ENVIRONMENT_NAME === 'staging');
+    requireField('NODE_ENV', env.NODE_ENV === 'production');
+    requireField('PORT', env.PORT === '3000');
+    requireField('CISNE_RC84_RAILWAY_BUCKET_MODE', env.CISNE_RC84_RAILWAY_BUCKET_MODE === 'true');
+    requireField('CISNE_NEXTCRM_INSTANCE_KEY', env.CISNE_NEXTCRM_INSTANCE_KEY === 'rc84_isolated_hml');
+    requireField('CISNE_NEXTCRM_BRIDGE_SECRET', BRIDGE_KEY.test(env.CISNE_NEXTCRM_BRIDGE_SECRET ?? ''));
+    requireField('BETTER_AUTH_SECRET', typeof env.BETTER_AUTH_SECRET === 'string' &&
+      env.BETTER_AUTH_SECRET.length >= 32);
+    requireField('EMAIL_ENCRYPTION_KEY', HEX64.test(env.EMAIL_ENCRYPTION_KEY ?? ''));
+    requireField('INNGEST_EVENT_KEY', HEX64.test(env.INNGEST_EVENT_KEY ?? ''));
+    requireField('INNGEST_SIGNING_KEY', HEX64.test(env.INNGEST_SIGNING_KEY ?? ''));
+    requireField('INNGEST_DEV', env.INNGEST_DEV === '1');
+    requireField('INNGEST_BASE_URL', !env.INNGEST_BASE_URL);
+    requireField('SEED_DEMO_DATA', env.SEED_DEMO_DATA === '0');
+    const bucket = env.MINIO_BUCKET ?? '';
+    requireField('MINIO_BUCKET', isolatedBucket.test(bucket));
+    let internalS3;
+    let publicS3;
+    try { internalS3 = new URL(env.MINIO_ENDPOINT); } catch {}
+    try { publicS3 = new URL(env.MINIO_PUBLIC_ENDPOINT); } catch {}
+    const allowedEndpoints = new Set(['storage.railway.app','t3.storageapi.dev']);
+    const safeS3=(value) => value?.protocol === 'https:' &&
+      allowedEndpoints.has(value.hostname) && !value.port &&
+      !value.username && !value.password &&
+      (value.pathname === '/' || value.pathname === '') &&
+      !value.search && !value.hash;
+    // Native Railway Bucket endpoint/region confirmed via Railway API: t3.storageapi.dev / auto.
+    requireField('MINIO_ENDPOINT', safeS3(internalS3));
+    requireField('MINIO_PUBLIC_ENDPOINT', safeS3(publicS3) &&
+      internalS3?.origin === publicS3?.origin);
+    requireField('MINIO_ACCESS_KEY', typeof env.MINIO_ACCESS_KEY === 'string' &&
+      env.MINIO_ACCESS_KEY.length >= 3);
+    requireField('MINIO_SECRET_KEY', typeof env.MINIO_SECRET_KEY === 'string' &&
+      env.MINIO_SECRET_KEY.length >= 24);
+    for (const key of ['BETTER_AUTH_URL','APP_URL','NEXT_PUBLIC_APP_URL']) {
+      requireField(key, env[key] === privateAppUrl);
+    }
+    // No verified domain or transactional mail is connected to this instance.
+    // A real customer session or email must not be created in this phase.
+    requireField('EMAIL_FROM', env.EMAIL_FROM === 'rc84-no-send@example.invalid');
+    requireField('TEST_USER_EMAIL', env.TEST_USER_EMAIL === 'rc84-only@example.invalid');
+    requireField('RESEND_API_KEY', !env.RESEND_API_KEY);
+    let url;
+    try { url = new URL(env.DATABASE_URL); } catch {}
+    requireField('DATABASE_URL', url?.protocol === 'postgresql:' &&
+      url.hostname === databaseHost && url.port === '5432' &&
+      url.username === 'nextcrm' && url.pathname === '/nextcrm_rc84' &&
+      Boolean(url.password) && !url.search && !url.hash &&
+      decodeURIComponent(url.password) === env.DB_PASSWORD);
+    requireField('DB_HOST', env.DB_HOST === databaseHost);
+    requireField('DB_USER', env.DB_USER === 'nextcrm');
+    requireField('DB_NAME', env.DB_NAME === 'nextcrm_rc84');
+    requireField('DB_PORT', env.DB_PORT === '5432');
+    requireField('DB_PASSWORD', typeof env.DB_PASSWORD === 'string' &&
+      env.DB_PASSWORD.length >= 24);
+    return failures.sort();
+  }
+  // The legacy preflight must reject unexpected experimental mode strings.
+  requireField('CISNE_RC84_RAILWAY_BUCKET_MODE', !env.CISNE_RC84_RAILWAY_BUCKET_MODE ||
+    env.CISNE_RC84_RAILWAY_BUCKET_MODE === 'false');
   requireField('RAILWAY_ENVIRONMENT_NAME', env.RAILWAY_ENVIRONMENT_NAME === 'staging');
   requireField('NODE_ENV', env.NODE_ENV === 'production');
   requireField('PORT', env.PORT === '3000');

@@ -24,7 +24,9 @@ export function minioPublicEndpoint(env: NodeJS.ProcessEnv = process.env): strin
 function createClient(endpoint: string) {
   return new S3Client({
     endpoint,
-    region: "us-east-1", // MinIO requires a region value; actual value doesn't matter
+    // Native Railway Bucket requires the SigV4 scope region auto.
+    // Legacy MinIO remains us-east-1 without any runtime behavior change.
+    region: process.env.CISNE_RC84_RAILWAY_BUCKET_MODE === "true" ? "auto" : "us-east-1",
     credentials: {
       accessKeyId: process.env.MINIO_ACCESS_KEY!,
       secretAccessKey: process.env.MINIO_SECRET_KEY!,
