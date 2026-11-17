@@ -5,7 +5,7 @@ on:
       - integration/rc96-business-live-uat-contracts-20261117
   pull_request:
     paths:
-      - ops/railway-functions/rc96-synthetic-finance-uat.ts
+      - ops/railway-functions/rc96-synthetic-finance-uat.mjs
       - .github/workflows/rc96-private-uat-runner-review.yml
   workflow_dispatch:
 
@@ -27,13 +27,13 @@ jobs:
       - name: Compile Bun one-shot runner, never execute in CI
         run: |
           set -euo pipefail
-          test -f ops/railway-functions/rc96-synthetic-finance-uat.ts
-          bun build ops/railway-functions/rc96-synthetic-finance-uat.ts --target=bun --outfile=/tmp/rc96-uat.bundle.js
+          test -f ops/railway-functions/rc96-synthetic-finance-uat.mjs
+          bun build ops/railway-functions/rc96-synthetic-finance-uat.mjs --target=bun --outfile=/tmp/rc96-uat.bundle.js
           test -s /tmp/rc96-uat.bundle.js
       - name: Verify no production route, no global disable, no period closure
         run: |
           set -euo pipefail
-          file=ops/railway-functions/rc96-synthetic-finance-uat.ts
+          file=ops/railway-functions/rc96-synthetic-finance-uat.mjs
           grep -Fq 'RAILWAY_ENVIRONMENT_NAME==="staging"' "$file"
           grep -Fq 'rc96-synthetic-actor-only-one-shot' "$file"
           grep -Fq 'postgresql:' "$file"
