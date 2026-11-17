@@ -218,8 +218,10 @@ try{
   // No public or production DBs are involved.
   // Reuse the RC82 disposable PostgreSQL revocation fixture in a separate
   // child process; strip Railway-like variables from its CI-only environment.
-  const revokeEnv:Record<string,string>=Object.fromEntries(Object.entries(process.env)
-    .filter(([name,value])=>!name.startsWith('RAILWAY_')&&typeof value==='string')) as Record<string,string>;
+  const revokeEnv:NodeJS.ProcessEnv={...process.env};
+  for(const name of Object.keys(revokeEnv)){
+    if(name.startsWith('RAILWAY_'))delete revokeEnv[name];
+  }
   revokeEnv.RC82_PHASE='revoke';
   revokeEnv.RC82_DB_URL='postgresql://nextcrm:'+process.env.CI_RC82_DB_PASSWORD+
     '@127.0.0.1:15432/nextcrm_ci';
