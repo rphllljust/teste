@@ -58,6 +58,7 @@ export function validateNextcrmStagingPredeploy(env) {
       !value.username && !value.password &&
       (value.pathname === '/' || value.pathname === '') &&
       !value.search && !value.hash;
+    // Native Railway Bucket endpoint/region confirmed via Railway API: t3.storageapi.dev / auto.
     requireField('MINIO_ENDPOINT', safeS3(internalS3));
     requireField('MINIO_PUBLIC_ENDPOINT', safeS3(publicS3) &&
       internalS3?.origin === publicS3?.origin);

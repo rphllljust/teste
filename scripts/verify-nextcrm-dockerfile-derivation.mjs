@@ -9,6 +9,8 @@ const upstream=await readFile('integrations/nextcrm-upstream/Dockerfile','utf8')
 const target=await readFile('Dockerfile.nextcrm','utf8');
 const upstreamMinio=await readFile('integrations/nextcrm-upstream/lib/minio.ts','utf8');
 const reviewedMinio=await readFile('integrations/nextcrm-bridge-overlay/lib/minio.ts','utf8');
+const oldRegionLine="    region: \"us-east-1\", // MinIO requires a region value; actual value doesn't matter";
+const replacementRegionLine="    // Native Railway Bucket requires the SigV4 scope region auto.\n    // Legacy MinIO remains us-east-1 without any runtime behavior change.\n    region: process.env.CISNE_RC84_RAILWAY_BUCKET_MODE === \"true\" ? \"auto\" : \"us-east-1\",";
 const oldMinioLine='    forcePathStyle: true, // REQUIRED for MinIO — without this, SDK uses virtual-hosted-style which breaks';
 const replacementMinioLine=[
   '    // Standard MinIO remains path-style. The explicit RC84 Railway Bucket mode',
@@ -16,7 +18,7 @@ const replacementMinioLine=[
   "    forcePathStyle: process.env.CISNE_RC84_RAILWAY_BUCKET_MODE !== 'true',",
 ].join('\n');
 if(upstreamMinio.split(oldMinioLine).length!==2 ||
-   reviewedMinio!==upstreamMinio.replace(oldMinioLine,replacementMinioLine))
+   reviewedMinio!==upstreamMinio.replace(oldMinioLine,replacementMinioLine).replace(oldRegionLine,replacementRegionLine))
   throw new Error('NO-GO: storage SDK overlay differs from a single approved vhost setting');
 
 const banner="# CISNE NextCRM stage image: generated from upstream Dockerfile at gitlink\n# d3bead9b44efe2cf94d0dfc2948af0f2c9270deb, plus reviewed private bridge.\n# CI verifies byte-level derivation. Source must include initialized submodules.\n# Build with: docker build -f Dockerfile.nextcrm -t nextcrm-candidate .\n";
