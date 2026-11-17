@@ -6,17 +6,27 @@ on:
   workflow_dispatch:
 # RC91 verifies EXACT RC89 application bytes, only the workflow differs.
 # Regression proves the reviewed code remains compatible with the published
-# RC81 legacy NextCRM image. Railway RC85 isolated S3 still requires its own UAT.
+# RC81 legacy and CURRENT RC84 isolated Railway NextCRM immutable images.
+# This is still disposable GitHub CI, NOT a Railway private-network business UAT.
 permissions:
   contents: read
   packages: read
 jobs:
   signed-document:
-    name: RC86 real PostgreSQL + signed document + same-order finance regression
+    name: RC91 same-OS real bridge + finance (${{ matrix.variant }})
     runs-on: ubuntu-24.04
     timeout-minutes: 32
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: rc81-published-legacy
+            image: ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+          - variant: rc84-current-railway-isolated
+            image: ghcr.io/rphllljust/cisne-nextcrm@sha256:3428a1ada0ca2a955daf82ce0f903354453d6ea2b3b67f0198c3101a56434098
     env:
       CI: 'true'
+      RC91_NEXTCRM_CI_IMAGE: ${{ matrix.image }}
     steps:
       - name: Checkout unchanged reviewed application bytes
         uses: actions/checkout@v4
@@ -82,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          docker pull ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+          docker pull "$RC91_NEXTCRM_CI_IMAGE"
           docker run -d --rm --name rc82-app --network rc82-isolated \
             --network-alias nextcrm-web.railway.internal \
             -p 127.0.0.1:13100:3000 \
@@ -102,7 +112,7 @@ jobs:
             -e INNGEST_SIGNING_KEY="$CI_RC82_SIGNING_KEY" -e INNGEST_DEV=1 \
             -e CISNE_NEXTCRM_BRIDGE_SECRET="$CI_RC82_BRIDGE_SECRET" \
             -e CISNE_NEXTCRM_INSTANCE_KEY=rc82_ephemeral \
-            ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+            "$RC91_NEXTCRM_CI_IMAGE"
           for i in $(seq 1 150); do
             status="$(curl -sS --noproxy '*' -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:13100/ || true)"
             case "$status" in
