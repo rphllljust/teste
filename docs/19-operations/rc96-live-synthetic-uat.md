@@ -6,7 +6,7 @@
 
 O RC94 comprovou backup de **48 tabelas, 7 migrações** e restauração em outro serviço PG18, mantendo SHA-256 e registro sintético. O Field tem readiness HTTP 200, APIs de leitura autenticadas e isolamento de produção. Não criar outro volume/serviço nem alterar os bancos legados e NextCRM RC84.
 
-Usar **PR #92** antes de executar a função revisada neste PR. O modo `CISNE_STAGING_READ_ONLY=true` permanece sempre ligado. Somente POSTs assinados duas vezes, com HMAC de sessão + segredo RC95 independente e expiração curta, têm exceção. Iniciadores e mudanças de permissão devem ser auditáveis; não desligar globalmente o readonly. O source de execução está em `ops/railway-functions/rc96-synthetic-finance-uat.ts`, com CI **compile-only**, que nunca executa requests em CI.
+Usar **PR #92** antes de executar a função revisada neste PR. O modo `CISNE_STAGING_READ_ONLY=true` permanece sempre ligado. Somente POSTs assinados duas vezes, com HMAC de sessão + segredo RC95 independente e expiração curta, têm exceção. Iniciadores e mudanças de permissão devem ser auditáveis; não desligar globalmente o readonly. O source de execução está em `ops/railway-functions/rc96-synthetic-finance-uat.mjs`, com CI **compile-only**, que nunca executa requests em CI.
 
 ### Guardrails antes de iniciar
 
