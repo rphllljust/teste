@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    name: RC85 isolated preflight + 13 green checks + OCI digest
+    name: RC85 exact-SHA gates + isolated preflight + OCI digest
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     if: github.repository == 'rphllljust/teste'
@@ -35,27 +35,42 @@ jobs:
           node scripts/verify-nextcrm-dockerfile-derivation.mjs
           test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
           echo 'RC85_PRECISE_SOURCE_PRESERVED'
-      - name: Require exact reviewed parent check suite to have 13 of 13 SUCCESS
+      - name: Validate the isolated predeploy on this exact immutable checkout
+        run: node --test scripts/nextcrm-staging-preflight.test.mjs
+      - name: Require 14 successful ancestor gates and five independent mandatory checks on THIS SHA
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
           set -euo pipefail
-          parent=dff1d466b169979a2f9757fd1bcbec5014641c48
-          for i in $(seq 1 45); do
-            response="$(gh api "repos/$GITHUB_REPOSITORY/commits/$parent/check-runs?per_page=100")"
-            total="$(jq -r '.total_count' <<<"$response")"
-            pass="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$response")"
-            rejected="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion!="success")] | length' <<<"$response")"
-            if [[ "$rejected" -gt 0 ]]; then
-              echo "NO-GO: reviewed source has failed/cancelled/skipped gates"; exit 1
+          ancestor=7a6fb72a291cca9e6abb5c3384ce44d1b50f6dff
+          git merge-base --is-ancestor "$ancestor" "$GITHUB_SHA"
+          previous="$(gh api "repos/$GITHUB_REPOSITORY/commits/$ancestor/check-runs?per_page=100")"
+          previous_total="$(jq -r '.total_count' <<<"$previous")"
+          previous_pass="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$previous")"
+          if [[ "$previous_total" != 14 || "$previous_pass" != 14 ]]; then
+            echo 'NO-GO: reviewed RC84 source not traceable to 14/14 success'
+            exit 1
+          fi
+          wanted='["Domain invariants (Node 22)","Full application source and build","PostgreSQL 16 handler + restore (Node 22)","PostgreSQL 18 handler + restore (Node 22)","PostgreSQL-only source + migrations + real handlers"]'
+          for i in $(seq 1 55); do
+            checks="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100")"
+            verdict="$(jq -cn --argjson required "$wanted" --argjson checks "$checks" '
+              [ $required[] as $name |
+                ($checks.check_runs | map(select(.name==$name)) |
+                  if length==1 then .[0].conclusion // "pending" else "missing" end)
+              ]')"
+            if [[ "$(jq '[.[] | select(.!="success" and .!="pending")] | length' <<<"$verdict")" != 0 ]]; then
+              echo 'NO-GO: failed, skipped, cancelled or absent mandatory check'
+              exit 1
             fi
-            if [[ "$total" -eq 13 && "$pass" -eq 13 ]]; then
-              echo 'RC85_REVIEWED_SOURCE_13_OF_13_SUCCESS'; exit 0
+            if [[ "$(jq '[.[] | select(.=="success")] | length' <<<"$verdict")" == 5 ]]; then
+              echo 'RC85_EXACT_SHA_FIVE_MANDATORY_GATES_SUCCESS'
+              exit 0
             fi
             sleep 20
           done
-          echo 'NO-GO: reviewed source never reached 13/13 SUCCESS'; exit 1
+          echo 'NO-GO: mandatory exact-SHA checks still pending'; exit 1
       - uses: docker/setup-buildx-action@v3
       - name: GHCR authorization (no Railway permissions)
         uses: docker/login-action@v3
