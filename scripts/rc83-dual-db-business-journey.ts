@@ -2,12 +2,12 @@
 // NextCRM OCI image, two disposable PostgreSQL databases and private MinIO.
 // No Railway network, shared UAT database, customer data or permanent login.
 import assert from 'node:assert/strict';
-import {randomUUID,createHash} from 'node:crypto';
+import {randomUUID,createHash,randomBytes} from 'node:crypto';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {createServer,request as proxyRequest} from 'node:http';
 import {execFileSync} from 'node:child_process';
 import {Pool} from 'pg';
-import {setTestIdentity} from '../lib/api/test-identity.mjs';
+import {issueStagingSession,CISNE_STAGING_COOKIE} from '../lib/api/staging-session.mjs';
 import {closeDatabase} from '../db/raw';
 import {POST as createOrder} from '../app/api/orders/route';
 import {POST as runCommand} from '../app/api/commands/route';
@@ -38,10 +38,22 @@ const remote={
 };
 const persisted=[];
 const prove=(event,assertions)=>persisted.push({event,...assertions});
-const getCtx=(path,who=actor)=>setTestIdentity(new Request('http://localhost'+path),who);
-const postCtx=(path,body,who=actor)=>setTestIdentity(new Request('http://localhost'+path,{
-  method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),
-}),who);
+// This test exercises the REAL staging cookie boundary. It never bypasses
+// it using test-only identity; all actors have independent signed sessions.
+const sessionSecret=randomBytes(32).toString('hex');
+process.env.CISNE_STAGING_SESSION_SECRET=sessionSecret;
+process.env.CISNE_STAGING_ACCESS_MODE='private';
+const signedHeaders=(who)=>{
+  process.env.CISNE_STAGING_ACTOR_ID=who;
+  return {cookie:CISNE_STAGING_COOKIE+'='+issueStagingSession(who,sessionSecret)};
+};
+const getCtx=(path,who=actor)=>new Request('http://localhost'+path,{
+  headers:signedHeaders(who),
+});
+const postCtx=(path,body,who=actor)=>new Request('http://localhost'+path,{
+  method:'POST',headers:{'content-type':'application/json',...signedHeaders(who)},
+  body:JSON.stringify(body),
+});
 const step=async(id,version,command,extra={})=>{
   const res=await runCommand(postCtx('/api/commands',{
     id,version,key:randomUUID(),command,...extra,
