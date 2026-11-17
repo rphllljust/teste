@@ -15,6 +15,11 @@ const fixture = {
   CISNE_RC84_RAILWAY_BUCKET_MODE: 'true',
   CISNE_NEXTCRM_PRIVATE_ORIGIN: 'http://nextcrm-rc84-isolated-web.railway.internal:3000',
   CISNE_STAGING_ACCESS_MODE: 'private',
+  CISNE_RC95_UAT_ENABLED: 'true',
+  CISNE_RC95_UAT_ACTOR_ID: 'synthetic-test-actor',
+  CISNE_RC95_UAT_SIGNING_KEY: 'b'.repeat(64),
+  CISNE_RC95_UAT_UNTIL_MS: '1794939999999',
+  RC96_NONAPPROVED_SECRET: 'never-disclose-rc96-secret',
   DATABASE_URL: 'postgresql://fictional:secret-never-log@db.internal:5432/ci',
   AWS_SECRET_ACCESS_KEY: 'unrelated-secret-must-never-cross',
 };
@@ -31,6 +36,14 @@ test('only approved names are declared; secret values and unrelated host env sta
     assert.ok(json.secrets.required.includes('DATABASE_URL'));
     assert.ok(json.secrets.required.includes('RAILWAY_ENVIRONMENT_NAME'));
     assert.ok(json.secrets.required.includes('CISNE_STAGING_READ_ONLY'));
+    assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_ENABLED'));
+    assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_ACTOR_ID'));
+    assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_SIGNING_KEY'));
+    assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_UNTIL_MS'));
+    assert.equal(json.secrets.required.includes('RC96_NONAPPROVED_SECRET'), false);
+    assert.equal(body.includes('never-disclose-rc96-secret'), false);
+    assert.equal(body.includes('synthetic-test-actor'), false);
+    assert.equal(body.includes('1794939999999'), false);
     assert.ok(json.secrets.required.includes('CISNE_RC84_RAILWAY_BUCKET_MODE'));
     assert.ok(json.secrets.required.includes('CISNE_NEXTCRM_PRIVATE_ORIGIN'));
     assert.ok(json.secrets.required.includes('EXISTING_ONLY'));
