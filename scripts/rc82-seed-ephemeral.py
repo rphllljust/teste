@@ -34,7 +34,16 @@ else:
         aws_access_key_id="ci-nextcrm",
         aws_secret_access_key=os.environ["CI_RC82_MINIO_PASSWORD"],
         region_name="us-east-1",config=Config(s3={"addressing_style":"path"}))
-    s3.create_bucket(Bucket="nextcrm")
+    # NextCRM startup may already provision this private bucket. Do not
+    # attempt to create an existing bucket or mask permission failures.
+    try:
+        s3.head_bucket(Bucket="nextcrm")
+    except s3.exceptions.ClientError as exc:
+        code = str(exc.response.get("Error", {}).get("Code", ""))
+        if code in ("404", "NoSuchBucket", "NotFound"):
+            s3.create_bucket(Bucket="nextcrm")
+        else:
+            raise
     s3.put_object(Bucket="nextcrm", Key=key, Body=payload, ContentType="application/pdf")
     retrieved = s3.get_object(Bucket="nextcrm", Key=key)["Body"].read()
     assert hashlib.sha256(retrieved).hexdigest() == digest
