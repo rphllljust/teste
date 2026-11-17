@@ -32,7 +32,7 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
 
     // Every subquery is bound to the already verified order ID. No client,
     // actor, tenant, document URL or state from HTTP input is trusted.
-    const [relations, events, historyCount, finance] = await Promise.all([
+    const [relations, events, historyCount, finance, schedules] = await Promise.all([
       db.query<{
         measurements:number; invoices:number; receivables:number;
       }>(`SELECT
@@ -66,9 +66,14 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
           (SELECT CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT)
              FROM receivables r JOIN invoices i ON i.id=r.invoice_id
              WHERE i.order_id=$1) AS outstanding_scaled`, [id]),
+      db.query<{id:string;start_at:string;end_at:string;timezone:string;status:string;notes:string|null}>(
+        'SELECT id,start_at,end_at,timezone,status,notes FROM service_schedules WHERE order_id=$1 AND owner_id=$2 ORDER BY start_utc ASC,id ASC LIMIT 20',
+        [id, context.actorId],
+      ),
     ]);
     const metric = relations.rows[0];
     const financial = finance.rows[0];
+    const scheduleRows = schedules.rows;
     const total = historyCount.rows[0]?.n ?? 0;
     const labels:Record<string,string> = {
       create:'OS cadastrada', authorize:'OS autorizada', start:'Execução iniciada',
@@ -91,6 +96,7 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
         // This is Field's own financial ledger for this service order, NOT
         // a NextCRM invoice or a reconciled bank balance. Scaled decimal
         // strings preserve monetary precision at the API boundary.
+        schedules:scheduleRows,
         finance:{
           measuredScaled:financial?.measured_scaled ?? '0',
           invoicedScaled:financial?.invoiced_scaled ?? '0',
