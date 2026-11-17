@@ -22,6 +22,20 @@ if(upstreamMinio.split(oldMinioLine).length!==2 ||
   throw new Error('NO-GO: storage SDK overlay differs from a single approved vhost setting');
 
 const banner="# CISNE NextCRM stage image: generated from upstream Dockerfile at gitlink\n# d3bead9b44efe2cf94d0dfc2948af0f2c9270deb, plus reviewed private bridge.\n# CI verifies byte-level derivation. Source must include initialized submodules.\n# Build with: docker build -f Dockerfile.nextcrm -t nextcrm-candidate .\n";
+// Pin the isolated seed/S3 overlay to only the two intentional edits.
+const upstreamEntry=await readFile('integrations/nextcrm-upstream/docker-entrypoint.sh','utf8');
+const isolatedEntry=await readFile('integrations/nextcrm-bridge-overlay/docker-entrypoint.sh','utf8');
+const oldBucketCondition="if [ -n \"$MINIO_ENDPOINT\" ] && [ -n \"$MINIO_ACCESS_KEY\" ] && [ -n \"$MINIO_SECRET_KEY\" ] && [ -n \"$MINIO_BUCKET\" ]; then";
+const newBucketCondition="if [ \"${CISNE_RC84_RAILWAY_BUCKET_MODE:-}\" = \"true\" ]; then\n  echo \"==> RC85 isolated Railway S3: bucket already provisioned. Never create bucket or update public policy.\"\nelif [ -n \"$MINIO_ENDPOINT\" ] && [ -n \"$MINIO_ACCESS_KEY\" ] && [ -n \"$MINIO_SECRET_KEY\" ] && [ -n \"$MINIO_BUCKET\" ]; then";
+const oldSeedCondition="if [ \"$USER_COUNT\" = \"0\" ] || [ -z \"$USER_COUNT\" ]; then";
+const newSeedCondition="if [ \"${CISNE_RC84_RAILWAY_BUCKET_MODE:-}\" = \"true\" ]; then\n  echo \"==> RC85 isolated staging: skip demo seed and any automatic user creation.\"\nelif [ \"$USER_COUNT\" = \"0\" ] || [ -z \"$USER_COUNT\" ]; then";
+if(upstreamEntry.split(oldBucketCondition).length!==2 ||
+   upstreamEntry.split(oldSeedCondition).length!==2 ||
+   isolatedEntry!==upstreamEntry.replace(oldBucketCondition,newBucketCondition)
+     .replace(oldSeedCondition,newSeedCondition))
+  throw Error('NO-GO: isolated entrypoint differs from reviewed two-guard overlay');
+execFileSync('sh',['-n','integrations/nextcrm-bridge-overlay/docker-entrypoint.sh']);
+
 const substitutions=[
   [
     "COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./",
@@ -33,7 +47,7 @@ const substitutions=[
   ],
   [
     "COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh",
-    "COPY --from=build --chown=nextjs:nodejs /app/docker-entrypoint.sh ./docker-entrypoint.sh\nCOPY --chown=nextjs:nodejs scripts/nextcrm-staging-preflight.mjs ./nextcrm-staging-preflight.mjs"
+    "COPY --chown=nextjs:nodejs integrations/nextcrm-bridge-overlay/docker-entrypoint.sh ./docker-entrypoint.sh\nCOPY --chown=nextjs:nodejs scripts/nextcrm-staging-preflight.mjs ./nextcrm-staging-preflight.mjs"
   ],
   [
     "FROM node:22-alpine AS deps",
