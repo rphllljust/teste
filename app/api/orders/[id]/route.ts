@@ -32,6 +32,15 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
 
     // Every subquery is bound to the already verified order ID. No client,
     // actor, tenant, document URL or state from HTTP input is trusted.
+    // The schedule migration is additive; during a rolling deploy, an older
+    // database must continue serving the OS context without schedule rows.
+    const schedulePromise = db.query<{id:string;start_at:string;end_at:string;timezone:string;status:string;notes:string|null}>(
+      'SELECT id,start_at,end_at,timezone,status,notes FROM service_schedules WHERE order_id=$1 AND owner_id=$2 ORDER BY start_utc ASC,id ASC LIMIT 20',
+      [id, context.actorId],
+    ).catch(error => {
+      if ((error as {code?:string})?.code === '42P01') return {rows:[]};
+      throw error;
+    });
     const [relations, events, historyCount, finance, schedules] = await Promise.all([
       db.query<{
         measurements:number; invoices:number; receivables:number;
@@ -66,10 +75,7 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
           (SELECT CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT)
              FROM receivables r JOIN invoices i ON i.id=r.invoice_id
              WHERE i.order_id=$1) AS outstanding_scaled`, [id]),
-      db.query<{id:string;start_at:string;end_at:string;timezone:string;status:string;notes:string|null}>(
-        'SELECT id,start_at,end_at,timezone,status,notes FROM service_schedules WHERE order_id=$1 AND owner_id=$2 ORDER BY start_utc ASC,id ASC LIMIT 20',
-        [id, context.actorId],
-      ),
+      schedulePromise,
     ]);
     const metric = relations.rows[0];
     const financial = finance.rows[0];
