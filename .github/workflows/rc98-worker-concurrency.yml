@@ -1,0 +1,32 @@
+name: RC98 real Worker async context and signed SQL capability isolation
+on:
+  push:
+    branches:
+      - integration/rc98-request-scoped-postgres-uat-write-20261117
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  workerd-isolation:
+    name: RC98 real Worker concurrency / deny-by-default UAT scope
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install locked application dependencies for local Worker
+        run: pnpm install --frozen-lockfile --prefer-offline
+      - name: Exercise actual Cloudflare Worker concurrency with synthetic credentials
+        run: node scripts/rc98-worker-isolation-probe.mjs
