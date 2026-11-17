@@ -7,6 +7,18 @@ const gitlink=execFileSync('git',['ls-tree','HEAD','integrations/nextcrm-upstrea
 if(upstreamRev!==upstreamSha||gitlink!==upstreamSha)throw new Error('NO-GO: NextCRM upstream SHA mismatch');
 const upstream=await readFile('integrations/nextcrm-upstream/Dockerfile','utf8');
 const target=await readFile('Dockerfile.nextcrm','utf8');
+const upstreamMinio=await readFile('integrations/nextcrm-upstream/lib/minio.ts','utf8');
+const reviewedMinio=await readFile('integrations/nextcrm-bridge-overlay/lib/minio.ts','utf8');
+const oldMinioLine='    forcePathStyle: true, // REQUIRED for MinIO — without this, SDK uses virtual-hosted-style which breaks';
+const replacementMinioLine=[
+  '    // Standard MinIO remains path-style. The explicit RC84 Railway Bucket mode',
+  '    // uses canonical S3 virtual hosts; never enable this for legacy services.',
+  "    forcePathStyle: process.env.CISNE_RC84_RAILWAY_BUCKET_MODE !== 'true',",
+].join('\n');
+if(upstreamMinio.split(oldMinioLine).length!==2 ||
+   reviewedMinio!==upstreamMinio.replace(oldMinioLine,replacementMinioLine))
+  throw new Error('NO-GO: storage SDK overlay differs from a single approved vhost setting');
+
 const banner="# CISNE NextCRM stage image: generated from upstream Dockerfile at gitlink\n# d3bead9b44efe2cf94d0dfc2948af0f2c9270deb, plus reviewed private bridge.\n# CI verifies byte-level derivation. Source must include initialized submodules.\n# Build with: docker build -f Dockerfile.nextcrm -t nextcrm-candidate .\n";
 const substitutions=[
   [
@@ -15,7 +27,7 @@ const substitutions=[
   ],
   [
     "COPY . .",
-    "COPY integrations/nextcrm-upstream/ .\n# Install the reviewed ERP bridge on top of the pinned upstream worktree.\nCOPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protocol.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\n# Optional AI must not block NextCRM startup or document ingestion.\nCOPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts\nCOPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-document.ts ./inngest/functions/documents/enrich-document.ts\n# Safely report OTP delivery failures and confirm browser session before redirect.\nCOPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts\nCOPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx"
+    "COPY integrations/nextcrm-upstream/ .\n# Install the reviewed ERP bridge on top of the pinned upstream worktree.\nCOPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protocol.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\n# Optional Railway Bucket vhost signing, legacy MinIO remains unchanged.\nCOPY integrations/nextcrm-bridge-overlay/lib/minio.ts ./lib/minio.ts\n# Optional AI must not block NextCRM startup or document ingestion.\nCOPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts\nCOPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-document.ts ./inngest/functions/documents/enrich-document.ts\n# Safely report OTP delivery failures and confirm browser session before redirect.\nCOPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts\nCOPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx"
   ],
   [
     "COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh",

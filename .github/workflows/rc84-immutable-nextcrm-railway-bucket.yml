@@ -1,0 +1,95 @@
+name: RC84 immutable NextCRM native bucket candidate (no Railway deploy)
+on:
+  push:
+    branches:
+      - integration/rc84-isolated-railway-nextcrm-targets-20261116
+    paths:
+      - .github/workflows/rc84-immutable-nextcrm-railway-bucket.yml
+permissions:
+  contents: read
+  checks: read
+  packages: write
+concurrency:
+  group: rc84-immutable-nextcrm-native-bucket
+  cancel-in-progress: false
+jobs:
+  publish:
+    name: RC84 immutable source, SBOM and attested OCI digest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 65
+    if: github.repository == 'rphllljust/teste'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          submodules: recursive
+          persist-credentials: false
+      - name: Fail closed unless EXACTLY reviewed 13-of-13 source is unchanged
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD^)" = "7b45a5c4c2b305ce39916058979f1dfae9ef765f"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
+          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/rc84-immutable-nextcrm-railway-bucket.yml"
+          node scripts/verify-nextcrm-dockerfile-derivation.mjs
+          test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
+          echo 'RC84_PRECISE_13OF13_SOURCE_PRESERVED'
+      - name: Require exact reviewed parent check suite to have 13 of 13 SUCCESS
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          parent=7b45a5c4c2b305ce39916058979f1dfae9ef765f
+          for i in $(seq 1 45); do
+            response="$(gh api "repos/$GITHUB_REPOSITORY/commits/$parent/check-runs?per_page=100")"
+            total="$(jq -r '.total_count' <<<"$response")"
+            pass="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$response")"
+            rejected="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion!="success")] | length' <<<"$response")"
+            if [[ "$rejected" -gt 0 ]]; then
+              echo "NO-GO: reviewed source has failed/cancelled/skipped gates"; exit 1
+            fi
+            if [[ "$total" -eq 13 && "$pass" -eq 13 ]]; then
+              echo 'RC84_REVIEWED_SOURCE_13_OF_13_SUCCESS'; exit 0
+            fi
+            sleep 20
+          done
+          echo 'NO-GO: reviewed source never reached 13/13 SUCCESS'; exit 1
+      - uses: docker/setup-buildx-action@v3
+      - name: GHCR authorization (no Railway permissions)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish content-addressed image, SBOM and provenance
+        id: publish
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile.nextcrm
+          platforms: linux/amd64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: ghcr.io/rphllljust/cisne-nextcrm:rc84-${{ github.sha }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/rphllljust/teste
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=rc84-native-bucket-hml
+          cache-from: type=gha,scope=nextcrm-candidate
+          cache-to: type=gha,mode=max,scope=nextcrm-candidate
+      - name: Print immutable reference only (never secrets or deployments)
+        env:
+          IMAGE_DIGEST: ${{ steps.publish.outputs.digest }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE_DIGEST" in sha256:*) ;; *) echo 'NO-GO invalid digest'; exit 1 ;; esac
+          {
+            echo '## RC84 native Railway Bucket isolated NextCRM candidate'
+            echo "Source commit: $GITHUB_SHA"
+            echo "Image: ghcr.io/rphllljust/cisne-nextcrm@$IMAGE_DIGEST"
+            echo 'SBOM and max provenance included in OCI publication.'
+            echo 'NO DEPLOY: requires staged Railway patch review and independent UAT.'
+          } >> "$GITHUB_STEP_SUMMARY"

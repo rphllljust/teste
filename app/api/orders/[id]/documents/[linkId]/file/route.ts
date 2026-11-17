@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { selectedNextcrmPrivateBridge } from '../../../../../../../lib/integrations/nextcrm/approved-railway-targets.mjs';
 import { z } from 'zod';
 import { database, databasePool } from '../../../../../../../db/raw';
 import {
@@ -42,7 +43,7 @@ export async function GET(request: Request, { params }: Params): Promise<Respons
       throw new ApiError(503, 'DOWNLOAD_NOT_CONFIGURED', 'Download externo indisponível.');
 
     const config = {
-      baseUrl: 'http://nextcrm-web.railway.internal:3000',
+      baseUrl: selectedNextcrmPrivateBridge(),
       secret: process.env.CISNE_NEXTCRM_BRIDGE_SECRET ?? '',
       instanceKey: process.env.CISNE_NEXTCRM_INSTANCE_KEY ?? '',
       minioPublicOrigin: process.env.CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN ?? '',

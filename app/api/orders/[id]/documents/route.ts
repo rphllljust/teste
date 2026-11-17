@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { selectedNextcrmPrivateBridge } from '../../../../../lib/integrations/nextcrm/approved-railway-targets.mjs';
 import { database, databasePool } from '../../../../../db/raw';
 import {
   ApiError, failure, jsonBody, requestContext, respond, type RequestContext,
@@ -33,7 +34,7 @@ function bridgeConfig(): NextcrmBridgeConfig {
   // Source URL cannot be supplied by the browser or Railway variables:
   // the HMAC secret must NEVER reach the NextCRM public Caddy gateway.
   return {
-    baseUrl: 'http://nextcrm-web.railway.internal:3000',
+    baseUrl: selectedNextcrmPrivateBridge(),
     secret: process.env.CISNE_NEXTCRM_BRIDGE_SECRET ?? '',
     instanceKey: process.env.CISNE_NEXTCRM_INSTANCE_KEY ?? '',
     timeoutMs: 3000,
