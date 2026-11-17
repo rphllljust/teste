@@ -32,44 +32,47 @@ const actor=randomUUID(),foreigner=randomUUID(),orderId=randomUUID();
 const pool=new Pool({connectionString:process.env.DATABASE_URL,max:3});
 const remote={
   baseUrl:'http://127.0.0.1:13100',
-  secret:process.env.CI_RC82_BRIDGE_SECRET,
+  secret:process.env.CI_RC82_BRIDGE_SECRET!,
   instanceKey:'rc82_ephemeral',
   timeoutMs:3000,
 };
-const persisted=[];
-const prove=(event,assertions)=>persisted.push({event,...assertions});
+const persisted:Array<Record<string,unknown>>=[];
+const prove=(event:string,assertions:Record<string,unknown>)=>persisted.push({event,...assertions});
 // This test exercises the REAL staging cookie boundary. It never bypasses
 // it using test-only identity; all actors have independent signed sessions.
 const sessionSecret=randomBytes(32).toString('hex');
 process.env.CISNE_STAGING_SESSION_SECRET=sessionSecret;
 process.env.CISNE_STAGING_ACCESS_MODE='private';
-const signedHeaders=(who)=>{
+const signedHeaders=(who:string)=>{
   process.env.CISNE_STAGING_ACTOR_ID=who;
   return {cookie:CISNE_STAGING_COOKIE+'='+issueStagingSession(who,sessionSecret)};
 };
-const getCtx=(path,who=actor)=>new Request('http://localhost'+path,{
+const getCtx=(path:string,who:string=actor)=>new Request('http://localhost'+path,{
   headers:signedHeaders(who),
 });
-const postCtx=(path,body,who=actor)=>new Request('http://localhost'+path,{
+const postCtx=(path:string,body:unknown,who:string=actor)=>new Request('http://localhost'+path,{
   method:'POST',headers:{'content-type':'application/json',...signedHeaders(who)},
   body:JSON.stringify(body),
 });
-const step=async(id,version,command,extra={})=>{
+type CommandResult={resource:{id:string;receivableId?:string}};
+const step=async(id:string,version:number,command:string,extra:Record<string,unknown>={}):Promise<CommandResult>=>{
   const res=await runCommand(postCtx('/api/commands',{
     id,version,key:randomUUID(),command,...extra,
   }));
   assert.equal(res.status,201,command+': '+await res.clone().text());
-  return res.json();
+  return await res.json() as CommandResult;
 };
-const orderDetail=async(who=actor)=>{
+type OrderResult={order:{finance:{measuredScaled:string;invoicedScaled:string;receivableScaled:string;settledScaled:string;outstandingScaled:string}}};
+const orderDetail=async(who:string=actor)=>{
   const res=await getOrder(getCtx('/api/orders/'+orderId,who),
     {params:Promise.resolve({id:orderId})});
-  return {status:res.status,body:await res.json()};
+  return {status:res.status,body:await res.json() as OrderResult};
 };
 const orderParam={params:Promise.resolve({id:orderId})};
-const requestDocuments=async(who=actor)=>{
+type DocumentsResult={enabled:boolean;items:Array<{id:string}>};
+const requestDocuments=async(who:string=actor)=>{
   const res=await listDocuments(getCtx('/api/orders/'+orderId+'/documents',who),orderParam);
-  return {status:res.status,body:await res.json()};
+  return {status:res.status,body:await res.json() as DocumentsResult};
 };
 // The real app has a hardcoded private Railway DNS hostname for the bridge.
 // In ephemeral CI, /etc/hosts maps ONLY that hostname to loopback. Port 3000
@@ -85,9 +88,9 @@ const bridgeProxy=createServer((incoming,outgoing)=>{
   upstream.on('error',()=>{if(!outgoing.headersSent)outgoing.writeHead(502);outgoing.end();});
   incoming.pipe(upstream);
 });
-await new Promise((resolve,reject)=>{
+await new Promise<void>((resolve,reject)=>{
   bridgeProxy.once('error',reject);
-  bridgeProxy.listen(3000,'127.0.0.1',resolve);
+  bridgeProxy.listen(3000,'127.0.0.1',()=>resolve());
 });
 try{
   const now=new Date().toISOString();
@@ -215,8 +218,8 @@ try{
   // No public or production DBs are involved.
   // Reuse the RC82 disposable PostgreSQL revocation fixture in a separate
   // child process; strip Railway-like variables from its CI-only environment.
-  const revokeEnv=Object.fromEntries(Object.entries(process.env)
-    .filter(([name])=>!name.startsWith('RAILWAY_')));
+  const revokeEnv:Record<string,string>=Object.fromEntries(Object.entries(process.env)
+    .filter(([name,value])=>!name.startsWith('RAILWAY_')&&typeof value==='string')) as Record<string,string>;
   revokeEnv.RC82_PHASE='revoke';
   revokeEnv.RC82_DB_URL='postgresql://nextcrm:'+process.env.CI_RC82_DB_PASSWORD+
     '@127.0.0.1:15432/nextcrm_ci';
