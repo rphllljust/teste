@@ -35,7 +35,7 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
     // The schedule migration is additive; during a rolling deploy, an older
     // database must continue serving the OS context without schedule rows.
     const schedulePromise = db.query<{id:string;start_at:string;end_at:string;timezone:string;status:string;notes:string|null}>(
-      'SELECT id,start_at,end_at,timezone,status,notes FROM service_schedules WHERE order_id=$1 AND owner_id=$2 ORDER BY start_utc ASC,id ASC LIMIT 20',
+      'SELECT id,start_at,end_at,timezone,status,notes,assignee_type,assignee_id FROM service_schedules WHERE order_id=$1 AND owner_id=$2 ORDER BY start_utc ASC,id ASC LIMIT 20',
       [id, context.actorId],
     ).catch(error => {
       if ((error as {code?:string})?.code === '42P01') return {rows:[]};
