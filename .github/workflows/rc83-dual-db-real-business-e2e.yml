@@ -203,6 +203,10 @@ jobs:
         run: |
           set -euo pipefail
           export DATABASE_URL="postgresql://cisne_ci:$CI_RC83_ERP_PASSWORD@127.0.0.1:5432/cisne_ci"
+          export CISNE_NEXTCRM_BRIDGE_SECRET="$CI_RC82_BRIDGE_SECRET"
+          export CISNE_NEXTCRM_INSTANCE_KEY=rc82_ephemeral
+          export CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN=https://nextcrm-minio-staging.up.railway.app
+          export CISNE_NEXTCRM_MINIO_BUCKET=nextcrm
           node --import tsx scripts/rc83-dual-db-business-journey.ts
       - name: Assert no new signed URL after real ACL revocation
         env:
