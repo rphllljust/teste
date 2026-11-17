@@ -30,7 +30,7 @@ jobs:
       - name: Reject unverified production and staging migration
         run: node --test scripts/migration-safety.test.mjs
       - name: Validate staging signed session and public HTTPS mutation origin
-        run: node --test lib/api/http-auth.test.mjs lib/api/staging-session.test.mjs lib/api/mutation-origin.test.mjs lib/api/request-identity.test.mjs lib/runtime/readiness.test.mjs
+        run: node --test lib/api/http-auth.test.mjs lib/api/staging-session.test.mjs lib/api/staging-uat-mutation.test.mjs lib/api/mutation-origin.test.mjs lib/api/request-identity.test.mjs lib/runtime/readiness.test.mjs
       - name: Reject legacy CRM, wrong Field database and unsafe isolated Railway ERP predeploy
         run: node --test lib/integrations/nextcrm/approved-railway-targets.test.mjs scripts/rc86-isolated-erp-preflight.test.mjs scripts/rc89-field-database-predeploy.test.mjs scripts/railway-wrangler-bindings.test.mjs
 
