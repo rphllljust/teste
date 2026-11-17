@@ -2,14 +2,17 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 /**
- * Strict, read-only predeploy configuration gate for the NEW disposable ERP.
+ * Strict read-only staging gate: ERP connects exclusively to its own DB/role
+ * inside the EXISTING RC75 persisted PostgreSQL18 cluster; no added volume.
  * It never queries a database, writes migrations, provisions identities,
  * logs variable values, or changes the legacy/prod service.
  */
 const STAGING_PROJECT = '0835d357-6037-42e6-a534-6456422e1cf3';
 const STAGING_ENVIRONMENT = 'c241a855-68b7-4d75-a722-b6a42c8581e9';
 const ERP_SERVICE = 'fed95ca7-f373-4e6a-983f-2f591f26672e';
-const ERP_POSTGRES = 'cisne-rc85-ephemeral-pg.railway.internal';
+const ERP_POSTGRES = 'cisne-rc75-postgres-uat.railway.internal';
+const FIELD_DB = 'cisne_rc89_field';
+const FIELD_ROLE = 'cisne_rc89_field_app';
 const ISOLATED_NEXTCRM = 'http://nextcrm-rc84-isolated-web.railway.internal:3000';
 const BUCKET = /^rc84-nextcrm-isolated-objects-[a-z0-9]{4,16}$/;
 const BRIDGE_SECRET = /^[a-f0-9]{64,128}$/;
@@ -63,9 +66,10 @@ export function validateRC86IsolatedErpPredeploy(env) {
   requireField('DATABASE_URL',
     (database?.protocol === 'postgres:' || database?.protocol === 'postgresql:') &&
     database.hostname === ERP_POSTGRES && database.port === '5432' &&
-    database.pathname === '/cisne_rc85' &&
-    Boolean(database.username) && database.username !== 'nextcrm' &&
-    Boolean(database.password) && !database.search && !database.hash);
+    database.pathname === '/' + FIELD_DB &&
+    decodeURIComponent(database.username) === FIELD_ROLE &&
+    /^[a-f0-9]{64}$/.test(decodeURIComponent(database.password)) &&
+    !database.search && !database.hash);
 
   return failures.sort();
 }
