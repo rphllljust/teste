@@ -1,0 +1,49 @@
+name: RC92 immutable SQL hashes and migration gate verification
+on:
+  push:
+    branches:
+      - integration/rc92-verified-migrations-field-20261117
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sql-evidence:
+    name: RC92 immutable migration digests and safety proofs
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Lock exact RC89 source bytes and compare only this workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = 'rphllljust/teste'
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor '080c3982d85438d7587659682f225b42905f8186' HEAD
+          test "$(git diff --name-only '080c3982d85438d7587659682f225b42905f8186' HEAD)" = '.github/workflows/rc92-migration-evidence-manifest.yml'
+          echo 'RC92_SQL_SOURCE_IMMUTABLE_PASS'
+      - name: Produce SHA-256 of exact immutable migration SQL bytes
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f drizzle-pg/0002_crm_proposal_origin.sql
+          test -f drizzle-pg/0003_nextcrm_document_bridge.sql
+          echo 'RC92_IMMUTABLE_SQL_BEGIN'
+          sha256sum drizzle-pg/0002_crm_proposal_origin.sql
+          sha256sum drizzle-pg/0003_nextcrm_document_bridge.sql
+          echo 'RC92_IMMUTABLE_SQL_END'
+      - name: Verify historical migration reconciliation and protected attestation logic
+        run: |
+          node --test scripts/migration-safety.test.mjs scripts/nextcrm-migration-preflight.test.mjs scripts/audit-active-migrations.test.mjs
+          node scripts/audit-active-migrations.mjs
+      - name: Verify staging-only least-privilege Field database configuration guards
+        run: |
+          node --test scripts/rc86-isolated-erp-preflight.test.mjs
