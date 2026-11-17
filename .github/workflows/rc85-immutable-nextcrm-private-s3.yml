@@ -28,10 +28,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor dff1d466b169979a2f9757fd1bcbec5014641c48 HEAD
+          git merge-base --is-ancestor bae8187ef1dad7499eae2daf845fd733ea3aa797 HEAD
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
-          test "$(git diff --name-only dff1d466b169979a2f9757fd1bcbec5014641c48 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
+          test "$(git diff --name-only bae8187ef1dad7499eae2daf845fd733ea3aa797 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
           node scripts/verify-nextcrm-dockerfile-derivation.mjs
           test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
           echo 'RC85_PRECISE_SOURCE_PRESERVED'
@@ -52,6 +52,29 @@ jobs:
             echo 'NO-GO: reviewed RC84 source not traceable to 14/14 success'
             exit 1
           fi
+          # The actual implementation must have all thirteen NextCRM/ERP gates,
+          # including real Prisma, MinIO and custom image; unlike a workflow-only
+          # publication commit, its source commit triggers all affected suites.
+          source_commit=bae8187ef1dad7499eae2daf845fd733ea3aa797
+          for attempt in $(seq 1 55); do
+            approved="$(gh api "repos/$GITHUB_REPOSITORY/commits/$source_commit/check-runs?per_page=100")"
+            total="$(jq -r '.total_count' <<<"$approved")"
+            passed="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion=="success")] | length' <<<"$approved")"
+            failure="$(jq -r '[.check_runs[] | select(.status=="completed" and .conclusion!="success")] | length' <<<"$approved")"
+            if [[ "$failure" != 0 ]]; then
+              echo 'NO-GO: original implementation has failed/cancelled/skipped checks'
+              exit 1
+            fi
+            if [[ "$total" == 13 && "$passed" == 13 ]]; then
+              echo 'RC85_SOURCE_ALL_13_INDEPENDENT_CHECKS_SUCCESS'
+              break
+            fi
+            if [[ "$attempt" == 55 ]]; then
+              echo 'NO-GO: source never passed all 13 independent checks'
+              exit 1
+            fi
+            sleep 20
+          done
           wanted='["Domain invariants (Node 22)","Full application source and build","PostgreSQL 16 handler + restore (Node 22)","PostgreSQL 18 handler + restore (Node 22)","PostgreSQL-only source + migrations + real handlers"]'
           for i in $(seq 1 55); do
             checks="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/check-runs?per_page=100")"
