@@ -11,10 +11,14 @@ try {
   await client.query(`CREATE TABLE IF NOT EXISTS _cisne_field_schema_migrations (
     id text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now()
   )`);
-  const id = '0006_service_scheduling';
-  const applied = await client.query('SELECT 1 FROM _cisne_field_schema_migrations WHERE id=$1', [id]);
-  if (!applied.rowCount) {
-    const sql = await readFile(new URL('../drizzle-pg/0006_service_scheduling.sql', import.meta.url), 'utf8');
+  const migrations = [
+    ['0006_service_scheduling', '../drizzle-pg/0006_service_scheduling.sql'],
+    ['0007_service_people', '../drizzle-pg/0007_service_people.sql'],
+  ];
+  for (const [id, file] of migrations) {
+    const applied = await client.query('SELECT 1 FROM _cisne_field_schema_migrations WHERE id=$1', [id]);
+    if (applied.rowCount) continue;
+    const sql = await readFile(new URL(file, import.meta.url), 'utf8');
     for (const statement of sql.split('--> statement-breakpoint').map(part => part.trim()).filter(Boolean)) {
       await client.query(statement);
     }
