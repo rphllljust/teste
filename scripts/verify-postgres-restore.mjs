@@ -146,8 +146,11 @@ try{
   await verify();
   process.stdout.write('RESTORE_DRILL_SUCCESS: PostgreSQL '+major+' custom-format backup, isolated restore, full CRM-to-OS data, ledger and owner FKs checked\n');
 }finally{
+  // The restore pool must release every client before dropping its database.
+  // FORCE kills idle clients asynchronously and can emit uncaught PG 57P01.
+  // Plain DROP fails visibly if cleanup is incomplete (fail closed in CI).
   if(copy)await copy.end();
-  if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'" WITH (FORCE)');
+  if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'"');
   const client=await src.connect();
   try{
     await client.query('BEGIN');
