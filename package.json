@@ -16,7 +16,7 @@
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
-    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
+    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs lib/domain/scheduling.test.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs"
   },
   "dependencies": {
