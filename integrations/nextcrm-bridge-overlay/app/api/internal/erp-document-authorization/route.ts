@@ -155,15 +155,21 @@ export async function POST(req: NextRequest) {
       import('@/lib/documents/file-key'),
     ]);
     const publicEndpoint = new URL(storage.MINIO_PUBLIC_URL);
+    const bucketName=storage.MINIO_BUCKET;
+    const isNativeBucket=process.env.RAILWAY_ENVIRONMENT_NAME==='staging' &&
+      process.env.CISNE_RC84_RAILWAY_BUCKET_MODE==='true' &&
+      /^rc84-nextcrm-isolated-objects-[a-z0-9]{4,16}$/.test(bucketName) &&
+      (publicEndpoint.origin==='https://storage.railway.app'||
+       publicEndpoint.origin==='https://t3.storageapi.dev');
     const permittedStorage=new Set([
       'https://nextcrm-minio-staging.up.railway.app',
       ...(process.env.RAILWAY_ENVIRONMENT_NAME==='staging'
         ? ['https://nextcrm-rc84-isolated-minio-staging.up.railway.app'] : []),
     ]);
-    if (!permittedStorage.has(publicEndpoint.origin) ||
+    if ((!isNativeBucket && (!permittedStorage.has(publicEndpoint.origin) ||
+          bucketName!=='nextcrm')) ||
         publicEndpoint.pathname !== '/' || publicEndpoint.search ||
-        publicEndpoint.hash || publicEndpoint.username ||
-        publicEndpoint.password || storage.MINIO_BUCKET !== 'nextcrm') {
+        publicEndpoint.hash || publicEndpoint.username || publicEndpoint.password) {
       return reply(503, { error: 'Unavailable' });
     }
     const key = document.key ||
@@ -176,8 +182,11 @@ export async function POST(req: NextRequest) {
     // AWS SigV4 covers the exact public HTTPS host; URLs are disclosed only
     // through a signed service-to-service response, NEVER to ERP browsers.
     const signed = new URL(await storage.presignGet(key, 60));
-    if (signed.origin !== publicEndpoint.origin ||
-        !signed.pathname.startsWith('/nextcrm/documents/') ||
+    const expectedOrigin=isNativeBucket
+      ? `https://${bucketName}.${publicEndpoint.hostname}` : publicEndpoint.origin;
+    const expectedKeyPrefix=isNativeBucket?'/documents/':'/nextcrm/documents/';
+    if (signed.origin !== expectedOrigin ||
+        !signed.pathname.startsWith(expectedKeyPrefix) ||
         signed.searchParams.get('X-Amz-Algorithm') !== 'AWS4-HMAC-SHA256' ||
         signed.searchParams.get('X-Amz-Expires') !== '60' ||
         !/^[a-f0-9]{64}$/i.test(signed.searchParams.get('X-Amz-Signature') || '') ||

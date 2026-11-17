@@ -60,7 +60,7 @@ export async function requestNextcrmFileTicket(
     if (allowed.protocol !== 'https:' || allowed.username || allowed.password ||
         allowed.pathname !== '/' || allowed.search || allowed.hash ||
         // Both approved origins are explicit names, never caller-controlled.
-        !approvedNextcrmMinioOrigin(config.minioPublicOrigin))
+        !approvedNextcrmMinioOrigin(config.minioPublicOrigin,process.env,config.minioBucket))
       throw new NextcrmBridgeUnavailable();
 
     const body = JSON.stringify({
@@ -107,9 +107,14 @@ export async function requestNextcrmFileTicket(
       throw new NextcrmBridgeUnavailable();
 
     const signed = new URL(v.fileUrl);
+    const nativeS3 = process.env.CISNE_RC84_RAILWAY_BUCKET_MODE==='true' &&
+      /^rc84-nextcrm-isolated-objects-[a-z0-9]{4,16}$/.test(config.minioBucket) &&
+      (allowed.hostname === `${config.minioBucket}.storage.railway.app` ||
+       allowed.hostname === `${config.minioBucket}.t3.storageapi.dev`);
+    const expectedPrivatePath=nativeS3?'/documents/':('/'+config.minioBucket+'/documents/');
     if (signed.protocol !== 'https:' || signed.origin !== allowed.origin ||
         signed.username || signed.password || signed.hash ||
-        !signed.pathname.startsWith('/' + config.minioBucket + '/documents/') ||
+        !signed.pathname.startsWith(expectedPrivatePath) ||
         signed.searchParams.get('X-Amz-Algorithm') !== 'AWS4-HMAC-SHA256' ||
         signed.searchParams.get('X-Amz-Expires') !== '60' ||
         !/^[a-f0-9]{64}$/i.test(signed.searchParams.get('X-Amz-Signature') ?? '')) {
