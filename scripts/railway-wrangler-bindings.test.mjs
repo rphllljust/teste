@@ -11,6 +11,7 @@ const fixture = {
   RAILWAY_ENVIRONMENT_NAME: 'staging',
   RAILWAY_PROJECT_ID: 'synthetic-project',
   RAILWAY_SERVICE_ID: 'synthetic-service',
+  RAILWAY_SERVICE_NAME: 'synthetic-test-service',
   CISNE_STAGING_READ_ONLY: 'true',
   CISNE_RC84_RAILWAY_BUCKET_MODE: 'true',
   CISNE_NEXTCRM_PRIVATE_ORIGIN: 'http://nextcrm-rc84-isolated-web.railway.internal:3000',
@@ -35,6 +36,8 @@ test('only approved names are declared; secret values and unrelated host env sta
     const json = JSON.parse(body);
     assert.ok(json.secrets.required.includes('DATABASE_URL'));
     assert.ok(json.secrets.required.includes('RAILWAY_ENVIRONMENT_NAME'));
+    assert.ok(json.secrets.required.includes('RAILWAY_SERVICE_NAME'));
+    assert.equal(body.includes('synthetic-test-service'),false);
     assert.ok(json.secrets.required.includes('CISNE_STAGING_READ_ONLY'));
     assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_ENABLED'));
     assert.ok(json.secrets.required.includes('CISNE_RC95_UAT_ACTOR_ID'));
