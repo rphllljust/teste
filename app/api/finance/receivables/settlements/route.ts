@@ -1,3 +1,4 @@
+import { withRC98SignedDbScope } from '../../../../../lib/api/staging-uat-db-scope.mjs';
 import { z } from 'zod';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import { registerReceivableSettlement } from '../../../../../lib/application/finance';
@@ -10,7 +11,7 @@ const command = z.object({
   commandKey: z.string().uuid(),
 }).strict();
 
-export async function POST(request: Request) {
+async function rc98PostCore(request: Request) {
   let context: RequestContext | undefined;
   try {
     context = requestContext(request, true);
@@ -24,3 +25,5 @@ export async function POST(request: Request) {
     return failure(error, context);
   }
 }
+
+export function POST(request: Request) { return withRC98SignedDbScope(request, ()=>rc98PostCore(request)); }
