@@ -10,6 +10,15 @@ import {
 // loader (better-auth is ESM-only). Prisma and document/account scope modules
 // remain REAL and are never mocked in this integration test.
 jest.mock("@/lib/auth-server", () => ({ getSession: jest.fn() }));
+// Real Prisma/PG authorization remains unmocked. Only the isolated MinIO
+// signing boundary is a deterministic fixture, independently tested with
+// a real MinIO instance by the signed-upload smoke workflow.
+jest.mock("@/lib/minio", () => ({
+  MINIO_BUCKET: "nextcrm",
+  MINIO_ENDPOINT: "http://nextcrm-minio.railway.internal:9000",
+  MINIO_PUBLIC_URL: "https://nextcrm-minio-staging.up.railway.app",
+  presignGet: jest.fn(async () => "https://nextcrm-minio-staging.up.railway.app/nextcrm/documents/ci-private.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=60&X-Amz-Signature=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+}));
 import { POST } from "../route";
 
 // Separate from mocked-Jest contract tests: this test uses original Prisma
@@ -82,6 +91,7 @@ it("validates signed document authorization against REAL PostgreSQL and original
         id: documentId,
         document_name: "CI no-real-data document",
         document_file_url: "s3://nonexistent/ci-fake",
+        key: "documents/ci-private.pdf",
         document_file_mimeType: "application/pdf",
         connected_documents: [],
         created_by_user: ownerId,
@@ -97,9 +107,17 @@ it("validates signed document authorization against REAL PostgreSQL and original
       authorized: true, id: documentId, accountId, tenantKey, version: 1, sha256: "a".repeat(64),
     });
     expect(JSON.stringify(permitted.body)).not.toContain("s3://");
+    const permittedFile=await authorize({...basePayload,purpose:"file"});
+    expect(permittedFile.status).toBe(200);
+    expect(permittedFile.body).toMatchObject({
+      authorized:true,accountId,tenantKey,version:1,
+      sha256:"a".repeat(64),expiresIn:60,
+      fileUrl:expect.stringContaining("X-Amz-Signature="),
+    });
 
     expect((await authorize(basePayload, true)).status).toBe(401);
     expect((await authorize({ ...basePayload, subjectId: outsiderId })).status).toBe(404);
+    expect((await authorize({ ...basePayload, subjectId: outsiderId,purpose:"file" })).status).toBe(404);
     expect((await authorize({ ...basePayload, erpClientId: randomUUID() })).status).toBe(404);
     expect((await authorize({ ...basePayload, accountId: randomUUID() })).status).toBe(404);
     expect((await authorize({ ...basePayload, tenantKey: "foreign-instance" })).status).toBe(404);
@@ -114,6 +132,7 @@ it("validates signed document authorization against REAL PostgreSQL and original
       where: { document_id_account_id: { document_id: documentId, account_id: accountId } },
     });
     expect((await authorize()).status).toBe(404);
+    expect((await authorize({...basePayload,purpose:"file"})).status).toBe(404);
     await prismaBase.documentsToAccounts.create({ data: { document_id: documentId, account_id: accountId } });
 
     await prismaBase.documents.update({ where: { id: documentId }, data: { deletedAt: new Date() } });

@@ -27,6 +27,8 @@ const bodySchema = z.object({
   erpClientId: uuid,
   tenantKey: z.string().regex(/^[A-Za-z0-9_-]{3,128}$/),
   requestId: uuid,
+  // Explicit privileged operation, never inferred from the caller's URL.
+  purpose: z.literal('file').optional(),
 }).strict();
 
 async function smallBody(req: NextRequest): Promise<string | null> {
@@ -127,17 +129,57 @@ export async function POST(req: NextRequest) {
         accounts: { some: { account_id: accountId } },
         ...documentReadScopeWhere(actor),
       },
-      select: { id: true, version: true, content_hash: true },
+      select: {
+        id: true, version: true, content_hash: true,
+        key: true, document_file_url: true,
+      },
     });
     if (!document || !Number.isInteger(document.version) || document.version < 1) {
       return reply(404, { authorized: false });
     }
     const hash = document.content_hash;
     const sha256 = typeof hash === "string" && /^[a-f0-9]{64}$/.test(hash) ? hash : null;
-    return reply(200, {
+    const grant = {
       authorized: true, id: document.id, tenantKey: instanceKey,
       accountId, version: document.version, sha256,
-    });
+    };
+    if (parsed.data.purpose !== 'file') return reply(200, grant);
+
+    // Requesting bytes has stricter requirements than document metadata:
+    // a verified content digest and an actual private documents/ object.
+    // Import MinIO lazily so metadata authorization does not require any
+    // S3 configuration or leak a storage URL to ordinary callers.
+    if (!sha256) return reply(404, { authorized: false });
+    const [storage, keys] = await Promise.all([
+      import('@/lib/minio'),
+      import('@/lib/documents/file-key'),
+    ]);
+    const publicEndpoint = new URL(storage.MINIO_PUBLIC_URL);
+    if (publicEndpoint.origin !== 'https://nextcrm-minio-staging.up.railway.app' ||
+        publicEndpoint.pathname !== '/' || publicEndpoint.search ||
+        publicEndpoint.hash || publicEndpoint.username ||
+        publicEndpoint.password || storage.MINIO_BUCKET !== 'nextcrm') {
+      return reply(503, { error: 'Unavailable' });
+    }
+    const key = document.key ||
+      keys.keyFromUrl(document.document_file_url, storage.MINIO_BUCKET,
+        [storage.MINIO_PUBLIC_URL, storage.MINIO_ENDPOINT]);
+    if (typeof key !== 'string' || !key.startsWith('documents/') ||
+        !keys.isDocumentKey(key) || key.split('/').some(part => !part)) {
+      return reply(404, { authorized: false });
+    }
+    // AWS SigV4 covers the exact public HTTPS host; URLs are disclosed only
+    // through a signed service-to-service response, NEVER to ERP browsers.
+    const signed = new URL(await storage.presignGet(key, 60));
+    if (signed.origin !== publicEndpoint.origin ||
+        !signed.pathname.startsWith('/nextcrm/documents/') ||
+        signed.searchParams.get('X-Amz-Algorithm') !== 'AWS4-HMAC-SHA256' ||
+        signed.searchParams.get('X-Amz-Expires') !== '60' ||
+        !/^[a-f0-9]{64}$/i.test(signed.searchParams.get('X-Amz-Signature') || '') ||
+        signed.hash || signed.username || signed.password) {
+      return reply(503, { error: 'Unavailable' });
+    }
+    return reply(200, { ...grant, expiresIn: 60, fileUrl: signed.toString() });
   } catch {
     // Never return a signed success on Prisma failure. The ERP fails closed
     // on 503 and must never treat this as authorization.

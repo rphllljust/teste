@@ -13,6 +13,12 @@ jest.mock("@/lib/prisma", () => ({
     documents: { findFirst: jest.fn() },
   },
 }));
+jest.mock("@/lib/minio", () => ({
+  MINIO_BUCKET: "nextcrm",
+  MINIO_ENDPOINT: "http://nextcrm-minio.railway.internal:9000",
+  MINIO_PUBLIC_URL: "https://nextcrm-minio-staging.up.railway.app",
+  presignGet: jest.fn(async () => "https://nextcrm-minio-staging.up.railway.app/nextcrm/documents/ci-private.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=60&X-Amz-Signature=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+}));
 jest.mock("@/lib/authz", () => ({
   mapLegacyRole: jest.fn((x: string) => x),
   accountReadScopeWhere: jest.fn(() => ({ deletedAt: null })),
@@ -62,6 +68,7 @@ beforeEach(() => {
   db.crm_Accounts.findFirst.mockResolvedValue({ id: payload.accountId });
   db.documents.findFirst.mockResolvedValue({
     id: payload.documentId, version: 2, content_hash: "a".repeat(64),
+    key: "documents/ci-private.pdf", document_file_url: "",
   });
 });
 afterAll(() => {
@@ -94,6 +101,39 @@ describe("NextCRM ERP signed document verifier overlay", () => {
         accounts: { some: { account_id: payload.accountId } },
       }),
     }));
+  });
+  it("issues a 60-second private ticket ONLY for an ACL-verified document", async () => {
+    const { req, proof } = doRequest({ ...payload, purpose: "file" });
+    const res = await POST(req);
+    expect(res.status).toBe(200);
+    const raw = await res.text();
+    expect(verifyBridgeResponse(secret, raw, 200, proof,
+      res.headers.get("x-cisne-bridge-response-signature") ?? "")).toBe(true);
+    expect(JSON.parse(raw)).toMatchObject({
+      authorized:true,id:payload.documentId,accountId:payload.accountId,
+      tenantKey,version:2,sha256:"a".repeat(64),
+      expiresIn:60,fileUrl:expect.stringContaining("X-Amz-Signature="),
+    });
+  });
+  it("fails closed for files without a digest or private documents/ key", async () => {
+    for(const wrong of [
+      {content_hash:null,key:"documents/ci-private.pdf"},
+      {content_hash:"a".repeat(64),key:"avatars/public.jpg"},
+      {content_hash:"a".repeat(64),key:"documents/../private.txt"},
+      {content_hash:"a".repeat(64),key:null,document_file_url:"https://evil.invalid/file"},
+    ]){
+      db.documents.findFirst.mockResolvedValueOnce({
+        id:payload.documentId,version:2,document_file_url:"",...wrong,
+      });
+      const res=await POST(doRequest({...payload,purpose:"file"}).req);
+      expect(res.status).toBe(404);
+    }
+  });
+  it("rejects forged file ticket signatures before querying Prisma", async () => {
+    db.documents.findFirst.mockClear();
+    const res=await POST(doRequest({...payload,purpose:"file"},false).req);
+    expect(res.status).toBe(401);
+    expect(db.documents.findFirst).not.toHaveBeenCalled();
   });
   it("rejects missing/forged signature before touching Prisma", async () => {
     const {req}=doRequest(payload,false);

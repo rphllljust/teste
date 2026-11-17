@@ -1,6 +1,9 @@
 name: NextCRM upstream document security tests (isolated)
 
 on:
+  push:
+    branches:
+      - integration/rc81-nextcrm-private-file-ticket-contract-20261116
   pull_request:
     paths:
       - .gitmodules

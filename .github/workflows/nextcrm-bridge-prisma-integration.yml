@@ -1,6 +1,9 @@
 name: NextCRM signed bridge — actual Prisma and ephemeral PostgreSQL
 
 on:
+  push:
+    branches:
+      - integration/rc81-nextcrm-private-file-ticket-contract-20261116
   pull_request:
     paths:
       - 'integrations/nextcrm-bridge-overlay/**'
