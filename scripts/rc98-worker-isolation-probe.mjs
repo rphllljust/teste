@@ -15,7 +15,7 @@ const wrangler=spawn(process.execPath,[
   './node_modules/wrangler/bin/wrangler.js','dev',
   'ops/railway-functions/rc98-worker-context-harness.mjs',
   '--local','--ip','127.0.0.1','--port',String(port),
-  '--compatibility-date','2026-11-01',
+  '--compatibility-date','2026-05-15',
   '--compatibility-flags','nodejs_compat',
   '--inspector-port','0',
 ],{
