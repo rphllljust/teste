@@ -1,4 +1,4 @@
-name: RC85 audited isolated NextCRM native S3 candidate (NO DEPLOY)
+name: RC85 audited seedless NextCRM native S3 (NO DEPLOY)
 on:
   push:
     branches:
@@ -10,11 +10,11 @@ permissions:
   checks: read
   packages: write
 concurrency:
-  group: rc85-final-private-s3-20261117
+  group: rc85-seedless-private-s3-final-20261117
   cancel-in-progress: false
 jobs:
   publish:
-    name: RC85 exact-SHA gates + isolated preflight + OCI digest
+    name: RC85 seedless entrypoint, exact-SHA gates and OCI digest
     runs-on: ubuntu-24.04
     timeout-minutes: 65
     if: github.repository == 'rphllljust/teste'
@@ -28,10 +28,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git merge-base --is-ancestor bae8187ef1dad7499eae2daf845fd733ea3aa797 HEAD
+          git merge-base --is-ancestor a9d73b19baca922ab6d4e6d84c2b3891d36c5b54 HEAD
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
-          test "$(git diff --name-only bae8187ef1dad7499eae2daf845fd733ea3aa797 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
+          test "$(git diff --name-only a9d73b19baca922ab6d4e6d84c2b3891d36c5b54 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
           node scripts/verify-nextcrm-dockerfile-derivation.mjs
           test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
           echo 'RC85_PRECISE_SOURCE_PRESERVED'
@@ -55,7 +55,7 @@ jobs:
           # The actual implementation must have all thirteen NextCRM/ERP gates,
           # including real Prisma, MinIO and custom image; unlike a workflow-only
           # publication commit, its source commit triggers all affected suites.
-          source_commit=bae8187ef1dad7499eae2daf845fd733ea3aa797
+          source_commit=a9d73b19baca922ab6d4e6d84c2b3891d36c5b54
           for attempt in $(seq 1 55); do
             approved="$(gh api "repos/$GITHUB_REPOSITORY/commits/$source_commit/check-runs?per_page=100")"
             total="$(jq -r '.total_count' <<<"$approved")"
@@ -111,11 +111,11 @@ jobs:
           push: true
           sbom: true
           provenance: mode=max
-          tags: ghcr.io/rphllljust/cisne-nextcrm:rc85-${{ github.sha }}
+          tags: ghcr.io/rphllljust/cisne-nextcrm:rc85-seedless-${{ github.sha }}
           labels: |
             org.opencontainers.image.source=https://github.com/rphllljust/teste
             org.opencontainers.image.revision=${{ github.sha }}
-            org.opencontainers.image.version=rc85-private-only-s3-hml
+            org.opencontainers.image.version=rc85-seedless-private-only-s3-hml
           cache-from: type=gha,scope=nextcrm-candidate
           cache-to: type=gha,mode=max,scope=nextcrm-candidate
       - name: Print immutable reference only (never secrets or deployments)
