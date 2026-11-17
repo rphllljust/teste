@@ -1,5 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { assessRC87ErpPersistence } from './rc87-erp-persistence-gate.mjs';
 
 const volumeId = 'f1271704-a171-4dc0-8bc1-41aa20d5cb39';
@@ -107,4 +112,41 @@ test('the actual RC86 schema-less Railway staging inventory remains NO-GO', () =
   assert.equal(verdict.go, false);
   assert.ok(verdict.failures.includes('APPROVED_VOLUME_NOT_FOUND'));
   assert.ok(verdict.failures.includes('POSTGRES_MOUNT_NOT_EXCLUSIVE'));
+});
+
+
+const cli = fileURLToPath(new URL('./rc87-erp-persistence-gate.mjs', import.meta.url));
+const runCli = (args, env = {}) => spawnSync(process.execPath, [cli, ...args], {
+  encoding: 'utf8',
+  timeout: 5000,
+  env: { ...process.env, ...env },
+});
+
+test('CLI rejects missing input and never proceeds without operator volume approval', () => {
+  const noInput = runCli([]);
+  assert.equal(noInput.status, 1);
+  assert.match(noInput.stderr, /RC87_PERSISTENCE_NO_GO: INVALID_SNAPSHOT/);
+
+  const folder = mkdtempSync(join(tmpdir(), 'rc87-safe-'));
+  const filepath = join(folder, 'inventory.json');
+  try {
+    writeFileSync(filepath, JSON.stringify(isolatedFixture()));
+    const noApproval = runCli([filepath], { RC87_APPROVED_VOLUME_ID: '' });
+    assert.equal(noApproval.status, 1);
+    assert.match(noApproval.stderr, /VOLUME_ID_NOT_APPROVED/);
+
+    const approved = runCli([filepath], { RC87_APPROVED_VOLUME_ID: volumeId });
+    assert.equal(approved.status, 0);
+    assert.match(approved.stdout, /RC87_PERSISTENCE_METADATA_PASS/);
+    assert.match(approved.stdout, /RC87_REMAINING_GATES/);
+    assert.doesNotMatch(approved.stdout, /ready-for-production/);
+
+    writeFileSync(filepath, '{"DATABASE_URL":"secret-db-password",');
+    const invalid = runCli([filepath], { RC87_APPROVED_VOLUME_ID: volumeId });
+    assert.equal(invalid.status, 1);
+    assert.match(invalid.stderr, /INVALID_SNAPSHOT/);
+    assert.doesNotMatch(invalid.stderr, /secret-db-password/);
+  } finally {
+    rmSync(folder, { recursive: true, force: true });
+  }
 });
