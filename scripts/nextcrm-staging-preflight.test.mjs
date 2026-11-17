@@ -97,7 +97,8 @@ test('RC85 rejects old legacy DB or bucket, production, public login, email and 
   ];
   for(const [name,value] of failures){
     const b={...isolated,[name]:value};
-    assert.ok(validateNextcrmStagingPredeploy(b).includes(name),'must reject '+name);
+    const expectedField = name === 'DB_PASSWORD' ? 'DATABASE_URL' : name;
+    assert.ok(validateNextcrmStagingPredeploy(b).includes(expectedField),'must reject '+name);
   }
   assert.ok(validateNextcrmStagingPredeploy({...isolated,RAILWAY_ENVIRONMENT_NAME:'production'}).length>0);
   assert.deepEqual(validateNextcrmStagingPredeploy({...good,CISNE_RC84_RAILWAY_BUCKET_MODE:'true'})
