@@ -1,4 +1,3 @@
-import { Client } from 'pg';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateRC86IsolatedErpPredeploy } from './rc86-isolated-erp-preflight.mjs';
@@ -18,13 +17,16 @@ export function assessRC89FieldIdentity(row) {
   return errors.sort();
 }
 
-export async function verifyRC89FieldDatabase(env, ClientConstructor = Client) {
+export async function verifyRC89FieldDatabase(env, ClientConstructor) {
   const configErrors = validateRC86IsolatedErpPredeploy(env);
   if (configErrors.length) return configErrors.map(name => 'CONFIG_' + name);
   let client, errors = [];
   try {
     // Force all SQL in this predeploy to be read-only, with bounded timeouts.
-    client = new ClientConstructor({
+    // CI domain invariants intentionally does not install node_modules; load pg only
+    // for actual live predeploy (or use an explicitly supplied test double).
+    const Constructor = ClientConstructor ?? (await import('pg')).Client;
+    client = new Constructor({
       connectionString: env.DATABASE_URL,
       options: '-c default_transaction_read_only=on -c statement_timeout=3500',
       connectionTimeoutMillis: 4500,
