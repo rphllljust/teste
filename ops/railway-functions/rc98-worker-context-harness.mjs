@@ -1,6 +1,7 @@
 // Standalone Cloudflare workerd/Miniflare concurrency harness (not Railway).
 // Uses synthetic nonsecret credentials, never reaches a database.
 import { stagingBoundaryError } from '../../lib/api/staging-access.mjs';
+import { withRC98SignedDbScope } from '../../lib/api/staging-uat-db-scope.mjs';
 import { rc98PgPoolMode } from '../../db/uat-pool-policy.mjs';
 
 const actor = 'rc98-worker-scope-synthetic';
@@ -28,14 +29,16 @@ export default {
       headers: request.headers,
       body: ['GET','HEAD'].includes(request.method) ? undefined : '{}',
     });
-    const err=stagingBoundaryError(cloned,e);
-    // Intentionally yield after establishing scope to discover accidental
-    // cross-request AsyncLocalStorage leakage under the *real* Worker runtime.
-    await new Promise(resolve=>setTimeout(resolve,type==='slow'?25:1));
-    return Response.json({
-      status:err?.status??200,
-      sqlMode:rc98PgPoolMode(e).mode,
-      scopeProbe:true,
-    });
+    return withRC98SignedDbScope(cloned,async()=>{
+      const err=stagingBoundaryError(cloned,e);
+      // Deliberately await after establishing the permission to test whether
+      // real Workerd request contexts cross-contaminate on concurrent fetch.
+      await new Promise(resolve=>setTimeout(resolve,type==='slow'?25:1));
+      return Response.json({
+        status:err?.status??200,
+        sqlMode:rc98PgPoolMode(e).mode,
+        scopeProbe:true,
+      });
+    },e);
   }
 };
