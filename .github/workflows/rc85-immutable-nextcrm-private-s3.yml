@@ -21,17 +21,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
           submodules: recursive
           persist-credentials: false
       - name: Fail closed unless EXACTLY reviewed 13-of-13 source is unchanged
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD^)" = "dff1d466b169979a2f9757fd1bcbec5014641c48"
+          git merge-base --is-ancestor dff1d466b169979a2f9757fd1bcbec5014641c48 HEAD
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
-          test "$(git diff --name-only HEAD^ HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
+          test "$(git diff --name-only dff1d466b169979a2f9757fd1bcbec5014641c48 HEAD)" = ".github/workflows/rc85-immutable-nextcrm-private-s3.yml"
           node scripts/verify-nextcrm-dockerfile-derivation.mjs
           test -f integrations/nextcrm-bridge-overlay/lib/minio.ts
           echo 'RC85_PRECISE_SOURCE_PRESERVED'
