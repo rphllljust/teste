@@ -10,7 +10,7 @@ permissions:
   checks: read
   packages: write
 concurrency:
-  group: rc85-immutable-nextcrm-private-s3
+  group: rc85-final-private-s3-20261117
   cancel-in-progress: false
 jobs:
   publish:
