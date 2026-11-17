@@ -155,7 +155,12 @@ export async function POST(req: NextRequest) {
       import('@/lib/documents/file-key'),
     ]);
     const publicEndpoint = new URL(storage.MINIO_PUBLIC_URL);
-    if (publicEndpoint.origin !== 'https://nextcrm-minio-staging.up.railway.app' ||
+    const permittedStorage=new Set([
+      'https://nextcrm-minio-staging.up.railway.app',
+      ...(process.env.RAILWAY_ENVIRONMENT_NAME==='staging'
+        ? ['https://nextcrm-rc84-isolated-minio-staging.up.railway.app'] : []),
+    ]);
+    if (!permittedStorage.has(publicEndpoint.origin) ||
         publicEndpoint.pathname !== '/' || publicEndpoint.search ||
         publicEndpoint.hash || publicEndpoint.username ||
         publicEndpoint.password || storage.MINIO_BUCKET !== 'nextcrm') {

@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { approvedNextcrmPrivateBridge } from './approved-railway-targets.mjs';
 import {
   NEXTCRM_BRIDGE_PATH,
   signBridgeRequest,
@@ -31,8 +32,7 @@ export function createNextcrmHttpDocumentVerifier(
   const url = new URL(config.baseUrl);
   // The production bridge is reachable ONLY over Railway's internal DNS.
   // Never send the shared secret, IDs or CRM request to a user-provided URL.
-  const internal = url.protocol === 'http:' &&
-    url.hostname === 'nextcrm-web.railway.internal' && url.port === '3000';
+  const internal = approvedNextcrmPrivateBridge(config.baseUrl);
   const loopbackTest = process.env.NODE_ENV === 'test' &&
     url.protocol === 'http:' && url.hostname === '127.0.0.1' && Number(url.port) > 0;
   if ((!internal && !loopbackTest) || url.username || url.password ||

@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import {
+  approvedNextcrmPrivateBridge,approvedNextcrmMinioOrigin,
+} from './approved-railway-targets.mjs';
+import {
   NEXTCRM_BRIDGE_PATH, signBridgeRequest, verifyBridgeResponse,
 } from './bridge-protocol.ts';
 import {
@@ -37,8 +40,7 @@ export async function requestNextcrmFileTicket(
     const loopback = process.env.NODE_ENV === 'test' &&
       privateUrl.hostname === '127.0.0.1' && !!privateUrl.port;
     if (privateUrl.protocol !== 'http:' ||
-        (!loopback && (privateUrl.hostname !== 'nextcrm-web.railway.internal' ||
-                        privateUrl.port !== '3000')) ||
+        (!loopback && !approvedNextcrmPrivateBridge(config.baseUrl)) ||
         privateUrl.username || privateUrl.password ||
         (privateUrl.pathname !== '/' && privateUrl.pathname !== '') ||
         privateUrl.search || privateUrl.hash ||
@@ -57,9 +59,9 @@ export async function requestNextcrmFileTicket(
     const allowed = new URL(config.minioPublicOrigin);
     if (allowed.protocol !== 'https:' || allowed.username || allowed.password ||
         allowed.pathname !== '/' || allowed.search || allowed.hash ||
-        // Staging-only rollout: a production allowlist needs a separate review.
-        allowed.hostname !== 'nextcrm-minio-staging.up.railway.app' ||
-        allowed.port) throw new NextcrmBridgeUnavailable();
+        // Both approved origins are explicit names, never caller-controlled.
+        !approvedNextcrmMinioOrigin(config.minioPublicOrigin))
+      throw new NextcrmBridgeUnavailable();
 
     const body = JSON.stringify({
       documentId: input.documentId,
