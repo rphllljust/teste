@@ -43,6 +43,21 @@ export function validateRC86IsolatedErpPredeploy(env) {
     typeof env.CISNE_STAGING_SESSION_SECRET === 'string' &&
     env.CISNE_STAGING_SESSION_SECRET.length >= 32);
 
+  // Short-lived signed exception retains global read-only semantics. If any
+  // RC95 variable was provisioned, reject partial, expired or long windows.
+  const uatFields = ['CISNE_RC95_UAT_ENABLED', 'CISNE_RC95_UAT_ACTOR_ID',
+    'CISNE_RC95_UAT_SIGNING_KEY', 'CISNE_RC95_UAT_UNTIL_MS'];
+  if (uatFields.some(key => !!env[key])) {
+    const until = Number(env.CISNE_RC95_UAT_UNTIL_MS);
+    requireField('CISNE_RC95_UAT_CONFIG',
+      env.CISNE_RC95_UAT_ENABLED === 'true' &&
+      env.CISNE_RC95_UAT_ACTOR_ID === env.CISNE_STAGING_ACTOR_ID &&
+      /^[a-f0-9]{64}$/.test(env.CISNE_RC95_UAT_SIGNING_KEY ?? '') &&
+      Number.isSafeInteger(until) &&
+      until > Date.now() && until - Date.now() <= 600_000);
+  }
+
+
   requireField('CISNE_RC84_RAILWAY_BUCKET_MODE', env.CISNE_RC84_RAILWAY_BUCKET_MODE === 'true');
   requireField('CISNE_NEXTCRM_PRIVATE_ORIGIN', env.CISNE_NEXTCRM_PRIVATE_ORIGIN === ISOLATED_NEXTCRM);
   requireField('CISNE_NEXTCRM_INSTANCE_KEY', env.CISNE_NEXTCRM_INSTANCE_KEY === 'rc84_isolated_hml');
