@@ -17,7 +17,8 @@
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs lib/domain/scheduling.test.mjs",
-    "db:migrate": "node scripts/migrate-postgres.mjs"
+    "db:migrate": "node scripts/migrate-postgres.mjs",
+    "db:migrate:field": "node scripts/migrate-field-postgres.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
