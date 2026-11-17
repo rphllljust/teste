@@ -12,6 +12,8 @@ const fixture = {
   RAILWAY_PROJECT_ID: 'synthetic-project',
   RAILWAY_SERVICE_ID: 'synthetic-service',
   CISNE_STAGING_READ_ONLY: 'true',
+  CISNE_RC84_RAILWAY_BUCKET_MODE: 'true',
+  CISNE_NEXTCRM_PRIVATE_ORIGIN: 'http://nextcrm-rc84-isolated-web.railway.internal:3000',
   CISNE_STAGING_ACCESS_MODE: 'private',
   DATABASE_URL: 'postgresql://fictional:secret-never-log@db.internal:5432/ci',
   AWS_SECRET_ACCESS_KEY: 'unrelated-secret-must-never-cross',
@@ -29,10 +31,14 @@ test('only approved names are declared; secret values and unrelated host env sta
     assert.ok(json.secrets.required.includes('DATABASE_URL'));
     assert.ok(json.secrets.required.includes('RAILWAY_ENVIRONMENT_NAME'));
     assert.ok(json.secrets.required.includes('CISNE_STAGING_READ_ONLY'));
+    assert.ok(json.secrets.required.includes('CISNE_RC84_RAILWAY_BUCKET_MODE'));
+    assert.ok(json.secrets.required.includes('CISNE_NEXTCRM_PRIVATE_ORIGIN'));
     assert.ok(json.secrets.required.includes('EXISTING_ONLY'));
     assert.equal(body.includes('fictional:secret-never-log'), false);
     assert.equal(body.includes('unrelated-secret-must-never-cross'), false);
     assert.equal(body.includes('AWS_SECRET_ACCESS_KEY'), false);
+    assert.equal(body.includes('nextcrm-rc84-isolated-web.railway.internal'), false);
+    assert.equal(body.includes('restricted'), false);
     assert.equal(json.secrets.required.some((key, i, a) => i && key < a[i-1]), false);
   } finally {
     rmSync(dir, { recursive: true, force: true });
