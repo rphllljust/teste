@@ -1,0 +1,241 @@
+name: RC91 real same-OS Field NextCRM Finance compatibility (disposable CI)
+on:
+  push:
+    branches:
+      - integration/rc91-same-os-real-regression-20261117
+  workflow_dispatch:
+# RC91 verifies EXACT RC89 application bytes, only the workflow differs.
+# Regression proves the reviewed code remains compatible with the published
+# RC81 legacy and CURRENT RC84 isolated Railway NextCRM immutable images.
+# This is still disposable GitHub CI, NOT a Railway private-network business UAT.
+permissions:
+  contents: read
+  packages: read
+jobs:
+  signed-document:
+    name: RC91 same-OS real bridge + finance (${{ matrix.variant }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 32
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: rc81-published-legacy
+            image: ghcr.io/rphllljust/cisne-nextcrm@sha256:d32fe18e9589d252a5061f16c29d498b15a2d989a3223d9e897f3a928ff8b2ca
+          - variant: rc84-current-railway-isolated
+            image: ghcr.io/rphllljust/cisne-nextcrm@sha256:3428a1ada0ca2a955daf82ce0f903354453d6ea2b3b67f0198c3101a56434098
+    env:
+      CI: 'true'
+      RC91_NEXTCRM_CI_IMAGE: ${{ matrix.image }}
+    steps:
+      - name: Checkout unchanged reviewed application bytes
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Pin reviewed code and prevent source drift in this CI-only workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = rphllljust/teste
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor 080c3982d85438d7587659682f225b42905f8186 HEAD
+          test "$(git diff --name-only 080c3982d85438d7587659682f225b42905f8186 HEAD)" = ".github/workflows/rc91-same-os-live-regression.yml"
+          echo 'RC91_RC89_EXACT_SOURCE_AND_CI_ONLY_DIFF_VERIFIED'
+      - name: Generate masked disposable credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          for var in CI_RC83_ERP_PASSWORD CI_RC82_DB_PASSWORD CI_RC82_MINIO_PASSWORD CI_RC82_BRIDGE_SECRET CI_RC82_AUTH_SECRET CI_RC82_EMAIL_KEY CI_RC82_EVENT_KEY CI_RC82_SIGNING_KEY; do
+            value="$(openssl rand -hex 32)"
+            echo "::add-mask::$value"
+            printf '%s=%s\n' "$var" "$value" >> "$GITHUB_ENV"
+          done
+      - name: Install disposable Python SQL and AWS clients
+        shell: bash
+        run: |
+          python3 -m pip install --disable-pip-version-check --target /tmp/rc82-py \
+            boto3==1.40.0 psycopg2-binary==2.9.10
+      - name: Authenticate only for exact GitHub OCI digest pull
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Start exclusive disposable PostgreSQL and MinIO
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker network create rc82-isolated
+          docker run -d --rm --name rc82-pg --network rc82-isolated --network-alias postgres \
+            -p 127.0.0.1:15432:5432 \
+            -e POSTGRES_USER=nextcrm -e POSTGRES_DB=nextcrm_ci \
+            -e POSTGRES_PASSWORD="$CI_RC82_DB_PASSWORD" pgvector/pgvector:pg17
+          docker run -d --rm --name rc82-minio --network rc82-isolated --network-alias minio \
+            -p 127.0.0.1:19000:9000 \
+            -e MINIO_ROOT_USER=ci-nextcrm -e MINIO_ROOT_PASSWORD="$CI_RC82_MINIO_PASSWORD" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z server /data --console-address :9001
+          for n in $(seq 1 90); do
+            if docker exec rc82-pg pg_isready -U nextcrm -d nextcrm_ci >/dev/null 2>&1 &&
+               curl -fsS --noproxy '*' http://127.0.0.1:19000/minio/health/live >/dev/null 2>&1; then
+              echo 'RC82_ISOLATED_DEPENDENCIES_READY'
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'NO-GO isolated PostgreSQL/MinIO'
+          exit 1
+      - name: Pull and start PUBLISHED immutable RC81 image with exclusive database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull "$RC91_NEXTCRM_CI_IMAGE"
+          docker run -d --rm --name rc82-app --network rc82-isolated \
+            --network-alias nextcrm-web.railway.internal \
+            -p 127.0.0.1:13100:3000 \
+            -e DATABASE_URL="postgresql://nextcrm:$CI_RC82_DB_PASSWORD@postgres:5432/nextcrm_ci" \
+            -e DB_HOST=postgres -e DB_PORT=5432 -e DB_USER=nextcrm -e DB_NAME=nextcrm_ci \
+            -e DB_PASSWORD="$CI_RC82_DB_PASSWORD" \
+            -e MINIO_ENDPOINT=http://minio:9000 \
+            -e MINIO_PUBLIC_ENDPOINT=https://nextcrm-minio-staging.up.railway.app \
+            -e MINIO_BUCKET=nextcrm -e MINIO_ACCESS_KEY=ci-nextcrm \
+            -e MINIO_SECRET_KEY="$CI_RC82_MINIO_PASSWORD" \
+            -e BETTER_AUTH_SECRET="$CI_RC82_AUTH_SECRET" \
+            -e EMAIL_ENCRYPTION_KEY="$CI_RC82_EMAIL_KEY" \
+            -e BETTER_AUTH_URL=http://localhost:13100 \
+            -e NEXT_PUBLIC_APP_URL=http://localhost:13100 \
+            -e TEST_USER_EMAIL=rc82-test@example.invalid -e SEED_DEMO_DATA=0 \
+            -e INNGEST_EVENT_KEY="$CI_RC82_EVENT_KEY" \
+            -e INNGEST_SIGNING_KEY="$CI_RC82_SIGNING_KEY" -e INNGEST_DEV=1 \
+            -e CISNE_NEXTCRM_BRIDGE_SECRET="$CI_RC82_BRIDGE_SECRET" \
+            -e CISNE_NEXTCRM_INSTANCE_KEY=rc82_ephemeral \
+            "$RC91_NEXTCRM_CI_IMAGE"
+          for i in $(seq 1 150); do
+            status="$(curl -sS --noproxy '*' -o /dev/null -w '%{http_code}' --max-time 3 http://127.0.0.1:13100/ || true)"
+            case "$status" in
+              200|301|302|303|307|308) echo 'RC82_PUBLISHED_IMAGE_BOOT_OK'; exit 0 ;;
+            esac
+            if ! docker ps --format '{{.Names}}' | grep -qx rc82-app; then
+              echo 'NO-GO published NextCRM container stopped'
+              exit 1
+            fi
+            sleep 2
+          done
+          echo 'NO-GO NextCRM HTTP unavailable'
+          exit 1
+      - name: Create private gateway and loopback HTTPS MinIO with exact S3 host
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker build --quiet -t rc82-gateway integrations/nextcrm-public-gateway
+          docker run -d --rm --name rc82-gateway --network rc82-isolated \
+            -p 127.0.0.1:13180:8080 \
+            -e NEXTCRM_UPSTREAM=nextcrm-web.railway.internal:3000 rc82-gateway
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout /tmp/rc82-local.key -out /tmp/rc82-local.cert \
+            -subj /CN=nextcrm-minio-staging.up.railway.app \
+            -addext 'subjectAltName=DNS:nextcrm-minio-staging.up.railway.app' \
+            >/dev/null 2>&1
+          chmod 600 /tmp/rc82-local.key
+          echo '127.0.0.1 nextcrm-minio-staging.up.railway.app' | sudo tee -a /etc/hosts >/dev/null
+          sudo --preserve-env=CI,GITHUB_ACTIONS node scripts/rc82-local-minio-tls.mjs >/tmp/rc82-proxy.log 2>&1 &
+          for n in $(seq 1 30); do
+            if curl -fsS --noproxy '*' --cacert /tmp/rc82-local.cert \
+                 https://nextcrm-minio-staging.up.railway.app/minio/health/live >/dev/null 2>&1 &&
+               test "$(curl -fsS --noproxy '*' http://127.0.0.1:13180/__gateway_health)" = ready; then
+              echo 'RC82_HTTPS_SIGV4_HOST_AND_GATEWAY_READY'
+              exit 0
+            fi
+            sleep 2
+          done
+          tail -n 8 /tmp/rc82-proxy.log || true
+          exit 1
+      - name: Persist harmless synthetic document in REAL PostgreSQL/MinIO
+        env:
+          RC82_PHASE: seed
+          PYTHONPATH: /tmp/rc82-py
+        shell: bash
+        run: |
+          export RC82_DB_URL="postgresql://nextcrm:$CI_RC82_DB_PASSWORD@127.0.0.1:15432/nextcrm_ci"
+          python3 scripts/rc82-seed-ephemeral.py
+      - name: Assert real private ticket, signed GET, SHA256, scopes and gateway
+        env:
+          RC82_PHASE: positive
+          NODE_EXTRA_CA_CERTS: /tmp/rc82-local.cert
+        run: node --experimental-strip-types scripts/rc82-published-bridge-verify.mjs
+      - name: Install pnpm and exact source dependencies for real ERP handlers
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Install locked CISNE dependencies
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+      - name: Start second EXCLUSIVE PostgreSQL18 for ERP (never Railway)
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --rm --name rc83-erp-pg --network rc82-isolated \
+            --network-alias erp-postgres -p 127.0.0.1:5432:5432 \
+            -e POSTGRES_USER=cisne_ci -e POSTGRES_DB=cisne_ci \
+            -e POSTGRES_PASSWORD="$CI_RC83_ERP_PASSWORD" postgres:18
+          for n in $(seq 1 80); do
+            if docker exec rc83-erp-pg pg_isready -U cisne_ci -d cisne_ci >/dev/null 2>&1; then
+              echo RC83_ERP_ISOLATED_POSTGRES18_READY
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'NO-GO: isolated ERP postgres unavailable'; exit 1
+      - name: Migrate ONLY disposable ERP PostgreSQL using unchanged safety rules
+        shell: bash
+        env:
+          NODE_ENV: test
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="postgresql://cisne_ci:$CI_RC83_ERP_PASSWORD@127.0.0.1:5432/cisne_ci"
+          node -e "const u=new URL(process.env.DATABASE_URL);if(u.hostname!=='127.0.0.1'||u.port!=='5432'||u.pathname!=='/cisne_ci'||process.env.CI!=='true'||process.env.GITHUB_ACTIONS!=='true')process.exit(74)"
+          pnpm db:migrate
+      - name: Bind private NextCRM hostname ONLY to loopback on disposable runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '127.0.0.1 nextcrm-web.railway.internal' | sudo tee -a /etc/hosts > /dev/null
+          getent hosts nextcrm-web.railway.internal | grep -Fq '127.0.0.1'
+      - name: Run one SAME-OS document plus full finance lifecycle across BOTH real databases
+        shell: bash
+        env:
+          NODE_ENV: test
+          RAILWAY_ENVIRONMENT_NAME: staging
+          NODE_EXTRA_CA_CERTS: /tmp/rc82-local.cert
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="postgresql://cisne_ci:$CI_RC83_ERP_PASSWORD@127.0.0.1:5432/cisne_ci"
+          export CISNE_NEXTCRM_BRIDGE_SECRET="$CI_RC82_BRIDGE_SECRET"
+          export CISNE_NEXTCRM_INSTANCE_KEY=rc82_ephemeral
+          export CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN=https://nextcrm-minio-staging.up.railway.app
+          export CISNE_NEXTCRM_MINIO_BUCKET=nextcrm
+          node --import tsx scripts/rc83-dual-db-business-journey.ts
+      - name: Assert no new signed URL after real ACL revocation
+        env:
+          RC82_PHASE: revoked
+          NODE_EXTRA_CA_CERTS: /tmp/rc82-local.cert
+        run: node --experimental-strip-types scripts/rc82-published-bridge-verify.mjs
+      - name: Upload safe RC82 and RC83 machine-readable evidence, no S3 tickets
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc86-legacy-topology-real-same-os-finance-evidence
+          path: |
+            artifacts/rc82/
+            artifacts/rc83/
+          if-no-files-found: warn
+          retention-days: 7
+      - name: Remove every disposable Docker service
+        if: always()
+        run: |
+          docker rm -f rc83-erp-pg rc82-gateway rc82-app rc82-minio rc82-pg >/dev/null 2>&1 || true
+          docker network rm rc82-isolated >/dev/null 2>&1 || true
