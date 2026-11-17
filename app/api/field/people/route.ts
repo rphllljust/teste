@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import { databasePool } from '../../../db/raw';
-import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../lib/api/http';
+import { databasePool } from '../../../../db/raw';
+import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
 
 export const dynamic = 'force-dynamic';
 const input = z.object({
