@@ -52,7 +52,7 @@ export async function POST(request:Request){
     const parsed=input.safeParse(await jsonBody(request));
     if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Confira os dados do agendamento.');
     const p=parsed.data;assertWindow(p.startAt,p.endAt);assertTimezone(p.timezone);
-    if(p.assigneeType||p.assigneeId)throw new ApiError(409,'DEPENDENCY_UNAVAILABLE','Cadastros de pessoas e equipes ainda não estão disponíveis para atribuição.');
+    if(Boolean(p.assigneeType)!==Boolean(p.assigneeId))throw new ApiError(400,'VALIDATION_FAILED','Tipo e responsável devem ser informados juntos.');
     const startUtc=utc(p.startAt),endUtc=utc(p.endAt);
     const hash=await fingerprint({actor:context.actorId,scope:'serviceSchedule',command:'create',payload:p});
     const db=database();
@@ -60,10 +60,14 @@ export async function POST(request:Request){
       const order=await query('SELECT id,status FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE',[p.orderId,context!.actorId]);
       if(!order.rowCount)throw new ApiError(404,'NOT_FOUND','Ordem de serviço não encontrada.');
       if(!['draft','authorized','executing'].includes(String(order.rows[0].status)))throw new ApiError(409,'INVALID_STATE','A ordem não aceita novos agendamentos.');
+      if(p.assigneeId){
+        const person=await query('SELECT id FROM service_people WHERE id=$1 AND owner_id=$2 AND kind=$3 AND active=true',[p.assigneeId,context!.actorId,p.assigneeType]);
+        if(!person.rowCount)throw new ApiError(404,'NOT_FOUND','Pessoa/equipe não encontrada ou inativa.');
+      }
       const prior=await query('SELECT request_hash,result FROM business_commands WHERE entity_type=$1 AND entity_id=$2 AND command=$3 AND actor_id=$4 ORDER BY created_at DESC LIMIT 1',['serviceSchedule',p.id,'create',context!.actorId]);
       if(prior.rowCount){if(prior.rows[0].request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','A chave do agendamento já foi usada com outro conteúdo.');return JSON.parse(String(prior.rows[0].result));}
       const now=new Date().toISOString(),result={ok:true,id:p.id,resource:{type:'serviceSchedule',id:p.id,rowVersion:1},refreshPolicy:['serviceOrders.schedule']};
-      await query('INSERT INTO service_schedules(id,owner_id,order_id,start_at,end_at,start_utc,end_utc,timezone,assignee_type,assignee_id,status,notes,version,created_at,updated_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,NULL,NULL,$9,$10,1,$11,$11,$2,$12,$13)',[p.id,context!.actorId,p.orderId,p.startAt,p.endAt,startUtc,endUtc,p.timezone,'scheduled',p.notes??null,now,hash,context!.correlationId]);
+      await query('INSERT INTO service_schedules(id,owner_id,order_id,start_at,end_at,start_utc,end_utc,timezone,assignee_type,assignee_id,status,notes,version,created_at,updated_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,1,$13,$13,$2,$14,$15)',[p.id,context!.actorId,p.orderId,p.startAt,p.endAt,startUtc,endUtc,p.timezone,p.assigneeType??null,p.assigneeId??null,'scheduled',p.notes??null,now,hash,context!.correlationId]);
       await query('INSERT INTO business_commands(id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[crypto.randomUUID(),context!.actorId,'serviceSchedule',p.id,'create',hash,JSON.stringify(result),context!.correlationId,now]);
       return result;
     });
