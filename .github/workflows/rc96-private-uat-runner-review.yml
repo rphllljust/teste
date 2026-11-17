@@ -1,0 +1,44 @@
+name: RC96 private synthetic Field OS finance runner - compile only
+on:
+  push:
+    branches:
+      - integration/rc96-business-live-uat-contracts-20261117
+  pull_request:
+    paths:
+      - ops/railway-functions/rc96-synthetic-finance-uat.mjs
+      - .github/workflows/rc96-private-uat-runner-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-contract:
+    name: RC96 compile-only synthetic private finance runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.8
+      - name: Compile Bun one-shot runner, never execute in CI
+        run: |
+          set -euo pipefail
+          test -f ops/railway-functions/rc96-synthetic-finance-uat.mjs
+          bun build ops/railway-functions/rc96-synthetic-finance-uat.mjs --target=bun --outfile=/tmp/rc96-uat.bundle.js
+          test -s /tmp/rc96-uat.bundle.js
+      - name: Verify no production route, no global disable, no period closure
+        run: |
+          set -euo pipefail
+          file=ops/railway-functions/rc96-synthetic-finance-uat.mjs
+          grep -Fq 'RAILWAY_ENVIRONMENT_NAME==="staging"' "$file"
+          grep -Fq 'rc96-synthetic-actor-only-one-shot' "$file"
+          grep -Fq 'postgresql:' "$file"
+          grep -Fq 'sourceDatabase:"cisne_rc89_field"' "$file"
+          grep -Fq 'periodCloseSkipped:"protect-shared-staging"' "$file"
+          ! grep -Eq 'process\.env\.CISNE_STAGING_READ_ONLY[[:space:]]*=' "$file"
+          ! grep -Eiq 'DROP[[:space:]]+DATABASE|TRUNCATE[[:space:]]+TABLE|DELETE[[:space:]]+FROM' "$file"
+          echo RC96_ONE_SHOT_SOURCE_CHECK_PASS
