@@ -100,6 +100,33 @@ test('document version or SHA changed upstream means no file',async()=>{
       (e:unknown)=>e instanceof NextcrmBridgeUnavailable);
   }
 });
+test('the isolated native Railway Bucket uses virtual-hosted SigV4 and never path-style fallback',async()=>{
+  const old=process.env.CISNE_RC84_RAILWAY_BUCKET_MODE;
+  process.env.CISNE_RC84_RAILWAY_BUCKET_MODE='true';
+  try{
+    const bucket='rc84-nextcrm-isolated-objects-a92f4';
+    const origin='https://'+bucket+'.storage.railway.app';
+    const url=origin+'/documents/ci-file.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=60&X-Amz-Signature='+'a'.repeat(64);
+    const mock=makeConfig(req=>({status:200,body:{...successful(req).body,fileUrl:url}}));
+    const native={...mock.config,minioPublicOrigin:origin,minioBucket:bucket};
+    assert.equal(await requestNextcrmFileTicket(native,input),url);
+    assert.equal(mock.calls(),1);
+    for(const bad of [
+      {...native,minioPublicOrigin:'https://other.storage.railway.app'},
+      {...native,minioBucket:'unapproved'},
+    ]){
+      await assert.rejects(()=>requestNextcrmFileTicket(bad,input),
+        (e:unknown)=>e instanceof NextcrmBridgeUnavailable);
+    }
+    const pathStyle=makeConfig(req=>({status:200,body:{...successful(req).body,
+      fileUrl:origin+'/'+bucket+'/documents/ci-file.pdf?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Expires=60&X-Amz-Signature='+'a'.repeat(64)}}));
+    await assert.rejects(()=>requestNextcrmFileTicket({...pathStyle.config,minioPublicOrigin:origin,minioBucket:bucket},input),
+      (e:unknown)=>e instanceof NextcrmBridgeUnavailable);
+  }finally{
+    if(old===undefined)delete process.env.CISNE_RC84_RAILWAY_BUCKET_MODE;
+    else process.env.CISNE_RC84_RAILWAY_BUCKET_MODE=old;
+  }
+});
 test('a browser-provided or untrusted bridge host is impossible',async()=>{
   const f=makeConfig(successful);
   await assert.rejects(()=>requestNextcrmFileTicket({...f.config,baseUrl:'https://attacker.invalid'},input),
