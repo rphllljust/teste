@@ -31,8 +31,8 @@ jobs:
           set -euo pipefail
           test "$GITHUB_REPOSITORY" = rphllljust/teste
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
-          git merge-base --is-ancestor 48ec8394764375c8584f6ea7d96687ac9fc6a032 HEAD
-          test "$(git diff --name-only 48ec8394764375c8584f6ea7d96687ac9fc6a032 HEAD)" = ".github/workflows/rc86-same-os-finance-regression.yml"
+          git merge-base --is-ancestor 91d8c68c69f9bc12dc4bedcb07758347abff653a HEAD
+          test "$(git diff --name-only 91d8c68c69f9bc12dc4bedcb07758347abff653a HEAD)" = ".github/workflows/rc86-same-os-finance-regression.yml"
           echo 'RC86_EXACT_SOURCE_AND_CI_ONLY_DIFF_VERIFIED'
       - name: Generate masked disposable credentials
         shell: bash
