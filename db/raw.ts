@@ -1,7 +1,7 @@
 import { Pool, type PoolClient, type QueryResult, type QueryResultRow } from 'pg';
 import { normalizeSql } from './raw-sql.mjs';
 import { workerSafePoolMaxUses } from './worker-pool-policy.mjs';
-import { rc98UatWritePoolAllowed } from '../lib/api/staging-uat-db-scope.mjs';
+import { rc98PgPoolMode } from './uat-pool-policy.mjs';
 
 type BoundStatement = { sql: string; params: unknown[] };
 type SqlRowsResult<T = Record<string, unknown>> = { results: T[]; success: true; meta: { changes: number } };
@@ -14,14 +14,9 @@ export function getPool(): Pool {
   // Only a request-local, HMAC-validated, unexpired RC95 synthetic POST may
   // select the separate one-connection PG writer pool. An environment flag,
   // session cookie or JWT alone is NEVER sufficient to select the writer.
-  const readOnly = process.env.RAILWAY_ENVIRONMENT_NAME === 'staging' &&
-    process.env.CISNE_STAGING_READ_ONLY === 'true';
-  const temporaryWriter = readOnly && rc98UatWritePoolAllowed(process.env);
-  const options = readOnly
-    ? temporaryWriter
-      ? '-c default_transaction_read_only=off'
-      : '-c default_transaction_read_only=on'
-    : undefined;
+  const decision = rc98PgPoolMode(process.env);
+  const temporaryWriter = decision.mode === 'synthetic-write';
+  const options = decision.options;
   if (temporaryWriter && rc98UatPool) return rc98UatPool;
   if (!temporaryWriter && pool) return pool;
   const created = new Pool({ connectionString: process.env.DATABASE_URL,
