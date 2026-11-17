@@ -61,14 +61,18 @@ export function validateRC86IsolatedErpPredeploy(env) {
     (storageOrigin.hostname === bucket + '.storage.railway.app' ||
      storageOrigin.hostname === bucket + '.t3.storageapi.dev'));
 
-  let database;
-  try { database = new URL(env.DATABASE_URL); } catch {}
+  let database, databaseUser = '', databasePassword = '';
+  try {
+    database = new URL(env.DATABASE_URL);
+    databaseUser = decodeURIComponent(database.username);
+    databasePassword = decodeURIComponent(database.password);
+  } catch {}
   requireField('DATABASE_URL',
     (database?.protocol === 'postgres:' || database?.protocol === 'postgresql:') &&
     database.hostname === ERP_POSTGRES && database.port === '5432' &&
     database.pathname === '/' + FIELD_DB &&
-    decodeURIComponent(database.username) === FIELD_ROLE &&
-    /^[a-f0-9]{64}$/.test(decodeURIComponent(database.password)) &&
+    databaseUser === FIELD_ROLE &&
+    /^[a-f0-9]{64}$/.test(databasePassword) &&
     !database.search && !database.hash);
 
   return failures.sort();
