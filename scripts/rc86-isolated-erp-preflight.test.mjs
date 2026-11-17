@@ -23,10 +23,10 @@ const isolated = {
   CISNE_NEXTCRM_BRIDGE_SECRET: 'b'.repeat(64),
   CISNE_NEXTCRM_MINIO_BUCKET: bucket,
   CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN: 'https://' + bucket + '.t3.storageapi.dev',
-  DATABASE_URL: 'postgresql://cisne_rc85:test-only@cisne-rc85-ephemeral-pg.railway.internal:5432/cisne_rc85',
+  DATABASE_URL: 'postgresql://cisne_rc89_field_app:' + 'a'.repeat(64) + '@cisne-rc75-postgres-uat.railway.internal:5432/cisne_rc89_field',
 };
 
-test('permits only the reviewed isolated ERP read-only staging configuration', () => {
+test('permits only the reviewed separate Field database in existing persisted PG18', () => {
   assert.deepEqual(validateRC86IsolatedErpPredeploy(isolated), []);
   assert.deepEqual(validateRC86IsolatedErpPredeploy({
     ...isolated,
@@ -48,6 +48,11 @@ const invalid = [
   ['reject unrelated host', { DATABASE_URL: 'postgresql://user:pass@nextcrm-postgres.railway.internal:5432/nextcrm' }, 'DATABASE_URL'],
   ['reject injected public S3', { CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN: 'https://attacker.example.invalid' }, 'CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN'],
   ['reject DB query injection', { DATABASE_URL: isolated.DATABASE_URL + '?sslmode=disable' }, 'DATABASE_URL'],
+  ['reject old ephemeral DB', { DATABASE_URL: 'postgresql://cisne_rc85:' + 'a'.repeat(64) + '@cisne-rc85-ephemeral-pg.railway.internal:5432/cisne_rc85' }, 'DATABASE_URL'],
+  ['reject wrong owner role on persisted volume', { DATABASE_URL: 'postgresql://postgres:' + 'a'.repeat(64) + '@cisne-rc75-postgres-uat.railway.internal:5432/cisne_rc89_field' }, 'DATABASE_URL'],
+  ['reject existing RC75 database target', { DATABASE_URL: 'postgresql://cisne_rc89_field_app:' + 'a'.repeat(64) + '@cisne-rc75-postgres-uat.railway.internal:5432/cisne_rc75' }, 'DATABASE_URL'],
+  ['reject short role secret', { DATABASE_URL: 'postgresql://cisne_rc89_field_app:weak@cisne-rc75-postgres-uat.railway.internal:5432/cisne_rc89_field' }, 'DATABASE_URL'],
+  ['reject malformed password URL encoding', { DATABASE_URL: 'postgresql://cisne_rc89_field_app:%FF@cisne-rc75-postgres-uat.railway.internal:5432/cisne_rc89_field' }, 'DATABASE_URL'],
   ['reject invalid signer', { CISNE_NEXTCRM_BRIDGE_SECRET: 'bad' }, 'CISNE_NEXTCRM_BRIDGE_SECRET'],
 ];
 for (const [label, changes, key] of invalid) {
