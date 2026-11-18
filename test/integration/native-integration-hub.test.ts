@@ -32,7 +32,7 @@ test('RC99 navigation is native to the same CISNE page and not a redirect or ifr
 test('RC99 uses only same-origin authorized APIs, approved paging, and existing NextCRM document controller',()=>{
   const source=readFileSync('app/IntegrationHub.tsx','utf8');
   assert.match(source,/\/api\/orders\?page=1&pageSize=25&sort=createdAt.desc/);
-  assert.match(source,/\/api\/health\/ready/);
+  assert.match(source,/\/api\/healthz/);
   assert.match(source,/credentials:'same-origin'/);
   assert.match(source,/cache:'no-store'/);
   assert.match(source,/AbortController/);
