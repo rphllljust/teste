@@ -64,6 +64,10 @@ export async function POST(request:Request){
         const person=await query('SELECT id FROM service_people WHERE id=$1 AND owner_id=$2 AND kind=$3 AND active=true',[p.assigneeId,context!.actorId,p.assigneeType]);
         if(!person.rowCount)throw new ApiError(404,'NOT_FOUND','Pessoa/equipe não encontrada ou inativa.');
       }
+      if(p.assigneeId){
+        const conflict=await query('SELECT id FROM service_schedules WHERE owner_id=$1 AND assignee_id=$2 AND status IN ($3,$4) AND start_utc < $5 AND end_utc > $6 LIMIT 1',[context!.actorId,p.assigneeId,'scheduled','confirmed',endUtc,startUtc]);
+        if(conflict.rowCount)throw new ApiError(409,'SCHEDULE_CONFLICT','O responsável já possui um agendamento neste intervalo.');
+      }
       const prior=await query('SELECT request_hash,result FROM business_commands WHERE entity_type=$1 AND entity_id=$2 AND command=$3 AND actor_id=$4 ORDER BY created_at DESC LIMIT 1',['serviceSchedule',p.id,'create',context!.actorId]);
       if(prior.rowCount){if(prior.rows[0].request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','A chave do agendamento já foi usada com outro conteúdo.');return JSON.parse(String(prior.rows[0].result));}
       const now=new Date().toISOString(),result={ok:true,id:p.id,resource:{type:'serviceSchedule',id:p.id,rowVersion:1},refreshPolicy:['serviceOrders.schedule']};
