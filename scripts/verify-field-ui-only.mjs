@@ -151,7 +151,11 @@ try{
   await visible(page,'Liquidado'); step('invoice and settlement created');
 
   phase='reload'; await page.reload({waitUntil:'domcontentloaded'});
-  await page.getByRole('heading',{name:'Visão operacional',exact:true}).waitFor({timeout:30000});
+  // A reload preserves the current business workspace and its persisted result.
+  // The operator remains in Contas a receber after refresh; this proves that the
+  // settlement survives navigation instead of merely returning to the dashboard.
+  await page.getByRole('heading',{name:'Financeiro',exact:true}).waitFor({timeout:30000});
+  await page.getByRole('row').filter({hasText:title}).getByText('Liquidado',{exact:true}).waitFor({timeout:30000});
   await page.screenshot({path:'artifacts/field-ui-only/persisted.png',fullPage:true});
   assert.deepEqual(consoleErrors.filter(e=>e.kind==='pageerror'),[],'UI-only journey raised page errors');
   passed=true; step('completed',{scope:'all business mutations via visible controls',company,title,staff});
