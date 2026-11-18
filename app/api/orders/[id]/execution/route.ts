@@ -1,12 +1,13 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
-import { executionInput, quantityScaled } from '../../../../../lib/domain/execution';
+import { executionInput, quantityScaled, resourceKinds } from '../../../../../lib/domain/execution';
 
-const query = z.object({ state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
+const query = z.object({ q: z.string().trim().max(160).default(''), resourceKind: z.enum(resourceKinds).optional(), state: z.enum(['active', 'corrected', 'all']).default('active'), page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
 
-function project(row: Record<string, unknown>) {
-  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
+function project(row: Record<string, unknown>, canVoid: boolean) {
+  const corrected=Boolean(row.reverses_id)||row.voided===true;
+  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: corrected ? 'corrected' : 'active', label: corrected ? 'Anulado' : 'Ativo' }, availableCommands: corrected || !canVoid ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -21,15 +22,24 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const db = database();
     const visibility = parsed.data.state==='active'
       ? 'e.reverses_id IS NULL AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)'
-      : 'e.reverses_id IS NOT NULL';
+      : parsed.data.state==='corrected' ? 'e.reverses_id IS NOT NULL' : 'TRUE';
+    // The UI always sends q and sometimes resourceKind: accept both as real
+    // parameterized filters rather than rejecting valid browser requests.
+    const filters=[visibility],values:(string|number)[]=[id,context.actorId];
+    if(parsed.data.resourceKind){filters.push('e.resource_kind=?');values.push(parsed.data.resourceKind);}
+    if(parsed.data.q){
+      filters.push('(strpos(lower(e.description),lower(?))>0 OR strpos(lower(e.reference),lower(?))>0 OR strpos(lower(e.resource_kind),lower(?))>0)');
+      values.push(parsed.data.q,parsed.data.q,parsed.data.q);
+    }
+    const where='e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND '+filters.join(' AND ');
     const rows = await db.batch([
       db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
-      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${visibility} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
-      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${visibility}`).bind(id, context.actorId),
+      db.prepare(`SELECT e.*,EXISTS(SELECT 1 FROM execution_entries v WHERE v.reverses_id=e.id) AS voided FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE ${where} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, parsed.data.pageSize, offset),
+      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE ${where}`).bind(...values),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
-    const items = (rows[1].results as Record<string, unknown>[]).map(project);
+    const items = (rows[1].results as Record<string, unknown>[]).map(item=>project(item,String(order.status)==='executing'));
     const total = Number((rows[2].results[0] as { total: number }).total);
     return respond({ order: { id: String(order.id), title: String(order.title), client: String(order.client), status: String(order.status), version: Number(order.version), availableCommands: [] }, items, pageInfo: { page: parsed.data.page, limit: parsed.data.pageSize, offset, total, sourceTotal: total, hasMore: parsed.data.page * parsed.data.pageSize < total }, availableCommands: String(order.status) === 'executing' ? [{ id: 'report', label: 'Registrar execução', expectedVersion: Number(order.version) }] : [], warnings: [] }, context);
   } catch (error) { return failure(error, context); }
