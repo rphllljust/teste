@@ -56,10 +56,16 @@ try{
     phase='module:'+name;
     const response=await page.goto(origin+'/#'+encodeURIComponent(name),
       {waitUntil:'domcontentloaded',timeout:45000});
-    assert.equal(response?.status(),200);
+    // Playwright returns null on SPA hash-only navigation. A real document
+    // response must be 200; same-document navigation must update the route
+    // and render the expected heading instead of inventing an HTTP response.
+    if(response)assert.equal(response.status(),200);
     await page.getByRole('heading',{name,exact:true}).first().waitFor({timeout:30000});
-    assert.equal(new URL(page.url()).origin,origin);
-    log('navigation',{module:name,httpStatus:200});
+    const current=new URL(page.url());
+    assert.equal(current.origin,origin);
+    assert.equal(decodeURIComponent(current.hash.slice(1)),name);
+    log('navigation',{module:name,httpStatus:response?.status()??null,
+      mode:response?'document':'same-document'});
   }
   async function api(url,method='GET',body){
     return page.evaluate(async input=>{
