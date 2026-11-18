@@ -13,6 +13,7 @@ import {GET as getSchedule,POST as planOrder} from '../../app/api/orders/[id]/pl
 import {POST as applyCommand} from '../../app/api/commands/route';
 import {GET as getExecution,POST as reportExecution} from '../../app/api/orders/[id]/execution/route';
 import {POST as settleReceivable} from '../../app/api/finance/receivables/settlements/route';
+import {GET as reconcileOrder} from '../../app/api/orders/[id]/reconciliation/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw Error('FIELD_LIFECYCLE_NO_GO: test-only database required');
@@ -188,4 +189,44 @@ test('Client -> real catalog -> OS -> schedule/team -> execution -> measurement 
   assert.equal(record.receipt_count,1);
   assert.equal(record.entries,1);
   assert.equal(record.people,1);
+
+  // Reconciliation is a read-only owner-scoped snapshot, not just a CI assertion
+  // against disconnected tables. The same handler can be used in staging.
+  const auditPath='/api/orders/'+orderId+'/reconciliation';
+  const reconciliation=await expectStatus(
+    await reconcileOrder(req(auditPath),{params:Promise.resolve({id:orderId})}),200);
+  assert.equal(reconciliation.status,'CONSISTENT');
+  assert.equal(reconciliation.scope,'owned_subledger_only');
+  assert.deepEqual(reconciliation.counts,{
+    measurements:1,invoices:1,receivables:1,settlements:1,critical:0,warnings:0,
+  });
+  assert.deepEqual(reconciliation.amountsScaled,{
+    invoiced:'125000',receivablePrincipal:'125000',netSettled:'125000',outstanding:'0',
+  });
+  assert.equal((reconciliation.accounting as {status:string}).status,'NOT_TESTED',
+    'Do not pretend the isolated subledger test proves GL postings');
+  const foreign=await reconcileOrder(
+    setTestIdentity(new Request('http://localhost'+auditPath),randomUUID()),
+    {params:Promise.resolve({id:orderId})});
+  assert.equal(foreign.status,404,'Unauthorized operator cannot discover financial metadata');
+  assert.equal((await reconcileOrder(req('/api/orders/invalid/reconciliation'),
+    {params:Promise.resolve({id:'invalid'})})).status,400);
+
+  // Reproduce a single-cent invoice discrepancy in disposable CI PostgreSQL.
+  // The auditor must reject it without ever changing business records.
+  await pool.query('UPDATE invoices SET amount=amount+1 WHERE id=$1',[invoiceId]);
+  try{
+    const inconsistent=await expectStatus(
+      await reconcileOrder(req(auditPath),{params:Promise.resolve({id:orderId})}),200);
+    assert.equal(inconsistent.status,'INCONSISTENT');
+    assert.ok((inconsistent.issues as Array<{code:string}>).some(x=>
+      x.code==='INVOICE_AMOUNT_MISMATCH'));
+    assert.ok((inconsistent.issues as Array<{code:string}>).some(x=>
+      x.code==='RECEIVABLE_AMOUNT_MISMATCH'));
+  }finally{
+    await pool.query('UPDATE invoices SET amount=amount-1 WHERE id=$1',[invoiceId]);
+  }
+  const restored=await expectStatus(
+    await reconcileOrder(req(auditPath),{params:Promise.resolve({id:orderId})}),200);
+  assert.equal(restored.status,'CONSISTENT');
 });
