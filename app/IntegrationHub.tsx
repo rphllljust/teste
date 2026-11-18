@@ -38,7 +38,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
    try{
     const [health,listing]=await Promise.all([
      fetch('/api/health/ready',{cache:'no-store',signal:controller.signal}),
-     fetch('/api/orders?page=1&pageSize=30&sort=createdAt.desc',{
+     fetch('/api/orders?page=1&pageSize=25&sort=createdAt.desc',{
       cache:'no-store',credentials:'same-origin',signal:controller.signal,
      }),
     ]);
