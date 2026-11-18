@@ -3,6 +3,64 @@ import { ApiError, type RequestContext } from '../api/http';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
+
+type AccountingEventInput = {
+  eventType: 'receivable_settlement' | 'receivable_reversal' | 'payable_payment' | 'payable_reversal';
+  sourceReference: string;
+  description: string;
+  effectiveDate: string;
+  amount: number;
+};
+
+export async function postConfiguredAccountingEvent(
+  query: Query, context: RequestContext, input: AccountingEventInput,
+): Promise<{posted: boolean; replayed?: boolean; journalId?: string; reason?: string}> {
+  if (!Number.isSafeInteger(input.amount) || input.amount <= 0)
+    throw new ApiError(400, 'VALIDATION_FAILED', 'O valor contábil deve ser positivo.');
+  await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
+  const rule = await query(
+    `SELECT debit_account_id, credit_account_id
+       FROM accounting_event_rules
+      WHERE actor_id=$1 AND event_type=$2 AND active=true
+      FOR SHARE`,
+    [context.actorId, input.eventType],
+  );
+  if (!rule.rows.length)
+    return {posted: false, reason: 'ACCOUNTING_RULE_NOT_CONFIGURED'};
+
+  const existing = await query(
+    'SELECT id FROM journal_entries WHERE actor_id=$1 AND source_reference=$2 FOR UPDATE',
+    [context.actorId, input.sourceReference],
+  );
+  if (existing.rows.length)
+    return {posted: true, replayed: true, journalId: String(existing.rows[0].id)};
+
+  const accounts = await query(
+    `SELECT id FROM chart_accounts
+      WHERE actor_id=$1 AND active=1 AND id = ANY($2::text[])`,
+    [context.actorId, [rule.rows[0].debit_account_id, rule.rows[0].credit_account_id]],
+  );
+  if (accounts.rows.length !== 2)
+    throw new ApiError(409, 'ACCOUNTING_RULE_INVALID', 'A regra contábil referencia contas indisponíveis.');
+
+  const journalId = crypto.randomUUID();
+  await query(
+    `INSERT INTO journal_entries
+      (id,effective_date,source_reference,description,status,expected_count,
+       created_at,actor_id,request_hash,correlation_id,reversal_of)
+      VALUES($1,$2,$3,$4,'posted',2,$5,$6,$7,$8,$9,NULL)`,
+    [journalId, input.effectiveDate, input.sourceReference, input.description,
+      new Date().toISOString(), context.actorId,
+      await fingerprint({actorId: context.actorId, event: input}),
+      context.correlationId],
+  );
+  await query(
+    'INSERT INTO journal_lines(id,entry_id,account_id,debit,credit) VALUES($1,$2,$3,$4,0),($5,$2,$6,0,$7)',
+    [crypto.randomUUID(), journalId, rule.rows[0].debit_account_id, input.amount,
+      crypto.randomUUID(), rule.rows[0].credit_account_id, input.amount],
+  );
+  return {posted: true, replayed: false, journalId};
+}
 export async function assertFinancePeriodOpen(query: Query, actorId: string, effectiveDate: string) {
   const closed = await query("SELECT 1 FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$2 LIMIT 1", [actorId, effectiveDate]);
   if (closed.rows.length) throw new ApiError(409, 'FINANCE_PERIOD_CLOSED', 'O período financeiro está fechado para novos lançamentos.');
@@ -59,8 +117,12 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
     [input.commandKey, input.receivableId, input.amount, input.effectiveDate, input.reference,
       new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
   await audit(query, context, 'receivable', input.receivableId, 'receipt_registered', input.requestHash, { settlementId: input.commandKey, amount: input.amount, reference: input.reference });
+  const accounting = await postConfiguredAccountingEvent(query, context, {
+    eventType: 'receivable_settlement', sourceReference: `receivable_settlement:${input.commandKey}`,
+    description: `Liquidação do recebível ${input.receivableId}`, effectiveDate: input.effectiveDate, amount: input.amount,
+  });
 
-  return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+  return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount), accounting } };
 }
 
 export async function reverseReceivableSettlement(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
@@ -92,7 +154,11 @@ export async function reverseReceivableSettlement(context: RequestContext, input
       [input.commandKey, row.receivable_id, row.amount, input.effectiveDate, input.reference, input.settlementId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
     await audit(query, context, 'receivable', row.receivable_id as string, 'receipt_reversed', input.requestHash, { settlementId: input.settlementId, reversalId: input.commandKey, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount) } };
+    const accounting = await postConfiguredAccountingEvent(query, context, {
+      eventType: 'receivable_reversal', sourceReference: `receivable_reversal:${input.commandKey}`,
+      description: `Estorno da liquidação ${input.settlementId}`, effectiveDate: input.effectiveDate, amount: Number(row.amount),
+    });
+    return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount), accounting } };
   });
 }
 
@@ -126,7 +192,11 @@ export async function registerPayablePayment(context: RequestContext, input: { p
       [input.commandKey, input.payableId, input.amount, input.effectiveDate, input.reference,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
     await audit(query, context, 'payable', input.payableId, 'payment_registered', input.requestHash, { paymentId: input.commandKey, amount: input.amount, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+    const accounting = await postConfiguredAccountingEvent(query, context, {
+      eventType: 'payable_payment', sourceReference: `payable_payment:${input.commandKey}`,
+      description: `Pagamento do título a pagar ${input.payableId}`, effectiveDate: input.effectiveDate, amount: input.amount,
+    });
+    return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount), accounting } };
   });
 }
 
@@ -153,7 +223,11 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
       [input.commandKey, row.payable_id, row.amount, input.effectiveDate, input.reference, input.paymentId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
     await audit(query, context, 'payable', row.payable_id as string, 'payment_reversed', input.requestHash, { paymentId: input.paymentId, reversalId: input.commandKey, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount) } };
+    const accounting = await postConfiguredAccountingEvent(query, context, {
+      eventType: 'payable_reversal', sourceReference: `payable_reversal:${input.commandKey}`,
+      description: `Estorno do pagamento ${input.paymentId}`, effectiveDate: input.effectiveDate, amount: Number(row.amount),
+    });
+    return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount), accounting } };
   });
 }
 
