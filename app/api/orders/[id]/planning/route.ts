@@ -22,7 +22,7 @@ export function schedulingRange(startsAt:string,endsAt:string) {
   return {startsAt:new Date(start).toISOString(),endsAt:new Date(end).toISOString()};
 }
 type TxQuery=(sql:string,params?:unknown[])=>Promise<{rows:Record<string,unknown>[];rowCount:number|null}>;
-async function assertNoOverlap(query:TxQuery,owner:string,personId:string,orderId:string,start:string,end:string){
+async function assertNoOverlap(query:TxQuery,owner:string,personId:string,orderId:string,start:unknown,end:unknown){
   const busy=await query(
     'SELECT a.order_id FROM field_order_assignments a JOIN field_order_schedules s ON s.order_id=a.order_id AND s.owner_id=a.owner_id WHERE a.owner_id=$1 AND a.person_id=$2 AND a.active=true AND a.order_id<>$3 AND s.starts_at<$4::timestamptz AND s.ends_at>$5::timestamptz LIMIT 1',
     [owner,personId,orderId,end,start],
@@ -107,7 +107,7 @@ export async function POST(request:Request,{params}:RouteContext){
         await lockPerson(query,context!.actorId,p.personId);
         const schedule=await query('SELECT starts_at,ends_at FROM field_order_schedules WHERE order_id=$1 AND owner_id=$2',[id,context!.actorId]);
         if(!schedule.rows.length)throw new ApiError(409,'SCHEDULE_REQUIRED','Agende a OS antes de atribuir profissionais.');
-        await assertNoOverlap(query,context!.actorId,p.personId,id,String(schedule.rows[0].starts_at),String(schedule.rows[0].ends_at));
+        await assertNoOverlap(query,context!.actorId,p.personId,id,schedule.rows[0].starts_at,schedule.rows[0].ends_at);
         const existing=await query(
           'SELECT id,active FROM field_order_assignments WHERE owner_id=$1 AND order_id=$2 AND person_id=$3 FOR UPDATE',
           [context!.actorId,id,p.personId],
