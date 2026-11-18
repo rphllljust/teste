@@ -29,7 +29,8 @@ function verified(result,status,step){
   return result.data;
 }
 try{
-  browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+  browser=await chromium.launch({headless:true,args:['--no-sandbox'],
+    proxy:{server:'http://127.0.0.1:8888'}});
   context=await browser.newContext({ignoreHTTPSErrors:true,serviceWorkers:'block',
     viewport:{width:1440,height:900},locale:'pt-BR'});
   // Browser sees canonical HTTPS Origin; every byte comes from CI localhost.
@@ -39,7 +40,9 @@ try{
     if(u.protocol!=='https:'||u.hostname!==host||u.port){
       await route.abort('blockedbyclient');return;
     }
-    await route.continue({url:'https://127.0.0.1:9443'+u.pathname+u.search});
+    // Do not replace the URL: Chromium must send the genuine canonical
+    // Origin and its domain-scoped HttpOnly cookie through the local tunnel.
+    await route.continue();
   });
   await context.addCookies([{name:CISNE_STAGING_COOKIE,
     value:issueStagingSession(actor,key),domain:host,path:'/',
