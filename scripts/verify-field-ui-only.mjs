@@ -59,8 +59,7 @@ try{
   await visible(page,company); step('client created');
 
   phase='create order';
-  await page.getByRole('button',{name:company,exact:true}).first().click();
-  await page.getByRole('button',{name:'Criar ordem de serviço',exact:true}).click();
+  await page.getByRole('dialog',{name:'Contexto do cliente'}).getByRole('button',{name:'Criar ordem de serviço',exact:true}).click();
   await page.getByRole('button',{name:'Preparar operação',exact:true}).click();
   await page.getByLabel('Título da operação').fill(title);
   await page.getByLabel('Atividade da operação').selectOption({index:1});
