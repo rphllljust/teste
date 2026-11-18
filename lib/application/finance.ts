@@ -34,16 +34,21 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
     return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference } };
   }
 
-  const receivable = await query(`SELECT r.id, r.amount,
-    COALESCE((SELECT SUM(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END)
-      FROM receivable_settlements s WHERE s.receivable_id=r.id),0) AS settled
+  // Lock the owned title FIRST. A correlated SUM in the locking SELECT may
+  // use the snapshot taken before a concurrent lock wait (READ COMMITTED),
+  // allowing multiple requests to spend the same stale balance.
+  const receivable = await query(`SELECT r.id, r.amount
     FROM receivables r
     JOIN invoices i ON i.id=r.invoice_id
     JOIN service_orders o ON o.id=i.order_id
     WHERE r.id=$1 AND o.owner_id=$2 FOR UPDATE OF r`, [input.receivableId, context.actorId]);
   if (!receivable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título financeiro não encontrado.');
+  // A new statement after the lock gets a NEW READ COMMITTED snapshot.
+  const paid = await query(`SELECT COALESCE(SUM(
+    CASE WHEN kind='receipt' THEN amount ELSE -amount END),0) AS settled
+    FROM receivable_settlements WHERE receivable_id=$1`, [input.receivableId]);
   const row = receivable.rows[0];
-  const balance = Number(row.amount) - Number(row.settled);
+  const balance = Number(row.amount) - Number(paid.rows[0]?.settled ?? 0);
   if (input.amount > balance) throw new ApiError(409, 'SETTLEMENT_EXCEEDS_BALANCE', 'A baixa excede o saldo do título.');
 
   await query(`INSERT INTO receivable_settlements
@@ -97,13 +102,16 @@ export async function registerPayablePayment(context: RequestContext, input: { p
       if (row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
       return { ok: true, replayed: true, resource: { type: 'payablePayment', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
     }
-    const payable = await query(`SELECT p.id, p.amount,
-      COALESCE((SELECT SUM(CASE WHEN x.kind='payment' THEN x.amount ELSE -x.amount END)
-        FROM payable_payments x WHERE x.payable_id=p.id),0) AS settled
-      FROM payables p WHERE p.id=$1 AND p.actor_id=$2 FOR UPDATE OF p`, [input.payableId, context.actorId]);
+    // Serialize all payments against this owned obligation before reading
+    // settled amounts. The second statement cannot reuse a pre-lock snapshot.
+    const payable = await query(`SELECT p.id, p.amount FROM payables p
+      WHERE p.id=$1 AND p.actor_id=$2 FOR UPDATE OF p`, [input.payableId, context.actorId]);
     if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
+    const paid = await query(`SELECT COALESCE(SUM(
+      CASE WHEN kind='payment' THEN amount ELSE -amount END),0) AS settled
+      FROM payable_payments WHERE payable_id=$1`, [input.payableId]);
     const row = payable.rows[0];
-    const balance = Number(row.amount) - Number(row.settled);
+    const balance = Number(row.amount) - Number(paid.rows[0]?.settled ?? 0);
     if (input.amount > balance) throw new ApiError(409, 'PAYMENT_EXCEEDS_BALANCE', 'O pagamento excede o saldo do título.');
     await query(`INSERT INTO payable_payments
       (id, payable_id, kind, amount, effective_date, reference, created_at, actor_id, request_hash, correlation_id)
