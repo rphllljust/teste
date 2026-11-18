@@ -59,6 +59,7 @@ jobs:
       - name: Reject duplicate active migration DDL before any PostgreSQL changes
         run: |
           node --test scripts/audit-active-migrations.test.mjs
+          node --test scripts/legacy-schema-parity.test.mjs
           node scripts/audit-active-migrations.mjs
       - name: Reject D1 bindings and require PostgreSQL persistence
         run: node scripts/assert-postgres-only.mjs
@@ -141,11 +142,16 @@ jobs:
             '0003_nextcrm_document_bridge',
             '0004_cash_transfers',
             '0005_finance_period_closes',
+            '0006_cisne_company_service_catalog',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
           await pool.end();
           JS
+      - name: Require read-only evidence of company catalog 0006, FKs and seed
+        run: |
+          node --test scripts/audit-company-catalog-readonly.test.mjs
+          node scripts/audit-company-catalog-readonly.mjs
       - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-owner-lookup.test.ts
       - name: Generate synthetic D1 dump with exact ERP tables (NO real data)

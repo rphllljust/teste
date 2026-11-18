@@ -7,6 +7,7 @@
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { Pool } from 'pg';
+import { legacyColumnsCompatible } from './legacy-schema-parity.mjs';
 
 const legacySql = await readFile(new URL('../drizzle-pg/0000_salty_lilith.sql', import.meta.url), 'utf8');
 const tables = [...new Set([...legacySql.matchAll(/CREATE TABLE "([A-Za-z_][A-Za-z0-9_]*)"/g)].map(m => m[1]))].sort();
@@ -47,7 +48,7 @@ try {
       [table]
     );
     const cols = columnResult.rows.map(r => r.column_name);
-    if (!expected || cols.join(',') !== expected.columns?.join(',')) {
+    if (!expected || !legacyColumnsCompatible(table, cols, expected.columns)) {
       discrepancies++;
       console.log(table + ': NO-GO (columns differ or missing)');
       continue;
@@ -63,7 +64,8 @@ try {
       const res = await client.query(sql, lastId === null ? [400] : [lastId, 400]);
       if (res.rows.length === 0) break;
       for (const row of res.rows) {
-        digest.update(canonical(row, cols), 'utf8');
+        // Hash exactly the immutable D1 columns; 0006 additions are audited separately.
+        digest.update(canonical(row, expected.columns), 'utf8');
         count++;
       }
       lastId = res.rows.at(-1).id;

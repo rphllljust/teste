@@ -1,5 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
+import { auditCompanyCatalog } from './audit-company-catalog-readonly.mjs';
 
 if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for company catalog migration');
 
@@ -18,8 +19,11 @@ try {
     for (const statement of statements) await client.query(statement);
     await client.query('INSERT INTO _cisne_schema_migrations(id) VALUES ($1)', [migrationId]);
   }
+  // Validate actual structure and seed, including a replay with an existing ledger.
+  // Any integrity mismatch rolls back this transaction before ledger persistence.
+  const evidence = await auditCompanyCatalog(client);
   await client.query('COMMIT');
-  console.log(`Migration ${migrationId} applied or already present`);
+  console.log('COMPANY_CATALOG_EVIDENCE_OK ' + JSON.stringify(evidence));
 } catch (error) {
   await client.query('ROLLBACK');
   console.error('Company catalog migration failed:', error instanceof Error ? error.stack ?? error.message : error);
