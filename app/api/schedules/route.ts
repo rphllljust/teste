@@ -65,6 +65,7 @@ export async function POST(request:Request){
         if(!person.rowCount)throw new ApiError(404,'NOT_FOUND','Pessoa/equipe não encontrada ou inativa.');
       }
       if(p.assigneeId){
+        await query('SELECT pg_advisory_xact_lock(hashtext($1 || \'\':\'\' || $2))',[context!.actorId,p.assigneeId]);
         const conflict=await query('SELECT id FROM service_schedules WHERE owner_id=$1 AND assignee_id=$2 AND status IN ($3,$4) AND start_utc < $5 AND end_utc > $6 LIMIT 1',[context!.actorId,p.assigneeId,'scheduled','confirmed',endUtc,startUtc]);
         if(conflict.rowCount)throw new ApiError(409,'SCHEDULE_CONFLICT','O responsável já possui um agendamento neste intervalo.');
       }
