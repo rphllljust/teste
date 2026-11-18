@@ -86,9 +86,10 @@ try{
   await planning.getByText(new RegExp(location)).waitFor(); step('schedule assigned and updated');
 
   phase='authorize and start';
-  await page.getByRole('button',{name:'Autorizar ordem',exact:true}).click();
+  const orderContext=page.getByRole('dialog',{name:'Contexto da ordem'});
+  await orderContext.getByRole('button',{name:'Autorizar ordem',exact:true}).click();
   await page.getByRole('dialog',{name:'Autorizar ordem'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
-  await page.getByRole('button',{name:'Iniciar execução',exact:true}).click();
+  await page.getByRole('dialog',{name:'Contexto da ordem'}).getByRole('button',{name:'Iniciar execução',exact:true}).click();
   await page.getByRole('dialog',{name:'Iniciar execução'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
 
   phase='execution'; await nav(page,'Execução');
