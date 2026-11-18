@@ -156,3 +156,4 @@ try{
   await writeFile('artifacts/field-ui-only/evidence.json',JSON.stringify({passed,phase,sourceSha:process.env.GITHUB_SHA??null,environment:'GitHub Actions isolated CI',isolation:'disposable PostgreSQL + real Chromium',noBusinessApiShortcuts:true,events,consoleErrors},null,2));
 }
 // The journey advances business state only through visible controls.
+// CI evidence is generated from the restored full repository tree.
