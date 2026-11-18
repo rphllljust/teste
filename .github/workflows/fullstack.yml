@@ -106,6 +106,7 @@ jobs:
         run: |
           pnpm db:migrate
           pnpm db:migrate
+          pnpm db:migrate:field
       - name: Read-only audit of schema ledger and NextCRM bridge catalog
         run: node scripts/audit-nextcrm-migration-ledger-readonly.mjs
       - name: Execute actual route handlers against PostgreSQL
