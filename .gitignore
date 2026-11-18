@@ -1,4 +1,0 @@
-# Banco antigo e manifestos de auditoria contêm informações empresariais sensíveis
-cutover-private/
-*.d1-export.sql
-*.d1-manifest.json

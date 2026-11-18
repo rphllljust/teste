@@ -96,7 +96,7 @@ try{
   await page.getByRole('dialog',{name:'Iniciar execução'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
 
   phase='execution'; await nav(page,'Execução');
-  await page.getByLabel('Selecionar OS').selectOption({label:new RegExp(title)});
+  await page.getByLabel('Selecionar OS').selectOption({label:`${title} · ${company}`});
   await page.getByRole('button',{name:'Registrar execução',exact:true}).click();
   const execution=page.getByRole('dialog',{name:'Comando de execução'});
   await execution.locator('textarea[name="description"]').fill('Apontamento criado pelo operador UI');
@@ -152,3 +152,4 @@ try{
   if(browser)await browser.close();
   await writeFile('artifacts/field-ui-only/evidence.json',JSON.stringify({passed,phase,sourceSha:process.env.GITHUB_SHA??null,isolation:'disposable PostgreSQL + real Chromium',noBusinessApiShortcuts:true,events,consoleErrors},null,2));
 }
+398b472a3ff9f2b650e4242a0dc513ae5f269985
