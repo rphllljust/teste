@@ -108,7 +108,9 @@ try{
   await execution.locator('input[name="effectiveDate"]').fill(date);
   await execution.locator('input[name="reference"]').fill('UI-'+suffix);
   await execution.getByRole('button',{name:'Confirmar comando',exact:true}).click();
-  await visible(page,'Apontamento criado pelo operador UI'); step('execution report created');
+  await execution.waitFor({state:'detached'});
+  await page.getByRole('row').filter({hasText:'Apontamento criado pelo operador UI'}).waitFor();
+  step('execution report created');
 
   phase='complete'; await page.getByRole('button',{name:'Consultar OS e continuidade',exact:true}).click();
   await page.getByRole('button',{name:'Concluir execução',exact:true}).click();
