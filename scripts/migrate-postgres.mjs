@@ -16,6 +16,7 @@ const migrations = [
   { id: '0005_finance_period_closes', file: '../drizzle-pg/0005_finance_period_closes.sql' },
   { id: '0006_cisne_company_service_catalog', file: '../drizzle-pg/0006_cisne_company_service_catalog.sql' },
   { id: '0007_field_planning', file: '../drizzle-pg/0007_field_planning.sql' },
+  { id: '0008_accounting_event_rules', file: '../drizzle-pg/0008_accounting_event_rules.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
