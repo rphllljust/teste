@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 
 type Person={id:string;fullName:string;specialty:string;active:boolean};
 type Schedule={startsAt:string;endsAt:string;location:string;version:number};
@@ -12,12 +12,15 @@ export default function FieldOrderPlanningPanel({orderId,onChanged}:{orderId:str
   const [planning,setPlanning]=useState<Planning|null>(null),[people,setPeople]=useState<Person[]>([]);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false);
   const [personId,setPersonId]=useState('');
+  const [peopleQuery,setPeopleQuery]=useState('');
+  const appliedPeopleQuery=useRef('');
   const load=useCallback(async()=>{
     setLoading(true);
     try{
       const [a,b]=await Promise.all([
         fetch('/api/orders/'+encodeURIComponent(orderId)+'/planning',{cache:'no-store'}),
-        fetch('/api/field/people',{cache:'no-store'}),
+        fetch('/api/field/people'+(appliedPeopleQuery.current?
+          '?q='+encodeURIComponent(appliedPeopleQuery.current):''),{cache:'no-store'}),
       ]);
       const details=await a.json() as Planning&{error?:string};
       const persons=await b.json() as {items?:Person[];error?:string};
@@ -73,6 +76,12 @@ export default function FieldOrderPlanningPanel({orderId,onChanged}:{orderId:str
           {writable&&<button type="button" className="text-button" disabled={saving}
             onClick={()=>void command({command:'unassign_person',personId:a.personId})}>Desvincular</button>}
         </div>):<p>Sem profissionais designados.</p>}
+      {writable&&<div className="form-row">
+        <label>Buscar por nome ou especialidade<input value={peopleQuery} maxLength={160}
+          onChange={e=>setPeopleQuery(e.target.value)} placeholder="Localizar profissional" /></label>
+        <button type="button" className="secondary" disabled={saving||loading}
+          onClick={()=>{appliedPeopleQuery.current=peopleQuery.trim();setPersonId('');void load();}}>Buscar</button>
+      </div>}
       {writable&&<div className="form-row">
         <label>Selecionar profissional<select value={personId} onChange={e=>setPersonId(e.target.value)}>
           <option value="">Selecione</option>
