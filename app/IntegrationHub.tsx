@@ -18,7 +18,7 @@ type Props={
  onOpenCRM:()=>void;
 };
 
-function count(value:number|undefined){return Number.isSafeInteger(value)&&value!>=0?value:0;}
+function count(value:number|undefined){return typeof value==='number'&&Number.isSafeInteger(value)&&value>=0?value:0;}
 
 export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Props){
  const [refresh,setRefresh]=useState(0);
