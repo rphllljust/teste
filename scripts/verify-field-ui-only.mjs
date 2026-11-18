@@ -137,6 +137,9 @@ try{
   await billing.getByLabel('Vencimento da cobrança').fill('2026-12-31');
   await billing.getByRole('button',{name:'Revisar cobrança',exact:true}).click();
   await billing.getByRole('button',{name:'Gerar cobrança',exact:true}).last().click();
+  const billingContext=page.getByRole('dialog',{name:'Contexto da cobrança'});
+  await billingContext.getByRole('button',{name:'Fechar registro',exact:true}).click();
+  await billingContext.waitFor({state:'detached'});
   await nav(page,'Financeiro','Contas a receber');
   await page.getByRole('button',{name:'Consultar título',exact:true}).first().click();
   await page.getByRole('button',{name:'Registrar recebimento',exact:true}).click();
