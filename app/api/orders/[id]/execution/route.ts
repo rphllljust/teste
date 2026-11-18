@@ -19,10 +19,13 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Consulta de execução inválida.');
     const offset = (parsed.data.page - 1) * parsed.data.pageSize;
     const db = database();
+    const visibility = parsed.data.state==='active'
+      ? 'e.reverses_id IS NULL AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)'
+      : 'e.reverses_id IS NOT NULL';
     const rows = await db.batch([
       db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
-      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
-      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'}`).bind(id, context.actorId),
+      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${visibility} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
+      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${visibility}`).bind(id, context.actorId),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
@@ -46,26 +49,29 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND (owner_id IS NULL OR owner_id=$2) FOR UPDATE', [id, context!.actorId]);
       if (!order.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem não encontrada.');
       const row = order.rows[0] as { id: string; status: string; version: number };
-      if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
       const prior = await query('SELECT result,request_hash FROM order_events WHERE id=$1', [p.key]);
       if (prior.rows.length) {
         if (prior.rows[0].request_hash !== hash || !prior.rows[0].result) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de execução já utilizada.');
         return JSON.parse(String(prior.rows[0].result)) as Record<string, unknown>;
       }
+      if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
+      if (row.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem foi alterada. Atualize a execução.');
       const now = new Date().toISOString();
       if (p.command === 'report') {
-        const entryId = crypto.randomUUID();
-        await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [entryId, id, 'report', p.resourceKind, p.description, quantityScaled(p.quantity), p.unit, p.resourceReference, p.effectiveDate, p.reference, context!.actorId, now]);
+        const entryId = p.key;
         const result = { ok: true, resource: { type: 'executionEntry', id: entryId } };
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, id, p.command, row.version, now, context!.actorId, hash, entryId, JSON.stringify(result), context!.correlationId]);
+        await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [entryId, id, 'report', p.resourceKind, p.description, quantityScaled(p.quantity), p.unit, p.resourceReference, p.effectiveDate, p.reference, context!.actorId, now]);
         return result;
       }
       const original = await query('SELECT id FROM execution_entries WHERE id=$1 AND order_id=$2 AND reverses_id IS NULL FOR UPDATE', [p.reversesId, id]);
       if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Apontamento original não encontrado.');
-      const reversalId = crypto.randomUUID();
-      await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,reverses_id,actor_id,created_at) SELECT $1,order_id,\'void\',resource_kind,$3,quantity,unit,resource_reference,effective_date,$4,id,$5,$6 FROM execution_entries WHERE id=$2', [reversalId, p.reversesId, p.reason, `Estorno: ${p.reason}`, context!.actorId, now]);
+      const alreadyReversed = await query('SELECT id FROM execution_entries WHERE reverses_id=$1', [p.reversesId]);
+      if (alreadyReversed.rows.length) throw new ApiError(409, 'ALREADY_REVERSED', 'O apontamento já foi anulado.');
+      const reversalId = p.key;
       const result = { ok: true, resource: { type: 'executionReversal', id: reversalId, reversesId: p.reversesId } };
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, id, p.command, row.version, now, context!.actorId, hash, reversalId, JSON.stringify(result), context!.correlationId]);
+      await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,reverses_id,actor_id,created_at) SELECT $1,order_id,\'void\',resource_kind,$3,quantity,unit,resource_reference,effective_date,$4,id,$5,$6 FROM execution_entries WHERE id=$2', [reversalId, p.reversesId, p.reason, `Estorno: ${p.reason}`, context!.actorId, now]);
       return result;
     });
     return respond(result, context, 201);
