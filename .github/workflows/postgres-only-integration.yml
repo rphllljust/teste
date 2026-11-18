@@ -153,6 +153,7 @@ jobs:
         run: |
           node --test scripts/audit-company-catalog-readonly.test.mjs
           node scripts/audit-company-catalog-readonly.mjs
+          node --input-type=module -e "import {Pool} from 'pg';import {auditFieldPlanning} from './scripts/audit-field-planning-readonly.mjs';const p=new Pool({connectionString:process.env.DATABASE_URL});const c=await p.connect();try{await c.query('BEGIN READ ONLY');console.log('FIELD_PLANNING_EVIDENCE_OK',await auditFieldPlanning(c));await c.query('ROLLBACK')}finally{c.release();await p.end()}"
       - name: Test NextCRM OS ownership against real ephemeral PostgreSQL
         run: NODE_ENV=test node --import tsx --test test/integration/nextcrm-owner-lookup.test.ts
       - name: Generate synthetic D1 dump with exact ERP tables (NO real data)
