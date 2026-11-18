@@ -1,0 +1,49 @@
+name: RC101 native CISNE web integration staging proof
+on:
+  push:
+    branches:
+      - integration/rc101-native-hub-web-staging-20261118
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  web-preview-gate:
+    name: RC101 exact web source + native Field/NextCRM view
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      CI: 'true'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - name: Verify immutable source and UI-only diff from web staging
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$GITHUB_REPOSITORY" = "rphllljust/teste"
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git merge-base --is-ancestor "7c2c7b921041163c211761c25366b284fc877e47" HEAD
+          actual="$(git diff --name-only "7c2c7b921041163c211761c25366b284fc877e47" HEAD | LC_ALL=C sort)"
+          expected="$(printf '%s\n' '.github/workflows/rc101-web-integration-gate.yml' 'app/IntegrationHub.tsx' 'app/globals.css' 'app/page.tsx' 'test/integration/native-integration-hub.test.ts' | LC_ALL=C sort)"
+          test "$actual" = "$expected"
+          echo RC101_WEB_SCHEDULING_ANCESTRY_AND_UI_ONLY_PASS
+      - name: Install locked dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Render native integration hub and check same-origin API boundary
+        run: node --import tsx --test test/integration/native-integration-hub.test.ts
+      - name: TypeScript
+        run: pnpm exec tsc --noEmit
+      - name: Lint
+        run: pnpm lint
+      - name: Production build
+        run: pnpm build
