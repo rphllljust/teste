@@ -65,6 +65,24 @@ test('execution record and reversal share their idempotency event ID, with corre
   assert.equal(stored.rows[0].target_id,key);
   assert.equal(stored.rows[0].order_id,orderId);
   assert.equal(stored.rows[0].reverses_id,null);
+  // Browser sends q even when blank; strict API must accept the real UI contract.
+  const browserQuery=await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q=&page=1&pageSize=25&state=all'),ctx);
+  assert.equal(browserQuery.status,200,JSON.stringify(await json(browserQuery)));
+  assert.equal((await json(browserQuery)).pageInfo &&
+    ((await json(browserQuery)).pageInfo as {total:number}).total,1);
+  const filter=await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q=instala%C3%A7%C3%A3o&resourceKind=labor&state=all'),ctx);
+  assert.equal(filter.status,200);
+  assert.equal(((await json(filter)).items as Array<unknown>).length,1);
+  assert.equal((await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q=unknown&state=all'),ctx)).status,200);
+  assert.equal((await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?resourceKind=invalid'),ctx)).status,400);
+  assert.equal((await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q='+ 'a'.repeat(161)),ctx)).status,400);
+  assert.equal((await listExecution(req(outsider,
+    '/api/orders/'+orderId+'/execution?q=&page=1'),ctx)).status,404);
   const before=await list();
   assert.equal(before.status,200);
   const beforeItems=await json(before);
@@ -83,6 +101,19 @@ test('execution record and reversal share their idempotency event ID, with corre
   assert.equal((active.items as Array<unknown>).length,0,'voided original must leave active list');
   const corrected=await json(await list('corrected'));
   assert.equal((corrected.items as Array<unknown>).length,1);
+  const all=await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q=labor&resourceKind=labor&state=all'),ctx);
+  assert.equal(all.status,200);
+  const allItems=(await json(all)).items as Array<{
+    id:string;state:{code:string};availableCommands:unknown[];
+  }>;
+  assert.equal(allItems.length,2);
+  assert.ok(allItems.every(x=>x.state.code==='corrected'&&x.availableCommands.length===0),
+    'Both original and reversal must be shown as corrected and non-voidable');
+  const noMatch=await listExecution(req(owner,
+    '/api/orders/'+orderId+'/execution?q=unmatched&state=all'),ctx);
+  assert.equal(noMatch.status,200);
+  assert.equal(((await json(noMatch)).items as Array<unknown>).length,0);
   const pair=await db.query(
     'SELECT e.id,e.reverses_id,ev.command FROM execution_entries e JOIN order_events ev ON ev.id=e.id WHERE e.order_id=$1 ORDER BY ev.created_at,e.id',
     [orderId],
