@@ -17,7 +17,7 @@ jobs:
       CI: 'true'
       RC102_TARGET_ENV: staging
       GITHUB_ACTIONS: 'true'
-      RC102_EXPECTED_STAGING_SHA: 9f439e94a338b852d11f6d0b4399b2adb4143995
+      RC102_EXPECTED_STAGING_SHA: 9512d8187e304102e73a588325db632e2b74c6df
     steps:
       - uses: actions/checkout@v4
         with:
@@ -29,6 +29,6 @@ jobs:
         run: |
           test "$GITHUB_REPOSITORY" = "rphllljust/teste"
           test "$RC102_TARGET_ENV" = staging
-          test "$RC102_EXPECTED_STAGING_SHA" = "9f439e94a338b852d11f6d0b4399b2adb4143995"
+          test "$RC102_EXPECTED_STAGING_SHA" = "9512d8187e304102e73a588325db632e2b74c6df"
       - name: Exercise actual public Railway endpoints without authentication or mutations
         run: node scripts/rc102-public-staging-smoke.mjs
