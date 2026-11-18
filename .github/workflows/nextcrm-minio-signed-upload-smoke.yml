@@ -1,0 +1,124 @@
+name: NextCRM MinIO signed document smoke (ephemeral)
+
+on:
+  push:
+    branches:
+      - integration/nextcrm-homologation-wave1-20261118
+  pull_request:
+    paths:
+      - .gitmodules
+      - integrations/**
+      - lib/integrations/nextcrm/**
+      - .github/workflows/nextcrm-minio-signed-upload-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  signed-upload-and-download:
+    name: Test real NextCRM signed PUT/GET against isolated MinIO
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      DATABASE_URL: postgresql://never:connect@127.0.0.1:1/ci_no_database
+      NODE_ENV: test
+      NEXT_TELEMETRY_DISABLED: "1"
+      MINIO_ENDPOINT: http://127.0.0.1:19000
+      MINIO_PUBLIC_ENDPOINT: http://127.0.0.1:19000
+      MINIO_BUCKET: nextcrm-smoke
+      MINIO_ACCESS_KEY: ci-minio
+    steps:
+      - name: Checkout reviewed upstream submodule
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          persist-credentials: false
+      - name: Verify upstream revision and absence of .env
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git -C integrations/nextcrm-upstream rev-parse HEAD)" = "d3bead9b44efe2cf94d0dfc2948af0f2c9270deb"
+          test ! -f integrations/nextcrm-upstream/.env
+          test ! -f integrations/nextcrm-upstream/.env.local
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: integrations/nextcrm-upstream/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+          cache: pnpm
+          cache-dependency-path: integrations/nextcrm-upstream/pnpm-lock.yaml
+      - name: Install immutable upstream deps without package lifecycle scripts
+        working-directory: integrations/nextcrm-upstream
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Start throwaway MinIO only on CI loopback
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEST_PASSWORD="$(openssl rand -hex 32)"
+          echo "::add-mask::$TEST_PASSWORD"
+          echo "MINIO_SECRET_KEY=$TEST_PASSWORD" >> "$GITHUB_ENV"
+          docker run --rm -d --name nextcrm-smoke-minio \
+            -p 127.0.0.1:19000:9000 \
+            -e MINIO_ROOT_USER=ci-minio \
+            -e MINIO_ROOT_PASSWORD="$TEST_PASSWORD" \
+            pgsty/minio:RELEASE.2026-08-04T00-00-00Z \
+            server /data --console-address :9001
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://127.0.0.1:19000/minio/health/live >/dev/null; then
+              echo 'MinIO healthy on isolated loopback port.'
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs nextcrm-smoke-minio | tail -n 25
+          echo 'MinIO did not become healthy' >&2
+          exit 1
+      - name: Exercise actual NextCRM signing functions and private document object
+        working-directory: integrations/nextcrm-upstream
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --experimental-strip-types --input-type=module <<'SMOKE'
+          import assert from 'node:assert/strict';
+          import { CreateBucketCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+          import { minioClient, presignPut, presignGet } from './lib/minio.ts';
+
+          const bucket = 'nextcrm-smoke';
+          const key = 'documents/ci/fixture.pdf';
+          const payload = Buffer.from('%PDF-1.4\nCI NextCRM harmless document fixture\n');
+          await minioClient.send(new CreateBucketCommand({Bucket:bucket}));
+
+          const putUrl = await presignPut(key,'application/pdf',60);
+          assert.equal(new URL(putUrl).host,'127.0.0.1:19000');
+          assert.ok(new URL(putUrl).searchParams.get('X-Amz-SignedHeaders')?.includes('content-type'));
+
+          const alteredMime = await fetch(putUrl,{
+            method:'PUT',headers:{'Content-Type':'text/plain'},body:payload
+          });
+          assert.equal(alteredMime.status,403,'signed upload denies tampered Content-Type');
+
+          const put = await fetch(putUrl,{
+            method:'PUT',headers:{'Content-Type':'application/pdf'},body:payload
+          });
+          assert.equal(put.status,200,'presigned PUT succeeds');
+          const head = await minioClient.send(new HeadObjectCommand({Bucket:bucket,Key:key}));
+          assert.equal(head.ContentType,'application/pdf');
+
+          const anonymous = await fetch('http://127.0.0.1:19000/nextcrm-smoke/documents/ci/fixture.pdf');
+          assert.equal(anonymous.status,403,'document must not be anonymously accessible');
+
+          const getUrl = await presignGet(key,60);
+          const get = await fetch(getUrl);
+          assert.equal(get.status,200,'presigned GET succeeds');
+          assert.deepEqual(Buffer.from(await get.arrayBuffer()),payload);
+          await minioClient.send(new DeleteObjectCommand({Bucket:bucket,Key:key}));
+          const missing = await fetch(getUrl);
+          assert.equal(missing.status,404,'Missing storage object must fail closed, even with signed ticket');
+          console.log('NEXTCRM_MINIO_SIGNED_CI_SUCCESS: private PUT, tampered MIME 403, anonymous GET 403, signed GET integrity, deleted object 404');
+          SMOKE
+      - name: Stop ephemeral object store
+        if: always()
+        shell: bash
+        run: docker rm -f nextcrm-smoke-minio >/dev/null 2>&1 || true

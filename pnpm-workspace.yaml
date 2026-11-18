@@ -1,0 +1,10 @@
+# pnpm 11 reads resolution settings from the workspace manifest.
+# Preserve the exact override recorded by pnpm-lock.yaml.
+packages:
+  - '.'
+overrides:
+  'miniflare>sharp': 0.35.4
+allowBuilds:
+  esbuild: true
+  unrs-resolver: true
+  workerd: true

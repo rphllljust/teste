@@ -1,0 +1,123 @@
+name: NextCRM PostgreSQL backup/restore rehearsal (synthetic only)
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/nextcrm-postgres-restore-rehearsal.yml'
+      - 'docs/integrations/nextcrm-postgres-backup-rehearsal.md'
+      - 'drizzle-pg/**'
+      - 'lib/integrations/nextcrm/**'
+      - 'integrations/nextcrm-bridge-overlay/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-recovery:
+    name: Prove PostgreSQL 17 custom backup and restore with drift detection
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: nextcrm_ci
+          POSTGRES_PASSWORD: ci-ephemeral-only
+          POSTGRES_DB: nextcrm_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U nextcrm_ci -d nextcrm_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgresql://nextcrm_ci:ci-ephemeral-only@127.0.0.1:5432/nextcrm_ci
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: nextcrm_ci
+      PGPASSWORD: ci-ephemeral-only
+      PGDATABASE: nextcrm_ci
+    steps:
+      - name: Confirm this is only the disposable CI PostgreSQL
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$DATABASE_URL" = 'postgresql://nextcrm_ci:ci-ephemeral-only@127.0.0.1:5432/nextcrm_ci'
+      - name: Create synthetic company, financial and pgvector fields
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -i --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
+            pgvector/pgvector:pg17 psql -X --set ON_ERROR_STOP=1 <<'SQL'
+          CREATE EXTENSION IF NOT EXISTS vector;
+          CREATE TABLE ci_recovery_fixture (
+            id uuid PRIMARY KEY, company text NOT NULL,
+            amount numeric(19,4) NOT NULL, memo text,
+            embedding vector(3) NOT NULL
+          );
+          INSERT INTO ci_recovery_fixture (id,company,amount,memo,embedding)
+            VALUES ('00000000-0000-4000-8000-000000000001',
+              'Empresa fictícia • CI', 12345678.4321,
+              'Dados sintéticos; nenhum cliente real', '[0.3,0.2,0.1]');
+          SQL
+      - name: Create an offline PostgreSQL custom-format backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/nextcrm-restore"
+          chmod 700 "$RUNNER_TEMP/nextcrm-restore"
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP/nextcrm-restore:/backup" \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
+            pgvector/pgvector:pg17 \
+            pg_dump --no-owner --no-acl --format=custom --file=/backup/nextcrm-ci.dump
+          test -s "$RUNNER_TEMP/nextcrm-restore/nextcrm-ci.dump"
+      - name: Restore backup into a NEW isolated database
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            pgvector/pgvector:pg17 createdb nextcrm_ci_restored
+          docker run --rm --network host \
+            -v "$RUNNER_TEMP/nextcrm-restore:/backup:ro" \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            pgvector/pgvector:pg17 \
+            pg_restore --no-owner --no-acl --exit-on-error --dbname=nextcrm_ci_restored \
+              /backup/nextcrm-ci.dump
+      - name: Compare restored rows exactly and reject deliberate corruption
+        shell: bash
+        run: |
+          set -euo pipefail
+          query="SELECT count(*)::text || ':' || md5(string_agg(id::text || '|' || company || '|' || amount::text || '|' || coalesce(memo,'') || '|' || embedding::text, ';' ORDER BY id)) FROM ci_recovery_fixture;"
+          source_result="$(docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD -e PGDATABASE \
+            pgvector/pgvector:pg17 psql -XAt --set ON_ERROR_STOP=1 -c "$query")"
+          target_result="$(docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            pgvector/pgvector:pg17 psql -XAt --set ON_ERROR_STOP=1 -d nextcrm_ci_restored -c "$query")"
+          test "$source_result" = "$target_result"
+          case "$source_result" in
+            1:*) ;;
+            *) echo 'Unexpected source data shape' >&2; exit 1 ;;
+          esac
+          docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            pgvector/pgvector:pg17 psql -X --set ON_ERROR_STOP=1 \
+              -d nextcrm_ci_restored \
+              -c "UPDATE ci_recovery_fixture SET amount=0 WHERE id='00000000-0000-4000-8000-000000000001';"
+          altered="$(docker run --rm --network host \
+            -e PGHOST -e PGPORT -e PGUSER -e PGPASSWORD \
+            pgvector/pgvector:pg17 psql -XAt --set ON_ERROR_STOP=1 \
+              -d nextcrm_ci_restored -c "$query")"
+          test "$altered" != "$source_result"
+          echo 'PASS: custom-format PostgreSQL backup restored correctly; one altered field was detected.'
+      - name: Destroy local backup artifact and do not publish it
+        if: always()
+        shell: bash
+        run: |
+          rm -rf "$RUNNER_TEMP/nextcrm-restore" || true
+          echo 'No Railway database, snapshot, external object store or production file was accessed.'
