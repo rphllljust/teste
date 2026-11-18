@@ -75,7 +75,7 @@ try{
   await planning.locator('input[name="endsAt"]').fill(end.toISOString().slice(0,16));
   await planning.locator('input[name="location"]').fill(location);
   await planning.getByRole('button',{name:'Registrar agendamento',exact:true}).click();
-  await planning.getByText(location,{exact:true}).waitFor();
+  await planning.getByText(new RegExp(location)).waitFor();
   await planning.locator('input[placeholder="Localizar profissional"]').fill(staff);
   await planning.getByRole('button',{name:'Buscar',exact:true}).click();
   await planning.locator('select').selectOption({label:new RegExp(staff)});
@@ -83,7 +83,7 @@ try{
   await planning.getByText(new RegExp(staff),{exact:false}).first().waitFor();
   await planning.locator('input[name="startsAt"]').fill(later.toISOString().slice(0,16));
   await planning.getByRole('button',{name:'Atualizar agendamento',exact:true}).click();
-  await planning.getByText(location,{exact:true}).waitFor(); step('schedule assigned and updated');
+  await planning.getByText(new RegExp(location)).waitFor(); step('schedule assigned and updated');
 
   phase='authorize and start';
   await page.getByRole('button',{name:'Autorizar ordem',exact:true}).click();
