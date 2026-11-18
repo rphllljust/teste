@@ -17,8 +17,8 @@ export async function GET(request:Request):Promise<Response>{
   if(p.to){filters.push(`e.effective_date <= $${next++}`);values.push(p.to);}
   const where=filters.join(' AND '),offset=(p.page-1)*p.pageSize;
   const total=await db.query(`SELECT COUNT(*)::int AS total FROM journal_entries e JOIN journal_lines l ON l.entry_id=e.id WHERE ${where}`,values);
-  const totals=await db.query(`SELECT COALESCE(SUM(CASE WHEN e.effective_date < COALESCE($${p.from?4:next},'0001-01-01') THEN l.debit-l.credit ELSE 0 END),0)::text AS opening,
-COALESCE(SUM(l.debit),0)::text AS debit,COALESCE(SUM(l.credit),0)::text AS credit FROM journal_entries e JOIN journal_lines l ON l.entry_id=e.id WHERE ${where}`,p.from?[...values,p.from]:[...values,'0001-01-01']);
+  const totals=await db.query(`SELECT COALESCE(SUM(CASE WHEN e.effective_date < $4 THEN l.debit-l.credit ELSE 0 END),0)::text AS opening,
+COALESCE(SUM(CASE WHEN e.effective_date >= $4 THEN l.debit ELSE 0 END),0)::text AS debit,COALESCE(SUM(CASE WHEN e.effective_date >= $4 THEN l.credit ELSE 0 END),0)::text AS credit FROM journal_entries e JOIN journal_lines l ON l.entry_id=e.id WHERE e.actor_id=$1 AND l.account_id=$2 AND e.status=$3`,[context.actorId,p.accountId,'posted',p.from??'9999-12-31']);
   const rows=await db.query(`SELECT l.id,l.entry_id AS "journalId",e.effective_date AS "effectiveDate",e.source_reference AS "sourceReference",e.description,l.debit::text AS "debitScaled",l.credit::text AS "creditScaled",e.reversal_of AS "reversalOf"
 FROM journal_entries e JOIN journal_lines l ON l.entry_id=e.id WHERE ${where} ORDER BY e.effective_date ASC,e.id ASC,l.id ASC LIMIT $${next} OFFSET $${next+1}`,[...values,p.pageSize,offset]);
   const opening=Number(totals.rows[0]?.opening??0),debit=Number(totals.rows[0]?.debit??0),credit=Number(totals.rows[0]?.credit??0);
