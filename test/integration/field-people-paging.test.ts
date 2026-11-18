@@ -23,7 +23,7 @@ after(async()=>{
 test('PostgreSQL staff registry pages and literal text search remain owner-scoped',async()=>{
   const ids=Array.from({length:103},()=>randomUUID());
   await pool.query(
-    "INSERT INTO field_people(id,owner_id,full_name,specialty,request_hash) SELECT p.id,$2,'Colaborador '+lpad(p.n::text,3,'0'),'Técnico de campo',$3 FROM unnest($1::text[]) WITH ORDINALITY AS p(id,n)",
+    "INSERT INTO field_people(id,owner_id,full_name,specialty,request_hash) SELECT p.id,$2,'Colaborador '||lpad(p.n::text,3,'0'),'Técnico de campo',$3 FROM unnest($1::text[]) WITH ORDINALITY AS p(id,n)",
     [ids,owner,'a'.repeat(64)],
   );
   const special=randomUUID();
