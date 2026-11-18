@@ -148,6 +148,7 @@ jobs:
             '0005_finance_period_closes',
             '0006_cisne_company_service_catalog',
             '0007_field_planning',
+            '0008_accounting_event_rules',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
