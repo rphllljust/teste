@@ -78,7 +78,7 @@ try{
   await planning.getByText(new RegExp(location)).waitFor();
   await planning.locator('input[placeholder="Localizar profissional"]').fill(staff);
   await planning.getByRole('button',{name:'Buscar',exact:true}).click();
-  await planning.locator('select').selectOption({label:new RegExp(staff)});
+  await planning.locator('select').selectOption({label:`${staff} · Operações de campo`});
   await planning.getByRole('button',{name:'Designar profissional',exact:true}).click();
   await planning.getByText(new RegExp(staff),{exact:false}).first().waitFor();
   await planning.locator('input[name="startsAt"]').fill(later.toISOString().slice(0,16));
