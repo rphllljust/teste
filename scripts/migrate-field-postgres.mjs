@@ -14,6 +14,7 @@ try {
   const migrations = [
     ['0006_service_scheduling', '../drizzle-pg/0006_service_scheduling.sql'],
     ['0007_service_people', '../drizzle-pg/0007_service_people.sql'],
+    ['0008_service_scheduling_assignments', '../drizzle-pg/0008_service_scheduling_assignments.sql'],
   ];
   for (const [id, file] of migrations) {
     const applied = await client.query('SELECT 1 FROM _cisne_field_schema_migrations WHERE id=$1', [id]);
