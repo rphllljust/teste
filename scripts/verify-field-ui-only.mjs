@@ -113,7 +113,7 @@ try{
   step('execution report created');
 
   phase='complete'; await page.getByRole('button',{name:'Consultar OS e continuidade',exact:true}).click();
-  await page.getByRole('button',{name:'Concluir execução',exact:true}).click();
+  await page.getByRole('dialog',{name:'Contexto da ordem'}).getByRole('button',{name:'Concluir execução',exact:true}).click();
   await page.getByRole('dialog',{name:'Concluir execução'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
 
   phase='measurement'; await page.getByRole('button',{name:'Registrar medição',exact:true}).click();
