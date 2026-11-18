@@ -8,16 +8,20 @@ export default function FieldPeopleWorkspace(){
   const [notice,setNotice]=useState('');
   const [loading,setLoading]=useState(true);
   const [saving,setSaving]=useState(false);
+  const [query,setQuery]=useState(''),[appliedQuery,setAppliedQuery]=useState('');
+  const [page,setPage]=useState(1),[hasMore,setHasMore]=useState(false);
   const load=useCallback(async()=>{
     setLoading(true);
     try{
-      const r=await fetch('/api/field/people',{cache:'no-store'});
-      const data=await r.json() as {items?:Person[];error?:string};
+      const parameters=new URLSearchParams({page:String(page)});
+      if(appliedQuery)parameters.set('q',appliedQuery);
+      const r=await fetch('/api/field/people?'+parameters.toString(),{cache:'no-store'});
+      const data=await r.json() as {items?:Person[];pageInfo?:{hasMore:boolean};error?:string};
       if(!r.ok)throw new Error(data.error||'Cadastro indisponível.');
-      setItems(data.items??[]);setError('');
+      setItems(data.items??[]);setHasMore(data.pageInfo?.hasMore??false);setError('');
     }catch(e){setError(e instanceof Error?e.message:'Cadastro indisponível.');}
     finally{setLoading(false);}
-  },[]);
+  },[appliedQuery,page]);
   useEffect(()=>{const timer=setTimeout(()=>void load(),0);return()=>clearTimeout(timer);},[load]);
   async function create(e:React.FormEvent<HTMLFormElement>){
     e.preventDefault();
@@ -46,12 +50,25 @@ export default function FieldPeopleWorkspace(){
       <label>Função ou especialidade<input name="specialty" minLength={2} maxLength={120} required /></label>
       <button className="primary" type="submit" disabled={saving}>Salvar profissional</button>
     </form>
+    <form className="form-row" onSubmit={e=>{e.preventDefault();setPage(1);setAppliedQuery(query.trim());}}>
+      <label>Buscar profissionais<input value={query} maxLength={160}
+        onChange={e=>setQuery(e.target.value)} placeholder="Nome ou especialidade" /></label>
+      <button className="secondary" type="submit">Buscar</button>
+      <button className="secondary" type="button" onClick={()=>{setQuery('');setPage(1);setAppliedQuery('');}}>Limpar</button>
+    </form>
     {notice&&<p role="status">{notice}</p>}
     {error?<div className="empty" role="alert">{error}</div>:loading?
       <div className="empty" role="status">Consultando profissionais…</div>:
       items.length?<div className="table-wrap"><table><thead><tr><th>Profissional</th><th>Especialidade</th><th>Estado</th></tr></thead>
         <tbody>{items.map(person=><tr key={person.id}><td>{person.fullName}</td><td>{person.specialty}</td>
           <td>{person.active?'Ativo':'Inativo'}</td></tr>)}</tbody></table></div>:
-        <div className="empty">Nenhum profissional cadastrado para este contexto.</div>}
+        <div className="empty">Nenhum profissional encontrado neste contexto.</div>}
+    <div className="form-row" aria-label="Paginação de profissionais">
+      <button className="secondary" type="button" disabled={loading||page===1}
+        onClick={()=>setPage(value=>Math.max(1,value-1))}>Anterior</button>
+      <span>Página {page}</span>
+      <button className="secondary" type="button" disabled={loading||!hasMore}
+        onClick={()=>setPage(value=>value+1)}>Próxima</button>
+    </div>
   </section>;
 }
