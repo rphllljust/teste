@@ -94,6 +94,9 @@ try{
   await page.getByRole('button',{name:title,exact:true}).first().click();
   await page.getByRole('dialog',{name:'Contexto da ordem'}).getByRole('button',{name:'Iniciar execução',exact:true}).click();
   await page.getByRole('dialog',{name:'Iniciar execução'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
+  await page.getByRole('status').getByText('Comando executado. Registros atualizados.',{exact:true}).waitFor();
+  await page.screenshot({path:'artifacts/field-ui-only/execution-started.png',fullPage:true});
+  step('execution started');
 
   phase='execution'; await nav(page,'Execução');
   await page.getByLabel('Selecionar OS').selectOption({label:`${title} · ${company}`});
@@ -152,4 +155,3 @@ try{
   if(browser)await browser.close();
   await writeFile('artifacts/field-ui-only/evidence.json',JSON.stringify({passed,phase,sourceSha:process.env.GITHUB_SHA??null,isolation:'disposable PostgreSQL + real Chromium',noBusinessApiShortcuts:true,events,consoleErrors},null,2));
 }
-398b472a3ff9f2b650e4242a0dc513ae5f269985
