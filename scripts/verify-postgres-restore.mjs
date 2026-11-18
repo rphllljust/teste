@@ -147,7 +147,11 @@ try{
   process.stdout.write('RESTORE_DRILL_SUCCESS: PostgreSQL '+major+' custom-format backup, isolated restore, full CRM-to-OS data, ledger and owner FKs checked\n');
 }finally{
   if(copy)await copy.end();
-  if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'" WITH (FORCE)');
+  // FORCE can terminate an idle pg-pool client during teardown and turn a
+  // successful restore verification into an unhandled FATAL connection error.
+  // Do not hide leaked sessions: plain DROP must succeed only after the
+  // restore pool has drained, otherwise the restore gate stays red.
+  if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'"');
   const client=await src.connect();
   try{
     await client.query('BEGIN');
