@@ -22,7 +22,8 @@ function request(identity:string,path:string,method='GET',body?:unknown){
   });
   return setTestIdentity(r,identity);
 }
-async function read(response:Response){return await response.json() as Record<string,any>;}
+type ApiJson={replayed:boolean;error?:string;items:Array<Record<string,unknown>>;lines:unknown[];totals:{closingScaled:string}};
+async function read(response:Response){return await response.json() as ApiJson;}
 after(async()=>{
   await pool.query('DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE actor_id=$1)',[actor]);
   await pool.query('DELETE FROM journal_entries WHERE actor_id=$1',[actor]);
