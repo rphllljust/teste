@@ -10,7 +10,7 @@ type Appointment={
 const fmt=(value:string)=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value));
 
 /** Actual persisted appointment windows, not order due dates. */
-export default function FieldScheduleAgenda({onSelect}:{onSelect:(id:string)=>void}){
+export default function FieldScheduleAgenda({onSelect,refreshVersion=0}:{onSelect:(id:string)=>void;refreshVersion?:number}){
   const [items,setItems]=useState<Appointment[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState('');
   useEffect(()=>{
     const controller=new AbortController();
@@ -25,7 +25,7 @@ export default function FieldScheduleAgenda({onSelect}:{onSelect:(id:string)=>vo
       }finally{if(!controller.signal.aborted)setLoading(false);}
     },0);
     return()=>{clearTimeout(timer);controller.abort();};
-  },[]);
+  },[refreshVersion]);
   const valid=items.filter(a=>!['completed','cancelled'].includes(a.status)).slice(0,5);
   return <section className="service-agenda" aria-label="Agendamentos reais das ordens">
     <div className="agenda-heading"><div><span className="section-label">PLANEJAMENTO PERSISTIDO</span>
