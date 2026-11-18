@@ -24,7 +24,7 @@ export function schedulingRange(startsAt:string,endsAt:string) {
 type TxQuery=(sql:string,params?:unknown[])=>Promise<{rows:Record<string,unknown>[];rowCount:number|null}>;
 async function assertNoOverlap(query:TxQuery,owner:string,personId:string,orderId:string,start:unknown,end:unknown){
   const busy=await query(
-    'SELECT a.order_id FROM field_order_assignments a JOIN field_order_schedules s ON s.order_id=a.order_id AND s.owner_id=a.owner_id WHERE a.owner_id=$1 AND a.person_id=$2 AND a.active=true AND a.order_id<>$3 AND s.starts_at<$4::timestamptz AND s.ends_at>$5::timestamptz LIMIT 1',
+    'SELECT a.order_id FROM field_order_assignments a JOIN field_order_schedules s ON s.order_id=a.order_id AND s.owner_id=a.owner_id JOIN service_orders o ON o.id=a.order_id AND o.owner_id=a.owner_id WHERE a.owner_id=$1 AND a.person_id=$2 AND a.active=true AND o.status IN (\'draft\',\'authorized\',\'executing\') AND a.order_id<>$3 AND s.starts_at<$4::timestamptz AND s.ends_at>$5::timestamptz LIMIT 1',
     [owner,personId,orderId,end,start],
   );
   if(busy.rows.length)throw new ApiError(409,'PERSON_SCHEDULE_CONFLICT','O profissional já está alocado nesse intervalo.');
