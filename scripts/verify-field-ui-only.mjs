@@ -123,10 +123,9 @@ try{
   await measurement.locator('input').fill('125');
   await measurement.getByRole('button',{name:'Revisar medição',exact:true}).click();
   await measurement.getByRole('button',{name:'Registrar medição',exact:true}).last().click();
-  const measurementContext=page.getByRole('dialog',{name:'Contexto da medição'});
-  await measurementContext.getByRole('button',{name:'Aprovar medição',exact:true}).click();
-  await measurementContext.getByRole('button',{name:'Confirmar comando',exact:true}).click();
-  await measurementContext.waitFor({state:'detached'});
+  const measurementApproval=page.getByRole('dialog',{name:'Aprovar medição'});
+  await measurementApproval.getByRole('button',{name:'Confirmar comando',exact:true}).click();
+  await measurementApproval.waitFor({state:'detached'});
 
   phase='invoice'; await page.getByRole('button',{name:'Gerar cobrança',exact:true}).click();
   const billing=page.getByRole('region',{name:'Preparar cobrança interna'});
