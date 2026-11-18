@@ -1,6 +1,9 @@
 name: NextCRM MinIO signed document smoke (ephemeral)
 
 on:
+  push:
+    branches:
+      - integration/nextcrm-homologation-wave1-20261118
   pull_request:
     paths:
       - .gitmodules
@@ -111,7 +114,9 @@ jobs:
           assert.equal(get.status,200,'presigned GET succeeds');
           assert.deepEqual(Buffer.from(await get.arrayBuffer()),payload);
           await minioClient.send(new DeleteObjectCommand({Bucket:bucket,Key:key}));
-          console.log('Real NextCRM signatures: private document PUT, tampered MIME denied, anonymous GET denied, signed GET, content equality, delete = PASS');
+          const missing = await fetch(getUrl);
+          assert.equal(missing.status,404,'Missing storage object must fail closed, even with signed ticket');
+          console.log('NEXTCRM_MINIO_SIGNED_CI_SUCCESS: private PUT, tampered MIME 403, anonymous GET 403, signed GET integrity, deleted object 404');
           SMOKE
       - name: Stop ephemeral object store
         if: always()
