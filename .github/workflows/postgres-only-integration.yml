@@ -13,6 +13,9 @@ on:
       - 'scripts/**'
       - 'test/**'
       - '.github/workflows/postgres-only-integration.yml'
+  push:
+    branches:
+      - integration/nextcrm-homologation-wave1-20261118
   workflow_dispatch:
 
 permissions:
