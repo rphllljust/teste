@@ -20,7 +20,7 @@ const pageParams=z.object({
   status:z.enum(['scheduled','confirmed','cancelled','completed']).optional(),
   orderId:z.string().uuid().optional(),
   assigneeId:z.string().uuid().optional(),
-});
+}).refine(p=>!p.from||!p.to||Date.parse(p.from)<Date.parse(p.to),{message:'Intervalo de datas inválido.'});
 function utc(value:string){const parsed=Date.parse(value);if(!Number.isFinite(parsed))throw new ApiError(400,'VALIDATION_FAILED','Data inválida.');return new Date(parsed).toISOString();}
 function assertTimezone(value:string){try{new Intl.DateTimeFormat('en-US',{timeZone:value}).format();}catch{throw new ApiError(400,'VALIDATION_FAILED','Fuso horário IANA inválido.');}}
 function assertWindow(startAt:string,endAt:string){const start=Date.parse(startAt),end=Date.parse(endAt);if(!Number.isFinite(start)||!Number.isFinite(end)||end<=start)throw new ApiError(400,'VALIDATION_FAILED','O término deve ser posterior ao início.');}
