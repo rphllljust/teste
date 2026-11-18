@@ -37,9 +37,20 @@ test('RC99 uses only same-origin authorized APIs, approved paging, and existing 
   assert.match(source,/cache:'no-store'/);
   assert.match(source,/AbortController/);
   assert.match(source,/<OrderNextcrmDocuments key=\{selectedId\} orderId=\{selectedId\}\/>/);
-  assert.match(source,/Acesso negado/);
+  assert.match(source,/Acesso restrito/);
   assert.match(source,/status==='unavailable'/);
   assert.doesNotMatch(source,/<iframe/);
   assert.doesNotMatch(source,/nextcrm-gateway-staging|window\.open|document\.cookie/);
   assert.doesNotMatch(source,/POST|method:'POST'|PUT|DELETE/);
+});
+
+test('RC103: a 401/403 from a healthy web backend is an auth prompt, not a database outage',()=>{
+  const source=readFileSync('app/IntegrationHub.tsx','utf8');
+  assert.match(source,/listing\.status===401\|\|listing\.status===403/);
+  assert.match(source,/setStatus\('restricted'\)/);
+  assert.match(source,/status==='restricted'\?'Sessão necessária'/);
+  assert.match(source,/status==='restricted'&&<div className="integration-message integration-restricted"/);
+  assert.match(source,/O Field está operacional, mas a consulta exige uma sessão autorizada/);
+  assert.match(source,/status==='unavailable'&&<div className="integration-message integration-error"/);
+  assert.doesNotMatch(source,/status===403\s*\?\s*'Acesso negado/);
 });

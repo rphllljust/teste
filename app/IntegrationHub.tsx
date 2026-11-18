@@ -11,7 +11,7 @@ type OrderOverview={
 };
 type ApiList={orders?:OrderOverview[];error?:string};
 type ApiDetail={order?:OrderOverview;error?:string};
-type LoadStatus='loading'|'ready'|'unavailable';
+type LoadStatus='loading'|'ready'|'restricted'|'unavailable';
 type Props={
  onOpenOrder:(id:string)=>void;
  onOpenFinance:(id:string)=>void;
@@ -45,11 +45,16 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
     if(!health.ok)throw new Error('A prontidão do Field não foi confirmada.');
     const h=await health.json() as {status?:string};
     if(h.status!=='ready')throw new Error('O banco do Field ainda não está pronto.');
+    if(listing.status===401||listing.status===403){
+     if(!controller.signal.aborted){
+      setStatus('restricted');
+      setError('Acesso restrito. Entre com sua sessão autorizada para consultar as ordens de serviço.');
+     }
+     return;
+    }
     const payload=await listing.json() as ApiList;
     if(!listing.ok||!Array.isArray(payload.orders))
-     throw new Error(listing.status===403
-      ?'Acesso negado. Entre com sua sessão autorizada para consultar as ordens.'
-      :'Não foi possível consultar as ordens de serviço.');
+     throw new Error('Não foi possível consultar as ordens de serviço.');
     if(!controller.signal.aborted){
      const valid=payload.orders.filter((item):item is OrderOverview=>
       Boolean(item)&&typeof item.id==='string'&&/^[0-9a-f-]{36}$/i.test(item.id)
@@ -114,7 +119,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
    </div>
    <div className="integration-hero-actions">
     <span className={'integration-connection integration-connection-'+status} role="status" aria-live="polite">
-     {status==='ready'?'Field e banco disponíveis':status==='loading'?'Verificando conexão':'Conexão não comprovada'}
+     {status==='ready'?'Field e banco disponíveis':status==='loading'?'Verificando conexão':status==='restricted'?'Sessão necessária':'Conexão não comprovada'}
     </span>
     <button type="button" className="integration-refresh" disabled={status==='loading'}
       onClick={()=>setRefresh(v=>v+1)}><RefreshCw size={16} aria-hidden="true"/> Atualizar dados</button>
@@ -127,6 +132,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
    <article><Landmark size={22} aria-hidden="true"/><span>Financeiro</span><strong>Medições e recebíveis</strong><small>Dados persistidos do Field</small></article>
   </div>
 
+  {status==='restricted'&&<div className="integration-message integration-restricted" role="status"><ShieldCheck size={18}/><span>{error} O Field está operacional, mas a consulta exige uma sessão autorizada. Nenhum registro de outro usuário será exibido.</span></div>}
   {status==='unavailable'&&<div className="integration-message integration-error" role="alert"><Unplug size={18}/><span>{error} Não são exibidos dados simulados nem status de integração presumidos.</span></div>}
 
   <div className="integration-grid">

@@ -645,3 +645,8 @@ tr:has(td):hover{background:#f5f9f5}
 @media(max-width:1080px){.integration-hero{padding:22px}.integration-grid{grid-template-columns:minmax(0,1fr)}.integration-order-list{max-height:250px}}
 @media(max-width:640px){.integration-hub{gap:12px}.integration-hero{flex-direction:column;align-items:stretch;gap:16px;padding:20px 18px;border-radius:11px}.integration-hero h2{font-size:23px}.integration-hero-actions{align-items:flex-start;flex-direction:row;flex-wrap:wrap}.integration-summary{grid-template-columns:1fr;gap:8px}.integration-summary article{padding:12px 14px;display:grid;grid-template-columns:26px 1fr;column-gap:10px;align-items:center}.integration-summary article svg{grid-row:span 3;margin:0}.integration-summary article strong{font-size:13px}.integration-panel{padding:15px}.integration-order-list{max-height:260px}.integration-panel-heading h3{font-size:15px}.integration-actions button{flex:1}.integration-connection{white-space:normal}}
 
+
+/* RC103: independent authentication state for healthy staging */
+.integration-connection-restricted:before{content:'';display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:#f2d18b}
+.integration-restricted{background:#f8f7ed;border:1px solid #e4ddae;color:#645b29;align-items:center}
+.integration-restricted svg{color:#7d7841;flex-shrink:0}
