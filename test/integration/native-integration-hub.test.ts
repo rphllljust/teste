@@ -37,7 +37,7 @@ test('RC99 uses only same-origin authorized APIs, approved paging, and existing 
   assert.match(source,/cache:'no-store'/);
   assert.match(source,/AbortController/);
   assert.match(source,/<OrderNextcrmDocuments key=\{selectedId\} orderId=\{selectedId\}\/>/);
-  assert.match(source,/Acesso negado/);
+  assert.match(source,/Acesso restrito/);
   assert.match(source,/status==='unavailable'/);
   assert.doesNotMatch(source,/<iframe/);
   assert.doesNotMatch(source,/nextcrm-gateway-staging|window\.open|document\.cookie/);
