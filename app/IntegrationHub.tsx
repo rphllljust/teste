@@ -1,6 +1,6 @@
 'use client';
 
-import {useCallback,useEffect,useState} from 'react';
+import {useEffect,useState} from 'react';
 import {ArrowRight,ClipboardList,FileCheck2,Landmark,RefreshCw,ShieldCheck,Unplug,Workflow} from 'lucide-react';
 import OrderNextcrmDocuments from './OrderNextcrmDocuments';
 
@@ -70,7 +70,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
  },[refresh]);
 
  useEffect(()=>{
-  if(status!=='ready'||!selectedId){setDetail(null);setDetailError('');return;}
+  if(status!=='ready'||!selectedId)return;
   const controller=new AbortController();
   async function loadDetail(){
    setDetailLoading(true);setDetailError('');setDetail(null);
@@ -94,9 +94,12 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
  },[status,selectedId,refresh]);
 
  const chosen=orders.find(item=>item.id===selectedId);
- const totals=detail?.relations;
+ // A pending fetch from an older selection is never allowed to render its
+ // records under the newly selected order.
+ const confirmed=status==='ready'&&detail?.id===selectedId?detail:null;
+ const totals=confirmed?.relations;
  const stages=[
-  {label:'Ordem de serviço',value:detail?'Registro confirmado':'Aguardando seleção',ready:!!detail},
+  {label:'Ordem de serviço',value:confirmed?'Registro confirmado':'Aguardando seleção',ready:!!confirmed},
   {label:'Medições',value:totals?count(totals.measurements)+' registro(s)':'Aguardando dados',ready:!!totals&&count(totals.measurements)>0},
   {label:'Faturamento',value:totals?count(totals.invoices)+' registro(s)':'Aguardando dados',ready:!!totals&&count(totals.invoices)>0},
   {label:'Títulos a receber',value:totals?count(totals.receivables)+' registro(s)':'Aguardando dados',ready:!!totals&&count(totals.receivables)>0},
@@ -167,7 +170,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
        <span><strong>{stage.label}</strong><small>{stage.value}</small></span>
       </li>)}
      </ol>
-     {detail&&<p className="integration-fact-note">Os números acima são registros efetivamente associados a esta OS. Ausência de registros não significa falha de integração.</p>}
+     {confirmed&&<p className="integration-fact-note">Os números acima são registros efetivamente associados a esta OS. Ausência de registros não significa falha de integração.</p>}
      <div className="integration-actions">
       <button type="button" className="primary" onClick={()=>onOpenOrder(chosen.id)}>Abrir OS <ArrowRight size={16}/></button>
       <button type="button" className="secondary" onClick={()=>onOpenFinance(chosen.id)}>Abrir financeiro</button>
@@ -178,7 +181,7 @@ export default function IntegrationHub({onOpenOrder,onOpenFinance,onOpenCRM}:Pro
   <section className="integration-panel integration-documents" aria-label="Documentos autorizados da ordem">
    <div className="integration-panel-heading"><div><span className="integration-kicker">03 / DOCUMENTOS</span><h3>NextCRM dentro da ordem</h3></div><button type="button" className="text-button" onClick={onOpenCRM}>Abrir CRM e Vendas <ArrowRight size={15}/></button></div>
    <p className="integration-docs-subtext">A autorização de cada documento é verificada na origem. O arquivo passa pelo próprio Field; nenhuma URL privada de armazenamento é exposta.</p>
-   {selectedId&&detail?<OrderNextcrmDocuments key={selectedId} orderId={selectedId}/>:
+   {selectedId&&confirmed?<OrderNextcrmDocuments key={selectedId} orderId={selectedId}/>:
     <p className="integration-empty">Selecione uma OS autorizada para verificar seus documentos.</p>}
   </section>
   <p className="integration-guardrail"><ShieldCheck size={16} aria-hidden="true"/> Este painel não cria dados e não declara homologação concluída. A liberação para produção depende dos testes reais de escrita, documentos, estorno e aceite empresarial.</p>
