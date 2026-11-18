@@ -38,7 +38,7 @@ export async function PATCH(request:Request,{params}:{params:Promise<{id:string}
         if(order.rowCount && order.rows[0].status==='executing'){
           const nextVersion=Number(order.rows[0].version)+1;
           await query('UPDATE service_orders SET status=$1,version=$2,updated_at=now() WHERE id=$3 AND owner_id=$4 AND status=$5 AND version=$6',['completed',nextVersion,row.order_id,context!.actorId,'executing',Number(order.rows[0].version)]);
-          await query('INSERT INTO order_events (id,order_id,owner_id,actor_id,command,from_status,to_status,version,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,now())',[crypto.randomUUID(),row.order_id,context!.actorId,context!.actorId,'complete','executing','completed',nextVersion]);
+          await query('INSERT INTO order_events (id,order_id,actor_id,command,version,created_at) VALUES ($1,$2,$3,$4,$5,now())',[crypto.randomUUID(),row.order_id,context!.actorId,'complete',nextVersion]);
           orderSync={status:'completed',version:nextVersion};
         }
       }
