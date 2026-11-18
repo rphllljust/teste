@@ -1,5 +1,5 @@
 import {Client} from 'pg';
-import {verifyStagingWebSchema} from '../../../../lib/runtime/staging-web-health.mjs';
+import {verifyStagingWebSchema} from '../../../lib/runtime/staging-web-health.mjs';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -18,7 +18,7 @@ export async function GET(){
    query_timeout:4500,
   });
   await client.connect();
-  ready=await verifyStagingWebSchema(sql=>client!.query(sql));
+  ready=await verifyStagingWebSchema((sql:string)=>client!.query(sql));
  }catch{
   ready=false;
  }finally{
