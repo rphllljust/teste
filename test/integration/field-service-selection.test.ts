@@ -6,6 +6,7 @@ import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as getCatalog} from '../../app/api/service-catalog/route';
 import {POST as createOrder} from '../../app/api/orders/route';
+import {GET as getOrder} from '../../app/api/orders/[id]/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw Error('Service selection test requires isolated PostgreSQL');
@@ -57,6 +58,10 @@ test('selecting a real company catalog service persists its FK in the service or
   assert.equal(persisted.rows[0].owner_id,owner);
   assert.equal(persisted.rows[0].client_id,clientId);
   assert.equal(persisted.rows[0].service_catalog_id,selected!.id);
+  const detail=await getOrder(req(owner,'/api/orders/'+orderId),{params:Promise.resolve({id:orderId})});
+  assert.equal(detail.status,200);
+  const detailBody=await detail.json() as {order:{service_catalog_id:string}};
+  assert.equal(detailBody.order.service_catalog_id,selected!.id,'reload must preserve catalog link');
   const otherInvalid={...body,id:randomUUID(),serviceCatalogId:'cisne-servico-inexistente'};
   const invalid=await createOrder(req(owner,'/api/orders','POST',otherInvalid));
   assert.equal(invalid.status,400);
