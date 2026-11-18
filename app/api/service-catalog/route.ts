@@ -1,5 +1,5 @@
 import { database } from '../../../db/raw';
-import { requestContext, respond, type RequestContext } from '../../../lib/api/http';
+import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../lib/api/http';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +28,10 @@ export async function GET(request: Request) {
       services: result[1].results,
       source: 'CNPJ cadastral público; confirmação fiscal vigente deve ser feita na Receita Federal',
     }, context);
-  } catch {
+  } catch (error) {
+    if (error instanceof ApiError) {
+      return failure(error, context);
+    }
     return new Response(JSON.stringify({
       error: 'Catálogo de serviços indisponível.',
       code: 'SERVICE_CATALOG_UNAVAILABLE',
