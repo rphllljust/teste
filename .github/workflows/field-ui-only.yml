@@ -1,0 +1,81 @@
+name: CISNE Field UI-only enterprise journey
+on:
+  pull_request:
+    branches: [integration/nextcrm-homologation-wave1-20261118]
+  push:
+    branches: [integration/nextcrm-homologation-wave1-20261118]
+permissions:
+  contents: read
+jobs:
+  ui-only:
+    name: Chromium UI-only with disposable PostgreSQL
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: cisne_ci
+          POSTGRES_PASSWORD: ephemeral_ui_only
+          POSTGRES_DB: cisne_ci
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U cisne_ci -d cisne_ci"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      CI: 'true'
+      DATABASE_URL: postgresql://cisne_ci:ephemeral_ui_only@127.0.0.1:5432/cisne_ci
+      NODE_ENV: test
+      CISNE_STAGING_ACTOR_ID: ci-enterprise-ui-only-20261118
+      CISNE_STAGING_PUBLIC_ORIGIN: https://cisne-web-staging-staging.up.railway.app
+      CISNE_STAGING_SESSION_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      NEXT_TELEMETRY_DISABLED: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with: {persist-credentials: false}
+      - uses: pnpm/action-setup@v4
+        with: {version: 11.25.0}
+      - uses: actions/setup-node@v4
+        with: {node-version: 22.16.0, cache: pnpm}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:migrate && pnpm db:migrate
+      - run: node scripts/audit-nextcrm-migration-ledger-readonly.mjs
+      - name: Execute protected finance concurrency and replay regressions
+        run: >-
+          NODE_ENV=test pnpm exec tsx --test
+          test/integration/enterprise-finance-concurrency.test.ts
+          test/integration/finance-concurrent-replays.test.ts
+      - run: pnpm exec tsc --noEmit
+      - run: pnpm build
+      - name: Install Chromium
+        run: |
+          npm install --prefix /tmp/field-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
+          /tmp/field-browser/node_modules/.bin/playwright install chromium
+      - name: Start isolated application
+        env:
+          NODE_ENV: production
+          RAILWAY_ENVIRONMENT_NAME: staging
+          CISNE_STAGING_ACCESS_MODE: private
+          PORT: '8787'
+        run: |
+          pnpm exec vinext start >/tmp/field-ui-only-server.log 2>&1 &
+          for i in $(seq 1 45); do curl -fsS http://127.0.0.1:8787/api/healthz >/dev/null && exit 0 || sleep 2; done
+          tail -n 40 /tmp/field-ui-only-server.log; exit 1
+      - name: Start local HTTPS tunnel for the existing CI session policy
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 -keyout /tmp/field-browser.key -out /tmp/field-browser.crt -subj /CN=127.0.0.1 >/dev/null 2>&1
+          chmod 600 /tmp/field-browser.key
+          node scripts/ci-field-browser-proxy.mjs >/tmp/field-ui-only-proxy.log 2>&1 &
+          for i in $(seq 1 15); do curl -skf https://127.0.0.1:9443/api/healthz >/dev/null && exit 0 || sleep 2; done
+          cat /tmp/field-ui-only-proxy.log; exit 1
+      - name: Run visible-controls-only journey
+        env:
+          PLAYWRIGHT_MODULE_PATH: /tmp/field-browser/node_modules/playwright/index.mjs
+        run: node scripts/verify-field-ui-only.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: field-ui-only-evidence
+          path: artifacts/field-ui-only/
+          if-no-files-found: warn
+          retention-days: 14
