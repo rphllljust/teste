@@ -43,19 +43,21 @@ try:
         "Ordens de serviço",
         "Documentos e permissões",
         "Medições e recebíveis",
-        "Não são exibidos dados simulados" if "Conexão não comprovada" in text else "Escolha uma OS",
+        "Escolha uma OS",
     ):
         if expected not in text:
             raise AssertionError("RC102_BROWSER_MISSING_"+expected[:55])
-    if "Conexão não comprovada" in text and "Acesso negado" not in text:
-        raise AssertionError("RC102_BROWSER_UNEXPLAINED_CONNECTIVITY")
+    if "Sessão necessária" not in text or "Acesso restrito" not in text:
+        raise AssertionError("RC102_BROWSER_MISSING_AUTH_REQUIRED_STATE")
+    if "Conexão não comprovada" in text:
+        raise AssertionError("RC102_BROWSER_FALSE_DATABASE_OUTAGE")
     if any(x in text for x in ("Erro interno do servidor", "Application error", "Unhandled Runtime Error")):
         raise AssertionError("RC102_BROWSER_REACT_FATAL_ERROR")
     Path("artifacts").mkdir(exist_ok=True)
     driver.save_screenshot("artifacts/rc102-integration-hub-railway-staging.png")
     print("RC102_LIVE_BROWSER_MENU_CLICK_PASS")
     print("RC102_LIVE_BROWSER_HUB_RENDER_PASS")
-    print("RC102_LIVE_BROWSER_ANONYMOUS_DENIAL_EXPLAINED_PASS" if "Acesso negado" in text else "RC102_LIVE_BROWSER_AUTHENTICATED_VIEW_VISIBLE")
+    print("RC103_LIVE_BROWSER_SESSION_REQUIRED_PASS database_is_ready=true")
     print("RC102_LIVE_BROWSER_SCREENSHOT_SAVED artifacts/rc102-integration-hub-railway-staging.png")
 finally:
     driver.quit()
