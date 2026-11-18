@@ -34,13 +34,13 @@ jobs:
           test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
           git merge-base --is-ancestor "7c2c7b921041163c211761c25366b284fc877e47" HEAD
           actual="$(git diff --name-only "7c2c7b921041163c211761c25366b284fc877e47" HEAD | LC_ALL=C sort)"
-          expected="$(printf '%s\n' '.github/workflows/rc101-web-integration-gate.yml' 'app/IntegrationHub.tsx' 'app/globals.css' 'app/page.tsx' 'test/integration/native-integration-hub.test.ts' | LC_ALL=C sort)"
+          expected="$(printf '%s\n' '.github/workflows/rc101-web-integration-gate.yml' 'app/IntegrationHub.tsx' 'app/api/healthz/route.ts' 'app/globals.css' 'app/page.tsx' 'lib/runtime/staging-web-health.mjs' 'test/integration/native-integration-hub.test.ts' 'test/integration/staging-web-health.test.ts' | LC_ALL=C sort)"
           test "$actual" = "$expected"
           echo RC101_WEB_SCHEDULING_ANCESTRY_AND_UI_ONLY_PASS
       - name: Install locked dependencies
         run: pnpm install --frozen-lockfile
       - name: Render native integration hub and check same-origin API boundary
-        run: node --import tsx --test test/integration/native-integration-hub.test.ts
+        run: node --import tsx --test test/integration/native-integration-hub.test.ts test/integration/staging-web-health.test.ts
       - name: TypeScript
         run: pnpm exec tsc --noEmit
       - name: Lint
