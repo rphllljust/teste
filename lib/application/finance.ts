@@ -1,5 +1,5 @@
 import { database } from '../../db/raw';
-import { ApiError, type RequestContext } from '../api/http';
+import { ApiError, fingerprint, type RequestContext } from '../api/http';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
