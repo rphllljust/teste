@@ -124,6 +124,8 @@ jobs:
         run: |
           pnpm test:postgres-adapter
           pnpm test:security
+      - name: Apply Field migrations before real enterprise handlers
+        run: pnpm db:migrate:field
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
       - name: Apply additive NextCRM migration idempotently
