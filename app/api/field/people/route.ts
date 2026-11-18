@@ -2,6 +2,7 @@ import {z} from 'zod';
 import {database} from '../../../../db/raw';
 import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../lib/api/http';
 import {pgConflict} from '../../../../lib/domain/accounting';
+import {escapedLike} from '../../../../lib/api/query';
 
 export const dynamic='force-dynamic';
 const body=z.object({
@@ -14,10 +15,20 @@ export async function GET(request:Request){
   let context:RequestContext|undefined;
   try{
     context=requestContext(request);
+    const filters=z.object({
+      q:z.string().trim().max(160).optional(),
+      page:z.coerce.number().int().min(1).max(10000).default(1),
+    }).strict().safeParse(Object.fromEntries(new URL(request.url).searchParams));
+    if(!filters.success)throw new ApiError(400,'VALIDATION_FAILED','Busca ou página de profissionais inválida.');
+    const {page}=filters.data,q=filters.data.q??'';
+    const where=q?' AND (full_name ILIKE ? OR specialty ILIKE ?)':'';
+    const args=q?[context.actorId,escapedLike(q),escapedLike(q),101,(page-1)*100]:
+      [context.actorId,101,(page-1)*100];
     const result=await database().prepare(
-      'SELECT id,full_name AS "fullName",specialty,active,created_at AS "createdAt" FROM field_people WHERE owner_id=? ORDER BY full_name,id LIMIT 100',
-    ).bind(context.actorId).all();
-    return respond({items:result.results},context);
+      'SELECT id,full_name AS "fullName",specialty,active,created_at AS "createdAt" FROM field_people WHERE owner_id=?'+where+
+      ' ORDER BY full_name,id LIMIT ? OFFSET ?',
+    ).bind(...args).all();
+    return respond({items:result.results.slice(0,100),pageInfo:{page,hasMore:result.results.length>100}},context);
   }catch(error){return failure(error,context);}
 }
 
