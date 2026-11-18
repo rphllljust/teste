@@ -38,7 +38,7 @@ export async function GET(request:Request){
     const where=predicates.join(' AND '),db=database();
     const [count,rows]=await Promise.all([
       db.prepare('SELECT COUNT(*) AS total FROM service_schedules s WHERE '+where).bind(...values).first<{total:number}>(),
-      db.prepare('SELECT s.*,o.title,o.client,o.status AS order_status,p.name AS assignee_name FROM service_schedules s JOIN service_orders o ON o.id=s.order_id LEFT JOIN service_people p ON p.id=s.assignee_id AND p.owner_id=s.owner_id WHERE '+where+' ORDER BY s.start_utc ASC,s.id ASC LIMIT ? OFFSET ?').bind(...values,p.pageSize,(p.page-1)*p.pageSize).all(),
+      db.prepare('SELECT s.*,o.title,o.client,o.status AS order_status,p.name AS assignee_name FROM service_schedules s JOIN service_orders o ON o.id=s.order_id LEFT JOIN service_people p ON p.id=s.assignee_id AND p.owner_id=s.owner_id AND p.kind=s.assignee_type WHERE '+where+' ORDER BY s.start_utc ASC,s.id ASC LIMIT ? OFFSET ?').bind(...values,p.pageSize,(p.page-1)*p.pageSize).all(),
     ]);
     const total=Number(count?.total??0);
     return respond({schedules:rows.results,page:p.page,pageSize:p.pageSize,total,hasMore:p.page*p.pageSize<total},context);
