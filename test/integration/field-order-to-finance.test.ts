@@ -120,6 +120,15 @@ test('Client -> real catalog -> OS -> schedule/team -> execution -> measurement 
   const recorded=await expectStatus(await reportExecution(req('/api/orders/'+orderId+'/execution','POST',reportBody),
     {params:Promise.resolve({id:orderId})}),201);
   const entryId=(recorded.resource as {id:string}).id;
+  assert.equal(entryId,reportBody.key,'execution and order event share the stable idempotency key');
+  const executionAudit=await pool.query(
+    'SELECT e.id,ev.id AS event_id,ev.target_id FROM execution_entries e JOIN order_events ev ON ev.id=e.id WHERE e.id=$1',[entryId],
+  );
+  assert.equal(executionAudit.rows[0]?.event_id,entryId,'execution FK is satisfied by the persisted audit event');
+  assert.equal(executionAudit.rows[0]?.target_id,entryId);
+  const replayedExecution=await reportExecution(req('/api/orders/'+orderId+'/execution','POST',reportBody),
+    {params:Promise.resolve({id:orderId})});
+  assert.equal(replayedExecution.status,201);
   const execution=await expectStatus(await getExecution(req('/api/orders/'+orderId+'/execution'),
     {params:Promise.resolve({id:orderId})}),200);
   assert.ok((execution.items as Array<{id:string}>).some(row=>row.id===entryId));
