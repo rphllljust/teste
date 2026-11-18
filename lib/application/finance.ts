@@ -27,13 +27,6 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   if (!input.commandKey || !input.requestHash) throw new ApiError(400, 'VALIDATION_FAILED', 'A operação precisa de idempotência.');
   await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
 
-  const prior = await query('SELECT id, receivable_id, amount, effective_date, reference, request_hash FROM receivable_settlements WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
-  if (prior.rows.length) {
-    const row = prior.rows[0];
-    if (row.request_hash !== input.requestHash || row.receivable_id !== input.receivableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-    return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference } };
-  }
-
   // Lock the owned title FIRST. A correlated SUM in the locking SELECT may
   // use the snapshot taken before a concurrent lock wait (READ COMMITTED),
   // allowing multiple requests to spend the same stale balance.
@@ -43,6 +36,15 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
     JOIN service_orders o ON o.id=i.order_id
     WHERE r.id=$1 AND o.owner_id=$2 FOR UPDATE OF r`, [input.receivableId, context.actorId]);
   if (!receivable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título financeiro não encontrado.');
+  // A concurrent retry can commit while this transaction waits for the title
+  // lock. Re-read the command key in the new READ COMMITTED snapshot.
+  const prior = await query('SELECT id, receivable_id, amount, effective_date, reference, request_hash FROM receivable_settlements WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
+  if (prior.rows.length) {
+    const row = prior.rows[0];
+    if (row.request_hash !== input.requestHash || row.receivable_id !== input.receivableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+    return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference } };
+  }
+
   // A new statement after the lock gets a NEW READ COMMITTED snapshot.
   const paid = await query(`SELECT COALESCE(SUM(
     CASE WHEN kind='receipt' THEN amount ELSE -amount END),0) AS settled
@@ -65,12 +67,6 @@ export async function reverseReceivableSettlement(context: RequestContext, input
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
-    const prior = await query('SELECT id, receivable_id, amount, request_hash FROM receivable_settlements WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
-    if (prior.rows.length) {
-      const row = prior.rows[0];
-      if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-      return { ok: true, replayed: true, resource: { type: 'receivableReversal', id: row.id, receivableId: row.receivable_id, amount: String(row.amount) } };
-    }
     const original = await query(`SELECT s.id, s.receivable_id, s.amount, r.id AS title_id
       FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
       JOIN invoices i ON i.id=r.invoice_id
@@ -78,6 +74,15 @@ export async function reverseReceivableSettlement(context: RequestContext, input
       WHERE s.id=$1 AND s.kind='receipt' AND s.actor_id=$2 AND o.owner_id=$2
       FOR UPDATE OF s,r`, [input.settlementId, context.actorId]);
     if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Baixa não encontrada.');
+    // Both reversals lock the same original fact first; only then can we
+    // decide whether the identical command was already committed.
+    const prior = await query('SELECT id, receivable_id, amount, request_hash FROM receivable_settlements WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
+    if (prior.rows.length) {
+      const row = prior.rows[0];
+      if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
+      return { ok: true, replayed: true, resource: { type: 'receivableReversal', id: row.id, receivableId: row.receivable_id, amount: String(row.amount) } };
+    }
+
     const row = original.rows[0];
     const alreadyReversed = await query("SELECT 1 FROM receivable_settlements WHERE reverses_id=$1", [input.settlementId]);
     if (alreadyReversed.rows.length) throw new ApiError(409, 'SETTLEMENT_ALREADY_REVERSED', 'Esta baixa já foi estornada.');
@@ -96,17 +101,19 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do pagamento é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
+    // Serialize all payments against this owned obligation before reading
+    // settled amounts. The second statement cannot reuse a pre-lock snapshot.
+    const payable = await query(`SELECT p.id, p.amount FROM payables p
+      WHERE p.id=$1 AND p.actor_id=$2 FOR UPDATE OF p`, [input.payableId, context.actorId]);
+    if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
+    // Re-read idempotency only after acquiring the owned payable row lock.
     const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
       return { ok: true, replayed: true, resource: { type: 'payablePayment', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
     }
-    // Serialize all payments against this owned obligation before reading
-    // settled amounts. The second statement cannot reuse a pre-lock snapshot.
-    const payable = await query(`SELECT p.id, p.amount FROM payables p
-      WHERE p.id=$1 AND p.actor_id=$2 FOR UPDATE OF p`, [input.payableId, context.actorId]);
-    if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
+
     const paid = await query(`SELECT COALESCE(SUM(
       CASE WHEN kind='payment' THEN amount ELSE -amount END),0) AS settled
       FROM payable_payments WHERE payable_id=$1`, [input.payableId]);
@@ -127,14 +134,16 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
+    const original = await query("SELECT id, payable_id, amount FROM payable_payments WHERE id=$1 AND kind='payment' AND actor_id=$2 FOR UPDATE", [input.paymentId, context.actorId]);
+    if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
+    // The original payment lock serializes concurrent reversal retries.
     const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1 AND actor_id=$2', [input.commandKey, context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
       return { ok: true, replayed: true, resource: { type: 'payableReversal', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
     }
-    const original = await query("SELECT id, payable_id, amount FROM payable_payments WHERE id=$1 AND kind='payment' AND actor_id=$2 FOR UPDATE", [input.paymentId, context.actorId]);
-    if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
+
     const row = original.rows[0];
     const alreadyReversed = await query('SELECT 1 FROM payable_payments WHERE reverses_id=$1', [input.paymentId]);
     if (alreadyReversed.rows.length) throw new ApiError(409, 'PAYMENT_ALREADY_REVERSED', 'Este pagamento já foi estornado.');
