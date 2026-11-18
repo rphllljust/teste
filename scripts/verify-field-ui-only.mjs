@@ -153,6 +153,6 @@ try{
 }finally{
   if(context)await context.tracing.stop({path:'artifacts/field-ui-only/trace.zip'}).catch(()=>{});
   if(browser)await browser.close();
-  await writeFile('artifacts/field-ui-only/evidence.json',JSON.stringify({passed,phase,sourceSha:process.env.GITHUB_SHA??null,isolation:'disposable PostgreSQL + real Chromium',noBusinessApiShortcuts:true,events,consoleErrors},null,2));
+  await writeFile('artifacts/field-ui-only/evidence.json',JSON.stringify({passed,phase,sourceSha:process.env.GITHUB_SHA??null,environment:'GitHub Actions isolated CI',isolation:'disposable PostgreSQL + real Chromium',noBusinessApiShortcuts:true,events,consoleErrors},null,2));
 }
 // The journey advances business state only through visible controls.
