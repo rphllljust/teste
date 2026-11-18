@@ -89,6 +89,8 @@ try{
   const orderContext=page.getByRole('dialog',{name:'Contexto da ordem'});
   await orderContext.getByRole('button',{name:'Autorizar ordem',exact:true}).click();
   await page.getByRole('dialog',{name:'Autorizar ordem'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
+  await page.getByRole('status').getByText('Comando executado. Registros atualizados.',{exact:true}).waitFor();
+  await page.getByRole('button',{name:title,exact:true}).first().click();
   await page.getByRole('dialog',{name:'Contexto da ordem'}).getByRole('button',{name:'Iniciar execução',exact:true}).click();
   await page.getByRole('dialog',{name:'Iniciar execução'}).getByRole('button',{name:'Confirmar comando',exact:true}).click();
 
