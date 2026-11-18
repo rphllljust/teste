@@ -67,7 +67,8 @@ test('execution record and reversal share their idempotency event ID, with corre
   assert.equal(stored.rows[0].reverses_id,null);
   const before=await list();
   assert.equal(before.status,200);
-  assert.equal((await json(before)).pageInfo && ((await json(before)).items as Array<unknown>).length,1);
+  const beforeItems=await json(before);
+  assert.equal((beforeItems.items as Array<unknown>).length,1);
 
   const voidKey=randomUUID();
   const revert={command:'void',key:voidKey,version:3,reversesId:key,reason:'Correção de registro CI'};
