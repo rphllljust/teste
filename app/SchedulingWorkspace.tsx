@@ -9,14 +9,15 @@ type Person={id:string;kind:'person'|'team';name:string;active:boolean};
 const toIso=(value:string)=>new Date(value).toISOString();
 const formatDate=(value:string)=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(value));
 
-export default function SchedulingWorkspace(){
+export default function SchedulingWorkspace({initialOrderId=''}:{initialOrderId?:string}){
  const [data,setData]=useState<Result|null>(null); const [people,setPeople]=useState<Person[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  const [saving,setSaving]=useState(false);
- const [form,setForm]=useState({id:'',orderId:'',startAt:'',endAt:'',notes:'',assigneeType:'',assigneeId:''}); const [newPerson,setNewPerson]=useState({kind:'person',name:''});
+ const [form,setForm]=useState({id:'',orderId:initialOrderId,startAt:'',endAt:'',notes:'',assigneeType:'',assigneeId:''}); const [newPerson,setNewPerson]=useState({kind:'person',name:''});
  const load=async()=>{setLoading(true);setError('');try{const [r,peopleResponse]=await Promise.all([fetch('/api/schedules?pageSize=50'),fetch('/api/field/people?active=true')]);const body=await r.json() as Result & {error?:string};const peopleBody=await peopleResponse.json() as {people?:Person[]};if(!r.ok)throw new Error(body.error||'Agenda indisponível.');setData(body);if(peopleResponse.ok)setPeople(peopleBody.people??[]);}catch(e){setError(e instanceof Error?e.message:'Agenda indisponível.');}finally{setLoading(false);}};
  useEffect(()=>{const timer=window.setTimeout(()=>{void load();},0);return()=>window.clearTimeout(timer);},[]);
+ useEffect(()=>{if(initialOrderId)setForm(current=>({...current,orderId:initialOrderId}));},[initialOrderId]);
  const registerPerson=async(e:FormEvent)=>{e.preventDefault();const r=await fetch('/api/field/people',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(newPerson)});const body=await r.json() as {error?:string};if(!r.ok){setError(body.error||'Não foi possível cadastrar.');return;}setNewPerson({kind:'person',name:''});await load();};
  const changeStatus=async(item:Schedule,status:string)=>{setError('');const r=await fetch('/api/schedules/'+item.id,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({status,version:item.version})});const body=await r.json() as {error?:string};if(!r.ok){setError(body.error||'Não foi possível atualizar o status.');return;}await load();};
  const total=data?.schedules.length??0; const scheduled=data?.schedules.filter(item=>item.status==='scheduled').length??0; const confirmed=data?.schedules.filter(item=>item.status==='confirmed').length??0; const completed=data?.schedules.filter(item=>item.status==='completed').length??0;
