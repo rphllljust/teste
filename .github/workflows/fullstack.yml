@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feat/enterprise-mrp-wave5
+      - integration/nextcrm-homologation-wave1-20261118
 
 permissions:
   contents: read
