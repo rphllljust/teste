@@ -28,6 +28,7 @@ jobs:
       NODE_ENV: test
       CISNE_STAGING_ACTOR_ID: ci-enterprise-ui-only-20261118
       CISNE_STAGING_PUBLIC_ORIGIN: https://cisne-web-staging-staging.up.railway.app
+      CISNE_STAGING_SESSION_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
       NEXT_TELEMETRY_DISABLED: '1'
     steps:
       - uses: actions/checkout@v4
@@ -69,7 +70,6 @@ jobs:
           cat /tmp/field-ui-only-proxy.log; exit 1
       - name: Run visible-controls-only journey
         env:
-          CISNE_STAGING_SESSION_SECRET: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
           PLAYWRIGHT_MODULE_PATH: /tmp/field-browser/node_modules/playwright/index.mjs
         run: node scripts/verify-field-ui-only.mjs
       - if: always()
