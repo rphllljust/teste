@@ -48,7 +48,7 @@ export async function postConfiguredAccountingEvent(
     `INSERT INTO journal_entries
       (id,effective_date,source_reference,description,status,expected_count,
        created_at,actor_id,request_hash,correlation_id,reversal_of)
-      VALUES($1,$2,$3,$4,'posted',2,$5,$6,$7,$8,$9,NULL)`,
+      VALUES($1,$2,$3,$4,'posted',2,$5,$6,$7,$8,NULL)`,
     [journalId, input.effectiveDate, input.sourceReference, input.description,
       new Date().toISOString(), context.actorId,
       await fingerprint({actorId: context.actorId, event: input}),
