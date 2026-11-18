@@ -13,6 +13,7 @@ on:
       - 'scripts/**'
       - 'test/**'
       - '.github/workflows/postgres-only-integration.yml'
+      - '.github/workflows/nextcrm-minio-signed-upload-smoke.yml'
   push:
     branches:
       - integration/nextcrm-homologation-wave1-20261118
