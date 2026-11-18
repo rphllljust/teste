@@ -50,7 +50,7 @@ jobs:
       - name: Install Chromium
         run: |
           npm install --prefix /tmp/field-browser --no-save --ignore-scripts --no-audit --no-fund playwright@1.56.1
-          /tmp/field-browser/node_modules/.bin/playwright install --with-deps chromium
+          /tmp/field-browser/node_modules/.bin/playwright install chromium
       - name: Start isolated application
         env:
           NODE_ENV: production
