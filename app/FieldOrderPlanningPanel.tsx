@@ -8,7 +8,7 @@ type Planning={order:{id:string;status:string;version:number};schedule:Schedule|
 const displayTime=(v:string)=>new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(v));
 function datetimeLocal(date:string){const d=new Date(date);const n=new Date(d.getTime()-d.getTimezoneOffset()*60000);return n.toISOString().slice(0,16);}
 
-export default function FieldOrderPlanningPanel({orderId}:{orderId:string}){
+export default function FieldOrderPlanningPanel({orderId,onChanged}:{orderId:string;onChanged?:()=>void}){
   const [planning,setPlanning]=useState<Planning|null>(null),[people,setPeople]=useState<Person[]>([]);
   const [error,setError]=useState(''),[notice,setNotice]=useState(''),[loading,setLoading]=useState(true),[saving,setSaving]=useState(false);
   const [personId,setPersonId]=useState('');
@@ -37,7 +37,7 @@ export default function FieldOrderPlanningPanel({orderId}:{orderId:string}){
       });
       const data=await r.json() as {error?:string};
       if(!r.ok)throw new Error(data.error||'Planejamento não foi persistido.');
-      await load();setNotice('Planejamento salvo e confirmado no PostgreSQL.');
+      await load();onChanged?.();setNotice('Planejamento salvo e confirmado no PostgreSQL.');
     }catch(e){setNotice(e instanceof Error?e.message:'Operação recusada.');}
     finally{setSaving(false);}
   }
