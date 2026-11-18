@@ -1,9 +1,9 @@
-import { databasePool } from '../../../../db/raw';
-import { requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { databasePool } from '../../../../../db/raw';
+import { requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import {
   evaluateNextcrmReadiness,
   isBridgeSecretConfigured,
-} from '../../../../lib/integrations/nextcrm/readiness';
+} from '../../../../../lib/integrations/nextcrm/readiness';
 
 export const dynamic = 'force-dynamic';
 
