@@ -1,0 +1,42 @@
+name: RC102 real Chromium visual verification of public staging integration hub
+on:
+  push:
+    branches:
+      - integration/rc102-public-web-deployment-smoke-20261118
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-browser:
+    name: RC102 real Chromium click + screenshot of deployed CISNE hub
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      CI: 'true'
+      GITHUB_ACTIONS: 'true'
+      RC102_TARGET_ENV: staging
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify browser exists in GitHub hosted runner
+        run: |
+          command -v google-chrome
+          google-chrome --version
+      - name: Install isolated Selenium driver in runner only
+        run: python -m pip install --disable-pip-version-check 'selenium==4.38.0'
+      - name: Click actual native integration tab on live staging and capture screenshot
+        run: python scripts/rc102-live-ui-smoke.py
+      - name: Preserve visual evidence, even on UI failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rc102-live-cisne-integration-hub
+          path: artifacts/rc102-integration-hub-railway-staging.png
+          if-no-files-found: ignore
+          retention-days: 7
