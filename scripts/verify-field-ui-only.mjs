@@ -147,7 +147,7 @@ try{
   await settlement.locator('input[name="amount"]').fill('125');
   await settlement.locator('input[name="effectiveDate"]').fill(date);
   await settlement.locator('input[name="reference"]').fill('UI settlement '+suffix);
-  await settlement.getByRole('button',{name:'Confirmar comando',exact:true}).click();
+  await settlement.getByRole('button',{name:'Confirmar',exact:true}).click();
   await visible(page,'Liquidado'); step('invoice and settlement created');
 
   phase='reload'; await page.reload({waitUntil:'domcontentloaded'});
