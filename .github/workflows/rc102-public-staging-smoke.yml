@@ -1,0 +1,34 @@
+name: RC102 prove deployed staging CISNE integration UI and auth boundary
+on:
+  push:
+    branches:
+      - integration/rc102-public-web-deployment-smoke-20261118
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deployed-staging-smoke:
+    name: RC102 real Railway HTTPS native navigation + readiness + anonymous denial
+    runs-on: ubuntu-24.04
+    timeout-minutes: 7
+    env:
+      CI: 'true'
+      RC102_TARGET_ENV: staging
+      GITHUB_ACTIONS: 'true'
+      RC102_EXPECTED_STAGING_SHA: 9f439e94a338b852d11f6d0b4399b2adb4143995
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.16.0
+      - name: Verify no write privileges, secrets or production URL are required
+        run: |
+          test "$GITHUB_REPOSITORY" = "rphllljust/teste"
+          test "$RC102_TARGET_ENV" = staging
+          test "$RC102_EXPECTED_STAGING_SHA" = "9f439e94a338b852d11f6d0b4399b2adb4143995"
+      - name: Exercise actual public Railway endpoints without authentication or mutations
+        run: node scripts/rc102-public-staging-smoke.mjs
