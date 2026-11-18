@@ -18,8 +18,8 @@ const pool=new Pool({connectionString:process.env.DATABASE_URL,max:2});
 const keys=['RAILWAY_ENVIRONMENT_NAME','CISNE_NEXTCRM_PUBLIC_URL',
   'CISNE_NEXTCRM_BRIDGE_SECRET','CISNE_NEXTCRM_INSTANCE_KEY'] as const;
 const prior=Object.fromEntries(keys.map(key=>[key,process.env[key]]));
+delete process.env.RAILWAY_ENVIRONMENT_NAME;
 Object.assign(process.env,{
-  RAILWAY_ENVIRONMENT_NAME:'staging',
   CISNE_NEXTCRM_PUBLIC_URL:'https://nextcrm-gateway-staging.up.railway.app',
   CISNE_NEXTCRM_BRIDGE_SECRET:'a'.repeat(64),
   CISNE_NEXTCRM_INSTANCE_KEY:instance,
@@ -75,8 +75,9 @@ test('NextCRM readiness never counts another operator or another instance as use
   assert.equal(isolated.ready,false,'Another user mapping must not create a false GO');
   assert.deepEqual([isolated.activeIdentityMappings,isolated.activeAccountMappings],[0,0]);
   const approvedForeign=await status(foreign);
-  assert.equal(approvedForeign.ready,true);
+  assert.equal(approvedForeign.ready,false,'CI test context must never pretend to be staging');
   assert.deepEqual([approvedForeign.activeIdentityMappings,approvedForeign.activeAccountMappings],[1,1]);
+  assert.deepEqual(approvedForeign.blockers,['STAGING_ONLY']);
 
   await pool.query(
     "INSERT INTO nextcrm_erp_identity_mappings(erp_actor_id,nextcrm_subject_id,instance_key,verified_source,verified_by,verified_at,active) VALUES($1,$2,$3,'ci-isolated-check','ci-reviewer',now(),true)",
@@ -86,7 +87,9 @@ test('NextCRM readiness never counts another operator or another instance as use
     "INSERT INTO nextcrm_erp_client_account_mappings(erp_client_id,erp_owner_id,nextcrm_account_id,instance_key,verified_source,verified_by,verified_at,active) VALUES($1,$2,$3,$4,'ci-isolated-check','ci-reviewer',now(),true)",
     [ownerClient,owner,randomUUID(),instance],
   );
-  assert.equal((await status(owner)).ready,true);
+  const approvedOwner=await status(owner);
+  assert.deepEqual([approvedOwner.activeIdentityMappings,approvedOwner.activeAccountMappings],[1,1]);
+  assert.deepEqual(approvedOwner.blockers,['STAGING_ONLY']);
   await pool.query('UPDATE nextcrm_erp_client_account_mappings SET active=false WHERE erp_client_id=$1',[ownerClient]);
   const disabled=await status(owner);
   assert.equal(disabled.ready,false);
