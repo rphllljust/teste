@@ -63,6 +63,7 @@ try {
   await client.query('COMMIT');
 } catch (error) {
   await client.query('ROLLBACK');
+  console.error('PostgreSQL migration failed:', error instanceof Error ? error.stack ?? error.message : error);
   throw error;
 } finally {
   client.release();
