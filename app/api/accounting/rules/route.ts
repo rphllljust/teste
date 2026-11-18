@@ -45,14 +45,14 @@ export async function POST(request: Request) {
     let replayed = false;
     await database().transaction(async query => {
       const accounts = await query(
-        'SELECT id FROM chart_accounts WHERE actor_id=? AND active=1 AND id IN (?,?)',
+        'SELECT id FROM chart_accounts WHERE actor_id=$1 AND active=1 AND id IN ($2,$3)',
         [context!.actorId, value.debitAccountId, value.creditAccountId],
       );
       if (accounts.rows.length !== 2) {
         throw new ApiError(409, 'ACCOUNT_UNAVAILABLE', 'As contas devem existir e pertencer ao contexto atual.');
       }
       const prior = await query(
-        'SELECT id,request_hash FROM accounting_event_rules WHERE id=? AND actor_id=? FOR UPDATE',
+        'SELECT id,request_hash FROM accounting_event_rules WHERE id=$1 AND actor_id=$2 FOR UPDATE',
         [value.id, context!.actorId],
       );
       if (prior.rows.length) {
@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         return;
       }
       await query(
-        'INSERT INTO accounting_event_rules(id,actor_id,event_type,debit_account_id,credit_account_id,active,created_at,request_hash,correlation_id) VALUES(?,?,?,?,?,true,?,?,?,?)',
+        'INSERT INTO accounting_event_rules(id,actor_id,event_type,debit_account_id,credit_account_id,active,created_at,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,true,$6,$7,$8,$9)',
         [value.id, context!.actorId, value.eventType, value.debitAccountId, value.creditAccountId, new Date().toISOString(), requestHash, context!.correlationId],
       );
     });
