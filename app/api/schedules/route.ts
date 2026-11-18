@@ -19,6 +19,7 @@ const pageParams=z.object({
   pageSize:z.coerce.number().int().min(1).max(100).default(50),
   status:z.enum(['scheduled','confirmed','cancelled','completed']).optional(),
   orderId:z.string().uuid().optional(),
+  assigneeId:z.string().uuid().optional(),
 });
 function utc(value:string){const parsed=Date.parse(value);if(!Number.isFinite(parsed))throw new ApiError(400,'VALIDATION_FAILED','Data inválida.');return new Date(parsed).toISOString();}
 function assertTimezone(value:string){try{new Intl.DateTimeFormat('en-US',{timeZone:value}).format();}catch{throw new ApiError(400,'VALIDATION_FAILED','Fuso horário IANA inválido.');}}
@@ -35,6 +36,7 @@ export async function GET(request:Request){
     if(p.to){predicates.push('s.start_utc<?');values.push(utc(p.to));}
     if(p.status){predicates.push('s.status=?');values.push(p.status);}
     if(p.orderId){predicates.push('s.order_id=?');values.push(p.orderId);}
+    if(p.assigneeId){predicates.push('s.assignee_id=?');values.push(p.assigneeId);}
     const where=predicates.join(' AND '),db=database();
     const [count,rows]=await Promise.all([
       db.prepare('SELECT COUNT(*) AS total FROM service_schedules s WHERE '+where).bind(...values).first<{total:number}>(),
