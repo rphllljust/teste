@@ -15,7 +15,7 @@ const REQUIRED_TABLES = [
   'nextcrm_order_document_events',
 ] as const;
 
-async function readDatabaseReadiness() {
+async function readDatabaseReadiness(actorId: string, instanceKey: string | undefined) {
   const pool = databasePool();
   const tables = await pool.query<ReadinessRow>(
     `SELECT table_name AS name, true AS present
@@ -32,9 +32,14 @@ async function readDatabaseReadiness() {
   const mappings = await pool.query<{ identities: string; accounts: string }>(
     `SELECT
        (SELECT COUNT(*) FROM nextcrm_erp_identity_mappings
-        WHERE active = true AND verified_at IS NOT NULL)::text AS identities,
-       (SELECT COUNT(*) FROM nextcrm_erp_client_account_mappings
-        WHERE active = true AND verified_at IS NOT NULL)::text AS accounts`,
+        WHERE erp_actor_id=$1 AND instance_key=$2
+          AND active=true AND verified_at IS NOT NULL)::text AS identities,
+       (SELECT COUNT(*) FROM nextcrm_erp_client_account_mappings m
+        JOIN clients c ON c.id=m.erp_client_id AND c.owner_id=m.erp_owner_id
+        WHERE m.erp_owner_id=$1 AND m.instance_key=$2
+          AND m.active=true AND m.verified_at IS NOT NULL
+          AND c.status='active')::text AS accounts`,
+    [actorId, instanceKey ?? ''],
   );
   return {
     schemaApplied,
@@ -47,7 +52,7 @@ export async function GET(request: Request) {
   let context: RequestContext | undefined;
   try {
     context = requestContext(request);
-    const db = await readDatabaseReadiness();
+    const db = await readDatabaseReadiness(context.actorId, process.env.CISNE_NEXTCRM_INSTANCE_KEY);
     const result = evaluateNextcrmReadiness({
       environment: process.env.RAILWAY_ENVIRONMENT_NAME,
       publicUrl: process.env.CISNE_NEXTCRM_PUBLIC_URL,
