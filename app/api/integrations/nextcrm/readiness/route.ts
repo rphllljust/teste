@@ -4,6 +4,7 @@ import {
   evaluateNextcrmReadiness,
   isBridgeSecretConfigured,
 } from '../../../../../lib/integrations/nextcrm/readiness';
+import { getNextcrmInstanceKey } from '../../../../../lib/integrations/nextcrm/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export async function GET(request: Request) {
   let context: RequestContext | undefined;
   try {
     context = requestContext(request);
-    const db = await readDatabaseReadiness(context.actorId, process.env.CISNE_NEXTCRM_INSTANCE_KEY);
+    const db = await readDatabaseReadiness(context.actorId, getNextcrmInstanceKey());
     const result = evaluateNextcrmReadiness({
       environment: process.env.RAILWAY_ENVIRONMENT_NAME,
       publicUrl: process.env.CISNE_NEXTCRM_PUBLIC_URL,
