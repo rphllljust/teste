@@ -15,10 +15,38 @@ export class NextcrmAccountLookupUnavailable extends Error {
   constructor() { super('A conta NextCRM não pôde ser confirmada para este cliente.'); }
 }
 
+export type NextcrmAccountProfile = {
+  name: string | null;
+  officePhone: string | null;
+  website: string | null;
+  fax: string | null;
+  companyId: string | null;
+  vat: string | null;
+  email: string | null;
+  billingStreet: string | null;
+  billingPostalCode: string | null;
+  billingCity: string | null;
+  billingState: string | null;
+  billingCountry: string | null;
+  shippingStreet: string | null;
+  shippingPostalCode: string | null;
+  shippingCity: string | null;
+  shippingState: string | null;
+  shippingCountry: string | null;
+  description: string | null;
+  annualRevenue: string | null;
+  memberOf: string | null;
+  industry: string | null;
+  pricelistId: string | null;
+  status: string | null;
+  type: string | null;
+};
+
 export type NextcrmAccountEvidence = {
   accountId: string;
   erpClientId: string;
   tenantKey: string;
+  profile: NextcrmAccountProfile | null;
 };
 
 export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
