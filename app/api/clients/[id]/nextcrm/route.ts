@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { failure, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
+import { getNextcrmInstanceKey } from '../../../../../lib/integrations/nextcrm/config';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,7 +16,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       return respond({ mapped: false, state: 'invalid' }, context, 400);
     }
 
-    const instanceKey = process.env.NEXTCRM_INSTANCE_KEY ?? process.env.NEXTCRM_INSTANCE ?? '';
+    const instanceKey = getNextcrmInstanceKey();
     if (!instanceKey) {
       return respond({
         mapped: false,
