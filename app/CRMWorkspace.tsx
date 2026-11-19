@@ -20,6 +20,14 @@ type Snapshot = {
   error?:string;code?:string;
 };
 type Notice = {message:string;error:boolean};
+type OpportunityProjection = {
+  id:string; leadId:string; title:string; amountCents:string; stage:string;
+  rowVersion:number; createdAt:string; updatedAt:string;
+  lead:{contactName:string;companyName:string;contactEmail:string|null;status:string};
+  client:{id:string;legalName:string}|null;
+  proposal:{id:string;status:string;total:string;validUntil:string}|null;
+  history:{action:string;createdAt:string;result:string}[];
+};
 const stages:Opportunity['stage'][]=['discovery','proposal','negotiation','won','lost'];
 const stageLabel:Record<Opportunity['stage'],string>={
   discovery:'Diagnóstico',proposal:'Proposta',negotiation:'Negociação',won:'Ganha',lost:'Perdida',
@@ -29,6 +37,7 @@ const nextStage:Record<Opportunity['stage'],Opportunity['stage']|null>={
   discovery:'proposal',proposal:'negotiation',negotiation:'won',won:null,lost:null,
 };
 function money(cents:string){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(cents)/100);}
+function moneyScaled4(value:string){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value)/10000);}
 function parseMoney(input:string):number{
   if(!/^\d{1,10}(?:[,.]\d{1,2})?$/.test(input.trim()))throw new Error('Informe o valor em reais (ex.: 1250,50).');
   const cents=Math.round(Number(input.replace(',','.'))*100);
@@ -47,9 +56,21 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
   const [qualifyLead,setQualifyLead]=useState<Lead|null>(null);
   const [opportunityLead,setOpportunityLead]=useState<Lead|null>(null);
   const [proposalOpportunity,setProposalOpportunity]=useState<Opportunity|null>(null);
+  const [selectedOpportunity,setSelectedOpportunity]=useState<OpportunityProjection|null>(null);
+  const [opportunityLoading,setOpportunityLoading]=useState(false);
   const [qualifyClient,setQualifyClient]=useState('');
   const [attempt,setAttempt]=useState<{key:string;encoded:string}|null>(null);
   const busy=useRef(false);
+  async function openOpportunity(id:string){
+    setOpportunityLoading(true);setNotice(null);
+    try{
+      const response=await fetch('/api/crm/opportunities/'+id,{cache:'no-store'});
+      const body=await response.json() as {projection?:OpportunityProjection;error?:string};
+      if(!response.ok||!body.projection)throw new Error(body.error||'Ficha da oportunidade indisponível.');
+      setSelectedOpportunity(body.projection);
+    }catch(e){setNotice({message:e instanceof Error?e.message:'Ficha da oportunidade indisponível.',error:true});}
+    finally{setOpportunityLoading(false);}
+  }
   const load=useCallback(async()=>{
     setLoading(true);setError('');
     try{
@@ -245,7 +266,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
         {stages.map(stage=><div className="cisne-crm-column" key={stage}>
           <header><strong>{stageLabel[stage]}</strong><span>{opportunities.filter(o=>o.stage===stage).length}</span></header>
           {opportunities.filter(o=>o.stage===stage).map(o=><article className="cisne-crm-deal" key={o.id}>
-            <strong>{o.title}</strong>
+            <button className="cisne-crm-deal-title" onClick={()=>void openOpportunity(o.id)} disabled={opportunityLoading}>{o.title}</button>
             <small>{snapshot.leads.find(l=>l.id===o.leadId)?.companyName??'Lead de origem'}</small>
             <b>{money(o.amountCents)}</b>
             {o.proposalId&&<small className="cisne-crm-proposal-linked">
@@ -256,6 +277,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
               Vincule um cliente ativo do ERP ao lead antes de gerar a proposta
             </small>}
             <div className="cisne-crm-deal-actions">
+              <button className="text-button" disabled={opportunityLoading} onClick={()=>void openOpportunity(o.id)}>Abrir ficha</button>
               {stage==='proposal'&&!o.proposalId&&o.clientId&&
                 <button className="secondary" disabled={sending}
                   onClick={()=>{resetForms();setProposalOpportunity(o);}}>
@@ -278,6 +300,23 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
       <div><button className="text-button" onClick={onClients}>Clientes do ERP <ArrowRight size={14}/></button>
       <button className="text-button" onClick={()=>onProposals()}>Propostas e pedidos <ArrowRight size={14}/></button></div>
     </footer>
+
+    {selectedOpportunity&&<div className="overlay" onClick={()=>setSelectedOpportunity(null)}>
+      <aside className="drawer cisne-crm-opportunity-drawer" role="dialog" aria-modal="true" aria-label="Ficha da oportunidade"
+        onClick={e=>e.stopPropagation()}>
+        <header><div><span className="eyebrow">OBJECT PAGE · OPORTUNIDADE</span><h2>{selectedOpportunity.title}</h2></div>
+          <button className="icon-button" aria-label="Fechar ficha da oportunidade" onClick={()=>setSelectedOpportunity(null)}><X size={19}/></button>
+        </header>
+        <div className="cisne-crm-object-status"><span className={'cisne-crm-status '+selectedOpportunity.stage}>{stageLabel[selectedOpportunity.stage as Opportunity['stage']]??selectedOpportunity.stage}</span>
+          <strong>{money(selectedOpportunity.amountCents)}</strong></div>
+        <section><h3>Relacionamentos</h3><dl className="cisne-crm-object-grid">
+          <div><dt>Lead de origem</dt><dd>{selectedOpportunity.lead.companyName}<small>{selectedOpportunity.lead.contactName}{selectedOpportunity.lead.contactEmail?' · '+selectedOpportunity.lead.contactEmail:''}</small></dd></div>
+          <div><dt>Cliente ERP</dt><dd>{selectedOpportunity.client?.legalName??'Sem cliente vinculado'}<small>{selectedOpportunity.client?'Vínculo ativo no Field':'Necessário para gerar proposta'}</small></dd></div>
+        </dl></section>
+        <section><h3>Proposta</h3>{selectedOpportunity.proposal?<div className="cisne-crm-linked-object"><strong>{selectedOpportunity.proposal.status==='draft'?'Rascunho':selectedOpportunity.proposal.status}</strong><small>{moneyScaled4(selectedOpportunity.proposal.total)} · validade {selectedOpportunity.proposal.validUntil}</small><button className="text-button" onClick={()=>onProposals(selectedOpportunity.proposal!.id)}>Abrir proposta no CISNE <ArrowRight size={12}/></button></div>:<p className="muted">Nenhuma proposta vinculada. Avance a oportunidade para “Proposta” e use a ação de geração.</p>}</section>
+        <section><h3>Histórico de comandos</h3>{selectedOpportunity.history.length?selectedOpportunity.history.map((event,index)=><div className="cisne-crm-history-row" key={event.createdAt+'-'+index}><strong>{event.action}</strong><small>{new Date(event.createdAt).toLocaleString('pt-BR')}</small></div>):<p className="muted">Nenhum comando registrado.</p>}</section>
+      </aside>
+    </div>}
 
     {(newLeadOpen||qualifyLead||opportunityLead||proposalOpportunity)&&<div className="overlay modal-overlay" onClick={resetForms}>
       <section className="modal cisne-crm-modal" role="dialog" aria-modal="true" aria-label="Ação comercial"

@@ -6,6 +6,7 @@ import { Pool } from 'pg';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET, POST } from '../../app/api/crm/route';
 import { GET as proposalDetail } from '../../app/api/proposals/[id]/route';
+import { GET as opportunityDetail } from '../../app/api/crm/opportunities/[id]/route';
 
 if (process.env.NODE_ENV !== 'test' || !process.env.DATABASE_URL)
   throw new Error('CRM integration tests require NODE_ENV=test and disposable DATABASE_URL');
@@ -299,6 +300,22 @@ test('CRM opportunity creates exactly one tenant-owned ERP proposal draft with t
   assert.equal(projection.lines[0].amountScaled,'12505000');
   assert.equal(projection.origin?.opportunityId,draftOpportunity);
   assert.deepEqual(projection.availableCommands.map(c=>(c as {id:string}).id),['revise','issue','cancel']);
+  const opportunityContext=await opportunityDetail(req('GET',undefined,owner),{
+    params:Promise.resolve({id:draftOpportunity}),
+  });
+  assert.equal(opportunityContext.status,200);
+  const opportunityProjection=(await opportunityContext.json() as {
+    projection:{title:string;client:{legalName:string}|null;proposal:{id:string;status:string}|null;
+      history:Array<{action:string}>};
+  }).projection;
+  assert.equal(opportunityProjection.title,'Manutenção anual');
+  assert.equal(opportunityProjection.client?.legalName,'Cliente ERP comercial CI');
+  assert.deepEqual(opportunityProjection.proposal,{id:proposalId,status:'draft'});
+  assert.ok(opportunityProjection.history.some(event=>event.action==='createDraftProposal'));
+  const deniedOpportunity=await opportunityDetail(req('GET',undefined,other),{
+    params:Promise.resolve({id:draftOpportunity}),
+  });
+  assert.equal(deniedOpportunity.status,404);
   const deniedDetail=await proposalDetail(req('GET',undefined,other),{params:Promise.resolve({id:proposalId})});
   assert.equal(deniedDetail.status,404);
 

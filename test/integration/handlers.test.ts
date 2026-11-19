@@ -7,6 +7,9 @@ import { database, closeDatabase } from '../../db/raw';
 import { GET as getOrders, POST as createOrder } from '../../app/api/orders/route';
 import { GET as getInventory, POST as inventoryCommand } from '../../app/api/inventory/route';
 import { GET as getProcurement, POST as procurementCommand } from '../../app/api/procurement/route';
+import { GET as getPurchaseOrder } from '../../app/api/procurement/[id]/route';
+import { POST as purchaseOrderCommand } from '../../app/api/procurement/[id]/commands/route';
+import { POST as receivePurchaseOrder } from '../../app/api/procurement/[id]/receipts/route';
 import { GET as getMrp, POST as runMrp } from '../../app/api/mrp/route';
 import { POST as mrpCommand } from '../../app/api/mrp/commands/route';
 
@@ -136,6 +139,36 @@ test('procurement handler persists supplier/order/lines with linked inventory', 
     assert.equal(stored.rows[0]?.status,'draft');
     assert.equal(Number(stored.rows[0]?.quantity),3000);
     assert.equal(Number(stored.rows[0]?.subtotal),375000);
+  } finally { await clean(owner); }
+});
+
+test('receiving is versioned, idempotent, and posts accepted quantities to inventory', async () => {
+  const owner = actor(), supplierId = randomUUID(), itemId = randomUUID(), orderId = randomUUID(), lineId = randomUUID();
+  try {
+    assert.equal((await inventoryCommand(req('/api/inventory', 'POST', { type: 'create', id: itemId, sku: `RCV-${itemId.slice(0, 8)}`, name: 'CI receiving item', unit: 'un', minimum: '0' }, owner))).status, 201);
+    assert.equal((await procurementCommand(req('/api/procurement', 'POST', { type: 'supplier', id: supplierId, legalName: 'CI receiving supplier', document: `RCV-${supplierId}`, email: '' }, owner))).status, 201);
+    const created = await procurementCommand(req('/api/procurement', 'POST', { type: 'order', id: orderId, supplierId, reference: `RCV-${orderId.slice(0, 8)}`, expectedOn: '2027-01-15', lines: [{ id: lineId, itemId, quantity: '5', unitPrice: '2.00' }] }, owner));
+    assert.equal(created.status, 201);
+    const approve = await purchaseOrderCommand(req(`/api/procurement/${orderId}/commands`, 'POST', { key: randomUUID(), version: 1, command: 'approve' }, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(approve.status, 200);
+    const receiptKey = randomUUID();
+    const receiptBody = { key: receiptKey, version: 2, reference: 'NF-CI-001', lines: [{ lineId, accepted: '3', rejected: '0' }] };
+    const received = await receivePurchaseOrder(req(`/api/procurement/${orderId}/receipts`, 'POST', receiptBody, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(received.status, 201, JSON.stringify(await json(received.clone())));
+    const replay = await receivePurchaseOrder(req(`/api/procurement/${orderId}/receipts`, 'POST', receiptBody, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(replay.status, 200);
+    assert.equal((await json(replay)).replayed, true);
+    const detail = await getPurchaseOrder(req(`/api/procurement/${orderId}`, 'GET', undefined, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(detail.status, 200);
+    const payload = await json(detail) as unknown as { order: { status: string; rowVersion: number }; lines: Array<{ receivedQuantity: number }>; receipts: Array<{ acceptedQuantity: number }> };
+    assert.equal(payload.order.status, 'approved');
+    assert.equal(Number(payload.order.rowVersion), 3);
+    assert.equal(Number(payload.lines[0]?.receivedQuantity), 3000);
+    assert.equal(payload.receipts.length, 1);
+    const stored = await pool.query(`SELECT COALESCE(SUM(delta),0)::int AS balance, COUNT(*)::int AS movements,
+      COUNT(*) FILTER (WHERE procurement_receipt_line_id IS NOT NULL)::int AS linked
+      FROM inventory_movements WHERE owner_id=$1 AND procurement_order_id=$2`, [owner, orderId]);
+    assert.deepEqual(stored.rows[0], { balance: 3000, movements: 1, linked: 1 });
   } finally { await clean(owner); }
 });
 
