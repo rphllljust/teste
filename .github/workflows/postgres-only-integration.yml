@@ -141,6 +141,8 @@ jobs:
             '0003_nextcrm_document_bridge',
             '0004_cash_transfers',
             '0005_finance_period_closes',
+            '0006_professionals',
+            '0007_assets',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
