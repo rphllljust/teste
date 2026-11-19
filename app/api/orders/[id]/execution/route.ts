@@ -1,13 +1,13 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
-import { executionInput, quantityScaled, resourceKinds } from '../../../../../lib/domain/execution';
+import { executionInput, executionStageLabels, quantityScaled, resourceKinds } from '../../../../../lib/domain/execution';
 
 const query = z.object({ q: z.string().trim().max(160).default(''), resourceKind: z.enum(resourceKinds).optional(), state: z.enum(['active', 'corrected', 'all']).default('active'), page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
 
 function project(row: Record<string, unknown>, canVoid: boolean) {
   const corrected=Boolean(row.reverses_id)||row.voided===true;
-  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: corrected ? 'corrected' : 'active', label: corrected ? 'Anulado' : 'Ativo' }, availableCommands: corrected || !canVoid ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
+  return { id: String(row.id), resourceLabel: String(row.resource_kind), stage: String(row.stage ?? 'field_work'), stageLabel: executionStageLabels[String(row.stage ?? 'field_work')] ?? 'Trabalho em campo', responsiblePersonId: row.responsible_person_id ? String(row.responsible_person_id) : null, responsiblePersonName: row.responsible_person_name ? String(row.responsible_person_name) : null, description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), startedAt: row.started_at ? String(row.started_at) : null, endedAt: row.ended_at ? String(row.ended_at) : null, notes: row.notes ? String(row.notes) : null, reference: String(row.reference), state: { code: corrected ? 'corrected' : 'active', label: corrected ? 'Anulado' : 'Ativo' }, availableCommands: corrected || !canVoid ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -34,7 +34,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const where='e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND '+filters.join(' AND ');
     const rows = await db.batch([
       db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
-      db.prepare(`SELECT e.*,EXISTS(SELECT 1 FROM execution_entries v WHERE v.reverses_id=e.id) AS voided FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE ${where} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, parsed.data.pageSize, offset),
+      db.prepare(`SELECT e.*,p.full_name AS responsible_person_name,EXISTS(SELECT 1 FROM execution_entries v WHERE v.reverses_id=e.id) AS voided FROM execution_entries e JOIN service_orders o ON o.id=e.order_id LEFT JOIN field_people p ON p.id=e.responsible_person_id AND p.owner_id=o.owner_id WHERE ${where} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, parsed.data.pageSize, offset),
       db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE ${where}`).bind(...values),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
@@ -66,12 +66,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
       if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
       if (row.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem foi alterada. Atualize a execução.');
+      if (p.command === 'report' && p.responsiblePersonId) {
+        const person = await query('SELECT id FROM field_people WHERE id=$1 AND owner_id=$2 AND active=true', [p.responsiblePersonId, context!.actorId]);
+        if (!person.rows.length) throw new ApiError(409, 'PERSON_NOT_AVAILABLE', 'Profissional não encontrado, inativo ou fora da empresa.');
+      }
       const now = new Date().toISOString();
       if (p.command === 'report') {
         const entryId = p.key;
         const result = { ok: true, resource: { type: 'executionEntry', id: entryId } };
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, id, p.command, row.version, now, context!.actorId, hash, entryId, JSON.stringify(result), context!.correlationId]);
-        await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [entryId, id, 'report', p.resourceKind, p.description, quantityScaled(p.quantity), p.unit, p.resourceReference, p.effectiveDate, p.reference, context!.actorId, now]);
+        await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,stage,responsible_person_id,description,quantity,unit,resource_reference,effective_date,started_at,ended_at,notes,reference,actor_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)', [entryId, id, 'report', p.resourceKind, p.stage, p.responsiblePersonId ?? null, p.description, quantityScaled(p.quantity), p.unit, p.resourceReference, p.effectiveDate, p.startedAt ?? null, p.endedAt ?? null, p.notes ?? null, p.reference, context!.actorId, now]);
         return result;
       }
       const original = await query('SELECT id FROM execution_entries WHERE id=$1 AND order_id=$2 AND reverses_id IS NULL FOR UPDATE', [p.reversesId, id]);

@@ -582,3 +582,41 @@ tr:has(td):hover{background:#f5f9f5}
 .cisne-crm-proposal-linked{display:block;margin-top:10px;padding:8px 9px;background:#eaf5ef;color:#215a42;border:1px solid #cde7d6;font-size:11px;overflow-wrap:anywhere}
 .cisne-crm-proposal-warning{display:block;margin-top:10px;font-size:11px;line-height:1.4;color:#855c31}
 .cisne-crm-modal textarea{width:100%;resize:vertical;min-height:110px;padding:10px 12px;border-radius:4px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit}
+
+
+/* Complete enterprise client registration: shared ERP/CRM form sections. */
+.client-registration-form{display:grid;gap:20px}
+.client-registration-form .form-section{padding:16px 0;border-bottom:1px solid var(--line)}
+.client-registration-form .form-section h3{margin:5px 0 3px;font-size:15px;color:var(--ink)}
+.client-registration-form .form-section p{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.5}
+.client-registration-form .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.client-registration-form label{display:block;font-size:12px;font-weight:600;margin-bottom:14px;color:#58717a}
+.client-registration-form input,.client-registration-form textarea{display:block;width:100%;padding:10px 12px;background:#fff;border:1px solid #d6e1e4;border-radius:5px;margin-top:6px;font-size:14px;color:var(--ink)}
+.client-registration-form textarea{resize:vertical}
+@media(max-width:560px){.client-registration-form .form-grid{grid-template-columns:1fr}.modal{padding:20px}.drawer{padding:20px}}
+
+/* Enterprise client object page: stronger hierarchy without changing the domain model. */
+.client-registration-form{gap:12px}
+.client-registration-form .form-section{background:#fbfdfd;border:1px solid #e0e9e9;border-radius:10px;padding:18px 20px;box-shadow:0 2px 8px #173b3510}
+.client-registration-form .form-section:first-child{border-top:3px solid #0b8584}
+.client-registration-form .form-section h3{font-size:16px;letter-spacing:-.1px;margin:4px 0 5px}
+.client-registration-form .form-section .eyebrow{display:block;margin-bottom:2px}
+.client-registration-form .form-grid{gap:0 18px}
+.client-registration-form label{color:#405d64;font-size:12px}
+.client-registration-form input,.client-registration-form select,.client-registration-form textarea{border-color:#cbdcde;min-height:42px;transition:border-color .15s,box-shadow .15s}
+.client-registration-form input:hover,.client-registration-form select:hover,.client-registration-form textarea:hover{border-color:#8fbabb}
+.client-registration-form input:focus,.client-registration-form select:focus,.client-registration-form textarea:focus{border-color:#078487;box-shadow:0 0 0 3px #07848718;outline:0}
+.client-registration-form>footer{position:sticky;bottom:-1px;background:#fff;border-top:1px solid #dce7e7;margin:4px -20px -18px;padding:14px 20px;z-index:2}
+@media(max-width:560px){.client-registration-form .form-section{padding:16px}.client-registration-form>footer{margin:4px -16px -16px;padding:12px 16px}.client-registration-form>footer button{flex:1}}
+
+/* Shared Tier-1 treatment for every transactional modal, not only clients. */
+.modal form{display:grid;gap:4px}
+.modal form>label{padding:8px 0 4px}
+.modal form>h3{margin:14px 0 2px;padding:11px 12px;border-left:3px solid var(--teal);background:#f3f8f7;color:#294b52;font-size:13px;letter-spacing:.2px}
+.modal form>p.muted{margin:0 0 8px;line-height:1.6}
+.modal form fieldset{border:1px solid #dce7e7;border-radius:8px;padding:13px 15px;margin:8px 0;background:#fbfdfd}
+.modal form fieldset legend{padding:0 7px;color:#3d6869;font-size:11px;font-weight:700;letter-spacing:.6px}
+.modal form footer{position:sticky;bottom:-1px;background:#fff;margin-top:10px;padding:14px 0 0;z-index:2}
+.modal form .form-row{align-items:start}
+.modal form input,.modal form select,.modal form textarea{min-height:42px}
+.modal form textarea{line-height:1.5}

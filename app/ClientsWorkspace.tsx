@@ -2,13 +2,14 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Plus,RefreshCw,Search,X} from 'lucide-react';
 import type {ClientFields} from '../lib/domain/clients';
+import {changedNextcrmProfileFields, type EditableNextcrmForm, type EditableNextcrmProfile} from '../lib/integrations/nextcrm/profile-changes';
 export type Client={id:string;legalName:string;tradeName:string|null;document:string|null;email:string|null;phone:string|null;state:{code:'active'|'inactive';label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[]};
 type Context=Client&{related:{orders:{total:number}};history:{command:string;createdAt:string}[];warnings:string[]};
 type NextcrmProfile={
  name:string|null;officePhone:string|null;website:string|null;fax:string|null;companyId:string|null;vat:string|null;email:string|null;
  billingStreet:string|null;billingPostalCode:string|null;billingCity:string|null;billingState:string|null;billingCountry:string|null;
  shippingStreet:string|null;shippingPostalCode:string|null;shippingCity:string|null;shippingState:string|null;shippingCountry:string|null;
- description:string|null;annualRevenue:string|null;memberOf:string|null;industry:string|null;pricelistId:string|null;status:string|null;type:string|null;
+  description:string|null;annualRevenue:string|null;memberOf:string|null;industry:string|null;pricelistId:string|null;status:string|null;type:string|null;
 };
 type NextcrmContext={mapped:boolean;state:'synchronized'|'not_linked'|'not_configured'|'unavailable'|'invalid';message?:string;profile?:NextcrmProfile|null;mapping?:{accountId:string;instanceKey:string;verifiedAt:string}};
 type List={items:Client[];pageInfo:{total:number;sourceTotal:number;hasMore:boolean}};
@@ -41,8 +42,33 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
    setNextcrm({mapped:false,state:'unavailable',message:'O cadastro ERP continua operacional; ações dependentes do NextCRM ficam indisponíveis até a integração ser restaurada.'});
   }finally{setNextcrmLoading(false);}
  }
- async function send(url:string,body:object){const encoded=JSON.stringify(body);const prior=commandAttempt.current;if(prior&&prior.body!==encoded)throw new Error('O conteúdo mudou após uma tentativa. Feche e reabra o comando para gerar uma nova chave.');commandAttempt.current={key:(body as {key?:string}).key??'',body:encoded};const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:encoded});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);commandAttempt.current=null;}
- async function submit(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(busy.current||!dialog)return;busy.current=true;setSaving(true);setCommandError('');const f=new FormData(e.currentTarget),nullable=(name:string)=>String(f.get(name)||'').trim()||null;const data:ClientFields={legalName:String(f.get('legalName')),tradeName:nullable('tradeName'),document:nullable('document'),email:nullable('email'),phone:nullable('phone')};try{await send(dialog.client?'/api/clients/'+dialog.client.id+'/commands':'/api/clients',dialog.client?{key:dialog.key,command:'revise',version:dialog.client.state.rowVersion,data}:{id:dialog.key,data});const id=dialog.client?.id??dialog.key;setDialog(null);await load();await open(id);}catch(e){setCommandError(e instanceof Error?e.message:'Falha ao registrar.');}finally{busy.current=false;setSaving(false);}}
+ async function send(url:string,body:object){const encoded=JSON.stringify(body);const prior=commandAttempt.current;if(prior&&prior.body!==encoded)throw new Error('O conteúdo mudou após uma tentativa. Feche e reabra o comando para gerar uma nova chave.');commandAttempt.current={key:(body as {key?:string}).key??'',body:encoded};const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:encoded});const d=await r.json() as {error?:string;data?:unknown};if(!r.ok)throw new Error(d.error);commandAttempt.current=null;return d;}
+ async function submit(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();if(busy.current||!dialog)return;busy.current=true;setSaving(true);setCommandError('');
+  const f=new FormData(e.currentTarget),nullable=(name:string)=>String(f.get(name)||'').trim()||null;
+  const data:ClientFields={legalName:String(f.get('legalName')).trim(),tradeName:nullable('tradeName'),document:nullable('document'),email:nullable('email'),phone:nullable('phone')};
+  const crmNames=['officePhone','website','fax','email','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','industry','pricelistId','status','type'] as const;
+  const crmForm=Object.fromEntries(crmNames.map(name=>[name,String(f.get(name)??'')])) as Record<typeof crmNames[number],string>;
+  const crmChanges:Record<string,string|null>=dialog.client&&nextcrm?.profile
+   ? changedNextcrmProfileFields(nextcrm.profile as EditableNextcrmProfile, {
+      ...crmForm,
+    })
+   : Object.fromEntries(Object.entries(crmForm).map(([name,value])=>[name,value.trim()||null]));
+  const hasCrmData=Object.values(crmChanges).some(value=>value!==null);
+  try{
+   await send(dialog.client?'/api/clients/'+dialog.client.id+'/commands':'/api/clients',dialog.client?{key:dialog.key,command:'revise',version:dialog.client.state.rowVersion,data}:{id:dialog.key,data});
+   const id=dialog.client?.id??dialog.key;
+   if(hasCrmData){
+    const crmUrl='/api/clients/'+encodeURIComponent(id)+'/nextcrm/profile';
+    const crmMethod=dialog.client&&nextcrm?.mapped?'PATCH':'POST';
+    const response=await fetch(crmUrl,{method:crmMethod,headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),changes:crmChanges})});
+    const crmResult=await response.json() as {error?:string};
+    if(!response.ok)throw new Error(crmResult.error||'Cadastro ERP salvo, mas os dados CRM não foram confirmados.');
+   }
+   setDialog(null);await load();await open(id);
+  }catch(e){setCommandError(e instanceof Error?e.message:'Falha ao registrar o cadastro.');}
+  finally{busy.current=false;setSaving(false);}
+ }
  async function changeState(){if(!context||busy.current)return;const c=context.availableCommands.find(c=>c.id==='activate'||c.id==='deactivate');if(!c)return;busy.current=true;setSaving(true);setCommandError('');const key=commandAttempt.current?.key||crypto.randomUUID(),body={key,command:c.id,version:c.expectedVersion};commandAttempt.current={key,body:JSON.stringify(body)};try{await send('/api/clients/'+context.id+'/commands',body);await open(context.id);await load();}catch(e){setCommandError(e instanceof Error?e.message:'Falha no comando.');}finally{busy.current=false;setSaving(false);}}
  async function linkNextcrm(){
   if(!context||busy.current||nextcrm?.mapped)return;
@@ -64,10 +90,10 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   if(!context||busy.current)return;
   busy.current=true;setSaving(true);setCommandError('');
   const f=new FormData(e.currentTarget);
-  const changes:Record<string,string|null>={};
-  for(const name of ['officePhone','website','fax','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','vat','companyId']){
-   const value=String(f.get(name)||'').trim(); changes[name]=value||null;
-  }
+  const names: Array<keyof EditableNextcrmProfile> = ['officePhone','website','fax','email','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','industry','pricelistId','status','type'];
+  const form = Object.fromEntries(names.map(name=>[name,String(f.get(name)??'')])) as EditableNextcrmForm;
+  const changes = changedNextcrmProfileFields(nextcrm?.profile as EditableNextcrmProfile, form);
+  if(!Object.keys(changes).length){setCrmEditing(false);busy.current=false;setSaving(false);return;}
   try{
    const response=await fetch('/api/clients/'+encodeURIComponent(context.id)+'/nextcrm/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),changes})});
    const data=await response.json() as {error?:string};
@@ -96,6 +122,48 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
 </dl></div>
 </section>}<h3>Registros relacionados</h3><button className="related" onClick={()=>onOrders(context.id)}><span><strong>Ordens de serviço</strong><small>{context.related.orders.total} ordens vinculadas</small></span></button><h3>Histórico recente · até 20 comandos</h3>{context.history.map((entry,i)=><div key={i} className="event-row"><span>{{register:'Cadastro registrado',revise:'Cadastro atualizado',activate:'Cliente ativado',deactivate:'Cliente desativado'}[entry.command]??entry.command}</span><small>{new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Porto_Velho',dateStyle:'short',timeStyle:'short'}).format(new Date(entry.createdAt))}</small></div>)}{context.warnings.map(w=><p className="linked-info" key={w}>{w}</p>)}</aside></div>}
  {crmEditing&&context&&nextcrm?.profile&&<div className="overlay modal-overlay"><section ref={panel} className="modal" role="dialog" aria-modal="true" aria-label="Editar dados CRM"><header><h2>Editar dados CRM</h2><button className="icon-button" disabled={saving} aria-label="Fechar edição CRM" onClick={()=>{setCrmEditing(false);commandAttempt.current=null;}}><X size={20}/></button></header><form onSubmit={submitCrm}><h3>Contato</h3><label>Telefone comercial<input name="officePhone" defaultValue={nextcrm.profile.officePhone??''} maxLength={200}/></label><label>Website<input name="website" defaultValue={nextcrm.profile.website??''} maxLength={200}/></label><label>E-mail<input type="email" name="email" defaultValue={nextcrm.profile.email??''} maxLength={254}/></label><h3>Endereço de cobrança</h3><label>Logradouro<input name="billingStreet" defaultValue={nextcrm.profile.billingStreet??''} maxLength={500}/></label><label>CEP<input name="billingPostalCode" defaultValue={nextcrm.profile.billingPostalCode??''} maxLength={50}/></label><label>Cidade<input name="billingCity" defaultValue={nextcrm.profile.billingCity??''} maxLength={200}/></label><label>Estado<input name="billingState" defaultValue={nextcrm.profile.billingState??''} maxLength={100}/></label><label>País<input name="billingCountry" defaultValue={nextcrm.profile.billingCountry??''} maxLength={100}/></label><h3>Endereço de entrega</h3><label>Logradouro<input name="shippingStreet" defaultValue={nextcrm.profile.shippingStreet??''} maxLength={500}/></label><label>CEP<input name="shippingPostalCode" defaultValue={nextcrm.profile.shippingPostalCode??''} maxLength={50}/></label><label>Cidade<input name="shippingCity" defaultValue={nextcrm.profile.shippingCity??''} maxLength={200}/></label><label>Estado<input name="shippingState" defaultValue={nextcrm.profile.shippingState??''} maxLength={100}/></label><label>País<input name="shippingCountry" defaultValue={nextcrm.profile.shippingCountry??''} maxLength={100}/></label><h3>Perfil comercial</h3><label>Descrição<textarea name="description" defaultValue={nextcrm.profile.description??''} maxLength={500}/></label><label>Receita anual<input name="annualRevenue" defaultValue={nextcrm.profile.annualRevenue??''} maxLength={100}/></label>{commandError&&<p role="alert" className="form-error">{commandError}</p>}<footer><button type="button" className="secondary" disabled={saving} onClick={()=>setCrmEditing(false)}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Salvando…':'Salvar dados CRM'}</button></footer></form></section></div>}
- {dialog&&<div className="overlay modal-overlay"><section ref={panel} className="modal" role="dialog" aria-modal="true" aria-label={dialog.client?'Atualizar cliente':'Cadastrar cliente'}><header><h2>{dialog.client?'Atualizar cliente':'Cadastrar cliente'}</h2><button className="icon-button" disabled={saving} aria-label="Fechar cadastro" onClick={()=>{setDialog(null);commandAttempt.current=null;}}><X size={20}/></button></header><form onSubmit={submit}><label>Razão social / nome<input name="legalName" required minLength={2} maxLength={200} defaultValue={dialog.client?.legalName}/></label><label>Nome fantasia<input name="tradeName" maxLength={200} defaultValue={dialog.client?.tradeName??''}/></label><label>Documento informado<input name="document" minLength={3} maxLength={32} defaultValue={dialog.client?.document??''}/></label><label>E-mail<input type="email" name="email" maxLength={254} defaultValue={dialog.client?.email??''}/></label><label>Telefone<input name="phone" minLength={3} maxLength={40} defaultValue={dialog.client?.phone??''}/></label>{commandError&&<p role="alert" className="form-error">{commandError}</p>}<footer><button type="button" className="secondary" disabled={saving} onClick={()=>{setDialog(null);commandAttempt.current=null;}}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Registrando…':'Salvar cadastro'}</button></footer></form></section></div>}
+ {dialog&&<div className="overlay modal-overlay"><section ref={panel} className="modal" role="dialog" aria-modal="true" aria-label={dialog.client?'Atualizar cliente':'Cadastrar cliente'}><header><h2>{dialog.client?'Atualizar cliente':'Cadastrar cliente'}</h2><button className="icon-button" disabled={saving} aria-label="Fechar cadastro" onClick={()=>{setDialog(null);commandAttempt.current=null;}}><X size={20}/></button></header><form onSubmit={submit} className="client-registration-form">
+  <div className="form-section"><span className="eyebrow">CADASTRO ERP</span><h3>Identificação e contato</h3><p>Dados operacionais persistidos no CISNE Field.</p>
+   <div className="form-grid">
+    <label>Razão social / nome<input name="legalName" required minLength={2} defaultValue={dialog.client?.legalName??''}/></label>
+    <label>Nome fantasia<input name="tradeName" defaultValue={dialog.client?.tradeName??''}/></label>
+    <label>Documento informado<input name="document" defaultValue={dialog.client?.document??''}/></label>
+    <label>E-mail<input type="email" name="email" defaultValue={dialog.client?.email??''}/></label>
+    <label>Telefone<input name="phone" defaultValue={dialog.client?.phone??''}/></label>
+   </div>
+  </div>
+  <div className="form-section"><span className="eyebrow">PERFIL CRM</span><h3>Dados empresariais do NextCRM</h3><p>Quando houver contexto autorizado, estes dados são gravados na conta CRM real vinculada ao cliente.</p>
+   <div className="form-grid">
+    <label>Telefone comercial<input name="officePhone" defaultValue={nextcrm?.profile?.officePhone??''}/></label>
+    <label>Website<input name="website" type="url" defaultValue={nextcrm?.profile?.website??''}/></label>
+    <label>Fax<input name="fax" defaultValue={nextcrm?.profile?.fax??''}/></label>
+    <label>Identificação fiscal CRM<input name="companyId" defaultValue={nextcrm?.profile?.companyId??''}/></label>
+    <label>VAT / inscrição<input name="vat" defaultValue={nextcrm?.profile?.vat??''}/></label>
+    <label>Receita anual<input name="annualRevenue" defaultValue={nextcrm?.profile?.annualRevenue??''}/></label>
+    <label>Empresa relacionada<input name="memberOf" defaultValue={nextcrm?.profile?.memberOf??''}/></label>
+   <label>Setor / indústria (ID NextCRM)<input name="industry" defaultValue={nextcrm?.profile?.industry??''}/></label>
+   <label>Lista de preços (ID NextCRM)<input name="pricelistId" defaultValue={nextcrm?.profile?.pricelistId??''}/></label>
+   <label>Situação cadastral<select name="status" defaultValue={nextcrm?.profile?.status??'Active'}><option value="Active">Ativo</option><option value="Inactive">Inativo</option></select></label>
+   <label>Tipo de cliente<select name="type" defaultValue={nextcrm?.profile?.type??'Customer'}><option value="Customer">Cliente</option><option value="Partner">Parceiro</option><option value="Prospect">Prospect</option></select></label>
+   </div>
+  </div>
+  <div className="form-section"><span className="eyebrow">ENDEREÇO DE COBRANÇA</span><div className="form-grid">
+   <label>Logradouro<input name="billingStreet" defaultValue={nextcrm?.profile?.billingStreet??''}/></label>
+   <label>CEP<input name="billingPostalCode" defaultValue={nextcrm?.profile?.billingPostalCode??''}/></label>
+   <label>Cidade<input name="billingCity" defaultValue={nextcrm?.profile?.billingCity??''}/></label>
+   <label>Estado<input name="billingState" defaultValue={nextcrm?.profile?.billingState??''}/></label>
+   <label>País<input name="billingCountry" defaultValue={nextcrm?.profile?.billingCountry??''}/></label>
+  </div></div>
+  <div className="form-section"><span className="eyebrow">ENDEREÇO DE ENTREGA</span><div className="form-grid">
+   <label>Logradouro<input name="shippingStreet" defaultValue={nextcrm?.profile?.shippingStreet??''}/></label>
+   <label>CEP<input name="shippingPostalCode" defaultValue={nextcrm?.profile?.shippingPostalCode??''}/></label>
+   <label>Cidade<input name="shippingCity" defaultValue={nextcrm?.profile?.shippingCity??''}/></label>
+   <label>Estado<input name="shippingState" defaultValue={nextcrm?.profile?.shippingState??''}/></label>
+   <label>País<input name="shippingCountry" defaultValue={nextcrm?.profile?.shippingCountry??''}/></label>
+  </div></div>
+  <div className="form-section"><span className="eyebrow">CONTEXTO COMERCIAL</span><label>Descrição empresarial<textarea name="description" rows={4} defaultValue={nextcrm?.profile?.description??''}/></label></div>
+  {commandError&&<div role="alert" className="form-error">{commandError}</div>}
+  <footer><button type="button" className="secondary" disabled={saving} onClick={()=>setDialog(null)}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Salvando cadastro…' :'Salvar cadastro'}</button></footer>
+ </form></section></div>}
  </section>;
 }
