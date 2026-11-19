@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Plus,RefreshCw,Search,X} from 'lucide-react';
 import type {ClientFields} from '../lib/domain/clients';
+import {changedNextcrmProfileFields, type EditableNextcrmForm, type EditableNextcrmProfile} from '../lib/integrations/nextcrm/profile-changes';
 export type Client={id:string;legalName:string;tradeName:string|null;document:string|null;email:string|null;phone:string|null;state:{code:'active'|'inactive';label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[]};
 type Context=Client&{related:{orders:{total:number}};history:{command:string;createdAt:string}[];warnings:string[]};
 type NextcrmProfile={
@@ -64,10 +65,10 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   if(!context||busy.current)return;
   busy.current=true;setSaving(true);setCommandError('');
   const f=new FormData(e.currentTarget);
-  const changes:Record<string,string|null>={};
-  for(const name of ['officePhone','website','fax','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','vat','companyId']){
-   const value=String(f.get(name)||'').trim(); changes[name]=value||null;
-  }
+  const names: Array<keyof EditableNextcrmProfile> = ['officePhone','website','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue'];
+  const form = Object.fromEntries(names.map(name=>[name,String(f.get(name)??'')])) as EditableNextcrmForm;
+  const changes = changedNextcrmProfileFields(nextcrm?.profile as EditableNextcrmProfile, form);
+  if(!Object.keys(changes).length){setCrmEditing(false);busy.current=false;setSaving(false);return;}
   try{
    const response=await fetch('/api/clients/'+encodeURIComponent(context.id)+'/nextcrm/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),changes})});
    const data=await response.json() as {error?:string};
