@@ -54,7 +54,8 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
       ...crmForm,
     })
    : Object.fromEntries(Object.entries(crmForm).map(([name,value])=>[name,value.trim()||null]));
-  const hasCrmData=Object.values(crmChanges).some(value=>value!==null);
+  const hasCrmData=Object.entries(crmChanges).some(([name,value])=>
+   value!==null && !(dialog.client===null && ((name==='status'&&value==='Active')||(name==='type'&&value==='Customer'))));
   try{
    await send(dialog.client?'/api/clients/'+dialog.client.id+'/commands':'/api/clients',dialog.client?{key:dialog.key,command:'revise',version:dialog.client.state.rowVersion,data}:{id:dialog.key,data});
    const id=dialog.client?.id??dialog.key;
