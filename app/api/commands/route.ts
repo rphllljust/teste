@@ -40,7 +40,10 @@ export async function POST(request: Request) {
       }
 
       if (['authorize', 'start', 'complete', 'cancel', 'measure'].includes(p.command)) {
-        const rows = await query('SELECT id,owner_id,status,version FROM service_orders WHERE id=$1 AND (owner_id IS NULL OR owner_id=$2) FOR UPDATE', [p.id, context!.actorId]);
+        // Operational commands are tenant/owner scoped. Legacy ownerless rows
+        // may remain readable for migration purposes, but they must never be
+        // mutated by an authenticated actor.
+        const rows = await query('SELECT id,owner_id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [p.id, context!.actorId]);
         if (!rows.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
         const order = rows.rows[0] as { id: string; owner_id: string | null; status: string; version: number };
         if (order.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem mudou. Atualize o contexto.');

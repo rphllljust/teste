@@ -32,6 +32,8 @@ export const businessCommands=pgTable('business_commands',{id:text('id').primary
 export const financeAuditEvents=pgTable('finance_audit_events',{id:text('id').primaryKey(),entityType:text('entity_type').notNull(),entityId:text('entity_id').notNull(),action:text('action').notNull(),actorId:text('actor_id').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),metadata:text('metadata').notNull(),occurredAt:text('occurred_at').notNull()},t=>[uniqueIndex('finance_audit_idempotency').on(t.entityType,t.entityId,t.action,t.requestHash),index('finance_audit_entity_time').on(t.entityType,t.entityId,t.occurredAt),index('finance_audit_actor_time').on(t.actorId,t.occurredAt)]);
 export const cashTransfers=pgTable('cash_transfers',{id:text('id').primaryKey(),fromAccountReference:text('from_account_reference').notNull(),toAccountReference:text('to_account_reference').notNull(),amount:integer('amount').notNull(),effectiveDate:text('effective_date').notNull(),reference:text('reference').notNull(),status:text('status').notNull().default('posted'),actorId:text('actor_id').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull()},t=>[check('cash_transfer_amount_positive',sql`${t.amount}>0`),check('cash_transfer_distinct_accounts',sql`${t.fromAccountReference}<>${t.toAccountReference}`),check('cash_transfer_status',sql`${t.status} IN ('posted','reversed')`),uniqueIndex('cash_transfer_actor_hash').on(t.actorId,t.requestHash),index('cash_transfer_actor_date').on(t.actorId,t.effectiveDate,t.id)]);
 export const financePeriodCloses=pgTable('finance_period_closes',{id:text('id').primaryKey(),periodStart:text('period_start').notNull(),periodEnd:text('period_end').notNull(),status:text('status').notNull().default('closed'),actorId:text('actor_id').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),closedAt:text('closed_at').notNull()},t=>[check('finance_period_close_status',sql`${t.status}='closed'`),check('finance_period_close_range',sql`${t.periodStart}<=${t.periodEnd}`),uniqueIndex('finance_period_close_actor_hash').on(t.actorId,t.requestHash),index('finance_period_close_actor_range').on(t.actorId,t.periodStart,t.periodEnd)]);
+export const workflowApprovalRequests=pgTable('workflow_approval_requests',{id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),entityType:text('entity_type').notNull(),entityId:text('entity_id').notNull(),command:text('command').notNull(),state:text('state').notNull().default('pending'),requestedBy:text('requested_by').notNull(),approverId:text('approver_id').notNull(),expectedVersion:integer('expected_version').notNull(),rowVersion:integer('row_version').notNull().default(1),payload:text('payload').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull(),decidedAt:text('decided_at')},t=>[check('workflow_approval_entity',sql`${t.entityType}='finance_period_close'`),check('workflow_approval_command',sql`${t.command}='close'`),check('workflow_approval_state',sql`${t.state} IN ('pending','approved','rejected')`),check('workflow_approval_version',sql`${t.rowVersion}>0`),index('workflow_approval_inbox').on(t.approverId,t.state,t.createdAt)]);
+export const workflowApprovalEvents=pgTable('workflow_approval_events',{id:text('id').primaryKey(),requestId:text('request_id').notNull().references(()=>workflowApprovalRequests.id),eventType:text('event_type').notNull(),actorId:text('actor_id').notNull(),fromState:text('from_state'),toState:text('to_state').notNull(),version:integer('version').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),metadata:text('metadata').notNull(),createdAt:text('created_at').notNull()},t=>[index('workflow_approval_events_history').on(t.requestId,t.createdAt,t.id),uniqueIndex('workflow_approval_event_idempotency').on(t.requestId,t.requestHash)]);
 
 export const proposals=pgTable('proposals',{id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),clientId:text('client_id').notNull().references(()=>clients.id),predecessorId:text('predecessor_id'),title:text('title').notNull(),scope:text('scope').notNull(),validUntil:text('valid_until').notNull(),status:text('status').notNull().default('draft'),rowVersion:integer('row_version').notNull().default(1),total:integer('total').notNull(),evidenceReference:text('evidence_reference'),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull()});
 export const proposalLines=pgTable('proposal_lines',{id:text('id').primaryKey(),proposalId:text('proposal_id').notNull().references(()=>proposals.id),position:integer('position').notNull(),description:text('description').notNull(),unit:text('unit').notNull(),quantity:integer('quantity').notNull(),unitPrice:integer('unit_price').notNull(),amount:integer('amount').notNull()});
@@ -71,6 +73,25 @@ export const inventoryMovements = pgTable('inventory_movements', {
  index('inventory_movement_item').on(t.itemId, t.createdAt, t.id),
  check('inventory_delta', sql`abs(${t.delta}) BETWEEN 1 AND 1000000000000`),
 ]);
+
+export const inventoryReservations = pgTable('inventory_reservations', {
+ id: text('id').primaryKey(),
+ itemId: text('item_id').notNull().references(() => inventoryItems.id),
+ ownerId: text('owner_id').notNull(),
+ sourceDocumentType: text('source_document_type').notNull(),
+ sourceDocumentId: text('source_document_id').notNull(),
+ sourceReference: text('source_reference').notNull(),
+ quantity: integer('quantity').notNull(),
+ status: text('status').notNull().default('reserved'),
+ createdAt: text('created_at').notNull(),
+ requestHash: text('request_hash').notNull(),
+ correlationId: text('correlation_id').notNull(),
+}, t => [
+  uniqueIndex('inventory_reservation_owner_source_item').on(t.ownerId, t.sourceDocumentType, t.sourceDocumentId, t.itemId),
+  index('inventory_reservation_item_status').on(t.itemId, t.ownerId, t.status, t.createdAt),
+  check('inventory_reservation_quantity', sql`${t.quantity} BETWEEN 1 AND 1000000000000`),
+  check('inventory_reservation_status', sql`${t.status} IN ('reserved','released','consumed')`),
+ ]);
 
 export const suppliers = pgTable('suppliers', {
  id: text('id').primaryKey(),

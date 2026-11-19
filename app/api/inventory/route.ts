@@ -20,6 +20,13 @@ const command = z.discriminatedUnion('type', [
   quantity: quantity.refine(value => value > 0), reference: z.string().trim().min(3).max(160),
   orderId: id.nullable(),
  }).strict(),
+ z.object({
+  type: z.literal('reserve'), id, itemId: id,
+  sourceDocumentType: z.string().trim().min(2).max(60).regex(/^[A-Za-z0-9._-]+$/),
+  sourceDocumentId: id,
+  quantity: quantity.refine(value => value > 0),
+  reference: z.string().trim().min(3).max(160),
+ }).strict(),
 ]);
 
 export async function GET(request: Request) {
@@ -32,14 +39,20 @@ export async function GET(request: Request) {
   if (itemId) {
    if (!id.safeParse(itemId).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Material inválido.');
    const results = await db.batch([
-    db.prepare('SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND id=?').bind(context.actorId, itemId),
+    db.prepare(`SELECT id, sku, name, unit, minimum,
+      COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id),0) AS balance,
+      COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS reserved,
+      COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id),0) -
+      COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS available
+      FROM inventory_items WHERE owner_id=? AND id=?`).bind(context.actorId, itemId),
     db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS "orderId", m.procurement_order_id AS "procurementOrderId", m.procurement_receipt_line_id AS "receiptLineId", o.title AS "orderTitle", m.created_at AS "createdAt" FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
+    db.prepare("SELECT id, source_document_type AS \"sourceDocumentType\", source_document_id AS \"sourceDocumentId\", source_reference AS \"sourceReference\", quantity, status, created_at AS \"createdAt\" FROM inventory_reservations WHERE owner_id=? AND item_id=? ORDER BY created_at ASC, id ASC LIMIT 500").bind(context.actorId, itemId),
     db.prepare("SELECT id, title FROM service_orders WHERE owner_id=? AND status='executing' ORDER BY created_at DESC, id DESC LIMIT 50").bind(context.actorId),
    ]);
    if (!results[0].results.length) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
-   const item = results[0].results[0] as { balance: number };
+   const item = results[0].results[0] as { balance: number; reserved: number; available: number };
    const ledger = buildStockLedger(results[1].results as never[]);
-   return respond({ item, movements: results[1].results, orders: results[2].results, ledger: { entries: ledger.entries, closingBalance: ledger.closingBalance, reconciliation: reconcileStockLedger(ledger, Number(item.balance)) } }, context);
+   return respond({ item, movements: results[1].results, reservations: results[2].results, orders: results[3].results, ledger: { entries: ledger.entries, closingBalance: ledger.closingBalance, reconciliation: reconcileStockLedger(ledger, Number(item.balance)) } }, context);
   }
   const query = (url.searchParams.get('q') ?? '').trim().slice(0, 120);
   const page = Number(url.searchParams.get('page') ?? '1');
@@ -63,7 +76,7 @@ export async function POST(request: Request) {
   const db = database();
   const hash = await fingerprint({ actor: context.actorId, data });
   const now = new Date().toISOString();
-  const table = data.type === 'create' ? 'inventory_items' : 'inventory_movements';
+  const table = data.type === 'create' ? 'inventory_items' : data.type === 'reserve' ? 'inventory_reservations' : 'inventory_movements';
   const find = () => db.prepare(`SELECT owner_id, request_hash FROM ${table} WHERE id=?`).bind(data.id).first<{ owner_id: string; request_hash: string }>();
   async function replay() {
    const prior = await find();
@@ -76,6 +89,19 @@ export async function POST(request: Request) {
    if (data.type === 'create') {
     await db.prepare('INSERT INTO inventory_items (id,owner_id,sku,name,unit,minimum,created_at,request_hash) VALUES (?,?,?,?,?,?,?,?)')
      .bind(data.id, context.actorId, data.sku, data.name, data.unit, data.minimum, now, hash).run();
+   } else if (data.type === 'reserve') {
+    await db.transaction(async query => {
+     const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
+     if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+     const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
+     const reserved = await query("SELECT COALESCE(SUM(quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
+     const available = Number(stock.rows[0]?.balance ?? 0) - Number(reserved.rows[0]?.reserved ?? 0);
+     if (available < data.quantity) throw new ApiError(409, 'AVAILABILITY_CONFLICT', 'A reserva supera o saldo disponível.');
+     await query(`INSERT INTO inventory_reservations
+       (id,item_id,owner_id,source_document_type,source_document_id,source_reference,quantity,status,created_at,request_hash,correlation_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10)`,
+      [data.id, data.itemId, context!.actorId, data.sourceDocumentType, data.sourceDocumentId, data.reference, data.quantity, now, hash, context!.correlationId]);
+    });
    } else {
     const delta = data.direction === 'in' ? data.quantity : -data.quantity;
     await db.transaction(async query => {
@@ -101,6 +127,7 @@ export async function POST(request: Request) {
    if (message.includes('CISNE_INVENTORY_BALANCE')) throw new ApiError(409, 'BALANCE_CONFLICT', 'A movimentação supera o saldo disponível ou o limite de estoque.');
    if (message.includes('CISNE_INVENTORY_ORDER')) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
    if (message.includes('CISNE_INVENTORY_OWNER')) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+   if (message.includes('inventory_reservation_owner_source_item')) throw new ApiError(409, 'RESERVATION_EXISTS', 'Já existe uma reserva para este documento e material.');
    throw error;
   }
   return respond({ id: data.id }, context, 201);
