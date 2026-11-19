@@ -49,6 +49,14 @@ after(async()=>{
   }
 });
 
+test('NextCRM readiness rejects anonymous access with an authorization error',async()=>{
+  const response=await readinessGET(new Request('http://localhost/api/integrations/nextcrm/readiness'));
+  const data=await response.json() as {code:string;correlationId:string};
+  assert.equal(response.status,401);
+  assert.equal(data.code,'AUTHENTICATION_REQUIRED');
+  assert.match(data.correlationId,/^[0-9a-f-]{36}$/);
+});
+
 test('NextCRM readiness never counts another operator or another instance as user approval',async()=>{
   const noMapping=await status(owner);
   assert.equal(noMapping.schemaApplied,true);
