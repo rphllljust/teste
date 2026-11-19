@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { PoolClient } from 'pg';
 import { database, databasePool } from '../../../../../../db/raw';
 import {
   ApiError, failure, jsonBody, requestContext, respond, type RequestContext,
@@ -151,7 +152,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     client = await pool.connect();
     await client.query('BEGIN');
     const locked = await client.query(
-      `SELECT nextcrm_account_id AS "accountId", instance_key AS "instanceKey"
+      `SELECT nextcrm_account_id AS "accountId", instance_key AS "instanceKey", active
          FROM nextcrm_erp_client_account_mappings
         WHERE erp_client_id=$1 FOR UPDATE`,
       [id],
