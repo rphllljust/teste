@@ -86,7 +86,39 @@ export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
         if (x.authorized !== true || x.tenantKey !== tenantKey ||
             x.erpClientId !== erpClientId || typeof x.accountId !== 'string' ||
             !UUID.test(x.accountId)) throw new NextcrmAccountLookupUnavailable();
-        return {accountId: x.accountId, erpClientId, tenantKey};
+        const profileValue = x.profile;
+        let profile: NextcrmAccountProfile | null = null;
+        if (profileValue && typeof profileValue === 'object') {
+          const p = profileValue as Record<string, unknown>;
+          const text = (key: string) => typeof p[key] === 'string' ? p[key] as string : null;
+          profile = {
+            name: text('name'),
+            officePhone: text('officePhone'),
+            website: text('website'),
+            fax: text('fax'),
+            companyId: text('companyId'),
+            vat: text('vat'),
+            email: text('email'),
+            billingStreet: text('billingStreet'),
+            billingPostalCode: text('billingPostalCode'),
+            billingCity: text('billingCity'),
+            billingState: text('billingState'),
+            billingCountry: text('billingCountry'),
+            shippingStreet: text('shippingStreet'),
+            shippingPostalCode: text('shippingPostalCode'),
+            shippingCity: text('shippingCity'),
+            shippingState: text('shippingState'),
+            shippingCountry: text('shippingCountry'),
+            description: text('description'),
+            annualRevenue: text('annualRevenue'),
+            memberOf: text('memberOf'),
+            industry: text('industry'),
+            pricelistId: text('pricelistId'),
+            status: text('status'),
+            type: text('type'),
+          };
+        }
+        return {accountId: x.accountId, erpClientId, tenantKey, profile};
       } catch (error) {
         if (error instanceof NextcrmAccountLookupUnavailable) throw error;
         throw new NextcrmAccountLookupUnavailable();
