@@ -4,6 +4,7 @@ export const NEXTCRM_BRIDGE_PATH = '/api/internal/erp-document-authorization';
 export const NEXTCRM_UPLOAD_PATH = '/api/internal/erp-document-upload';
 export const NEXTCRM_ACCOUNT_LOOKUP_PATH = '/api/internal/erp-account-lookup';
 export const NEXTCRM_ACCOUNT_UPDATE_PATH = '/api/internal/erp-account-update';
+export const NEXTCRM_ACCOUNT_CREATE_PATH = '/api/internal/erp-account-create';
 export const NEXTCRM_BRIDGE_MAX_SKEW_MS = 30_000;
 export const NEXTCRM_BRIDGE_MAX_BODY_BYTES = 2_048;
 
