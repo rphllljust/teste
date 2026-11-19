@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { getNextcrmInstanceKey } from '../../../../../../../lib/integrations/nextcrm/config';
 import { z } from 'zod';
 import { database, databasePool } from '../../../../../../../db/raw';
 import {
