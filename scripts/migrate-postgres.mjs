@@ -17,6 +17,12 @@ const migrations = [
   { id: '0006_cisne_company_service_catalog', file: '../drizzle-pg/0006_cisne_company_service_catalog.sql' },
   { id: '0007_field_planning', file: '../drizzle-pg/0007_field_planning.sql' },
   { id: '0008_accounting_event_rules', file: '../drizzle-pg/0008_accounting_event_rules.sql' },
+  // Field workforce/execution migrations were historically named 0008-0010,
+  // but 0008 is already the canonical accounting migration in this ledger.
+  // Keep the SQL files append-only and assign collision-free ledger IDs.
+  { id: '0009_field_people_enterprise', file: '../drizzle-pg/0008_field_people_enterprise.sql' },
+  { id: '0010_execution_operational_detail', file: '../drizzle-pg/0009_execution_operational_detail.sql' },
+  { id: '0011_execution_responsible_person', file: '../drizzle-pg/0010_execution_responsible_person.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
