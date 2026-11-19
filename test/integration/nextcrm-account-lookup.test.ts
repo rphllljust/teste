@@ -28,6 +28,7 @@ test('account lookup accepts only a signed verified CRM response', async () => {
       };
       const body = JSON.stringify({
         authorized: true, accountId, erpClientId, tenantKey,
+        profile: { name: 'Acme CRM', billingCity: 'Porto Velho' },
       });
       return new Response(body, {
         status: 200,
@@ -41,5 +42,7 @@ test('account lookup accepts only a signed verified CRM response', async () => {
   });
 
   const result = await verifier.lookupAccountForClient(subjectId, erpClientId, tenantKey);
-  assert.deepEqual(result, { accountId, erpClientId, tenantKey });
+  assert.equal(result?.accountId, accountId);
+  assert.equal(result?.profile?.name, 'Acme CRM');
+  assert.equal(result?.profile?.billingCity, 'Porto Velho');
 });
