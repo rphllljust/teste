@@ -194,6 +194,35 @@ export async function reverseReceivableSettlement(context: RequestContext, input
   });
 }
 
+export async function regularizePayablePaymentAccounting(context: RequestContext, input: { paymentId: string; commandKey: string; requestHash: string }) {
+  return database().transaction(async query => {
+    if (!input.paymentId || !input.commandKey || !input.requestHash)
+      throw new ApiError(400, 'VALIDATION_FAILED', 'A regularização precisa de idempotência.');
+    const result = await query(`SELECT id, kind, amount, effective_date, payable_id
+      FROM payable_payments
+      WHERE id=$1 AND actor_id=$2
+      FOR UPDATE`, [input.paymentId, context.actorId]);
+    if (!result.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Fato financeiro não encontrado.');
+    const row = result.rows[0];
+    const eventType = row.kind === 'payment' ? 'payable_payment' : row.kind === 'reversal' ? 'payable_reversal' : null;
+    if (!eventType) throw new ApiError(409, 'ACCOUNTING_EVENT_UNSUPPORTED', 'Este fato financeiro não possui evento contábil regularizável.');
+    const accounting = await postConfiguredAccountingEvent(query, context, {
+      eventType,
+      sourceReference: `${eventType}:${input.paymentId}`,
+      description: `Regularização contábil do fato financeiro ${input.paymentId}`,
+      effectiveDate: String(row.effective_date),
+      amount: Number(row.amount),
+    });
+    await audit(query, context, 'payable', String(row.payable_id), 'accounting_regularized', input.requestHash, {
+      paymentId: input.paymentId, eventType, accounting,
+    });
+    return {
+      ok: true,
+      replayed: Boolean(accounting.replayed),
+      resource: { type: 'accountingRegularization', paymentId: input.paymentId, accounting },
+    };
+  });
+}
 export async function registerPayablePayment(context: RequestContext, input: { payableId: string; amount: number; effectiveDate: string; reference: string; commandKey: string; requestHash: string }) {
   return database().transaction(async query => {
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
