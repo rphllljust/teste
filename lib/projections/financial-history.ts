@@ -11,7 +11,9 @@ export function financialHistory(kind:'receivables'|'payables',id:string,page:nu
  // core receipt/payment history only needs the immutable reversal link.
  const reversible=`s.kind='${normal}' AND NOT EXISTS(SELECT 1 FROM ${table} x WHERE x.reverses_id=s.id)`;
  return [
-  db.prepare(`SELECT s.id,s.kind,CAST(s.amount AS TEXT) AS "amountScaled",s.effective_date AS "effectiveDate",s.reference,s.reverses_id AS "reversesId",s.created_at AS "createdAt",EXISTS(SELECT 1 FROM ${table} x WHERE x.reverses_id=s.id) AS "reversed",CASE WHEN ${reversible} THEN 1 ELSE 0 END AS "canReverse" FROM ${table} s WHERE s.${parent}=? ORDER BY s.created_at DESC,s.id DESC LIMIT 50 OFFSET ?`).bind(id,(page-1)*50),
+  db.prepare(`SELECT s.id,s.kind,CAST(s.amount AS TEXT) AS "amountScaled",s.effective_date AS "effectiveDate",s.reference,s.reverses_id AS "reversesId",s.created_at AS "createdAt",EXISTS(SELECT 1 FROM ${table} x WHERE x.reverses_id=s.id) AS "reversed",CASE WHEN ${reversible} THEN 1 ELSE 0 END AS "canReverse",
+    (SELECT j.id FROM journal_entries j WHERE j.actor_id=s.actor_id AND j.source_reference IN ('receivable_settlement:'||s.id,'receivable_reversal:'||s.id,'payable_payment:'||s.id,'payable_reversal:'||s.id) ORDER BY j.created_at DESC LIMIT 1) AS "accountingJournalId"
+    FROM ${table} s WHERE s.${parent}=? ORDER BY s.created_at DESC,s.id DESC LIMIT 50 OFFSET ?`).bind(id,(page-1)*50),
   db.prepare(`SELECT COUNT(*) AS total FROM ${table} s WHERE s.${parent}=? AND ${reversible}`).bind(id),
  ];
 }
