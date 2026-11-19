@@ -22,7 +22,7 @@ const changesSchema = z.record(
     "billingPostalCode", "billingCity", "billingState", "billingCountry",
     "shippingStreet", "shippingPostalCode", "shippingCity",
     "shippingState", "shippingCountry", "description", "annualRevenue",
-    "memberOf", "vat", "companyId",
+    "memberOf", "vat", "companyId", "industry", "pricelistId", "status", "type",
   ]);
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Unsupported account field", path: [key] });
@@ -58,6 +58,10 @@ const fields: Record<string, string> = {
   memberOf: "member_of",
   vat: "vat",
   companyId: "company_id",
+  industry: "industry",
+  pricelistId: "pricelist_id",
+  status: "status",
+  type: "type",
 };
 
 async function smallBody(req: NextRequest): Promise<string | null> {

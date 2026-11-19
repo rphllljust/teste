@@ -18,6 +18,10 @@ export type EditableNextcrmProfile = {
   description: string | null;
   annualRevenue: string | null;
   memberOf: string | null;
+  industry: string | null;
+  pricelistId: string | null;
+  status: string | null;
+  type: string | null;
 };
 
 export type EditableNextcrmForm = {

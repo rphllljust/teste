@@ -9,6 +9,10 @@ const body=z.object({
   id:z.string().uuid(),
   fullName:z.string().trim().min(2).max(160),
   specialty:z.string().trim().min(2).max(120),
+  employeeCode:z.string().trim().max(40).optional().or(z.literal('')),
+  department:z.string().trim().max(120).optional().or(z.literal('')),
+  phone:z.string().trim().max(40).optional().or(z.literal('')),
+  costHourScaled:z.coerce.number().int().min(0).max(999999999999).optional().nullable(),
 }).strict();
 
 export async function GET(request:Request){
@@ -25,7 +29,7 @@ export async function GET(request:Request){
     const args=q?[context.actorId,escapedLike(q),escapedLike(q),101,(page-1)*100]:
       [context.actorId,101,(page-1)*100];
     const result=await database().prepare(
-      'SELECT id,full_name AS "fullName",specialty,active,created_at AS "createdAt" FROM field_people WHERE owner_id=?'+where+
+      'SELECT id,full_name AS "fullName",specialty,employee_code AS "employeeCode",department,phone,cost_hour_scaled AS "costHourScaled",active,created_at AS "createdAt" FROM field_people WHERE owner_id=?'+where+
       ' ORDER BY full_name,id LIMIT ? OFFSET ?',
     ).bind(...args).all();
     return respond({items:result.results.slice(0,100),pageInfo:{page,hasMore:result.results.length>100}},context);
@@ -48,8 +52,8 @@ export async function POST(request:Request){
         return {ok:true,replayed:true,personId:p.id};
       }
       await query(
-        'INSERT INTO field_people(id,owner_id,full_name,specialty,request_hash) VALUES($1,$2,$3,$4,$5)',
-        [p.id,context!.actorId,p.fullName,p.specialty,hash],
+        'INSERT INTO field_people(id,owner_id,full_name,specialty,employee_code,department,phone,cost_hour_scaled,request_hash) VALUES($1,$2,$3,$4,NULLIF($5,\'\'),NULLIF($6,\'\'),NULLIF($7,\'\'),$8,$9)',
+        [p.id,context!.actorId,p.fullName,p.specialty,p.employeeCode??'',p.department??'',p.phone??'',p.costHourScaled??null,hash],
       );
       return {ok:true,replayed:false,personId:p.id};
     }).catch(pgConflict);

@@ -12,7 +12,7 @@ const changesSchema = z.record(z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,40}$/), 
   const allowed = new Set([
     "officePhone","website","fax","email","billingStreet","billingPostalCode","billingCity","billingState","billingCountry",
     "shippingStreet","shippingPostalCode","shippingCity","shippingState","shippingCountry","description","annualRevenue",
-    "memberOf","vat","companyId",
+    "memberOf","vat","companyId","industry","pricelistId","status","type",
   ]);
   for (const key of Object.keys(value)) if (!allowed.has(key)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Unsupported account field", path: [key] });
 });
@@ -25,7 +25,7 @@ const fields: Record<string,string> = {
   billingPostalCode:"billing_postal_code", billingCity:"billing_city", billingState:"billing_state", billingCountry:"billing_country",
   shippingStreet:"shipping_street", shippingPostalCode:"shipping_postal_code", shippingCity:"shipping_city",
   shippingState:"shipping_state", shippingCountry:"shipping_country", description:"description", annualRevenue:"annual_revenue",
-  memberOf:"member_of", vat:"vat", companyId:"company_id",
+  memberOf:"member_of", vat:"vat", companyId:"company_id", industry:"industry", pricelistId:"pricelist_id", status:"status", type:"type",
 };
 async function readBody(req: NextRequest): Promise<string|null> {
   const cl=req.headers.get("content-length");

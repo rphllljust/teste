@@ -202,6 +202,7 @@ async function run() {
     const canonical=[
       ...preexisting,'0003_finance_audit','0004_cash_transfers','0005_finance_period_closes',
       '0006_cisne_company_service_catalog','0007_field_planning','0008_accounting_event_rules',
+      '0009_field_people_enterprise','0010_execution_operational_detail','0011_execution_responsible_person',
     ];
     await assertPreserved(scoped,canonical);
     await guardImmutableAudit(scoped);

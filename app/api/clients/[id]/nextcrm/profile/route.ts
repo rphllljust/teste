@@ -27,7 +27,7 @@ const changes = z.record(
     'billingPostalCode', 'billingCity', 'billingState', 'billingCountry',
     'shippingStreet', 'shippingPostalCode', 'shippingCity',
     'shippingState', 'shippingCountry', 'description', 'annualRevenue',
-    'memberOf', 'vat', 'companyId',
+    'memberOf', 'vat', 'companyId', 'industry', 'pricelistId', 'status', 'type',
   ]);
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: 'Campo CRM não permitido.', path: [key] });

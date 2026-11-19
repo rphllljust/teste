@@ -9,7 +9,7 @@ type NextcrmProfile={
  name:string|null;officePhone:string|null;website:string|null;fax:string|null;companyId:string|null;vat:string|null;email:string|null;
  billingStreet:string|null;billingPostalCode:string|null;billingCity:string|null;billingState:string|null;billingCountry:string|null;
  shippingStreet:string|null;shippingPostalCode:string|null;shippingCity:string|null;shippingState:string|null;shippingCountry:string|null;
- description:string|null;annualRevenue:string|null;memberOf:string|null;industry:string|null;pricelistId:string|null;status:string|null;type:string|null;
+  description:string|null;annualRevenue:string|null;memberOf:string|null;industry:string|null;pricelistId:string|null;status:string|null;type:string|null;
 };
 type NextcrmContext={mapped:boolean;state:'synchronized'|'not_linked'|'not_configured'|'unavailable'|'invalid';message?:string;profile?:NextcrmProfile|null;mapping?:{accountId:string;instanceKey:string;verifiedAt:string}};
 type List={items:Client[];pageInfo:{total:number;sourceTotal:number;hasMore:boolean}};
@@ -47,14 +47,15 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   e.preventDefault();if(busy.current||!dialog)return;busy.current=true;setSaving(true);setCommandError('');
   const f=new FormData(e.currentTarget),nullable=(name:string)=>String(f.get(name)||'').trim()||null;
   const data:ClientFields={legalName:String(f.get('legalName')).trim(),tradeName:nullable('tradeName'),document:nullable('document'),email:nullable('email'),phone:nullable('phone')};
-  const crmNames=['officePhone','website','fax','email','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf'] as const;
+  const crmNames=['officePhone','website','fax','email','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','industry','pricelistId','status','type'] as const;
   const crmForm=Object.fromEntries(crmNames.map(name=>[name,String(f.get(name)??'')])) as Record<typeof crmNames[number],string>;
   const crmChanges:Record<string,string|null>=dialog.client&&nextcrm?.profile
    ? changedNextcrmProfileFields(nextcrm.profile as EditableNextcrmProfile, {
       ...crmForm,
     })
    : Object.fromEntries(Object.entries(crmForm).map(([name,value])=>[name,value.trim()||null]));
-  const hasCrmData=Object.values(crmChanges).some(value=>value!==null);
+  const hasCrmData=Object.entries(crmChanges).some(([name,value])=>
+   value!==null && !(dialog.client===null && ((name==='status'&&value==='Active')||(name==='type'&&value==='Customer'))));
   try{
    await send(dialog.client?'/api/clients/'+dialog.client.id+'/commands':'/api/clients',dialog.client?{key:dialog.key,command:'revise',version:dialog.client.state.rowVersion,data}:{id:dialog.key,data});
    const id=dialog.client?.id??dialog.key;
@@ -90,7 +91,7 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   if(!context||busy.current)return;
   busy.current=true;setSaving(true);setCommandError('');
   const f=new FormData(e.currentTarget);
-  const names: Array<keyof EditableNextcrmProfile> = ['officePhone','website','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue'];
+  const names: Array<keyof EditableNextcrmProfile> = ['officePhone','website','fax','email','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','industry','pricelistId','status','type'];
   const form = Object.fromEntries(names.map(name=>[name,String(f.get(name)??'')])) as EditableNextcrmForm;
   const changes = changedNextcrmProfileFields(nextcrm?.profile as EditableNextcrmProfile, form);
   if(!Object.keys(changes).length){setCrmEditing(false);busy.current=false;setSaving(false);return;}
@@ -141,6 +142,10 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
     <label>VAT / inscrição<input name="vat" defaultValue={nextcrm?.profile?.vat??''}/></label>
     <label>Receita anual<input name="annualRevenue" defaultValue={nextcrm?.profile?.annualRevenue??''}/></label>
     <label>Empresa relacionada<input name="memberOf" defaultValue={nextcrm?.profile?.memberOf??''}/></label>
+   <label>Setor / indústria (ID NextCRM)<input name="industry" defaultValue={nextcrm?.profile?.industry??''}/></label>
+   <label>Lista de preços (ID NextCRM)<input name="pricelistId" defaultValue={nextcrm?.profile?.pricelistId??''}/></label>
+   <label>Situação cadastral<select name="status" defaultValue={nextcrm?.profile?.status??'Active'}><option value="Active">Ativo</option><option value="Inactive">Inativo</option></select></label>
+   <label>Tipo de cliente<select name="type" defaultValue={nextcrm?.profile?.type??'Customer'}><option value="Customer">Cliente</option><option value="Partner">Parceiro</option><option value="Prospect">Prospect</option></select></label>
    </div>
   </div>
   <div className="form-section"><span className="eyebrow">ENDEREÇO DE COBRANÇA</span><div className="form-grid">

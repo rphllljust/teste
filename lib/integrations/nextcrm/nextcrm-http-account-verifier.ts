@@ -170,7 +170,7 @@ export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
         'billingPostalCode', 'billingCity', 'billingState', 'billingCountry',
         'shippingStreet', 'shippingPostalCode', 'shippingCity',
         'shippingState', 'shippingCountry', 'description', 'annualRevenue',
-        'memberOf', 'vat', 'companyId',
+        'memberOf', 'vat', 'companyId', 'industry', 'pricelistId', 'status', 'type',
       ]);
       const safeChanges: Record<string, string | null> = {};
       for (const [key, value] of Object.entries(changes)) {
@@ -245,7 +245,7 @@ export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
         'billingPostalCode', 'billingCity', 'billingState', 'billingCountry',
         'shippingStreet', 'shippingPostalCode', 'shippingCity',
         'shippingState', 'shippingCountry', 'description', 'annualRevenue',
-        'memberOf', 'vat', 'companyId',
+        'memberOf', 'vat', 'companyId', 'industry', 'pricelistId', 'status', 'type',
       ]);
       const safeChanges: Record<string, string | null> = {};
       for (const [key, value] of Object.entries(changes)) {

@@ -12,6 +12,10 @@ export function legacyColumnsCompatible(table, actualColumns, legacyColumns) {
   const legacy = new Set(legacyColumns);
   if (actual.size !== actualColumns.length || legacy.size !== legacyColumns.length) return false;
   if (legacyColumns.some(column => !actual.has(column))) return false;
-  const additive = table === 'service_orders' ? new Set(['service_catalog_id']) : new Set();
+  const additive = table === 'service_orders'
+    ? new Set(['service_catalog_id'])
+    : table === 'execution_entries'
+      ? new Set(['stage','started_at','ended_at','notes','responsible_person_id'])
+      : new Set();
   return actualColumns.every(column => legacy.has(column) || additive.has(column));
 }

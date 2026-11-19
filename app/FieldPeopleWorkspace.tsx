@@ -1,7 +1,7 @@
 'use client';
 import {useCallback,useEffect,useState} from 'react';
 
-type Person={id:string;fullName:string;specialty:string;active:boolean};
+type Person={id:string;fullName:string;specialty:string;employeeCode?:string|null;department?:string|null;phone?:string|null;costHourScaled?:number|null;active:boolean};
 export default function FieldPeopleWorkspace(){
   const [items,setItems]=useState<Person[]>([]);
   const [error,setError]=useState('');
@@ -31,7 +31,9 @@ export default function FieldPeopleWorkspace(){
       const r=await fetch('/api/field/people',{
         method:'POST',headers:{'Content-Type':'application/json'},
         body:JSON.stringify({id:crypto.randomUUID(),fullName:String(body.get('fullName')),
-          specialty:String(body.get('specialty'))}),
+          specialty:String(body.get('specialty')),employeeCode:String(body.get('employeeCode')??''),
+          department:String(body.get('department')??''),phone:String(body.get('phone')??''),
+          costHourScaled:body.get('costHourScaled')?Math.round(Number(body.get('costHourScaled'))*100):null}),
       });
       const result=await r.json() as {error?:string};
       if(!r.ok)throw new Error(result.error||'Não foi possível salvar.');
@@ -46,8 +48,16 @@ export default function FieldPeopleWorkspace(){
     </div><button className="secondary" type="button" disabled={loading} onClick={()=>void load()}>Atualizar</button></header>
     <form onSubmit={create} className="module-workspace">
       <h3>Cadastrar profissional</h3>
-      <label>Nome completo<input name="fullName" minLength={2} maxLength={160} required /></label>
-      <label>Função ou especialidade<input name="specialty" minLength={2} maxLength={120} required /></label>
+      <fieldset><legend>Identificação profissional</legend>
+        <label>Nome completo<input name="fullName" minLength={2} maxLength={160} required /></label>
+        <label>Matrícula ou código<input name="employeeCode" maxLength={40} placeholder="Opcional, mas único por empresa" /></label>
+        <label>Função ou especialidade<input name="specialty" minLength={2} maxLength={120} required /></label>
+        <label>Departamento<input name="department" maxLength={120} placeholder="Operações, manutenção…" /></label>
+      </fieldset>
+      <fieldset><legend>Contato e custo operacional</legend>
+        <label>Telefone<input name="phone" maxLength={40} inputMode="tel" /></label>
+        <label>Custo/hora (R$)<input name="costHourScaled" type="number" min="0" step="0.01" inputMode="decimal" /></label>
+      </fieldset>
       <button className="primary" type="submit" disabled={saving}>Salvar profissional</button>
     </form>
     <form className="form-row" onSubmit={e=>{e.preventDefault();setPage(1);setAppliedQuery(query.trim());}}>
@@ -60,7 +70,7 @@ export default function FieldPeopleWorkspace(){
     {error?<div className="empty" role="alert">{error}</div>:loading?
       <div className="empty" role="status">Consultando profissionais…</div>:
       items.length?<div className="table-wrap"><table><thead><tr><th>Profissional</th><th>Especialidade</th><th>Estado</th></tr></thead>
-        <tbody>{items.map(person=><tr key={person.id}><td>{person.fullName}</td><td>{person.specialty}</td>
+        <tbody>{items.map(person=><tr key={person.id}><td><strong>{person.fullName}</strong><small>{person.employeeCode??'Sem matrícula'}</small></td><td>{person.specialty}<small>{person.department??'Departamento não informado'}</small></td>
           <td>{person.active?'Ativo':'Inativo'}</td></tr>)}</tbody></table></div>:
         <div className="empty">Nenhum profissional encontrado neste contexto.</div>}
     <div className="form-row" aria-label="Paginação de profissionais">
