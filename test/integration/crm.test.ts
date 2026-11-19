@@ -310,7 +310,7 @@ test('CRM opportunity creates exactly one tenant-owned ERP proposal draft with t
   }).projection;
   assert.equal(opportunityProjection.title,'Manutenção anual');
   assert.equal(opportunityProjection.client?.legalName,'Cliente ERP comercial CI');
-  assert.deepEqual(opportunityProjection.proposal,{id:proposalId,status:'draft'});
+  assert.deepEqual(opportunityProjection.proposal,{id:proposalId,status:'draft',total:'12505000',validUntil});
   assert.ok(opportunityProjection.history.some(event=>event.action==='createDraftProposal'));
   const deniedOpportunity=await opportunityDetail(req('GET',undefined,other),{
     params:Promise.resolve({id:draftOpportunity}),
