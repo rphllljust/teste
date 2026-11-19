@@ -138,7 +138,6 @@ export async function GET(request:Request,{params}:RouteContext){
       issues.sort((a,b)=>a.severity.localeCompare(b.severity)||
         a.code.localeCompare(b.code)||a.entityId.localeCompare(b.entityId)||
         (a.relatedId??'').localeCompare(b.relatedId??''));
-      issues.push(...accountingIssues);
       issues.sort((a,b)=>a.severity.localeCompare(b.severity)||a.code.localeCompare(b.code)||a.entityId.localeCompare(b.entityId));
       const finalCritical=issues.filter(i=>i.severity==='critical').length;
       const finalWarnings=issues.length-finalCritical;
