@@ -1,5 +1,5 @@
 import { databasePool } from '../../../../../db/raw';
-import { requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
+import { failure, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import {
   evaluateNextcrmReadiness,
   isBridgeSecretConfigured,
@@ -61,13 +61,7 @@ export async function GET(request: Request) {
       ...db,
     });
     return respond(result, context);
-  } catch {
-    return new Response(JSON.stringify({
-      error: 'Não foi possível verificar a prontidão da integração NextCRM.',
-      code: 'NEXTCRM_READINESS_UNAVAILABLE',
-    }), {
-      status: 503,
-      headers: { 'Cache-Control': 'no-store, private', 'Content-Type': 'application/json' },
-    });
+  } catch (error) {
+    return failure(error, context);
   }
 }
