@@ -40,7 +40,7 @@ for(const [a,b] of substitutions){
   expected=expected.replace(a,b);
 }
 expected=expected.replace(
-  'COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-lookup/route.ts ./app/api/internal/erp-account-lookup/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-update/route.ts ./app/api/internal/erp-account-update/route.ts\n# Optional AI',
+  'COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-lookup/route.ts ./app/api/internal/erp-account-lookup/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-update/route.ts ./app/api/internal/erp-account-update/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-upload/route.ts ./app/api/internal/erp-document-upload/route.ts\n# Optional AI',
   'COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-lookup/route.ts ./app/api/internal/erp-account-lookup/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-upload/route.ts ./app/api/internal/erp-document-upload/route.ts\n# Optional AI',
 );
 if(target!==banner+expected)throw new Error('NO-GO: custom Dockerfile differs from reviewed upstream derivation');
