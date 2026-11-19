@@ -66,7 +66,7 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   const f=new FormData(e.currentTarget);
   const changes:Record<string,string|null>={};
   for(const name of ['officePhone','website','fax','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','vat','companyId']){
-   const value=String(f.get(name)||'').trim(); if(value) changes[name]=value;
+   const value=String(f.get(name)||'').trim(); changes[name]=value||null;
   }
   try{
    const response=await fetch('/api/clients/'+encodeURIComponent(context.id)+'/nextcrm/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),changes})});
