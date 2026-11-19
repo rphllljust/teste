@@ -33,6 +33,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
     const history = kind.data === 'receivables' ? rows.slice(1) : [];
     const historyRows = (history[0]?.results ?? []) as Array<Record<string, unknown>>;
     const historyTotal = Number((history[1]?.results[0] as { total?: number } | undefined)?.total ?? 0);
+    const accountingWarnings = kind.data === 'receivables'
+      ? historyRows.map(settlement => {
+          const journalId = settlement.accountingJournalId ? String(settlement.accountingJournalId) : '';
+          return journalId
+            ? `Contabilização concluída · lançamento ${journalId.slice(0, 8).toUpperCase()} vinculado ao recebimento ${String(settlement.id).slice(0, 8).toUpperCase()}.`
+            : `Contabilização pendente · recebimento ${String(settlement.id).slice(0, 8).toUpperCase()} ainda não possui lançamento contábil.`;
+        })
+      : [];
     const projection = {
       identity: { id, title: String(row.order_title ?? id), subtitle: String(row.client ?? 'Cliente não informado'), entityKey: kind.data === 'measurements' ? 'measurements' : kind.data === 'invoices' ? 'invoices' : 'receivables' },
       state: { code: String(row.status ?? 'registered'), label: String(row.status ?? 'Registrado'), rowVersion: Number(row.version ?? 1) },
@@ -45,7 +53,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
       availableCommands: kind.data === 'measurements'
         ? measurementCommands({ status: String(row.status ?? ''), version: Number(row.version ?? 1) })
         : kind.data === 'receivables' && BigInt(principal) > BigInt(settled) ? [{ id: 'record_receipt', label: 'Registrar recebimento', primary: true }] : [],
-      warnings: kind.data === 'receivables' ? ['Recebimentos informados manualmente; conciliação bancária não conectada.'] : [],
+      warnings: kind.data === 'receivables'
+        ? ['Recebimentos informados manualmente; conciliação bancária não conectada.', ...accountingWarnings]
+        : [],
     };
     return respond({ projection }, context);
   } catch (error) {

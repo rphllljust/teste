@@ -5,6 +5,7 @@ import {Pool} from 'pg';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {closeDatabase} from '../../db/raw';
 import {POST as settle} from '../../app/api/finance/receivables/settlements/route';
+import {GET as operationDetail} from '../../app/api/operation/[kind]/[id]/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw new Error('Automatic accounting integration requires isolated PostgreSQL');
@@ -68,4 +69,12 @@ test('real receivable settlement posts one balanced journal and replays idempote
     [journalId],
   );
   assert.deepEqual(facts.rows[0],{entries:1,lines:2,debit:'10000',credit:'10000'});
+  const detail=await operationDetail(
+    setTestIdentity(new Request('http://localhost/api/operation/receivables/'+receivableId),owner),
+    {params:Promise.resolve({kind:'receivables',id:receivableId})},
+  );
+  assert.equal(detail.status,200);
+  const projection=await detail.json() as {projection:{warnings:string[]}};
+  assert.ok(projection.projection.warnings.some(message=>message.includes('Contabilização concluída')));
+  assert.ok(projection.projection.warnings.some(message=>message.includes(journalId.slice(0,8).toUpperCase())));
 });
