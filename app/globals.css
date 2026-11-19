@@ -582,3 +582,15 @@ tr:has(td):hover{background:#f5f9f5}
 .cisne-crm-proposal-linked{display:block;margin-top:10px;padding:8px 9px;background:#eaf5ef;color:#215a42;border:1px solid #cde7d6;font-size:11px;overflow-wrap:anywhere}
 .cisne-crm-proposal-warning{display:block;margin-top:10px;font-size:11px;line-height:1.4;color:#855c31}
 .cisne-crm-modal textarea{width:100%;resize:vertical;min-height:110px;padding:10px 12px;border-radius:4px;border:1px solid var(--line);background:#fff;color:var(--ink);font:inherit}
+
+
+/* Complete enterprise client registration: shared ERP/CRM form sections. */
+.client-registration-form{display:grid;gap:20px}
+.client-registration-form .form-section{padding:16px 0;border-bottom:1px solid var(--line)}
+.client-registration-form .form-section h3{margin:5px 0 3px;font-size:15px;color:var(--ink)}
+.client-registration-form .form-section p{margin:0 0 14px;font-size:12px;color:var(--muted);line-height:1.5}
+.client-registration-form .form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 14px}
+.client-registration-form label{display:block;font-size:12px;font-weight:600;margin-bottom:14px;color:#58717a}
+.client-registration-form input,.client-registration-form textarea{display:block;width:100%;padding:10px 12px;background:#fff;border:1px solid #d6e1e4;border-radius:5px;margin-top:6px;font-size:14px;color:var(--ink)}
+.client-registration-form textarea{resize:vertical}
+@media(max-width:560px){.client-registration-form .form-grid{grid-template-columns:1fr}.modal{padding:20px}.drawer{padding:20px}}
