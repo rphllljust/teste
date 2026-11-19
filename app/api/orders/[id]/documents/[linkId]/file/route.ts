@@ -44,7 +44,7 @@ export async function GET(request: Request, { params }: Params): Promise<Respons
     const config = {
       baseUrl: 'http://nextcrm-web.railway.internal:3000',
       secret: process.env.CISNE_NEXTCRM_BRIDGE_SECRET ?? '',
-      instanceKey: process.env.CISNE_NEXTCRM_INSTANCE_KEY ?? '',
+      instanceKey: getNextcrmInstanceKey(),
       minioPublicOrigin: process.env.CISNE_NEXTCRM_MINIO_PUBLIC_ORIGIN ?? '',
       minioBucket: process.env.CISNE_NEXTCRM_MINIO_BUCKET ?? '',
       timeoutMs: 3000,
