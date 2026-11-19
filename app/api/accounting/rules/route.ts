@@ -61,7 +61,7 @@ export async function POST(request: Request) {
         return;
       }
       await query(
-        'INSERT INTO accounting_event_rules(id,actor_id,event_type,debit_account_id,credit_account_id,active,created_at,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,true,$6,$7,$8,$9)',
+        'INSERT INTO accounting_event_rules(id,actor_id,event_type,debit_account_id,credit_account_id,active,created_at,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,true,$6,$7,$8)',
         [value.id, context!.actorId, value.eventType, value.debitAccountId, value.creditAccountId, new Date().toISOString(), requestHash, context!.correlationId],
       );
     });

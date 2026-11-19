@@ -9,6 +9,7 @@ type Measurement={id:string;amount:number;status:string};
 type Invoice={id:string;measurement_id:string;order_id:string;amount:number};
 type Receivable={id:string;invoice_id:string;amount:number};
 type Settlement={id:string;receivable_id:string;kind:string;amount:number;reverses_id:string|null};
+type Journal={id:string;source_reference:string;status:string;debit:string;credit:string};
 const uuid=z.string().uuid();
 const value=(amount:number)=>BigInt(String(amount));
 
@@ -50,6 +51,15 @@ export async function GET(request:Request,{params}:RouteContext){
         'SELECT id,receivable_id,kind,amount,reverses_id FROM receivable_settlements WHERE receivable_id=ANY($1::text[]) ORDER BY id',
         [receivableIds],
       )).rows;
+      const journals=(await client.query<Journal>(
+        `SELECT j.id,j.source_reference,j.status,
+          COALESCE(SUM(l.debit),0)::text AS debit,
+          COALESCE(SUM(l.credit),0)::text AS credit
+         FROM journal_entries j LEFT JOIN journal_lines l ON l.entry_id=j.id
+         WHERE j.actor_id=$1 AND (j.source_reference LIKE 'receivable_settlement:%' OR j.source_reference LIKE 'receivable_reversal:%')
+         GROUP BY j.id,j.source_reference,j.status`,
+        [context.actorId],
+      )).rows;
       await client.query('COMMIT');
       const issues:Issue[]=[];
       const flag=(severity:Issue['severity'],code:string,entityId:string,relatedId?:string)=>{
@@ -86,6 +96,14 @@ export async function GET(request:Request,{params}:RouteContext){
             flag('critical','RECEIVABLE_AMOUNT_MISMATCH',r.id,i.id);
       }
       let principal=0n,settled=0n;
+      const journalsBySource=new Map(journals.map(j=>[j.source_reference,j]));
+      const accountingIssues:Issue[]=[];
+      for(const settlement of settlements){
+        const prefix=settlement.kind==='reversal'?'receivable_reversal:':'receivable_settlement:';
+        const match=[...journalsBySource.entries()].find(([source])=>source.startsWith(prefix+settlement.id));
+        if(!match) accountingIssues.push({severity:'warning',code:'ACCOUNTING_PENDING_RULE',entityId:settlement.id});
+        else if(match[1].debit!==match[1].credit) accountingIssues.push({severity:'critical',code:'ACCOUNTING_ENTRY_UNBALANCED',entityId:settlement.id,relatedId:match[1].id});
+      }
       const settlementsByReceivable=new Map<string,Settlement[]>();
       for(const s of settlements){
         const entries=settlementsByReceivable.get(s.receivable_id)??[];
@@ -120,19 +138,22 @@ export async function GET(request:Request,{params}:RouteContext){
       issues.sort((a,b)=>a.severity.localeCompare(b.severity)||
         a.code.localeCompare(b.code)||a.entityId.localeCompare(b.entityId)||
         (a.relatedId??'').localeCompare(b.relatedId??''));
-      const critical=issues.filter(i=>i.severity==='critical').length;
-      const warnings=issues.length-critical;
+      issues.sort((a,b)=>a.severity.localeCompare(b.severity)||a.code.localeCompare(b.code)||a.entityId.localeCompare(b.entityId));
+      const finalCritical=issues.filter(i=>i.severity==='critical').length;
+      const finalWarnings=issues.length-finalCritical;
       return respond({
-        orderId:id,status:critical?'INCONSISTENT':warnings?'PENDING':'CONSISTENT',
+        orderId:id,status:finalCritical?'INCONSISTENT':finalWarnings?'PENDING':'CONSISTENT',
         scope:'owned_subledger_only',
         counts:{measurements:measurements.length,invoices:invoices.length,
           receivables:receivables.length,settlements:settlements.length,
-          critical,warnings},
+          critical:finalCritical,warnings:finalWarnings},
         amountsScaled:{invoiced:invoices.reduce((n,i)=>n+value(i.amount),0n).toString(),
           receivablePrincipal:principal.toString(),netSettled:settled.toString(),
           outstanding:(principal-settled).toString()},
-        accounting:{status:'NOT_TESTED',
-          reason:'Automatic journal linkage is not established by this subledger endpoint'},
+        accounting:{status:finalCritical?'INCONSISTENT':accountingIssues.length?'PENDING':'RECONCILED',
+          journalCount:journals.length,
+          balanced:journals.every(j=>j.debit===j.credit),
+          reason:accountingIssues.length?'Some financial events have no matching automatic journal reference.':'Financial event journal references are balanced.'},
         issues,
       },context);
     }catch(error){

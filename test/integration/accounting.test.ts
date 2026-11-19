@@ -9,6 +9,7 @@ import {GET as getJournals,POST as postJournal} from '../../app/api/accounting/j
 import {GET as journalDetail} from '../../app/api/accounting/journals/[id]/route';
 import {POST as reverseJournal} from '../../app/api/accounting/journals/[id]/reverse/route';
 import {GET as getLedger} from '../../app/api/accounting/ledger/route';
+import {GET as getRules,POST as postRule} from '../../app/api/accounting/rules/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw new Error('Accounting integration must use isolated test PostgreSQL');
@@ -25,11 +26,35 @@ function request(identity:string,path:string,method='GET',body?:unknown){
 type ApiJson={replayed:boolean;error?:string;items:Array<Record<string,unknown>>;lines:unknown[];totals:{closingScaled:string}};
 async function read(response:Response){return await response.json() as ApiJson;}
 after(async()=>{
+  await pool.query('DELETE FROM accounting_event_rules WHERE actor_id=$1',[actor]);
   await pool.query('DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE actor_id=$1)',[actor]);
   await pool.query('DELETE FROM journal_entries WHERE actor_id=$1',[actor]);
   await pool.query('DELETE FROM chart_accounts WHERE actor_id=$1',[actor]);
   await closeDatabase();
   await pool.end();
+});
+
+test('accounting event rules are owner-scoped, validate active accounts and replay idempotently',async()=>{
+  const debit=randomUUID(),credit=randomUUID(),ruleId=randomUUID(),suffix=randomUUID().slice(0,8);
+  for(const item of [{id:debit,code:'R'+suffix+'A',name:'Regra débito',type:'asset'},{id:credit,code:'R'+suffix+'B',name:'Regra crédito',type:'revenue'}]){
+    const response=await postAccount(request(actor,'/api/accounting/accounts','POST',item));
+    assert.equal(response.status,201,JSON.stringify(await read(response)));
+  }
+  const body={id:ruleId,eventType:'receivable_settlement',debitAccountId:debit,creditAccountId:credit};
+  const created=await postRule(request(actor,'/api/accounting/rules','POST',body));
+  assert.equal(created.status,201,JSON.stringify(await read(created)));
+  const replay=await postRule(request(actor,'/api/accounting/rules','POST',body));
+  assert.equal(replay.status,200);
+  assert.equal((await read(replay)).replayed,true);
+  const listed=await getRules(request(actor,'/api/accounting/rules'));
+  assert.equal(listed.status,200);
+  assert.equal(((await read(listed)).items as Array<Record<string,unknown>>).some(x=>x.id===ruleId),true);
+  const outsiderRules=await getRules(request(outsider,'/api/accounting/rules'));
+  assert.equal(((await read(outsiderRules)).items as Array<unknown>).length,0);
+  const conflict=await postRule(request(actor,'/api/accounting/rules','POST',{...body,id:randomUUID(),creditAccountId:debit}));
+  assert.equal(conflict.status,400);
+  await pool.query('DELETE FROM accounting_event_rules WHERE id=$1',[ruleId]);
+  await pool.query('DELETE FROM chart_accounts WHERE id IN ($1,$2)',[debit,credit]);
 });
 
 test('accounting full lifecycle: owned accounts, balanced posting, ledger, immutable reversal',async()=>{
