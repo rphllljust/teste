@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { getNextcrmInstanceKey } from '../../../../../lib/integrations/nextcrm/config';
 import { database, databasePool } from '../../../../../db/raw';
 import {
   ApiError, failure, jsonBody, requestContext, respond, type RequestContext,
@@ -35,7 +36,7 @@ function bridgeConfig(): NextcrmBridgeConfig {
   return {
     baseUrl: 'http://nextcrm-web.railway.internal:3000',
     secret: process.env.CISNE_NEXTCRM_BRIDGE_SECRET ?? '',
-    instanceKey: process.env.CISNE_NEXTCRM_INSTANCE_KEY ?? '',
+    instanceKey: getNextcrmInstanceKey(),
     timeoutMs: 3000,
   };
 }
