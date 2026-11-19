@@ -1,7 +1,10 @@
 export type EditableNextcrmProfile = {
   officePhone: string | null;
   website: string | null;
+  fax: string | null;
   email: string | null;
+  companyId: string | null;
+  vat: string | null;
   billingStreet: string | null;
   billingPostalCode: string | null;
   billingCity: string | null;
@@ -14,6 +17,7 @@ export type EditableNextcrmProfile = {
   shippingCountry: string | null;
   description: string | null;
   annualRevenue: string | null;
+  memberOf: string | null;
 };
 
 export type EditableNextcrmForm = {
