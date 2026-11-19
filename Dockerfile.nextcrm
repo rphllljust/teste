@@ -38,6 +38,7 @@ COPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protoco
 COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts
 COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-lookup/route.ts ./app/api/internal/erp-account-lookup/route.ts
 COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-update/route.ts ./app/api/internal/erp-account-update/route.ts
+COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-create/route.ts ./app/api/internal/erp-account-create/route.ts
 COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-upload/route.ts ./app/api/internal/erp-document-upload/route.ts
 # Optional AI must not block NextCRM startup or document ingestion.
 COPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts
