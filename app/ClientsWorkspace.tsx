@@ -153,7 +153,7 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
   </div></div>
   <div className="form-section"><span className="eyebrow">CONTEXTO COMERCIAL</span><label>Descrição empresarial<textarea name="description" rows={4} defaultValue={nextcrm?.profile?.description??''}/></label></div>
   {commandError&&<div role="alert" className="form-error">{commandError}</div>}
-  <footer><button type="button" className="secondary" disabled={saving} onClick={()=>setDialog(null)}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Salvando cadastro…':'Salvar cadastro completo'}</button></footer>
+  <footer><button type="button" className="secondary" disabled={saving} onClick={()=>setDialog(null)}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Salvando cadastro…' :'Salvar cadastro'}</button></footer>
  </form></section></div>}
  </section>;
 }
