@@ -1,6 +1,7 @@
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const NEXTCRM_BRIDGE_PATH = '/api/internal/erp-document-authorization';
+export const NEXTCRM_UPLOAD_PATH = '/api/internal/erp-document-upload';
 export const NEXTCRM_BRIDGE_MAX_SKEW_MS = 30_000;
 export const NEXTCRM_BRIDGE_MAX_BODY_BYTES = 2_048;
 
@@ -37,6 +38,22 @@ export function signBridgeRequest(
     ['request', proof.timestamp, proof.nonce, 'POST', NEXTCRM_BRIDGE_PATH, digest(body)]),
   };
 }
+export function signBridgeRequestForPath(
+  secret: string, body: string, path: string,
+  proof: BridgeRequestProof = {
+    timestamp: String(Date.now()), nonce: randomBytes(16).toString('hex'),
+  },
+) {
+  if (!/^\/api\/internal\/[A-Za-z0-9_-]{3,96}$/.test(path))
+    throw new Error('NEXTCRM_BRIDGE_PATH_INVALID');
+  if (Buffer.byteLength(body, 'utf8') > NEXTCRM_BRIDGE_MAX_BODY_BYTES ||
+      !/^\d{13}$/.test(proof.timestamp) || !/^[a-f0-9]{32}$/.test(proof.nonce)) {
+    throw new Error('NEXTCRM_BRIDGE_REQUEST_INVALID');
+  }
+  return { ...proof, signature: mac(secret,
+    ['request', proof.timestamp, proof.nonce, 'POST', path, digest(body)]),
+  };
+}
 export function verifyBridgeRequest(
   secret: string, body: string,
   proof: BridgeRequestProof & { signature: string },
@@ -52,15 +69,42 @@ export function verifyBridgeRequest(
     ['request', proof.timestamp, proof.nonce, 'POST', NEXTCRM_BRIDGE_PATH, digest(body)]);
   return equal(proof.signature, expected);
 }
+export function verifyBridgeRequestForPath(
+  secret: string, body: string,
+  proof: BridgeRequestProof & { signature: string }, path: string,
+  now: number = Date.now(),
+): boolean {
+  if (!/^\/api\/internal\/[A-Za-z0-9_-]{3,96}$/.test(path) ||
+      typeof body !== 'string' ||
+      Buffer.byteLength(body, 'utf8') > NEXTCRM_BRIDGE_MAX_BODY_BYTES ||
+      !/^\d{13}$/.test(proof.timestamp) || !/^[a-f0-9]{32}$/.test(proof.nonce) ||
+      !Number.isFinite(now) || Math.abs(now - Number(proof.timestamp)) > NEXTCRM_BRIDGE_MAX_SKEW_MS) return false;
+  const expected = mac(secret,
+    ['request', proof.timestamp, proof.nonce, 'POST', path, digest(body)]);
+  return equal(proof.signature, expected);
+}
 export function signBridgeResponse(
   secret: string, responseBody: string, status: number, proof: BridgeRequestProof,
 ): string {
   return mac(secret,
     ['response', proof.timestamp, proof.nonce, 'POST', NEXTCRM_BRIDGE_PATH, String(status), digest(responseBody)]);
 }
+export function signBridgeResponseForPath(
+  secret: string, responseBody: string, status: number,
+  proof: BridgeRequestProof, path: string,
+): string {
+  return mac(secret,
+    ['response', proof.timestamp, proof.nonce, 'POST', path, String(status), digest(responseBody)]);
+}
 export function verifyBridgeResponse(
   secret: string, responseBody: string, status: number,
   proof: BridgeRequestProof, signature: string,
 ): boolean {
   return equal(signature, signBridgeResponse(secret, responseBody, status, proof));
+}
+export function verifyBridgeResponseForPath(
+  secret: string, responseBody: string, status: number,
+  proof: BridgeRequestProof, signature: string, path: string,
+): boolean {
+  return equal(signature, signBridgeResponseForPath(secret, responseBody, status, proof, path));
 }

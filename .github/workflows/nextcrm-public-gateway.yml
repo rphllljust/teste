@@ -57,7 +57,7 @@ jobs:
           done
           test "$ready" -eq 1
           for verb in GET POST; do
-            for path in /api/internal /api/internal/ /api/internal/erp-document-authorization; do
+            for path in /api/internal /api/internal/ /api/internal/erp-document-authorization /api/internal/erp-document-upload; do
               status="$(curl -sS --max-time 3 -o /tmp/nextcrm-blocked-body -w '%{http_code}' -X "$verb" \
                 "http://127.0.0.1:18080$path")"
               test "$status" = 404
