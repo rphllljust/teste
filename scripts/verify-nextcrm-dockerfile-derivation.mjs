@@ -48,7 +48,8 @@ if(!target.includes('COPY lib/integrations/nextcrm/bridge-protocol.ts')||
    !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts')||
    !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-upload/route.ts')||
    !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-lookup/route.ts')||
-   !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-update/route.ts')||\n   !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-create/route.ts')){
+   !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-update/route.ts')||
+   !target.includes('COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-create/route.ts')){
   throw new Error('NO-GO: missing signed bridge in custom Dockerfile');
 }
 console.log('PASS: root-context NextCRM Dockerfile matches exact upstream Dockerfile plus reviewed signed bridge');
