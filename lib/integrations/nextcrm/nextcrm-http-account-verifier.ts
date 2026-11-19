@@ -47,7 +47,12 @@ export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
       const body = JSON.stringify({
         subjectId, erpClientId, tenantKey, requestId: randomUUID(),
       });
-      const proof = signBridgeRequestForPath(config.secret, body, NEXTCRM_ACCOUNT_LOOKUP_PATH);
+      let proof: ReturnType<typeof signBridgeRequestForPath>;
+      try {
+        proof = signBridgeRequestForPath(config.secret, body, NEXTCRM_ACCOUNT_LOOKUP_PATH);
+      } catch {
+        throw new NextcrmAccountLookupUnavailable();
+      }
       let response: Response;
       try {
         response = await fetcher(endpoint, {
