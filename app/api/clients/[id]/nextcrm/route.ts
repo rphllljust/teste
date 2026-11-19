@@ -78,9 +78,36 @@ export async function GET(request: Request, { params }: RouteContext) {
       }, context);
     }
 
+    let profile: unknown = null;
+    let profileMessage: string | undefined;
+    try {
+      const identity = await createPostgresNextcrmLinkDependencies(
+        databasePool(), context.actorId, bridgeConfig(),
+      ).resolveMappedIdentity(context.actorId);
+      if (identity) {
+        const evidence = await createNextcrmHttpAccountVerifier(bridgeConfig())
+          .lookupAccountForClient(identity.nextcrmSubjectId, id, instanceKey);
+        if (evidence && evidence.accountId !== mapping.nextcrmAccountId) {
+          throw new ApiError(409, 'NEXTCRM_MAPPING_CONFLICT', 'O vínculo local não corresponde à conta confirmada pelo NextCRM.');
+        }
+        profile = evidence?.profile ?? null;
+      } else {
+        profileMessage = 'O vínculo local existe, mas a identidade empresarial do NextCRM não está disponível para atualizar os dados.';
+      }
+    } catch (error) {
+      if (error instanceof ApiError) throw error;
+      if (error instanceof NextcrmAccountLookupUnavailable) {
+        profileMessage = 'O vínculo está persistido; os dados CRM estão temporariamente indisponíveis.';
+      } else {
+        profileMessage = 'O vínculo está persistido; não foi possível consultar os dados CRM agora.';
+      }
+    }
+
     return respond({
       mapped: true,
       state: 'synchronized',
+      message: profileMessage,
+      profile,
       mapping: {
         accountId: mapping.nextcrmAccountId,
         instanceKey: mapping.instanceKey,
