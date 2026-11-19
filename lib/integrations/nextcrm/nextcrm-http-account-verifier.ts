@@ -46,7 +46,7 @@ export type NextcrmAccountEvidence = {
   accountId: string;
   erpClientId: string;
   tenantKey: string;
-  profile: NextcrmAccountProfile | null;
+  profile?: NextcrmAccountProfile | null;
 };
 
 export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
@@ -147,7 +147,7 @@ export function createNextcrmHttpAccountVerifier(config: NextcrmBridgeConfig) {
             type: text('type'),
           };
         }
-        return {accountId: x.accountId, erpClientId, tenantKey, profile};
+        return profile ? {accountId: x.accountId, erpClientId, tenantKey, profile} : {accountId: x.accountId, erpClientId, tenantKey};
       } catch (error) {
         if (error instanceof NextcrmAccountLookupUnavailable) throw error;
         throw new NextcrmAccountLookupUnavailable();
