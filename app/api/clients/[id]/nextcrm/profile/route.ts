@@ -1,17 +1,17 @@
 import { z } from 'zod';
-import { database, databasePool } from '../../../../../../db/raw';
+import { database, databasePool } from '../../../../../db/raw';
 import {
   ApiError, failure, jsonBody, requestContext, respond, type RequestContext,
-} from '../../../../../../lib/api/http';
-import { getNextcrmInstanceKey } from '../../../../../../lib/integrations/nextcrm/config';
+} from '../../../../../lib/api/http';
+import { getNextcrmInstanceKey } from '../../../../../lib/integrations/nextcrm/config';
 import {
   createPostgresNextcrmLinkDependencies,
-} from '../../../../../../lib/integrations/nextcrm/postgres-mapped-dependencies';
+} from '../../../../../lib/integrations/nextcrm/postgres-mapped-dependencies';
 import {
   NextcrmAccountLookupUnavailable,
   createNextcrmHttpAccountVerifier,
-} from '../../../../../../lib/integrations/nextcrm/nextcrm-http-account-verifier';
-import type { NextcrmBridgeConfig } from '../../../../../../lib/integrations/nextcrm/nextcrm-http-document-verifier';
+} from '../../../../../lib/integrations/nextcrm/nextcrm-http-account-verifier';
+import type { NextcrmBridgeConfig } from '../../../../../lib/integrations/nextcrm/nextcrm-http-document-verifier';
 
 export const dynamic = 'force-dynamic';
 
