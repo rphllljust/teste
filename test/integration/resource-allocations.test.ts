@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
 import {POST as allocate} from '../../app/api/resources/allocations/route';
+import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 
 const pool=new Pool({connectionString:process.env.DATABASE_URL});
 const actor=randomUUID(),other=randomUUID(),order=randomUUID(),professional=randomUUID(),asset=randomUUID();
-const req=(body:unknown,owner:string)=>new Request('http://localhost/api/resources/allocations',{method:'POST',headers:{'content-type':'application/json','x-cisne-test-actor':owner},body:JSON.stringify(body)});
+const req=(body:unknown,owner:string)=>setTestIdentity(new Request('http://localhost/api/resources/allocations',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),owner);
 test('resource allocation is tenant-scoped, idempotent, conflict-safe and blocks maintenance assets',async()=>{
  if(!process.env.DATABASE_URL){assert.ok(true,'requires CI PostgreSQL');return;}
  const now='2026-11-20T10:00:00.000Z',later='2026-11-20T11:00:00.000Z';
