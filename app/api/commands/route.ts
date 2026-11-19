@@ -20,6 +20,7 @@ function eventResult(id: string, type: string, rowVersion: number) {
 
 export async function POST(request: Request) {
   let context: RequestContext | undefined;
+  let replayed = false;
   try {
     context = requestContext(request, true);
     const parsed = input.safeParse(await jsonBody(request));
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
       const prior = await query('SELECT request_hash,result FROM order_events WHERE id=$1', [p.key]);
       if (prior.rows.length) {
         if (prior.rows[0].request_hash !== requestHash || !prior.rows[0].result) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de comando já utilizada.');
+        replayed = true;
         return JSON.parse(String(prior.rows[0].result)) as Record<string, unknown>;
       }
 
@@ -87,7 +89,7 @@ export async function POST(request: Request) {
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, invoiceId, JSON.stringify(result), context!.correlationId]);
       return result;
     });
-    return respond(result, context, 201);
+    return respond(result, context, replayed ? 200 : 201);
   } catch (error) {
     return failure(error, context);
   }
