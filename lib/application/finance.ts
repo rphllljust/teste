@@ -125,6 +125,38 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount), accounting } };
 }
 
+export async function regularizeReceivableSettlementAccounting(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string }) {
+  return database().transaction(async query => {
+    if (!input.settlementId || !input.commandKey || !input.requestHash)
+      throw new ApiError(400, 'VALIDATION_FAILED', 'A regularização precisa de idempotência.');
+    const result = await query(`SELECT s.id, s.kind, s.amount, s.effective_date, s.receivable_id
+      FROM receivable_settlements s
+      JOIN receivables r ON r.id=s.receivable_id
+      JOIN invoices i ON i.id=r.invoice_id
+      JOIN service_orders o ON o.id=i.order_id
+      WHERE s.id=$1 AND o.owner_id=$2
+      FOR UPDATE OF s`, [input.settlementId, context.actorId]);
+    if (!result.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Fato financeiro não encontrado.');
+    const row = result.rows[0];
+    const eventType = row.kind === 'receipt' ? 'receivable_settlement' : row.kind === 'reversal' ? 'receivable_reversal' : null;
+    if (!eventType) throw new ApiError(409, 'ACCOUNTING_EVENT_UNSUPPORTED', 'Este fato financeiro não possui evento contábil regularizável.');
+    const accounting = await postConfiguredAccountingEvent(query, context, {
+      eventType,
+      sourceReference: `${eventType}:${input.settlementId}`,
+      description: `Regularização contábil do fato financeiro ${input.settlementId}`,
+      effectiveDate: String(row.effective_date),
+      amount: Number(row.amount),
+    });
+    await audit(query, context, 'receivable', String(row.receivable_id), 'accounting_regularized', input.requestHash, {
+      settlementId: input.settlementId, eventType, accounting,
+    });
+    return {
+      ok: true,
+      replayed: Boolean(accounting.replayed),
+      resource: { type: 'accountingRegularization', settlementId: input.settlementId, accounting },
+    };
+  });
+}
 export async function reverseReceivableSettlement(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
