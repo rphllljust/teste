@@ -37,6 +37,7 @@ jobs:
           node scripts/install-nextcrm-bridge-overlay.mjs
           test -s integrations/nextcrm-upstream/lib/erp-bridge/bridge-protocol.ts
           test -s integrations/nextcrm-upstream/app/api/internal/erp-document-authorization/route.ts
+          test -s integrations/nextcrm-upstream/app/api/internal/erp-document-upload/route.ts
       - name: Fail-closed NextCRM staging readiness contract (synthetic, no secrets)
         run: node --test scripts/nextcrm-staging-preflight.test.mjs
       - name: Verify Resend OTP errors are not mistaken for delivery (synthetic)
@@ -59,6 +60,8 @@ jobs:
             test -f /app/server.js
             test -d /app/.next/server/app/api/internal/erp-document-authorization
             find /app/.next/server/app/api/internal/erp-document-authorization -type f -name "*.js" | grep -q .
+            test -d /app/.next/server/app/api/internal/erp-document-upload
+            find /app/.next/server/app/api/internal/erp-document-upload -type f -name "*.js" | grep -q .
             echo "Custom NextCRM bridge route compiled in standalone runner image."
           '
       - name: Generate masked, CI-only credentials for disposable integration network

@@ -23,6 +23,7 @@ export interface NextcrmBridgeConfig {
   instanceKey: string;
   timeoutMs?: number;
   fetchImpl?: typeof fetch;
+  minioPublicOrigin?: string;
 }
 
 export function createNextcrmHttpDocumentVerifier(

@@ -15,6 +15,8 @@ const files = [
   ['lib/integrations/nextcrm/bridge-protocol.ts', 'lib/erp-bridge/bridge-protocol.ts'],
   ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts',
    'app/api/internal/erp-document-authorization/route.ts'],
+  ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-upload/route.ts',
+   'app/api/internal/erp-document-upload/route.ts'],
   ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/__tests__/route.test.ts',
    'app/api/internal/erp-document-authorization/__tests__/route.test.ts'],
   ['integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/__tests__/route.integration.test.ts',

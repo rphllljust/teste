@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useRef,useState} from 'react';
 import {FileCheck2,ChevronDown,RefreshCw,ShieldCheck,Download} from 'lucide-react';
 
 type AuthorizedDocument={
@@ -10,6 +10,12 @@ type Result={
   enabled?:boolean;items?:AuthorizedDocument[];reason?:string;
   error?:string;code?:string;
 };
+const MAX_UPLOAD_BYTES=8*1024*1024;
+const allowedTypes=new Set([
+  'application/pdf','text/plain','application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'image/png','image/jpeg','image/gif','image/webp',
+]);
 const kindLabels:Record<string,string>={
   attachment:'Anexo',contract:'Contrato',photo:'Fotografia',
   service_report:'Relatório de serviço',inspection:'Inspeção',invoice:'Fatura',
@@ -21,6 +27,12 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
   const [generation,setGeneration]=useState(0);
   const [busy,setBusy]=useState(false),[error,setError]=useState('');
   const [downloading,setDownloading]=useState<string|null>(null);
+  const [selectedFile,setSelectedFile]=useState<File|null>(null);
+  const [uploadKind,setUploadKind]=useState('attachment');
+  const [uploading,setUploading]=useState(false);
+  const [uploadError,setUploadError]=useState('');
+  const [uploadNotice,setUploadNotice]=useState('');
+  const fileInput=useRef<HTMLInputElement|null>(null);
   const [result,setResult]=useState<Result|null>(null);
   useEffect(()=>{
     if(!expanded)return;
@@ -70,6 +82,50 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
     }finally{setDownloading(null);}
   }
 
+  function selectFile(file:File|null){
+    setUploadError('');setUploadNotice('');
+    if(!file){setSelectedFile(null);return;}
+    if(file.size===0){setSelectedFile(null);setUploadError('O arquivo está vazio.');return;}
+    if(file.size>MAX_UPLOAD_BYTES){setSelectedFile(null);setUploadError('O arquivo excede o limite de 8 MB.');return;}
+    if(!allowedTypes.has(file.type)){
+      setSelectedFile(null);setUploadError('Tipo de arquivo não permitido. Use PDF, texto, Word ou imagem.');return;
+    }
+    setSelectedFile(file);
+  }
+
+  async function uploadDocument(){
+    if(!selectedFile||uploading)return;
+    setUploading(true);setUploadError('');setUploadNotice('Preparando o upload seguro…');
+    const idempotencyKey=crypto.randomUUID();
+    try{
+      const bytes=await selectedFile.arrayBuffer();
+      const digest=await crypto.subtle.digest('SHA-256',bytes);
+      const sha256=Array.from(new Uint8Array(digest),byte=>byte.toString(16).padStart(2,'0')).join('');
+      const endpoint='/api/orders/'+encodeURIComponent(orderId)+'/documents/upload';
+      const prepareResponse=await fetch(endpoint,{method:'POST',cache:'no-store',credentials:'same-origin',
+        headers:{'Content-Type':'application/json','Idempotency-Key':idempotencyKey},
+        body:JSON.stringify({action:'prepare',key:idempotencyKey,name:selectedFile.name,
+          contentType:selectedFile.type,size:selectedFile.size,sha256}),});
+      const prepare=await prepareResponse.json() as {error?:string;upload?:{documentId:string;uploadUrl:string}};
+      if(!prepareResponse.ok||!prepare.upload?.uploadUrl)throw new Error(prepare.error||'Não foi possível preparar o upload.');
+      setUploadNotice('Enviando arquivo ao armazenamento…');
+      const storageResponse=await fetch(prepare.upload.uploadUrl,{method:'PUT',headers:{'Content-Type':selectedFile.type},body:selectedFile});
+      if(!storageResponse.ok)throw new Error('O armazenamento recusou o arquivo. Tente novamente.');
+      setUploadNotice('Confirmando vínculo empresarial…');
+      const completeResponse=await fetch(endpoint,{method:'POST',cache:'no-store',credentials:'same-origin',
+        headers:{'Content-Type':'application/json','Idempotency-Key':idempotencyKey},
+        body:JSON.stringify({action:'complete',key:idempotencyKey,documentId:prepare.upload.documentId,
+          documentKind:uploadKind,version:1,name:selectedFile.name,contentType:selectedFile.type,
+          size:selectedFile.size,sha256}),});
+      const complete=await completeResponse.json() as {error?:string};
+      if(!completeResponse.ok)throw new Error(complete.error||'O vínculo documental não foi confirmado.');
+      setSelectedFile(null);if(fileInput.current)fileInput.current.value='';
+      setUploadNotice('Documento anexado e confirmado no armazenamento.');
+      setGeneration(value=>value+1);
+    }catch(e){setUploadError(e instanceof Error?e.message:'Não foi possível anexar o documento.');setUploadNotice('');}
+    finally{setUploading(false);}
+  }
+
   return <section className="order-nextcrm-documents" aria-label="Documentos do NextCRM">
     <button type="button" className="related" aria-expanded={expanded}
       onClick={()=>setExpanded(value=>!value)}>
@@ -84,6 +140,25 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
           <RefreshCw size={13} aria-hidden="true"/> Atualizar
         </button>
       </header>
+      <div className="document-upload" aria-label="Anexar documento">
+        <input ref={fileInput} type="file" hidden
+          accept="application/pdf,text/plain,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/png,image/jpeg,image/gif,image/webp"
+          onChange={event=>selectFile(event.target.files?.[0]??null)}/>
+        <button type="button" className="text-button" disabled={uploading}
+          onClick={()=>fileInput.current?.click()}>Anexar documento</button>
+        <label>Tipo documental
+          <select value={uploadKind} disabled={uploading} onChange={event=>setUploadKind(event.target.value)}>
+            {Object.entries(kindLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        {selectedFile&&<span role="status">{selectedFile.name} · {(selectedFile.size/1024).toFixed(1)} KB
+          <button type="button" className="text-button" disabled={uploading} onClick={()=>void uploadDocument()}>
+            {uploading?'Enviando…':'Enviar arquivo'}
+          </button>
+        </span>}
+        {uploadNotice&&<p role="status" className="muted">{uploadNotice}</p>}
+        {uploadError&&<p role="alert" className="form-error">{uploadError}</p>}
+      </div>
       {busy&&<p role="status">Verificando permissões no NextCRM…</p>}
       {error&&<p role="alert" className="form-error">{error}</p>}
       {!busy&&!error&&result?.enabled===false&&<p className="muted">
