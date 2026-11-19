@@ -203,8 +203,9 @@ test('Client -> real catalog -> OS -> schedule/team -> execution -> measurement 
   assert.deepEqual(reconciliation.amountsScaled,{
     invoiced:'125000',receivablePrincipal:'125000',netSettled:'125000',outstanding:'0',
   });
-  assert.equal((reconciliation.accounting as {status:string}).status,'NOT_TESTED',
-    'Do not pretend the isolated subledger test proves GL postings');
+  assert.equal((reconciliation.accounting as {status:string}).status,'PENDING');
+  assert.match((reconciliation.accounting as {reason:string}).reason,
+    /no matching automatic journal reference/i);
   const foreign=await reconcileOrder(
     setTestIdentity(new Request('http://localhost'+auditPath),randomUUID()),
     {params:Promise.resolve({id:orderId})});
