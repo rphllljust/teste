@@ -147,9 +147,11 @@ export async function regularizeReceivableSettlementAccounting(context: RequestC
       effectiveDate: String(row.effective_date),
       amount: Number(row.amount),
     });
-    await audit(query, context, 'receivable', String(row.receivable_id), 'accounting_regularized', input.requestHash, {
-      settlementId: input.settlementId, eventType, accounting,
-    });
+    if (!accounting.replayed) {
+      await audit(query, context, 'receivable', String(row.receivable_id), 'accounting_regularized', input.requestHash, {
+        settlementId: input.settlementId, eventType, accounting,
+      });
+    }
     return {
       ok: true,
       replayed: Boolean(accounting.replayed),
@@ -213,9 +215,11 @@ export async function regularizePayablePaymentAccounting(context: RequestContext
       effectiveDate: String(row.effective_date),
       amount: Number(row.amount),
     });
-    await audit(query, context, 'payable', String(row.payable_id), 'accounting_regularized', input.requestHash, {
-      paymentId: input.paymentId, eventType, accounting,
-    });
+    if (!accounting.replayed) {
+      await audit(query, context, 'payable', String(row.payable_id), 'accounting_regularized', input.requestHash, {
+        paymentId: input.paymentId, eventType, accounting,
+      });
+    }
     return {
       ok: true,
       replayed: Boolean(accounting.replayed),
