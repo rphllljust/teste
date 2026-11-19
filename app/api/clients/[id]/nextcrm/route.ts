@@ -51,7 +51,7 @@ export async function GET(request: Request, { params }: RouteContext) {
       }, context);
     }
 
-    const mapping = await database().prepare(\`
+    const mapping = await database().prepare(`
       SELECT m.nextcrm_account_id AS "nextcrmAccountId",
              m.instance_key AS "instanceKey",
              m.verified_at AS "verifiedAt"
@@ -64,7 +64,7 @@ export async function GET(request: Request, { params }: RouteContext) {
          AND m.verified_at IS NOT NULL
          AND c.status='active'
        LIMIT 1
-    \`).bind(id, context.actorId, instanceKey).first<{
+    `).bind(id, context.actorId, instanceKey).first<{
       nextcrmAccountId: string;
       instanceKey: string;
       verifiedAt: string;
@@ -129,10 +129,10 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const current = await client.query(
-      \`SELECT nextcrm_account_id AS "accountId", instance_key AS "instanceKey", active
+      `SELECT nextcrm_account_id AS "accountId", instance_key AS "instanceKey", active
          FROM nextcrm_erp_client_account_mappings
         WHERE erp_client_id=$1
-        FOR UPDATE\`,
+        FOR UPDATE`,
       [id],
     );
     if (current.rows[0]?.active) {
@@ -155,7 +155,7 @@ export async function POST(request: Request, { params }: RouteContext) {
     }
 
     const saved = await client.query(
-      \`INSERT INTO nextcrm_erp_client_account_mappings
+      `INSERT INTO nextcrm_erp_client_account_mappings
         (erp_client_id,erp_owner_id,nextcrm_account_id,instance_key,active,
          verified_source,verified_by,verified_at)
        VALUES($1,$2,$3,$4,true,$5,$6,now())
@@ -168,7 +168,7 @@ export async function POST(request: Request, { params }: RouteContext) {
          verified_by=EXCLUDED.verified_by,
          verified_at=EXCLUDED.verified_at
        RETURNING nextcrm_account_id AS "accountId", instance_key AS "instanceKey",
-                 verified_at AS "verifiedAt"\`,
+                 verified_at AS "verifiedAt"`,
       [id, context.actorId, evidence.accountId, instanceKey,
         'nextcrm-bridge-account-lookup', identity.nextcrmSubjectId],
     );
