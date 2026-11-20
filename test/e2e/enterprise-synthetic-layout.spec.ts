@@ -95,6 +95,15 @@ for(const name of destinations){
      path:test.info().outputPath('SYNTHETIC-'+id+'-'+size.name+'.png'),
      fullPage:true,
    });
+   if(
+      (name==='Frota e ativos'&&size.name==='tablet')||
+      (name==='Fiscal e tributos'&&size.name==='tablet')||
+      (name==='Contas a pagar'&&size.name==='mobile')||
+      (name==='Contabilidade'&&size.name==='mobile')
+    ){
+      expect(metrics.documentWidth, name+' '+size.name+' page must fit without clipping business fields')
+        .toBeLessThanOrEqual(metrics.viewport+2);
+    }
    snapshots.push({workspace:name,breakpoint:size.name,...metrics,
     horizontalOverflowPx:Math.max(0,metrics.documentWidth-metrics.viewport)});
   }
