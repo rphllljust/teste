@@ -201,7 +201,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     !q||[o.title,snapshot?.leads.find(l=>l.id===o.leadId)?.companyName]
       .some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)));
   const active=(snapshot?.opportunities??[]).filter(o=>o.stage!=='won'&&o.stage!=='lost').length;
-  return <section className="cisne-crm" aria-label="CRM nativo do CISNE">
+  return <section className="cisne-crm cisne-workspace crm-workspace" data-workspace="crm" aria-label="CRM nativo do CISNE">
     <header className="cisne-crm-heading">
       <div>
         <span className="eyebrow">GESTÃO COMERCIAL · CISNE RONDÔNIA</span>
