@@ -29,6 +29,7 @@ import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
 import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
+import ServiceOperationsWorkspace from "./ServiceOperationsWorkspace";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import type { LucideIcon } from "lucide-react";
@@ -102,6 +103,7 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
     group: "OPERAÇÃO",
     items: [
       ["Visão operacional", LayoutDashboard],
+      ["Centro de operações", Activity],
       ["Field Service Cockpit", Activity],
       ["Resource Planning Board", CalendarDays],
       ["Ordens de serviço", ClipboardList],
@@ -1318,6 +1320,7 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Centro de operações",
               "Field Service Cockpit",
               "Resource Planning Board",
               "Clientes e propostas",
@@ -1442,6 +1445,14 @@ function HomeView() {
                   "Rascunho persistido. Consulte o escopo e a próxima ação autorizada.",
                 );
                 await openOrigin(id);
+              }}
+            />
+          ) : page === "Centro de operações" ? (
+            <ServiceOperationsWorkspace
+              onCreate={newOrder}
+              onOpen={(id) => {
+                navigate("Ordens de serviço");
+                void openOrigin(id);
               }}
             />
           ) : page === "Field Service Cockpit" ? (

@@ -150,3 +150,18 @@ test('client list report renders real Fluent grid, searches API and clears filte
   await expect(page.getByRole('searchbox', { name: 'Buscar clientes' })).toHaveValue('');
   await expect.poll(() => queries[queries.length - 1]).toBe('');
 });
+
+
+test('operations control center is reachable and opens the existing service-order context', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: [{ id: 'order-fixture-1', title: 'OS de validação', client: 'Cliente de homologação', category: 'Serviços', description: 'Serviço controlado', status: 'DRAFT', due_date: null, created_at: '2026-11-20T10:00:00Z', availableCommands: [], relations: { measurements: 0, invoices: 0, receivables: 0 } }],
+    total: 1, summary: { total: 1, drafts: 1, planned: 0, pendingMeasurements: 0 },
+  } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Centro de operações' })).toBeVisible();
+  await expect(page.getByRole('searchbox', { name: 'Buscar ordens de serviço' })).toBeVisible();
+  await expect(page.getByText('OS de validação').first()).toBeVisible();
+  await page.getByRole('button', { name: 'Abrir objeto completo' }).click();
+  await expect(page.locator('.topbar')).toContainText('Ordens de serviço');
+});

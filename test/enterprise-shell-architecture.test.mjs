@@ -30,3 +30,10 @@ test('process navigation retains real callbacks and does not invent later transi
   assert.match(journey, /onViewportKeyDown/);
   assert.doesNotMatch(journey, /fetch\(/);
 });
+
+test('legacy service operations cockpit is mounted as an actionable workspace', () => {
+  assert.match(page, /import ServiceOperationsWorkspace from/);
+  assert.match(page, /\["Centro de operações", Activity\]/);
+  assert.match(page, /page === "Centro de operações" \? \(/);
+  assert.match(page, /onOpen=\{\(id\) =>/);
+});
