@@ -696,8 +696,11 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
  .topbar .crumb>span,.topbar .crumb>svg{display:none}
  .topbar .crumb>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .topbar .global-search{flex:0 0 38px;width:38px;min-width:38px;padding:8px}
- .topbar .global-search> :not(svg){display:none}
+ .topbar .global-search .fui-Button__content{display:none}
  .topbar .top-actions{flex:0 0 auto;gap:8px}
+ .enterprise-filter-bar{flex-direction:column;align-items:stretch}
+ .enterprise-filter-fields{width:100%}
  .enterprise-filter-fields>.fui-Field{flex:1 1 auto;width:100%}
  .enterprise-filter-fields .fui-Field__control,.enterprise-filter-fields .fui-Input,.enterprise-filter-fields .fui-Dropdown{width:100%;min-width:0}
+ .enterprise-filter-fields .fui-Input__input{width:100%;min-width:0}
 }
