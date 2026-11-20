@@ -205,3 +205,13 @@ test('public staging ignores forged owner header for contract mutations',async()
     else process.env.RAILWAY_ENVIRONMENT_NAME=previous;
   }
 });
+
+
+test('contract list ordering is database-backed, stable, owner-scoped and rejects unknown columns',async()=>{
+ const result=await listContracts(req('GET','/api/contracts?sort=reference.asc&page=1&pageSize=25',actor));
+ assert.equal(result.status,200);
+ const data=await result.json() as {items:Array<{id:string}>};
+ const expected=await db.query('SELECT id FROM contracts WHERE owner_id=$1 ORDER BY reference ASC,id ASC LIMIT 25',[actor]);
+ assert.deepEqual(data.items.map(item=>item.id),expected.rows.map(row=>row.id));
+ assert.equal((await listContracts(req('GET','/api/contracts?sort=id.desc',actor))).status,400);
+});

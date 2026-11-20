@@ -225,3 +225,13 @@ test('simultaneous proposal issue commands cannot both commit',async()=>{
   const issued=await pool.query("SELECT count(*)::int AS n FROM business_commands WHERE entity_id=$1 AND command='issue'",[id]);
   assert.equal(issued.rows[0].n,1);
 });
+
+
+test('proposal sorting is executed and paginated by PostgreSQL with strict allowed keys',async()=>{
+ const response=await listProposals(req('GET','/api/proposals?sort=title.asc&page=1&pageSize=25',owner));
+ assert.equal(response.status,200);
+ const data=await response.json() as {items:Array<{id:string}>};
+ const expected=await pool.query('SELECT id FROM proposals WHERE owner_id=$1 ORDER BY title ASC,id ASC LIMIT 25',[owner]);
+ assert.deepEqual(data.items.map(item=>item.id),expected.rows.map(row=>row.id));
+ assert.equal((await listProposals(req('GET','/api/proposals?sort=title.injection',owner))).status,400);
+});
