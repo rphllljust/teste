@@ -1,86 +1,83 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {AlertTriangle,ArrowRight,RefreshCw,ShieldCheck} from 'lucide-react';
-import {EnterpriseButton} from './components/enterprise/EnterprisePrimitives';
+import {EnterpriseButton,EnterpriseInput} from './components/enterprise/EnterprisePrimitives';
 import {moneyScaled} from '../lib/domain/orders';
 
-type RecordItem={id:string;title:string;reference:string|null;date:string|null;
- amountScaled:string|null;availableScaled:string|null;requiredScaled:string|null};
-type Lane={id:string;label:string;target:string;count:number;authority:string;
- totalAmountScaled:string|null;items:RecordItem[]};
-type Projection={generatedAt:string;asOf:string;sampleLimitPerLane:number;
- lanes:Lane[];error?:string};
-
-export default function EnterpriseControlTower({onNavigate}:{onNavigate:(name:string)=>void}){
- const [asOf,setAsOf]=useState(()=>new Date().toISOString().slice(0,10));
- const [revision,refresh]=useState(0),[loading,setLoading]=useState(true);
- const [data,setData]=useState<Projection|null>(null),[error,setError]=useState('');
+export type ControlTowerLaneId='lateOrders'|'unmeasuredOrders'|'overdueReceivables'|'overduePayables'|'latePurchases'|'stockShortage'|'myApprovals';
+type LaneItem={id:string;title:string;reference:string|null;date:string|null;amountScaled:string|null;availableScaled:string|null;requiredScaled:string|null;unit?:string|null};
+type Lane={id:ControlTowerLaneId;label:string;target:string;count:number;totalAmountScaled:string|null;authority:string;items:LaneItem[]};
+type Snapshot={asOf:string;generatedAt:string;authority:string;sampleLimitPerLane:number;lanes:Lane[];error?:string};
+const recordAccessible=new Set<ControlTowerLaneId>(['lateOrders','unmeasuredOrders','overdueReceivables','overduePayables','latePurchases','stockShortage']);
+function amount(value:string|null){return value==null?'':moneyScaled(value);}
+function quantity(value:string|null){
+ if(value==null||!(/^-?\d+$/).test(value))return '—';
+ const n=BigInt(value),abs=n<0n?-n:n,whole=abs/1000n,decimal=(abs%1000n).toString().padStart(3,'0').replace(/0+$/,'');
+ return (n<0n?'-':'')+new Intl.NumberFormat('pt-BR').format(whole)+(decimal?','+decimal:'');
+}
+function date(value:string|null){
+ if(!value)return 'Data não informada';
+ const day=value.slice(0,10);
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(day))return 'Data não informada';
+ return day.slice(8,10)+'/'+day.slice(5,7)+'/'+day.slice(0,4);
+}
+export default function EnterpriseControlTower({onLane,onRecord}:{
+ onLane:(lane:ControlTowerLaneId,asOf:string)=>void;
+ onRecord:(lane:ControlTowerLaneId,id:string,asOf:string)=>void;
+}){
+ const [cutoff,setCutoff]=useState('');
+ const [revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
  useEffect(()=>{
   const controller=new AbortController();
-  setLoading(true);setError('');
-  void fetch('/api/enterprise/control-tower?'+new URLSearchParams({asOf}),
-    {signal:controller.signal,cache:'no-store'})
-    .then(async response=>{
-      const body=await response.json() as Projection;
-      if(!response.ok)throw new Error(body.error||'Controles indisponíveis.');
-      if(!Array.isArray(body.lanes))throw new Error('Resposta de controle inválida.');
-      if(!controller.signal.aborted)setData(body);
-    })
-    .catch(err=>{if(!controller.signal.aborted){
-      setData(null);setError(err instanceof Error?err.message:'Consulta indisponível.');
-    }})
-    .finally(()=>{if(!controller.signal.aborted)setLoading(false);});
+  async function load(){
+   setLoading(true);setError('');
+   try{
+    const url='/api/enterprise/control-tower'+(cutoff?'?'+new URLSearchParams({asOf:cutoff}):'');
+    const response=await fetch(url,{signal:controller.signal,cache:'no-store'});
+    const data=await response.json() as Snapshot;
+    if(!response.ok)throw new Error(data.error||'Fila de prioridades indisponível.');
+    if(data.authority!=='owner_scoped_persisted_postgresql.v1'||!Array.isArray(data.lanes)||data.lanes.length!==7)
+      throw new Error('O servidor não confirmou as sete filas empresariais autorizadas.');
+    if(!controller.signal.aborted)setSnapshot(data);
+   }catch(cause){
+    if(!controller.signal.aborted){setSnapshot(null);setError(cause instanceof Error?cause.message:'Falha na consulta empresarial.');}
+   }finally{if(!controller.signal.aborted)setLoading(false);}
+  }
+  void load();
   return()=>controller.abort();
- },[asOf,revision]);
- const active=data?.lanes.filter(lane=>lane.count>0)??[];
- return <section className="erp-control-tower" aria-label="Torre de controle empresarial">
-   <header className="erp-control-head">
-    <div><span className="eyebrow">DADOS PERSISTIDOS · CONTROLE EMPRESARIAL</span>
-     <h2>Exceções que exigem ação</h2>
-     <p>Ordens, medições, financeiro, compras, estoque e aprovações do proprietário autenticado.</p>
-    </div>
-    <div className="erp-control-actions"><label>Referência
-       <input type="date" aria-label="Data de referência da torre de controle"
-        value={asOf} onChange={e=>setAsOf(e.target.value)}/>
-     </label><EnterpriseButton type="button" className="secondary" disabled={loading}
-       onClick={()=>refresh(v=>v+1)}><RefreshCw size={15}/>Atualizar</EnterpriseButton></div>
-   </header>
-   {error?<div className="erp-control-feedback" role="alert"><AlertTriangle size={18}/>
-      {error}<EnterpriseButton type="button" onClick={()=>refresh(v=>v+1)}>Tentar novamente</EnterpriseButton></div>:
-    loading?<p className="erp-control-feedback" role="status">Consultando registros autorizados…</p>:
-    data?<div>
-     <div className="erp-control-cards" aria-label="Indicadores de exceção">
-      {data.lanes.map(lane=><EnterpriseButton type="button" key={lane.id}
-         className="erp-control-metric" onClick={()=>onNavigate(lane.target)}
-         aria-label={lane.label+': '+lane.count}>
-         <span>{lane.label}</span><strong>{new Intl.NumberFormat('pt-BR').format(lane.count)}</strong>
-         <small>{lane.totalAmountScaled===null?
-          (lane.count?'Ver pendências':'Sem pendências'):
-           moneyScaled(lane.totalAmountScaled)+' em aberto'}</small>
-       </EnterpriseButton>)}
-     </div>
-     <div className="erp-control-queues">
-      <header><h3>Fila de exceções</h3><small>{active.length} frentes com pendências</small></header>
-      {active.length===0?<p className="erp-control-feedback"><ShieldCheck size={18}/>
-        Nenhuma exceção nos controles monitorados para a data selecionada.</p>:
-       active.map(lane=><section key={lane.id} className="erp-control-lane" aria-label={lane.label}>
-        <header><div><h4>{lane.label}</h4>
-          <small>{lane.count} registros · exibindo até {data.sampleLimitPerLane}</small></div>
-          <EnterpriseButton type="button" className="secondary"
-            onClick={()=>onNavigate(lane.target)}>Abrir {lane.target}<ArrowRight size={14}/></EnterpriseButton>
-        </header>
-        <ul>{lane.items.map(item=><li key={item.id}><div><strong>{item.title}</strong>
-          <small>{[item.reference,item.date?.slice(0,10)].filter(Boolean).join(' · ')||'Registro persistido'}</small></div>
-          {item.amountScaled!==null?<strong className="erp-control-amount">{moneyScaled(item.amountScaled)}</strong>:null}
-          {item.availableScaled!==null&&item.requiredScaled!==null?
-             <small>Disponível: {Number(item.availableScaled)/1000} · mínimo: {Number(item.requiredScaled)/1000}</small>:null}
-         </li>)}</ul>
-       </section>)}
-     </div>
-     <footer className="erp-control-foot">
-      <span>Atualizado {new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(new Date(data.generatedAt))}</span>
-      <span>Recebíveis e obrigações não são saldo disponível de caixa.</span>
-     </footer>
-    </div>:null}
-  </section>;
+ },[cutoff,revision]);
+ return <section className="enterprise-control-tower" aria-label="Central de exceções empresariais" aria-busy={loading}>
+  <header className="enterprise-control-heading">
+   <div><span className="eyebrow">PRIORIDADES TRANSACIONAIS</span><h2>Central de exceções empresariais</h2>
+    <p>Filas apuradas por consultas PostgreSQL vinculadas ao proprietário autorizado. Abrir um item não executa comandos financeiros.</p></div>
+   <div className="enterprise-control-tools">
+    <label>Data de referência<EnterpriseInput type="date" aria-label="Data de referência das exceções" value={cutoff} onChange={event=>setCutoff(event.currentTarget.value)}/></label>
+    <EnterpriseButton type="button" className="secondary" disabled={loading} onClick={()=>setRevision(n=>n+1)}>Atualizar exceções</EnterpriseButton>
+   </div>
+  </header>
+  {loading&&<p role="status" className="linked-info">Consultando registros autorizados…</p>}
+  {error&&<div role="alert" className="enterprise-control-error"><p>{error}</p><EnterpriseButton type="button" onClick={()=>setRevision(n=>n+1)}>Tentar novamente</EnterpriseButton></div>}
+  {!loading&&!error&&snapshot&&<><div className="enterprise-control-lanes">
+   {snapshot.lanes.map(lane=><article className="enterprise-control-lane" key={lane.id} aria-label={lane.label}>
+    <header><div><h3>{lane.label}</h3><span className="enterprise-control-count">{lane.count} registro{lane.count===1?'':'s'}</span>
+      {lane.totalAmountScaled!==null&&<small>Saldo documentado: {amount(lane.totalAmountScaled)}</small>}</div>
+      <EnterpriseButton type="button" appearance="subtle" onClick={()=>onLane(lane.id,snapshot.asOf)}>Abrir área</EnterpriseButton>
+    </header>
+    {lane.items.length>0?<ol className="enterprise-control-items">{lane.items.map(item=><li key={item.id}>
+      <div><strong>{item.title}</strong><small>{item.reference??item.id.slice(0,12)} · {date(item.date)}</small>
+      {item.amountScaled!==null&&<span>Saldo: {amount(item.amountScaled)}</span>}
+      {lane.id==='stockShortage'&&<span>Disponível {quantity(item.availableScaled)} / mínimo {quantity(item.requiredScaled)}{item.unit?' '+item.unit:''}</span>}
+      </div>
+      {recordAccessible.has(lane.id)?<EnterpriseButton type="button" appearance="subtle" onClick={()=>onRecord(lane.id,item.id,snapshot.asOf)} aria-label={'Abrir '+item.title}>Abrir registro</EnterpriseButton>:
+       <span className="enterprise-control-no-link">Abertura individual não disponível</span>}
+    </li>)}</ol>:<p className="enterprise-control-empty">Nenhuma exceção encontrada para este filtro.</p>}
+    {lane.count>lane.items.length&&<p className="enterprise-control-more">Exibidos {lane.items.length} de {lane.count}. Consulte a área para os demais registros.</p>}
+   </article>)}
+  </div><footer className="enterprise-control-provenance">
+   <span>Fonte: consultas transacionais por proprietário · referência {date(snapshot.asOf)}</span>
+   <span>Dados consultados; este painel não confirma uma jornada ponta a ponta.</span>
+  </footer></>}
+ </section>;
 }
