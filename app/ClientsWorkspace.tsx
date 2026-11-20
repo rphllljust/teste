@@ -81,13 +81,20 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
  function edit(client:Client|null){commandAttempt.current=null;setCommandError('');setDialog({key:crypto.randomUUID(),client});}
  async function submitCrm(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();
-  if(!context||busy.current)return;
+  if(!context||busy.current||!nextcrm?.profile)return;
   busy.current=true;setSaving(true);setCommandError('');
   const f=new FormData(e.currentTarget);
   const changes:Record<string,string|null>={};
+  const profile=nextcrm.profile;
   for(const name of ['officePhone','website','fax','email','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf','vat','companyId']){
-   const value=String(f.get(name)||'').trim(); changes[name]=value||null;
+   const raw=f.get(name);
+   if(raw===null)continue;
+   const value=String(raw).trim();
+   const current=value||null;
+   const previous=profile[name as keyof NextcrmProfile] ?? null;
+   if(current!==previous)changes[name]=current;
   }
+  if(!Object.keys(changes).length){setCrmEditing(false);busy.current=false;setSaving(false);return;}
   try{
    const response=await fetch('/api/clients/'+encodeURIComponent(context.id)+'/nextcrm/profile',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),changes})});
    const data=await response.json() as {error?:string};
