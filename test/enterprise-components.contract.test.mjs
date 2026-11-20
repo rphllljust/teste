@@ -47,3 +47,10 @@ test('enterprise layout contracts include narrow-screen behavior', () => {
   assert.match(styles, /\.enterprise-filter-fields\{align-items:stretch;flex-direction:column\}/);
   assert.match(styles, /\.enterprise-kpi-card:focus-visible/);
 });
+
+test('Fluent dropdown uses value callbacks and does not fabricate native change events', () => {
+  assert.match(source, /onValueChange\?: \(value: string\) => void/);
+  assert.match(source, /setUncontrolledValue\(next\)/);
+  assert.match(source, /name=\{name\} value=\{selectedValue\} disabled=\{disabled\}/);
+  assert.doesNotMatch(source, /as ChangeEvent<HTMLSelectElement>/);
+});

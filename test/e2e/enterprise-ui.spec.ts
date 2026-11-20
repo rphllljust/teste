@@ -69,3 +69,44 @@ test('client create dialog uses a Fluent dialog and closes without writing data'
   await page.keyboard.press('Escape');
   await expect(dialog).toBeHidden();
 });
+
+test('controlled Fluent contract filter sends the selected status to the real query layer', async ({ page }) => {
+  const statuses: string[] = [];
+  await page.route('**/api/contracts?*', async route => {
+    const url = new URL(route.request().url());
+    statuses.push(url.searchParams.get('status') ?? '');
+    await route.fulfill({ json: { items: [], pageInfo: { total: 0, sourceTotal: 0, hasMore: false } } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Contratos', exact: true }).click();
+  const status = page.getByRole('combobox', { name: 'Situação do contrato' });
+  await expect(status).toBeVisible();
+  await status.click();
+  await page.getByRole('option', { name: 'Ativo', exact: true }).click();
+  await expect.poll(() => statuses.includes('active')).toBeTruthy();
+});
+
+test('uncontrolled Fluent dropdown submits the actual accounting nature through FormData', async ({ page }) => {
+  let submittedType: string | undefined;
+  await page.route('**/api/accounting/accounts', async route => {
+    if (route.request().method() === 'POST') {
+      const payload = route.request().postDataJSON() as { type?: string };
+      submittedType = payload.type;
+      await route.fulfill({ json: {} });
+      return;
+    }
+    await route.fulfill({ json: { items: [] } });
+  });
+  await page.route('**/api/accounting/journals?*', route =>
+    route.fulfill({ json: { items: [], pageInfo: { hasMore: false } } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Contabilidade', exact: true }).click();
+  await page.getByRole('button', { name: 'Nova conta' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Cadastrar conta contábil' });
+  await dialog.getByLabel('Código').fill('1.02');
+  await dialog.getByLabel('Nome').fill('Conta de validação');
+  await dialog.getByRole('combobox').click();
+  await page.getByRole('option', { name: 'Receita', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Registrar conta' }).click();
+  await expect.poll(() => submittedType).toBe('revenue');
+});

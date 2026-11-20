@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, isValidElement, useEffect, useState, Component, type ChangeEvent, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
 import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
@@ -27,13 +27,32 @@ export function EnterpriseSelectField({ label, value, options, onValueChange, cl
  return <FluentField label={label} className={className}><FluentDropdown aria-label={label} value={selected?.label??options[0]?.label??''} selectedOptions={selected&&value!==''?[value]:[]} onOptionSelect={(_,data)=>onValueChange(String(data.optionValue??''))}>{options.map(option=><FluentOption key={option.value||'__empty'} value={option.value}>{option.label}</FluentOption>)}</FluentDropdown></FluentField>;
 }
 
-type EnterpriseDropdownOption = ReactElement<{ value?:string; children?:ReactNode; disabled?:boolean }>;
-export function EnterpriseDropdown({ children, value, defaultValue, onChange, className, name, disabled, required, ...props }: { children:ReactNode; value?:string|number; defaultValue?:string|number; onChange?:(event:ChangeEvent<HTMLSelectElement>)=>void; className?:string; name?:string; disabled?:boolean; required?:boolean; 'aria-label'?:string; id?:string; title?:string; 'aria-describedby'?:string }) {
- const options=Children.toArray(children).filter(isValidElement) as EnterpriseDropdownOption[];
- const selectedValue=String(value??defaultValue??options[0]?.props.value??'');
- const selected=options.find(option=>String(option.props.value??option.props.children??'')===selectedValue);
- const display=selected?Children.toArray(selected.props.children).join(''):'';
- return <div className={className}><FluentDropdown {...props} aria-required={required||undefined} disabled={disabled} value={display} selectedOptions={selectedValue?[selectedValue]:[]} onOptionSelect={(_,data)=>{const next=String(data.optionValue??'');onChange?.({target:{value:next},currentTarget:{value:next}} as ChangeEvent<HTMLSelectElement>);}}>{options.map((option,index)=><FluentOption key={option.key??`${option.props.value??'option'}-${index}`} text={Children.toArray(option.props.children).join('')} value={String(option.props.value??option.props.children??'')} disabled={option.props.disabled}>{option.props.children}</FluentOption>)}</FluentDropdown>{name&&<input type="hidden" name={name} value={selectedValue}/>}</div>;
+type EnterpriseDropdownOption = ReactElement<{ value?: string | number; children?: ReactNode; disabled?: boolean }>;
+
+function dropdownOptionText(node: ReactNode): string {
+ return Children.toArray(node).map(item => {
+  if (typeof item === 'string' || typeof item === 'number') return String(item);
+  return isValidElement<{ children?: ReactNode }>(item) ? dropdownOptionText(item.props.children) : '';
+ }).join('');
+}
+
+/**
+ * Fluent Dropdown accepts selected values, not native ChangeEvents.
+ * Consumers receive a value callback; uncontrolled selects retain their own selection.
+ * Required transactional selects remain native until constraint-validation parity is proven.
+ */
+export function EnterpriseDropdown({ children, value, defaultValue, onValueChange, className, name, disabled, required, ...props }: { children: ReactNode; value?: string | number; defaultValue?: string | number; onValueChange?: (value: string) => void; className?: string; name?: string; disabled?: boolean; required?: boolean; 'aria-label'?: string; id?: string; title?: string; 'aria-describedby'?: string }) {
+ const options = Children.toArray(children).filter(isValidElement) as EnterpriseDropdownOption[];
+ const [uncontrolledValue, setUncontrolledValue] = useState<string | null>(null);
+ const optionValue = (option: EnterpriseDropdownOption) => String(option.props.value ?? dropdownOptionText(option.props.children));
+ const selectedValue = value !== undefined ? String(value) : (uncontrolledValue ?? String(defaultValue ?? (options[0] ? optionValue(options[0]) : '')));
+ const selected = options.find(option => optionValue(option) === selectedValue);
+ const display = selected ? dropdownOptionText(selected.props.children) : '';
+ return <div className={className}><FluentDropdown {...props} aria-required={required || undefined} disabled={disabled} value={display} selectedOptions={selectedValue ? [selectedValue] : []} onOptionSelect={(_, data) => {
+  const next = String(data.optionValue ?? '');
+  if (value === undefined) setUncontrolledValue(next);
+  onValueChange?.(next);
+ }}>{options.map((option, index) => <FluentOption key={option.key ?? `${optionValue(option)}-${index}`} text={dropdownOptionText(option.props.children)} value={optionValue(option)} disabled={option.props.disabled}>{option.props.children}</FluentOption>)}</FluentDropdown>{name && <input type="hidden" name={name} value={selectedValue} disabled={disabled} />}</div>;
 }
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';

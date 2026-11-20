@@ -1840,9 +1840,9 @@ function HomeView() {
                       <EnterpriseDropdown
                         aria-label="Filtrar atividade"
                         value={category}
-                        onChange={(e) => {
+                        onValueChange={value => {
                           setPageNumber(1);
-                          setCategory(e.target.value);
+                          setCategory(value);
                         }}
                       >
                         {categories.map((c) => (
@@ -1862,8 +1862,8 @@ function HomeView() {
                           <EnterpriseDropdown
                             aria-label="Ordenar ordens"
                             value={sort}
-                            onChange={(e) => {
-                              setSort(e.target.value);
+                            onValueChange={value => {
+                              setSort(value);
                               setPageNumber(1);
                             }}
                           >
@@ -1880,8 +1880,8 @@ function HomeView() {
                           <EnterpriseDropdown
                             aria-label="Ordens por página"
                             value={pageSize}
-                            onChange={(e) => {
-                              setPageSize(Number(e.target.value));
+                            onValueChange={value => {
+                              setPageSize(Number(value));
                               setPageNumber(1);
                             }}
                           >
@@ -2210,8 +2210,8 @@ function HomeView() {
                   <EnterpriseDropdown
                     aria-label="Ordenar registros"
                     value={linkedSort}
-                    onChange={(e) =>
-                      changeLinked(() => setLinkedSort(e.target.value))
+                    onValueChange={value =>
+                      changeLinked(() => setLinkedSort(value))
                     }
                   >
                     <option value="createdAt.desc">Mais recentes</option>
@@ -2227,8 +2227,8 @@ function HomeView() {
                   <EnterpriseDropdown
                     aria-label="Registros por página"
                     value={linkedSize}
-                    onChange={(e) =>
-                      changeLinked(() => setLinkedSize(Number(e.target.value)))
+                    onValueChange={value =>
+                      changeLinked(() => setLinkedSize(Number(value)))
                     }
                   >
                     {[10, 25, 50, 100].map((n) => (
@@ -2242,8 +2242,8 @@ function HomeView() {
                     <EnterpriseDropdown
                       aria-label="Filtrar situação da liquidação"
                       value={settlementState}
-                      onChange={(e) =>
-                        changeLinked(() => setSettlementState(e.target.value))
+                      onValueChange={value =>
+                        changeLinked(() => setSettlementState(value))
                       }
                     >
                       <option value="">Todas</option>
@@ -2260,8 +2260,8 @@ function HomeView() {
                     <EnterpriseDropdown
                       aria-label="Situação da medição"
                       value={linkedStatus}
-                      onChange={(e) =>
-                        changeLinked(() => setLinkedStatus(e.target.value))
+                      onValueChange={value =>
+                        changeLinked(() => setLinkedStatus(value))
                       }
                     >
                       <option value="">Todas</option>
