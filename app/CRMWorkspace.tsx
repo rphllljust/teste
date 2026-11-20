@@ -342,7 +342,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
           <label>Resultado<EnterpriseDropdown name="outcome" defaultValue="qualified">
             <option value="qualified">Qualificado</option><option value="disqualified">Descartado</option>
           </EnterpriseDropdown></label>
-          <label>Vincular a cliente existente (opcional)<EnterpriseDropdown value={qualifyClient} onChange={e=>setQualifyClient(e.target.value)}>
+          <label>Vincular a cliente existente (opcional)<EnterpriseDropdown value={qualifyClient} onValueChange={value =>setQualifyClient(value)}>
             <option value="">Ainda não vincular</option>
             {snapshot?.clients.map(c=><option key={c.id} value={c.id}>{c.legalName}</option>)}
           </EnterpriseDropdown></label>
