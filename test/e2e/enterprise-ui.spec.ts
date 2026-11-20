@@ -44,6 +44,17 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
   expect(searchWidth).toBeGreaterThanOrEqual(200);
   const topbarFits = await page.locator('.topbar').evaluate(element => element.scrollWidth <= element.clientWidth);
   expect(topbarFits).toBeTruthy();
+  const searchLabelHidden = await page.locator('.global-search-label').evaluate(element => getComputedStyle(element).display === 'none');
+  expect(searchLabelHidden).toBeTruthy();
+  const workspacePillWidth = await page.locator('.app-mode-pill').evaluate(element => element.getBoundingClientRect().width);
+  expect(workspacePillWidth).toBeLessThanOrEqual(36);
+  const gridViewport = await page.locator('.enterprise-data-grid').evaluate(element => ({
+    clientWidth: element.clientWidth,
+    scrollWidth: element.scrollWidth,
+    overflowX: getComputedStyle(element).overflowX,
+  }));
+  expect(gridViewport.overflowX).toBe('auto');
+  expect(gridViewport.scrollWidth).toBeGreaterThanOrEqual(gridViewport.clientWidth);
   await page.screenshot({ path: test.info().outputPath('resource-grid-mobile.png'), fullPage: true });
 });
 

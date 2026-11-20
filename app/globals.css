@@ -696,7 +696,7 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
  .topbar .crumb>span,.topbar .crumb>svg{display:none}
  .topbar .crumb>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
  .topbar .global-search{flex:0 0 38px;width:38px;min-width:38px;padding:8px}
- .topbar .global-search .fui-Button__content{display:none}
+ .topbar .global-search .global-search-label,.topbar .global-search kbd{display:none}
  .topbar .top-actions{flex:0 0 auto;gap:8px}
  .enterprise-filter-bar{flex-direction:column;align-items:stretch}
  .enterprise-filter-fields{width:100%}
@@ -704,3 +704,15 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
  .enterprise-filter-fields .fui-Field__control,.enterprise-filter-fields .fui-Input,.enterprise-filter-fields .fui-Dropdown{width:100%;min-width:0}
  .enterprise-filter-fields .fui-Input__input{width:100%;min-width:0}
 }
+
+@media(max-width:480px){
+ .topbar{gap:6px;padding-inline:10px}
+ .topbar .crumb{flex:1 1 auto;gap:4px}
+ .topbar .crumb .mobile-toggle{flex:0 0 36px;width:36px;min-width:36px}
+ .topbar .top-actions{gap:5px}
+ .topbar .global-search{flex:0 0 36px;width:36px;min-width:36px;height:36px;padding:6px}
+ .topbar .app-mode-pill{width:30px;min-width:30px;height:30px;min-height:30px;justify-content:center;gap:0;padding:0;font-size:0}
+ .topbar .app-mode-pill>span{flex:0 0 7px}
+}
+.enterprise-data-grid{max-width:100%;scrollbar-width:thin;scrollbar-color:#91aaa0 #edf2ef}
+.enterprise-data-grid [role=grid]{max-width:none}

@@ -1377,7 +1377,8 @@ function HomeView() {
               }}
             >
               <Search size={16} />
-              Buscar no Cisne<kbd>Ctrl K</kbd>
+              <span className="global-search-label">Buscar no Cisne</span>
+              <kbd>Ctrl K</kbd>
             </EnterpriseButton>
             <span className="app-mode-pill">
               <span aria-hidden="true" />
