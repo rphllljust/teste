@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, isValidElement, useEffect, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useId, useRef, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
 import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
@@ -73,11 +73,21 @@ export type EnterpriseObjectPageProps = HTMLAttributes<HTMLElement> & { title:st
 export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) {
  const [activeSection,setActiveSection]=useState(sections[0]?.id??'');
  const [navigationOpen,setNavigationOpen]=useState(false);
+ const sectionNavigationId=useId();
+ const explicitSectionRef=useRef<string|null>(null);
  const sectionSignature=sections.map(section=>section.id).join('\u0000');
  const activeSectionId=resolveActiveSectionId(sections,activeSection);
  useEffect(()=>{
   if(!sectionSignature||typeof IntersectionObserver==='undefined')return;
   const observer=new IntersectionObserver(entries=>{
+   const requested=explicitSectionRef.current;
+   if(requested){
+     if(entries.some(entry=>entry.target.id===requested&&entry.isIntersecting)){
+       explicitSectionRef.current=null;
+       setActiveSection(current=>current===requested?current:requested);
+     }
+     return;
+   }
    const next=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top)[0]?.target.id;
    if(next)setActiveSection(current=>current===next?current:next);
   },{rootMargin:'-84px 0px -65% 0px',threshold:[0,0.1,0.5]});
@@ -87,11 +97,11 @@ export function EnterpriseObjectPage({ title, header, sections=[], children, cla
   }
   return()=>observer.disconnect();
  },[sectionSignature]);
- return <main className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
+ return <section role="region" className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
   <div className="enterprise-object-identity">{header}</div>
-  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls="enterprise-object-section-links" onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><FluentTabList id="enterprise-object-section-links" className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto" selectedValue={activeSectionId} onTabSelect={(_,data)=>{const id=String(data.value);setActiveSection(id);setNavigationOpen(false);document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'});}}>{sections.map(section=><FluentTab key={section.id} value={section.id}>{section.label}</FluentTab>)}</FluentTabList></div>}
+  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{explicitSectionRef.current=section.id;setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
   <div className="enterprise-object-page-content">{children}</div>
- </main>;
+ </section>;
 }
 
 export function EnterpriseFilterBar({ children, onReset, label='Filtros', resultCount }: { children:ReactNode; onReset?:()=>void; label?:string; resultCount?:number }) { const reset = (event:FormEvent<HTMLFormElement>) => { event.preventDefault(); onReset?.(); }; return <form className="enterprise-filter-bar" aria-label={label} onSubmit={reset}><div className="enterprise-filter-fields">{children}</div>{typeof resultCount === 'number' && <span className="enterprise-filter-count" aria-live="polite">{resultCount} resultado{resultCount === 1 ? '' : 's'}</span>}{onReset && <EnterpriseButton type="submit" appearance="subtle" className="text-button">Limpar filtros</EnterpriseButton>}</form>; }
@@ -99,8 +109,62 @@ export function EnterpriseFilterBar({ children, onReset, label='Filtros', result
 export type EnterpriseColumn<T> = { key:string; header:string; render:(row:T)=>ReactNode; sortable?:boolean; sortValue?:(row:T)=>string|number; headerLabel?:string };
 export type EnterpriseDataGridProps<T> = { rows:T[]; columns:EnterpriseColumn<T>[]; getRowKey:(row:T)=>Key; caption:string; empty?:ReactNode; loading?:boolean; onRowClick?:(row:T)=>void; sort?:{key:string;direction:'asc'|'desc'}; onSort?:(key:string)=>void };
 export function EnterpriseDataGrid<T>({ rows, columns, getRowKey, caption, empty='Nenhum registro encontrado.', loading, onRowClick, sort, onSort }:EnterpriseDataGridProps<T>) {
- const fluentColumns:TableColumnDefinition<T>[] = columns.map(column=>createTableColumn<T>({columnId:column.key,compare:column.sortValue?(a,b)=>{const left=column.sortValue!(a),right=column.sortValue!(b);return typeof left==='number'&&typeof right==='number'?left-right:String(left).localeCompare(String(right),'pt-BR',{numeric:true,sensitivity:'base'});}:undefined,renderHeaderCell:()=>column.header,renderCell:row=>column.render(row)}));
- return <div className="enterprise-data-grid" role="region" aria-label={caption} tabIndex={0}>{loading?<LoadingState label="Carregando registros…"/>:rows.length===0?<EmptyState title={typeof empty==='string'?empty:'Nenhum registro'}>{typeof empty==='string'?undefined:empty}</EmptyState>:<FluentDataGrid aria-label={caption} items={rows} columns={fluentColumns} getRowId={row=>String(getRowKey(row))} sortable={columns.some(column=>column.sortable&&column.sortValue)} sortState={sort?{sortColumn:sort.key,sortDirection:sort.direction==='asc'?'ascending':'descending'}:undefined} onSortChange={(_,next)=>{if(next.sortColumn)onSort?.(String(next.sortColumn));}}><DataGridHeader><DataGridRow>{({renderHeaderCell})=><DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}</DataGridRow></DataGridHeader><DataGridBody<T>>{({item,rowId})=><DataGridRow<T> key={rowId} onClick={()=>onRowClick?.(item)}>{({renderCell})=><DataGridCell>{renderCell(item)}</DataGridCell>}</DataGridRow>}</DataGridBody></FluentDataGrid>}</div>;
+ const fluentColumns:TableColumnDefinition<T>[] = columns.map(column=>createTableColumn<T>({
+   columnId:column.key,
+   compare:column.sortValue?(a,b)=>{
+     const left=column.sortValue!(a),right=column.sortValue!(b);
+     return typeof left==='number'&&typeof right==='number'
+       ?left-right:String(left).localeCompare(String(right),'pt-BR',{numeric:true,sensitivity:'base'});
+   }:undefined,
+   renderHeaderCell:()=>column.header,
+   renderCell:row=>column.render(row),
+ }));
+ const sortable=columns.filter(column=>column.sortable&&onSort);
+ return <div className="enterprise-data-grid" role="region" aria-label={caption} tabIndex={0}>
+   {loading?<LoadingState label="Carregando registros…"/>:rows.length===0?
+     <EmptyState title={typeof empty==='string'?empty:'Nenhum registro'}>
+       {typeof empty==='string'?undefined:empty}
+     </EmptyState>:
+     <>
+       <FluentDataGrid
+         className="enterprise-desktop-grid"
+         aria-label={caption}
+         items={rows}
+         columns={fluentColumns}
+         getRowId={row=>String(getRowKey(row))}
+         sortable={columns.some(column=>column.sortable&&column.sortValue)}
+         sortState={sort?{sortColumn:sort.key,sortDirection:sort.direction==='asc'?'ascending':'descending'}:undefined}
+         onSortChange={(_,next)=>{if(next.sortColumn)onSort?.(String(next.sortColumn));}}
+       >
+         <DataGridHeader>
+           <DataGridRow>{({renderHeaderCell})=><DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}</DataGridRow>
+         </DataGridHeader>
+         <DataGridBody<T>>
+           {({item,rowId})=><DataGridRow<T> key={rowId} tabIndex={onRowClick?0:undefined} aria-label={onRowClick?`Abrir registro ${String(getRowKey(item))}`:undefined} onClick={(event:MouseEvent<HTMLDivElement>)=>{if(!onRowClick)return;const target=event.target;if(target instanceof Element&&target.closest('a,button,input,select,textarea,[role="button"],[role="link"]'))return;onRowClick(item);}} onKeyDown={(event:KeyboardEvent<HTMLDivElement>)=>{if(!onRowClick||event.target!==event.currentTarget)return;if(event.key==='Enter'||event.key===' '){event.preventDefault();onRowClick(item);}}}>
+             {({renderCell})=><DataGridCell>{renderCell(item)}</DataGridCell>}
+           </DataGridRow>}
+         </DataGridBody>
+       </FluentDataGrid>
+       <div className="enterprise-mobile-report">
+         {sortable.length>0&&<div className="enterprise-mobile-report-sort" aria-label="Ordenação de registros">
+           {sortable.map(column=><EnterpriseButton type="button" key={column.key} appearance="subtle" onClick={()=>onSort?.(column.key)}>
+             Ordenar por {column.headerLabel??column.header}
+           </EnterpriseButton>)}
+         </div>}
+         <ul className="enterprise-mobile-records" aria-label={caption+' — versão compacta'}>
+           {rows.map(row=><li className="enterprise-mobile-record" key={getRowKey(row)}>
+             <dl>{columns.map(column=><div className="enterprise-mobile-record-field" key={column.key}>
+               <dt>{column.headerLabel??column.header}</dt>
+               <dd>{column.render(row)}</dd>
+             </div>)}</dl>
+             {onRowClick&&<EnterpriseButton type="button" appearance="subtle" className="enterprise-mobile-record-open" onClick={()=>onRowClick(row)}>
+               Abrir registro
+             </EnterpriseButton>}
+           </li>)}
+         </ul>
+       </div>
+     </>}
+ </div>;
 }
 
 export type EnterpriseWorklistProps = { label:string; title?:string; count?:number; children:ReactNode; filters?:ReactNode; actions?:ReactNode };

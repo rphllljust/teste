@@ -13,6 +13,7 @@ const getInput=z.object({
   status:z.enum(['','draft','issued','accepted','rejected','expired','cancelled']).default(''),
   page:z.coerce.number().int().min(1).max(100000).default(1),
   pageSize:z.coerce.number().int().min(1).max(50).default(25),
+  sort:z.enum(['recent','title.asc','title.desc','validUntil.asc']).default('recent'),
 }).strict();
 
 export async function GET(request:Request) {
@@ -22,17 +23,18 @@ export async function GET(request:Request) {
     const url=new URL(request.url),params=url.searchParams;
     const parsed=getInput.safeParse({
       q:params.get('q')??'',status:params.get('status')??'',
-      page:params.get('page')??'1',pageSize:params.get('pageSize')??'25',
+      page:params.get('page')??'1',sort:params.get('sort')??'recent',pageSize:params.get('pageSize')??'25',
     });
     if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros comerciais inválidos.');
     const p=parsed.data,filters=['p.owner_id=?'],binds:unknown[]=[context.actorId];
     if(p.status){filters.push('p.status=?');binds.push(p.status);}
     if(p.q.trim()){filters.push('(p.title ILIKE ? OR c.legal_name ILIKE ?)');binds.push('%'+p.q.trim()+'%','%'+p.q.trim()+'%');}
     const where=filters.join(' AND ');
+    const sortOrder=p.sort==='title.asc'?'p.title ASC,p.id ASC':p.sort==='title.desc'?'p.title DESC,p.id DESC':p.sort==='validUntil.asc'?'p.valid_until ASC,p.id ASC':'p.created_at DESC,p.id DESC';
     const [list,total]=await Promise.all([
       database().prepare(`SELECT p.*,c.legal_name AS client_name
         FROM proposals p JOIN clients c ON c.id=p.client_id AND c.owner_id=p.owner_id
-        WHERE ${where} ORDER BY p.created_at DESC,p.id DESC LIMIT ? OFFSET ?`)
+        WHERE ${where} ORDER BY ${sortOrder} LIMIT ? OFFSET ?`)
         .bind(...binds,p.pageSize,(p.page-1)*p.pageSize).all<ProposalRow>(),
       database().prepare(`SELECT count(*)::int AS total
         FROM proposals p JOIN clients c ON c.id=p.client_id AND c.owner_id=p.owner_id

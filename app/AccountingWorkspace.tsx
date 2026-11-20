@@ -1,4 +1,6 @@
 'use client';
+import { EnterpriseDataGrid } from './components/enterprise/EnterprisePrimitives';
+
 import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseButton, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import {useCallback,useEffect,useState} from 'react';
@@ -20,7 +22,18 @@ export default function AccountingWorkspace(){
  const updateLine=(id:string,key:keyof Row,value:string)=>setLines(prev=>prev.map(l=>l.id===id?{...l,[key]:value}:l));
  return <section className="worklist" aria-busy={loading}><div className="list-title"><div><h2>Diário contábil</h2><p>Plano de contas e partidas dobradas com origem documentada e histórico imutável.</p></div><div className="worklist-tools"><EnterpriseButton type="button" className="secondary" onClick={()=>{setAccountKey(crypto.randomUUID());setCreatingAccount(true);setNotice('');}}>Nova conta</EnterpriseButton><EnterpriseButton type="button" className="primary" disabled={accounts.filter(a=>a.active).length<2} onClick={()=>{setEntryKey(crypto.randomUUID());setLines([{id:crypto.randomUUID(),accountId:'',side:'debit',amount:''},{id:crypto.randomUUID(),accountId:'',side:'credit',amount:''}]);setCreatingEntry(true);setNotice('');}}>Novo lançamento</EnterpriseButton></div></div>
  <div className="linked-info">{accounts.length} contas registradas. Lançamentos manuais não baixam automaticamente títulos, pagamentos ou tributos.</div>
- {error?<div className="empty" role="alert">{error}<EnterpriseButton type="button" onClick={()=>void load()} className="secondary">Tentar novamente</EnterpriseButton></div>:loading?<div className="empty" role="status">Consultando diário…</div>:entries.length?<div className="table-wrap"><table><thead><tr><th>Data / origem</th><th>Descrição</th><th>Débitos</th><th>Créditos</th><th>Situação</th></tr></thead><tbody>{entries.map(e=><tr key={e.id}><td><EnterpriseButton type="button" className="row-link" onClick={()=>void open(e.id)}>{date(e.effectiveDate)}</EnterpriseButton><small>{e.sourceReference}</small></td><td>{e.description}</td><td className="amount">{moneyScaled(e.debitScaled)}</td><td className="amount">{moneyScaled(e.creditScaled)}</td><td><span className="badge">Postado</span></td></tr>)}</tbody></table></div>:<div className="empty"><h3>Nenhum lançamento postado</h3><p>Cadastre pelo menos duas contas e informe uma origem para lançar partidas equilibradas.</p></div>}
+ {error?<div className="empty" role="alert">{error}<EnterpriseButton type="button" onClick={()=>void load()} className="secondary">Tentar novamente</EnterpriseButton></div>:loading?<div className="empty" role="status">Consultando diário…</div>:entries.length?<EnterpriseDataGrid<Entry>
+  caption="Diário contábil"
+  rows={entries}
+  getRowKey={(item)=>item.id}
+  columns={[
+ {key:'date',header:'Data / origem',render:item=><div className="enterprise-list-primary"><EnterpriseButton type="button" className="row-link" onClick={()=>void open(item.id)}>{date(item.effectiveDate)}</EnterpriseButton><small>{item.sourceReference}</small></div>},
+ {key:'description',header:'Descrição',render:item=>item.description},
+ {key:'debit',header:'Débitos',render:item=><span className="amount">{moneyScaled(item.debitScaled)}</span>},
+ {key:'credit',header:'Créditos',render:item=><span className="amount">{moneyScaled(item.creditScaled)}</span>},
+ {key:'status',header:'Situação',render:()=><span className="badge">Postado</span>}
+]}
+ />:<div className="empty"><h3>Nenhum lançamento postado</h3><p>Cadastre pelo menos duas contas e informe uma origem para lançar partidas equilibradas.</p></div>}
  <footer className="table-footer"><span>Página {page}</span><div className="pagination"><EnterpriseButton type="button" disabled={page===1} onClick={()=>setPage(v=>v-1)}>Anterior</EnterpriseButton><EnterpriseButton type="button" disabled={!hasMore} onClick={()=>setPage(v=>v+1)}>Próxima</EnterpriseButton></div></footer>
  {notice&&!creatingAccount&&!creatingEntry&&<p role="status" className="linked-info">{notice}</p>}
  {detail&&<EnterpriseObjectPage title={'Lançamento '+detail.entry.sourceReference} header={<BusinessObjectHeader type="DIÁRIO CONTÁBIL" title={detail.entry.sourceReference} description={detail.entry.description} facts={<span>Data efetiva: {date(detail.entry.effectiveDate)}</span>} actions={<EnterpriseButton type="button" className="secondary" onClick={()=>setDetail(null)}>Voltar ao diário</EnterpriseButton>}/>} sections={[{id:'ledger-lines',label:'Partidas e estornos'}]}><ObjectSection id="ledger-lines" title="Partidas do lançamento">{detail.entry.reversalOf&&<p className="linked-info">Estorno de {detail.entry.reversalOf.slice(0,8).toUpperCase()}</p>}{detail.entry.reversalId&&<p className="linked-info">Estornado por {detail.entry.reversalId.slice(0,8).toUpperCase()}</p>}{detail.lines.map(l=><div className="event-row" key={l.id}><span>{l.code} · {l.name}</span><small>Débito {moneyScaled(l.debitScaled)} · Crédito {moneyScaled(l.creditScaled)}</small></div>)}{!detail.entry.reversalOf&&!detail.entry.reversalId&&<EnterpriseButton type="button" className="secondary" onClick={()=>{setReversing({key:crypto.randomUUID(),originalId:detail.entry.id});setNotice('');}}>Estornar lançamento</EnterpriseButton>}</ObjectSection></EnterpriseObjectPage>}

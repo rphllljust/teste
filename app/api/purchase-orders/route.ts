@@ -17,6 +17,7 @@ const query=z.object({
   status:z.enum(['','registered','cancelled']).default(''),
   page:z.coerce.number().int().min(1).max(100000).default(1),
   pageSize:z.coerce.number().int().min(1).max(50).default(25),
+  sort:z.enum(['recent','reference.asc','reference.desc','receivedDate.asc']).default('recent'),
 }).strict();
 
 type PORow={
@@ -47,6 +48,7 @@ export async function GET(request:Request){
     const parsed=query.safeParse({
       q:sp.get('q')??'',proposalId:sp.get('proposalId')??'',
       status:sp.get('status')??'',page:sp.get('page')??'1',
+      sort:sp.get('sort')??'recent',
       pageSize:sp.get('pageSize')??'25',
     });
     if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros de pedidos inválidos.');
@@ -58,6 +60,7 @@ export async function GET(request:Request){
       const pat='%'+p.q.trim()+'%';bind.push(pat,pat,pat);
     }
     const where=terms.join(' AND ');
+    const sortOrder=p.sort==='reference.asc'?'po.reference ASC,po.id ASC':p.sort==='reference.desc'?'po.reference DESC,po.id DESC':p.sort==='receivedDate.asc'?'po.received_date ASC,po.id ASC':'po.created_at DESC,po.id DESC';
     const joined=`FROM purchase_orders po
       JOIN proposals p ON p.id=po.proposal_id AND p.owner_id=po.owner_id
       JOIN clients c ON c.id=po.client_id AND c.owner_id=po.owner_id`;
@@ -65,7 +68,7 @@ export async function GET(request:Request){
       database().prepare(`SELECT po.*,p.title AS proposal_title,p.total AS proposal_total,
         c.legal_name AS client_name
         ${joined} WHERE ${where}
-        ORDER BY po.created_at DESC,po.id DESC LIMIT ? OFFSET ?`)
+        ORDER BY ${sortOrder} LIMIT ? OFFSET ?`)
         .bind(...bind,p.pageSize,(p.page-1)*p.pageSize).all<PORow>(),
       database().prepare(`SELECT count(*)::int AS total ${joined} WHERE ${where}`)
         .bind(...bind).first<{total:number}>(),
