@@ -176,6 +176,7 @@ test('professional details only expose populated summary and history tabs', asyn
     items: [{ id: 'professional-fixture-1', name: 'Técnica de homologação', registration: 'REG-001',
       specialty: 'Campo', department: 'Operações', phone: null, hourlyCost: null,
       status: 'active', rowVersion: 1 }],
+    pageInfo:{page:1,total:1,hasMore:false,sourceTotal:1},
   } }));
   await page.route('**/api/professionals/professional-fixture-1', route => route.fulfill({ json: {
     professional: { id: 'professional-fixture-1', name: 'Técnica de homologação', registration: 'REG-001',
