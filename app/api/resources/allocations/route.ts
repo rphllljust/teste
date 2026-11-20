@@ -29,10 +29,11 @@ export async function POST(request:Request){
    }
    const conflict=await q(`SELECT id FROM resource_allocations WHERE owner_id=$1 AND resource_type=$2 AND resource_id=$3 AND status='active' AND starts_at < $5 AND ends_at > $4 FOR UPDATE`,[actor,p.resourceType,p.resourceId,starts.toISOString(),ends.toISOString()]);
    if(conflict.rowCount)throw new ApiError(409,'SCHEDULE_CONFLICT','O recurso já está alocado nesta janela.');
-   const now=new Date().toISOString(),receipt={ok:true,resource:{type:'resourceAllocation',id:p.id},refreshPolicy:['resource-planning','service-order']};
+   const now=new Date().toISOString(),receipt={ok:true,resource:{type:'resourceAllocation',id:p.id,rowVersion:1},refreshPolicy:['resource-planning','service-order']};
    await q('INSERT INTO resource_allocations(id,owner_id,order_id,resource_type,resource_id,starts_at,ends_at,actor_id,request_hash,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$2,$8,$9,$10)',[p.id,actor,p.orderId,p.resourceType,p.resourceId,starts.toISOString(),ends.toISOString(),hash,correlationId,now]);
+   await q('INSERT INTO resource_allocation_events(id,allocation_id,owner_id,command,version,actor_id,request_hash,result,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$3,$6,$7,$8,$9)',[p.id,p.id,actor,'allocate',1,hash,JSON.stringify(receipt),correlationId,now]);
    return receipt;
   });
   return respond(result,context,201);
- }catch(error){return failure(error,context)}
+ }catch(error){if(error instanceof Error&&/resource_allocations_no_overlap|exclusion constraint/i.test(error.message))return failure(new ApiError(409,'SCHEDULE_CONFLICT','O recurso já está alocado nesta janela.'),context);return failure(error,context)}
 }
