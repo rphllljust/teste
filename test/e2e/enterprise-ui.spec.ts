@@ -558,3 +558,31 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
  await expect(page.locator('.enterprise-approvals-list')).toContainText('Fechamento de período financeiro');
  await expect(page.locator('.enterprise-approvals-list').getByRole('button',{name:'Avaliar aprovação'})).toHaveCount(0);
 });
+
+
+test('Fiori finance closing List Report sends filters, sort and pagination to the backend (mocked UI contract)',async({page})=>{
+ const requests:string[]=[];
+ await page.route('**/api/finance/periods/close?*',route=>{
+  const url=new URL(route.request().url());
+  requests.push(url.search);
+  const current=Number(url.searchParams.get('page')??1);
+  return route.fulfill({json:{
+   items:current===1?[{id:'period-fixture-1',periodStart:'2098-01-01',periodEnd:'2098-01-31',
+    closedAt:'2098-02-01T10:00:00Z',status:'closed',reference:'CI fiscal'}]:[],
+   pageInfo:{page:current,total:26,hasMore:current===1},
+  }});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Fechamentos',exact:true}).click();
+ const search=page.getByRole('textbox',{name:'Buscar referência de fechamento'});
+ await search.fill('CI fiscal');
+ await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('q')==='CI fiscal')).toBeTruthy();
+ await page.getByRole('combobox',{name:'Ordenação dos fechamentos'}).click();
+ await page.getByRole('option',{name:'Períodos mais antigos'}).click();
+ await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('sort')==='periodEnd.asc')).toBeTruthy();
+ await page.getByRole('navigation',{name:'Paginação dos períodos fechados'})
+   .getByRole('button',{name:'Próxima'}).click();
+ await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('page')==='2')).toBeTruthy();
+ await page.getByRole('button',{name:'Limpar filtros'}).click();
+ await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('sort')==='periodEnd.desc')).toBeTruthy();
+});
