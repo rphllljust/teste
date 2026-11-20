@@ -308,10 +308,10 @@ test('commercial proposal and contract sorting passes whitelisted values to the 
  await page.goto('/');
  await page.getByRole('button',{name:'Propostas e PO',exact:true}).click();
  await page.getByRole('combobox',{name:'Ordenação comercial'}).click();
- await page.getByRole('option',{name:'Título A–Z'}).click();
+ await page.getByRole('option',{name:'Título A–Z',exact:true}).first().click();
  await expect.poll(()=>proposalSorts.includes('title.asc')).toBeTruthy();
  await page.getByRole('button',{name:'Contratos',exact:true}).click();
  await page.getByRole('combobox',{name:'Ordenar contratos'}).click();
- await page.getByRole('option',{name:'Referência Z–A'}).click();
+ await page.getByRole('option',{name:'Referência Z–A',exact:true}).first().click();
  await expect.poll(()=>contractSorts.includes('reference.desc')).toBeTruthy();
 });
