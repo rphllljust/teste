@@ -110,3 +110,21 @@ test('uncontrolled Fluent dropdown submits the actual accounting nature through 
   await dialog.getByRole('button', { name: 'Registrar conta' }).click();
   await expect.poll(() => submittedType).toBe('revenue');
 });
+
+
+test('enterprise navigation is collapsible, keyboard operable, and preserves selected workspace', async ({ page }) => {
+  await page.goto('/');
+  const group = page.getByRole('button', { name: 'RELACIONAMENTO', exact: true });
+  const crm = page.getByRole('button', { name: 'CRM e Vendas', exact: true });
+  await expect(group).toHaveAttribute('aria-expanded', 'true');
+  await group.focus();
+  await page.keyboard.press('Enter');
+  await expect(group).toHaveAttribute('aria-expanded', 'false');
+  await expect(crm).toBeHidden();
+  await page.keyboard.press('Enter');
+  await expect(group).toHaveAttribute('aria-expanded', 'true');
+  await crm.click();
+  await expect(page.locator('.topbar').getByText('Relacionamento')).toBeVisible();
+  await expect(crm).toHaveAttribute('aria-current', 'page');
+  await expect(page.locator('#cisne-workspace-content')).toBeVisible();
+});

@@ -2,7 +2,8 @@
 import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseButton, EnterpriseSearchField, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
+import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/EnterpriseAppNavigation";
+import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -1280,6 +1281,7 @@ function HomeView() {
   };
   return (
     <div className="app">
+      <a className="enterprise-skip-link" href="#cisne-workspace-content">Ir para conteúdo principal</a>
       {sidebar && (
         <EnterpriseButton type="button"
           appearance="transparent"
@@ -1288,105 +1290,24 @@ function HomeView() {
           onClick={() => setSidebar(false)}
         />
       )}
-      <aside className={"sidebar " + (sidebar ? "mobile-open" : "")}>
-        <Link className="brand" href="/" aria-label="Cisne início">
-          <span className="brand-mark">
-            <Layers size={24} />
-          </span>
-          <span>
-            CISNE<small>RONDÔNIA</small>
-          </span>
-        </Link>
-        <div className="company">
-          <Building2 size={18} />
-          <span>
-            Gestão empresarial<small>Dados sob controle de acesso</small>
-          </span>
-        </div>
-        <nav aria-label="Módulos empresariais">
-          {modules.map((g) => (
-            <div className="nav-group" key={g.group}>
-              <p>{g.group}</p>
-              {g.items.map(([name, Icon]) => (
-                <EnterpriseButton type="button"
-                  appearance="subtle"
-                  key={name}
-                  onClick={() => navigate(name)}
-                  className={page === name ? "active" : ""}
-                  aria-current={page === name ? "page" : undefined}
-                >
-                  <Icon size={18} />
-                  <span>{name}</span>
-                  {name === "Ordens de serviço" && (
-                    <span className="nav-count">
-                      {loading || error ? "—" : summary.total}
-                    </span>
-                  )}
-                </EnterpriseButton>
-              ))}
-            </div>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <span className="version">
-            <span />
-            Cisne · Plataforma empresarial
-          </span>
-          <EnterpriseButton type="button"
-            appearance="subtle"
-            onClick={() => {
-              setPaletteQuery("");
-              setPalette(true);
-            }}
-          >
-            <Command size={17} /> Navegação rápida <kbd>Ctrl K</kbd>
-          </EnterpriseButton>
-        </div>
-      </aside>
+      <EnterpriseSidebar
+        groups={modules}
+        activePage={page}
+        open={sidebar}
+        ordersCount={loading || Boolean(error) ? null : summary.total}
+        onNavigate={navigate}
+        onSearch={() => { setPaletteQuery(""); setPalette(true); }}
+      />
       <div className={"main " + (selected && docked ? "with-context" : "")}>
-        <header className="topbar">
-          <div className="crumb">
-            <EnterpriseButton type="button"
-              appearance="transparent"
-              className="mobile-toggle icon-button"
-              aria-label={sidebar ? "Fechar menu" : "Abrir menu"}
-              aria-expanded={sidebar}
-              onClick={() => setSidebar(!sidebar)}
-            >
-              <PanelLeft size={20} />
-            </EnterpriseButton>
-            <span>CISNE</span>
-            <span className="crumb-divider">/</span>
-            <span>
-              {modules.find((g) => g.items.some(([n]) => n === page))?.group ===
-              "OPERAÇÃO"
-                ? "Operação"
-                : "Gestão integrada"}
-            </span>
-            <ChevronRight size={14} />
-            <strong>{page}</strong>
-          </div>
-          <div className="top-actions">
-            <EnterpriseButton type="button"
-              className="global-search"
-              aria-label="Buscar no Cisne — Ctrl ou Command K"
-              aria-keyshortcuts="Control+k Meta+k"
-              onClick={() => {
-                setPaletteQuery("");
-                setPalette(true);
-              }}
-            >
-              <Search size={16} />
-              <span className="global-search-label">Buscar no Cisne</span>
-              <kbd>Ctrl K</kbd>
-            </EnterpriseButton>
-            <span className="app-mode-pill">
-              <span aria-hidden="true" />
-              Workspace
-            </span>
-          </div>
-        </header>
+        <EnterpriseTopbar
+          activePage={page}
+          group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'GESTÃO INTEGRADA'}
+          sidebarOpen={sidebar}
+          onToggleSidebar={() => setSidebar(value => !value)}
+          onSearch={() => { setPaletteQuery(""); setPalette(true); }}
+        />
         <main
+          id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
           {!creating &&
@@ -1461,101 +1382,27 @@ function HomeView() {
             "Fiscal e tributos",
             "Contabilidade",
           ].includes(page) && (
-            <section className="process-strip" aria-label="Cadeia operacional">
-              <div className="process-label">
-                <Layers size={17} />
-                <span>CADEIA INTEGRADA</span>
-              </div>
-              <div
-                className={
-                  "chain-scroll " +
-                  (chainEdges.before ? "has-before " : "") +
-                  (chainEdges.after ? "has-after" : "")
+            <EnterpriseProcessJourney
+              steps={chain}
+              currentStage={currentStage}
+              edges={chainEdges}
+              viewportRef={chainViewport}
+              onViewportScroll={updateChainEdges}
+              onViewportKeyDown={handleChainKey}
+              onScrollDirection={scrollChain}
+              onStageSelect={(index) => {
+                navigate([
+                  "Ordens de serviço",
+                  "Ordens de serviço",
+                  "Medições",
+                  "Faturamento",
+                  "Financeiro",
+                ][index]);
+                if (index === 0 || index === 1) {
+                  applyView(index === 1 ? "Em execução" : "Todas as ordens");
                 }
-              >
-                <EnterpriseButton type="button"
-                  className="chain-navigation chain-previous"
-                  aria-label="Ver etapas anteriores"
-                  hidden={!chainEdges.before}
-                  onClick={() => scrollChain(-1)}
-                >
-                  <ChevronLeft size={16} />
-                </EnterpriseButton>
-                <div
-                  className="chain-viewport"
-                  ref={chainViewport}
-                  tabIndex={0}
-                  aria-label="Etapas da cadeia; use as setas para navegar"
-                  onScroll={updateChainEdges}
-                  onKeyDown={handleChainKey}
-                >
-                  <div className="process-stages">
-                    {chain.map((s, i) => {
-                      const stageClass =
-                        i === currentStage
-                          ? "current"
-                          : i > currentStage
-                            ? "subsequent"
-                            : "";
-                      return i < 5 ? (
-                        <EnterpriseButton type="button"
-                          key={s}
-                          data-stage-index={i}
-                          className={stageClass}
-                          aria-current={
-                            i === currentStage ? "location" : undefined
-                          }
-                          onClick={() => {
-                            navigate(
-                              [
-                                "Ordens de serviço",
-                                "Ordens de serviço",
-                                "Medições",
-                                "Faturamento",
-                                "Financeiro",
-                              ][i],
-                            );
-                            if (i === 0 || i === 1)
-                              applyView(
-                                i === 1 ? "Em execução" : "Todas as ordens",
-                              );
-                          }}
-                        >
-                          <span className="step-number">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                          {s}
-                          <ChevronRight className="stage-divider" size={13} />
-                        </EnterpriseButton>
-                      ) : (
-                        <span
-                          key={s}
-                          className={"stage-unavailable " + stageClass}
-                          aria-disabled="true"
-                          title="Área em preparação"
-                        >
-                          <span className="step-number">
-                            {String(i + 1).padStart(2, "0")}
-                          </span>
-                          {s}
-                          {i < 6 && (
-                            <ChevronRight className="stage-divider" size={13} />
-                          )}
-                        </span>
-                      );
-                    })}
-                  </div>
-                </div>
-                <EnterpriseButton type="button"
-                  className="chain-navigation chain-next"
-                  aria-label="Ver próximas etapas"
-                  hidden={!chainEdges.after}
-                  onClick={() => scrollChain(1)}
-                >
-                  <ChevronRight size={16} />
-                </EnterpriseButton>
-              </div>
-            </section>
+              }}
+            />
           )}
           {action?.command === "invoice" ? (
             <BillingPreparation
