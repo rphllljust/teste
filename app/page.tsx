@@ -93,6 +93,7 @@ type Order = {
   created_at: string;
 };
 const modules: { group: string; items: [string, LucideIcon][] }[] = [
+  // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
   {
     group: "OPERAÇÃO",
     items: [
