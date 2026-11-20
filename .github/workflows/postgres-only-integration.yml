@@ -124,6 +124,8 @@ jobs:
         run: |
           pnpm test:postgres-adapter
           pnpm test:security
+      - name: Prove resource allocation integration is fail-closed without PostgreSQL
+        run: node scripts/verify-resource-allocation-test-fail-closed.mjs
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
       - name: Apply additive NextCRM migration idempotently
@@ -141,6 +143,14 @@ jobs:
             '0003_nextcrm_document_bridge',
             '0004_cash_transfers',
             '0005_finance_period_closes',
+            '0006_professionals',
+            '0007_assets',
+            '0008_inventory_ledger',
+            '0009_workflow_approvals',
+            '0010_resource_allocations',
+            '0011_inventory_consumption',
+            '0012_field_service_measurements',
+            '0013_workflow_business_commands',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;

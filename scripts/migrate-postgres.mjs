@@ -14,6 +14,14 @@ const migrations = [
   { id: '0003_finance_audit', file: '../drizzle-pg/0003_finance_audit.sql' },
   { id: '0004_cash_transfers', file: '../drizzle-pg/0004_cash_transfers.sql' },
   { id: '0005_finance_period_closes', file: '../drizzle-pg/0005_finance_period_closes.sql' },
+  { id: '0006_professionals', file: '../drizzle-pg/0006_professionals.sql' },
+  { id: '0007_assets', file: '../drizzle-pg/0007_assets.sql' },
+  { id: '0008_inventory_ledger', file: '../drizzle-pg/0008_inventory_ledger.sql' },
+  { id: '0009_workflow_approvals', file: '../drizzle-pg/0009_workflow_approvals.sql' },
+  { id: '0010_resource_allocations', file: '../drizzle-pg/0010_resource_allocations.sql' },
+  { id: '0011_inventory_consumption', file: '../drizzle-pg/0011_inventory_consumption.sql' },
+  { id: '0012_field_service_measurements', file: '../drizzle-pg/0012_field_service_measurements.sql' },
+  { id: '0013_workflow_business_commands', file: '../drizzle-pg/0013_workflow_business_commands.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });

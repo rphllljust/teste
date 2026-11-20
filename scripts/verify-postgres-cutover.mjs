@@ -30,6 +30,8 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, conn
 let client;
 let discrepancies = 0;
 let totalRows = 0;
+// Explicitly reviewed additive columns beyond the immutable 36-table D1 baseline.
+const additiveColumns = new Map([['measurements', ['execution_entry_id', 'submitted_at', 'submitted_by']]]);
 
 function canonical(row, cols) {
   if (cols.some(c => Buffer.isBuffer(row[c]))) throw new Error('BLOB requires separate review');
@@ -47,23 +49,36 @@ try {
       [table]
     );
     const cols = columnResult.rows.map(r => r.column_name);
-    if (!expected || cols.join(',') !== expected.columns?.join(',')) {
+    const baselineCols = expected?.columns;
+    const approvedExtra = additiveColumns.get(table) ?? [];
+    const actualExtra = cols.filter(c => !baselineCols?.includes(c));
+    if (!Array.isArray(baselineCols) || baselineCols.some(c => !cols.includes(c)) ||
+        actualExtra.join(',') !== [...approvedExtra].sort().join(',')) {
       discrepancies++;
-      console.log(table + ': NO-GO (columns differ or missing)');
+      console.log(table + ': NO-GO (missing baseline columns or unapproved schema drift)');
       continue;
     }
-    if (!cols.includes('id')) { discrepancies++; console.log(table+': NO-GO (id missing)'); continue; }
+    if (!baselineCols.includes('id')) { discrepancies++; console.log(table+': NO-GO (id missing)'); continue; }
+    if (actualExtra.length) {
+      const predicates = actualExtra.map(c => '"' + c + '" IS NOT NULL').join(' OR ');
+      const populated = await client.query(`SELECT 1 FROM "${table}" WHERE ${predicates} LIMIT 1`);
+      if (populated.rowCount) {
+        discrepancies++;
+        console.log(table + ': NO-GO (additive columns already contain data)');
+        continue;
+      }
+    }
     const digest = createHash('sha256');
     let count = 0, lastId = null;
     const identifier = '"' + table + '"'; // from strict trusted schema regex, not user input
     while (true) {
       const sql = lastId === null
-        ? `SELECT * FROM ${identifier} ORDER BY "id" COLLATE "C" LIMIT $1`
-        : `SELECT * FROM ${identifier} WHERE "id" COLLATE "C" > $1 ORDER BY "id" COLLATE "C" LIMIT $2`;
+        ? `SELECT ${baselineCols.map(c => '"' + c + '"').join(', ')} FROM ${identifier} ORDER BY "id" COLLATE "C" LIMIT $1`
+        : `SELECT ${baselineCols.map(c => '"' + c + '"').join(', ')} FROM ${identifier} WHERE "id" COLLATE "C" > $1 ORDER BY "id" COLLATE "C" LIMIT $2`;
       const res = await client.query(sql, lastId === null ? [400] : [lastId, 400]);
       if (res.rows.length === 0) break;
       for (const row of res.rows) {
-        digest.update(canonical(row, cols), 'utf8');
+        digest.update(canonical(row, baselineCols), 'utf8');
         count++;
       }
       lastId = res.rows.at(-1).id;
