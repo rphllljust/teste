@@ -22,7 +22,7 @@ function fakeList(page:number){
  const pageInfo={page,limit:25,total:0,sourceTotal:0,hasMore:false};
  return {
   items:[],orders:[],records:[],entries:[],rows:[],results:[],transactions:[],
-  clients:[],assets:[],professionals:[],events:[],documents:[],notes:[],
+  clients:[],leads:[],assets:[],professionals:[],events:[],documents:[],notes:[],
   accounts:[],journals:[],statements:[],invoices:[],receivables:[],
   purchases:[],movements:[],materials:[],allocations:[],teams:[],
   matches:[],jobs:[],tasks:[],contracts:[],opportunities:[],proposals:[],
@@ -80,7 +80,14 @@ for(const name of destinations){
    await page.setViewportSize({width:size.width,height:size.height});
    await page.goto('/');
    await openDestination(page,name);
-   await page.waitForLoadState('networkidle',{timeout:10000});
+   // Network idle is not an application-ready event (procurement health polling
+   // can keep network active); assert a mounted enterprise page and wait for paint.
+   const main=page.locator('#cisne-workspace-content');
+   await expect(main).toBeVisible();
+   await expect.poll(async()=>main.evaluate(el=>(el.textContent??'').trim().length))
+    .toBeGreaterThan(8);
+   await page.evaluate(()=>new Promise<void>(resolve=>
+     requestAnimationFrame(()=>requestAnimationFrame(()=>resolve()))));
    const metrics=await page.evaluate(()=>({
      viewport:window.innerWidth,
      documentWidth:document.documentElement.scrollWidth,
