@@ -54,17 +54,23 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       }
       const now = new Date().toISOString();
       if (p.command === 'report') {
-        const entryId = crypto.randomUUID();
+        // The execution entry id is also the audit-event id. Persist the
+        // event first so PostgreSQL enforces that relationship atomically.
+        // Reusing the idempotency key makes the fact replay-safe.
+        const entryId = p.key;
+        await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [entryId, id, p.command, row.version, now, context!.actorId, hash, entryId, context!.correlationId]);
         await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)', [entryId, id, 'report', p.resourceKind, p.description, quantityScaled(p.quantity), p.unit, p.resourceReference, p.effectiveDate, p.reference, context!.actorId, now]);
         const result = { ok: true, resource: { type: 'executionEntry', id: entryId } };
-        await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, id, p.command, row.version, now, context!.actorId, hash, entryId, JSON.stringify(result), context!.correlationId]);
+        await query('UPDATE order_events SET result=$2 WHERE id=$1', [entryId, JSON.stringify(result)]);
         return result;
       }
       const original = await query('SELECT id FROM execution_entries WHERE id=$1 AND order_id=$2 AND reverses_id IS NULL FOR UPDATE', [p.reversesId, id]);
       if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Apontamento original não encontrado.');
       const reversalId = crypto.randomUUID();
+      await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [reversalId, id, p.command, row.version, now, context!.actorId, hash, reversalId, context!.correlationId]);
       await query('INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,reverses_id,actor_id,created_at) SELECT $1,order_id,\'void\',resource_kind,$3,quantity,unit,resource_reference,effective_date,$4,id,$5,$6 FROM execution_entries WHERE id=$2', [reversalId, p.reversesId, p.reason, `Estorno: ${p.reason}`, context!.actorId, now]);
       const result = { ok: true, resource: { type: 'executionReversal', id: reversalId, reversesId: p.reversesId } };
+      await query('UPDATE order_events SET result=$2 WHERE id=$1', [reversalId, JSON.stringify(result)]);
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, id, p.command, row.version, now, context!.actorId, hash, reversalId, JSON.stringify(result), context!.correlationId]);
       return result;
     });
