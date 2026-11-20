@@ -27,6 +27,11 @@ const command = z.discriminatedUnion('type', [
   quantity: quantity.refine(value => value > 0),
   reference: z.string().trim().min(3).max(160),
  }).strict(),
+ z.object({
+  type: z.literal('consume'), id, itemId: id, orderId: id, reservationId: id,
+  quantity: quantity.refine(value => value > 0),
+  reference: z.string().trim().min(3).max(160),
+ }).strict(),
 ]);
 
 export async function GET(request: Request) {
@@ -41,12 +46,12 @@ export async function GET(request: Request) {
    const results = await db.batch([
     db.prepare(`SELECT id, sku, name, unit, minimum,
       COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id),0) AS balance,
-      COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS reserved,
+      COALESCE((SELECT SUM(quantity-consumed_quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS reserved,
       COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id),0) -
-      COALESCE((SELECT SUM(quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS available
+      COALESCE((SELECT SUM(quantity-consumed_quantity) FROM inventory_reservations WHERE item_id=inventory_items.id AND owner_id=inventory_items.owner_id AND status='reserved'),0) AS available
       FROM inventory_items WHERE owner_id=? AND id=?`).bind(context.actorId, itemId),
     db.prepare('SELECT m.id, m.delta, m.reference, m.order_id AS "orderId", m.procurement_order_id AS "procurementOrderId", m.procurement_receipt_line_id AS "receiptLineId", o.title AS "orderTitle", m.created_at AS "createdAt" FROM inventory_movements m LEFT JOIN service_orders o ON o.id=m.order_id AND o.owner_id=m.owner_id WHERE m.owner_id=? AND m.item_id=? ORDER BY m.created_at ASC, m.id ASC LIMIT 500').bind(context.actorId, itemId),
-    db.prepare("SELECT id, source_document_type AS \"sourceDocumentType\", source_document_id AS \"sourceDocumentId\", source_reference AS \"sourceReference\", quantity, status, created_at AS \"createdAt\" FROM inventory_reservations WHERE owner_id=? AND item_id=? ORDER BY created_at ASC, id ASC LIMIT 500").bind(context.actorId, itemId),
+    db.prepare("SELECT id, source_document_type AS \"sourceDocumentType\", source_document_id AS \"sourceDocumentId\", source_reference AS \"sourceReference\", quantity, consumed_quantity AS \"consumedQuantity\", status, created_at AS \"createdAt\" FROM inventory_reservations WHERE owner_id=? AND item_id=? ORDER BY created_at ASC, id ASC LIMIT 500").bind(context.actorId, itemId),
     db.prepare("SELECT id, title FROM service_orders WHERE owner_id=? AND status='executing' ORDER BY created_at DESC, id DESC LIMIT 50").bind(context.actorId),
    ]);
    if (!results[0].results.length) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
@@ -94,13 +99,37 @@ export async function POST(request: Request) {
      const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
      if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
      const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
-     const reserved = await query("SELECT COALESCE(SUM(quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
+    const reserved = await query("SELECT COALESCE(SUM(quantity-consumed_quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
      const available = Number(stock.rows[0]?.balance ?? 0) - Number(reserved.rows[0]?.reserved ?? 0);
      if (available < data.quantity) throw new ApiError(409, 'AVAILABILITY_CONFLICT', 'A reserva supera o saldo disponível.');
      await query(`INSERT INTO inventory_reservations
        (id,item_id,owner_id,source_document_type,source_document_id,source_reference,quantity,status,created_at,request_hash,correlation_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,'reserved',$8,$9,$10)`,
       [data.id, data.itemId, context!.actorId, data.sourceDocumentType, data.sourceDocumentId, data.reference, data.quantity, now, hash, context!.correlationId]);
+    });
+   } else if (data.type === 'consume') {
+    await db.transaction(async query => {
+     const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
+     if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+     const order = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status='executing' FOR UPDATE", [data.orderId, context!.actorId]);
+     if (!order.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
+     const reservation = await query(`SELECT source_document_id, status, quantity, consumed_quantity
+       FROM inventory_reservations WHERE id=$1 AND item_id=$2 AND owner_id=$3 FOR UPDATE`, [data.reservationId, data.itemId, context!.actorId]);
+     if (!reservation.rowCount) throw new ApiError(404, 'RESERVATION_NOT_FOUND', 'Reserva de material indisponível.');
+     const row = reservation.rows[0] as { source_document_id: string; status: string; quantity: number; consumed_quantity: number };
+     if (row.source_document_id !== data.orderId) throw new ApiError(409, 'RESERVATION_CONFLICT', 'A reserva não pertence à OS informada.');
+     const remaining = Number(row.quantity) - Number(row.consumed_quantity);
+     if (row.status !== 'reserved' || remaining < data.quantity) throw new ApiError(409, 'RESERVATION_CONFLICT', 'O consumo supera a quantidade reservada.');
+     const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
+     if (Number(stock.rows[0]?.balance ?? 0) < data.quantity) throw new ApiError(409, 'BALANCE_CONFLICT', 'O consumo supera o saldo disponível.');
+     await query('INSERT INTO inventory_movements (id,item_id,owner_id,order_id,delta,reference,created_at,request_hash,correlation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)',
+      [data.id, data.itemId, context!.actorId, data.orderId, -data.quantity, data.reference, now, hash, context!.correlationId]);
+     const consumed = Number(row.consumed_quantity) + data.quantity;
+     await query("UPDATE inventory_reservations SET consumed_quantity=$1, status=CASE WHEN $1 >= quantity THEN 'consumed' ELSE 'reserved' END WHERE id=$2 AND owner_id=$3", [consumed, data.reservationId, context!.actorId]);
+     await query(`INSERT INTO inventory_consumption_events
+       (id,movement_id,reservation_id,item_id,order_id,owner_id,quantity,actor_id,reference,request_hash,correlation_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+      [data.id, data.id, data.reservationId, data.itemId, data.orderId, context!.actorId, data.quantity, context!.actorId, data.reference, hash, context!.correlationId]);
     });
    } else {
     const delta = data.direction === 'in' ? data.quantity : -data.quantity;

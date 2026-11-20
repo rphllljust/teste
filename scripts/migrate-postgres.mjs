@@ -19,6 +19,9 @@ const migrations = [
   { id: '0008_inventory_ledger', file: '../drizzle-pg/0008_inventory_ledger.sql' },
   { id: '0009_workflow_approvals', file: '../drizzle-pg/0009_workflow_approvals.sql' },
   { id: '0010_resource_allocations', file: '../drizzle-pg/0010_resource_allocations.sql' },
+  { id: '0011_inventory_consumption', file: '../drizzle-pg/0011_inventory_consumption.sql' },
+  { id: '0012_field_service_measurements', file: '../drizzle-pg/0012_field_service_measurements.sql' },
+  { id: '0013_workflow_business_commands', file: '../drizzle-pg/0013_workflow_business_commands.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
