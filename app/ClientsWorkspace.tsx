@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useRef,useState} from 'react';
+import {EnterprisePageHeader, EnterpriseErrorBoundary} from './components/enterprise/EnterprisePrimitives';
 import {Plus,RefreshCw,Search,X} from 'lucide-react';
 import type {ClientFields} from '../lib/domain/clients';
 export type Client={id:string;legalName:string;tradeName:string|null;document:string|null;email:string|null;phone:string|null;state:{code:'active'|'inactive';label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[]};
@@ -12,7 +13,7 @@ type NextcrmProfile={
 };
 type NextcrmContext={mapped:boolean;state:'synchronized'|'not_linked'|'not_configured'|'unavailable'|'invalid';message?:string;profile?:NextcrmProfile|null;mapping?:{accountId:string;instanceKey:string;verifiedAt:string}};
 type List={items:Client[];pageInfo:{total:number;sourceTotal:number;hasMore:boolean}};
-export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder:(client:Client)=>void;onOrders:(id:string)=>void}){
+function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder:(client:Client)=>void;onOrders:(id:string)=>void}){
  const [result,setResult]=useState<List|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[q,setQ]=useState(''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[context,setContext]=useState<Context|null>(null),[contextLoading,setContextLoading]=useState(false),[contextError,setContextError]=useState(''),[nextcrm,setNextcrm]=useState<NextcrmContext|null>(null),[nextcrmLoading,setNextcrmLoading]=useState(false),[nextcrmError,setNextcrmError]=useState(''),[dialog,setDialog]=useState<{key:string;client:Client|null}|null>(null),[saving,setSaving]=useState(false),[commandError,setCommandError]=useState(''),[crmEditing,setCrmEditing]=useState(false);
  const generation=useRef(0),busy=useRef(false),panel=useRef<HTMLElement>(null),commandAttempt=useRef<{key:string;body:string}|null>(null);
  const load=useCallback(async()=>{const g=++generation.current;setLoading(true);setError('');try{const r=await fetch('/api/clients?'+new URLSearchParams({q,...(status?{status}:{}),page:String(page),pageSize:'25',sort:'name.asc'}));const d=await r.json() as List&{error?:string};if(!r.ok)throw new Error(d.error);if(g===generation.current)setResult(d);}catch(e){if(g===generation.current)setError(e instanceof Error?e.message:'Consulta indisponível.');}finally{if(g===generation.current)setLoading(false);}},[q,status,page]);
@@ -164,3 +165,5 @@ export default function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder
  </form></section></div>}
  </section>;
 }
+
+export default function ClientsWorkspaceEnterprise(props: Parameters<typeof ClientsWorkspace>[0]) { return <EnterpriseErrorBoundary><section className="enterprise-module cisne-enterprise-experience"><EnterprisePageHeader eyebrow="CISNE ENTERPRISE EXPERIENCE" title="Gestão de clientes e contas CRM" description="Identidade empresarial, integração NextCRM e ordens vinculadas."/><ClientsWorkspace {...props}/></section></EnterpriseErrorBoundary>; }
