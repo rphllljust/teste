@@ -23,7 +23,7 @@ const specs:Array<{id:LaneId;label:string;target:string;authority:string}>= [
  {id:'overduePayables',label:'Obrigações vencidas',target:'Contas a pagar',authority:'payables.payment_ledger.v1'},
  {id:'latePurchases',label:'Compras não recebidas no prazo',target:'Compras',authority:'supplier_purchase_orders.expected_on.v1'},
  {id:'stockShortage',label:'Materiais abaixo do mínimo',target:'Estoque e compras',authority:'inventory.movements_reservations.v1'},
- {id:'myApprovals',label:'Aprovações atribuídas',target:'Fechamentos',authority:'workflow_approval_requests.pending_assignee.v1'},
+ {id:'myApprovals',label:'Aprovações atribuídas',target:'Visão operacional',authority:'workflow_approval_requests.pending_assignee.v1'},
 ];
 export async function GET(request:Request){
  let context:RequestContext|undefined;
@@ -85,8 +85,8 @@ export async function GET(request:Request){
    db.prepare(`SELECT a.id,a.entity_type||' · '||a.command AS title,
       a.created_at AS date,COUNT(*) OVER() AS "totalCount"
      FROM workflow_approval_requests a
-     WHERE a.owner_id=? AND a.approver_id=? AND a.state='pending'
-     ORDER BY a.created_at ASC,a.id ASC LIMIT 6`).bind(context.actorId,context.actorId),
+     WHERE a.approver_id=? AND a.state='pending'
+     ORDER BY a.created_at ASC,a.id ASC LIMIT 6`).bind(context.actorId),
   ]);
   const lanes:Lane[]=specs.map((spec,index)=>{
     const facts=rows[index].results as Fact[];

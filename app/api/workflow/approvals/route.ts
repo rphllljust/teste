@@ -46,3 +46,36 @@ export async function POST(request: Request) {
     return respond(result, context, 201);
   } catch (error) { return failure(error, context); }
 }
+
+const listQuery=z.object({
+ state:z.enum(['pending','approved','rejected']).default('pending'),
+ page:z.coerce.number().int().min(1).max(100000).default(1),
+}).strict();
+
+// The assigned approver may read their own inbox even when the request
+// originated from a different owner. This does NOT grant access to the
+// originating business record outside its normal tenant authorization.
+export async function GET(request:Request){
+ let context:RequestContext|undefined;
+ try{
+  context=requestContext(request);
+  const parsed=listQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams));
+  if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Consulta de aprovações inválida.');
+  const {state,page}=parsed.data,db=database();
+  const results=await db.snapshot([
+   db.prepare(`SELECT id,entity_type AS "entityType",entity_id AS "entityId",
+      command,state,requested_by AS "requestedBy",
+      row_version AS "rowVersion",created_at AS "createdAt",
+      decided_at AS "decidedAt"
+     FROM workflow_approval_requests
+     WHERE approver_id=? AND state=?
+     ORDER BY created_at ASC,id ASC LIMIT 26 OFFSET ?`).bind(context.actorId,state,(page-1)*25),
+   db.prepare('SELECT COUNT(*) AS total FROM workflow_approval_requests WHERE approver_id=? AND state=?')
+    .bind(context.actorId,state),
+  ]);
+  return respond({items:results[0].results.slice(0,25),page,state,
+    total:Number((results[1].results[0] as {total:number|string}).total),
+    hasMore:results[0].results.length>25,
+    authority:'assigned_approver_postgresql.v1'},context);
+ }catch(error){return failure(error,context);}
+}
