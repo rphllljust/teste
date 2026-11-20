@@ -462,3 +462,33 @@ test('procurement List Report paginates server-side and resets page on business 
  await expect(paginator).toContainText('Página 1');
  await expect(page.getByRole('main')).toHaveCount(1);
 });
+
+
+test('inventory search, stock intervention and next page are separate server-backed filters',async({page})=>{
+ const queries:string[]=[];
+ await page.route('**/api/inventory?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  if(params.has('item'))return route.fulfill({status:404,json:{error:'No detail required'}});
+  const pageNo=Number(params.get('page')??1);
+  const low=params.get('lowOnly')==='1';
+  queries.push(route.request().url());
+  const item={id:'item-ci-'+pageNo,sku:'CISNE-'+pageNo,
+   name:'Material pagina '+pageNo,unit:'un',minimum:low?2000:0,
+   balance:1000,available:1000};
+  return route.fulfill({json:{items:[item],page:pageNo,hasMore:!low&&pageNo===1,
+   matched:low?1:26,summary:{total:26,low:1}}});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Estoque e compras',exact:true}).click();
+ const paginator=page.getByRole('navigation',{name:'Paginação de estoque'});
+ await expect(paginator).toContainText('26 materiais no filtro');
+ await paginator.getByRole('button',{name:'Próxima'}).click();
+ await expect.poll(()=>queries.some(q=>new URL(q).searchParams.get('page')==='2')).toBeTruthy();
+ await expect(page.getByText('CISNE-2').first()).toBeVisible();
+ await page.getByRole('button',{name:'Intervenção',exact:true}).click();
+ await expect.poll(()=>queries.some(q=>{
+  const p=new URL(q).searchParams;return p.get('page')==='1'&&p.get('lowOnly')==='1';
+ })).toBeTruthy();
+ await expect(paginator).toContainText('1 materiais no filtro');
+ await expect(page.getByRole('main')).toHaveCount(1);
+});
