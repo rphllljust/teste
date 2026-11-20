@@ -41,5 +41,7 @@ jobs:
         if: always()
         with:
           name: enterprise-ui-screenshots-${{ github.sha }}
-          path: test-results/enterprise/**/*.png
+          path: |
+            test-results/enterprise/**/*.png
+            test-results/enterprise/**/*.json
           if-no-files-found: warn
