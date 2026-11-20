@@ -63,7 +63,7 @@ test('dropdown consumers do not fabricate HTML select change events', async () =
         }
       }
       assert.ok(end > start, 'unclosed EnterpriseDropdown in ' + file.name);
-      assert.doesNotMatch(source.slice(start, end), /\\bonChange\\s*=/, file.name);
+      assert.doesNotMatch(source.slice(start, end), /\bonChange\s*=/, file.name);
       offset = end;
     }
   }
