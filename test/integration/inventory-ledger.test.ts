@@ -51,9 +51,11 @@ test('Inventory consumption atomically debits a reserved OS quantity and is owne
       (SELECT COUNT(*) FROM inventory_consumption_events WHERE reservation_id=r.id) AS events
     FROM inventory_reservations r WHERE r.id=$1`, [reservationId]);
   assert.equal(state.rows[0].status, 'consumed');
-  assert.equal(Number(state.rows[0].quantity), 4);
-  assert.equal(Number(state.rows[0].consumed_quantity), 4);
-  assert.equal(Number(state.rows[0].balance), 1);
+  // Inventory quantities are persisted as thousandths to preserve decimal
+  // precision; 4 units = 4000 and the remaining balance is 1 unit = 1000.
+  assert.equal(Number(state.rows[0].quantity), 4000);
+  assert.equal(Number(state.rows[0].consumed_quantity), 4000);
+  assert.equal(Number(state.rows[0].balance), 1000);
   assert.equal(Number(state.rows[0].events), 2);
  } finally { await clean(owner); await clean(otherOwner); }
 });
