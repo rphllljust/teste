@@ -552,7 +552,8 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
  expect(submitted.version).toBe(1);
  expect(String(submitted.key)).toMatch(/^[a-f0-9-]{36}$/);
  await expect(page.getByText('Decisão aprovada e registrada no servidor.',{exact:true})).toBeVisible({timeout:15000});
- await expect(inbox).toBeVisible();
+ await expect(dialog).toBeHidden({timeout:15000}); // Fluent modal exit temporarily marks background inert
+ await expect(inbox).toBeVisible({timeout:15000});
  await page.locator('.enterprise-approvals-filters button').filter({hasText:'Aprovadas'}).click();
  await expect(page.locator('.enterprise-approvals-list')).toContainText('Fechamento de período financeiro');
  await expect(page.locator('.enterprise-approvals-list').getByRole('button',{name:'Avaliar aprovação'})).toHaveCount(0);
