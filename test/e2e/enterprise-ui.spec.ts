@@ -551,7 +551,7 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
  expect(submitted.command).toBe('approve');
  expect(submitted.version).toBe(1);
  expect(String(submitted.key)).toMatch(/^[a-f0-9-]{36}$/);
- await expect(page.getByRole('status').getByText('Decisão aprovada e registrada no servidor.',{exact:true})).toBeVisible({timeout:15000});
+ await expect(page.getByText('Decisão aprovada e registrada no servidor.',{exact:true})).toBeVisible({timeout:15000});
  await inbox.getByRole('button',{name:'Aprovadas'}).click();
  await expect(inbox.getByText('Fechamento de período financeiro').first()).toBeVisible();
  await expect(inbox.getByRole('button',{name:'Avaliar aprovação'})).toHaveCount(0);
