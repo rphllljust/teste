@@ -337,37 +337,44 @@ test('completed OS without actual measurement does not claim measurement or bill
 });
 
 
-test('enterprise control tower reads persisted projection, filters the reference date and routes the action',async({page})=>{
+test('Redwood control tower refreshes real API query contracts and opens the financial workspace (mocked UI)',async({page})=>{
  const queried:string[]=[];
- await page.route('**/api/orders?*',route=>route.fulfill({json:{
-  orders:[],total:0,summary:{total:0,drafts:0,planned:0,pendingMeasurements:0},
- }}));
- await page.route('**/api/enterprise/control-tower?*',route=>{
+ await page.route('**/api/enterprise/control-tower*',route=>{
   queried.push(new URL(route.request().url()).searchParams.get('asOf')??'');
+  const specs=[
+   ['lateOrders','Ordens em atraso','Centro de operações'],
+   ['unmeasuredOrders','Concluídas sem medição aprovada','Medições'],
+   ['overdueReceivables','Recebíveis vencidos','Financeiro'],
+   ['overduePayables','Obrigações vencidas','Contas a pagar'],
+   ['latePurchases','Compras não recebidas no prazo','Compras'],
+   ['stockShortage','Materiais abaixo do mínimo','Estoque e compras'],
+   ['myApprovals','Aprovações atribuídas','Visão operacional'],
+  ];
   return route.fulfill({json:{
    asOf:'2026-11-20',generatedAt:'2026-11-20T12:00:00.000Z',
-   authority:'SYNTHETIC_LAYOUT_ONLY',sampleLimitPerLane:6,
-   lanes:[
-    {id:'overdueReceivables',label:'Recebíveis vencidos',count:2,
-     target:'Financeiro',authority:'test.fixture',totalAmountScaled:'600000',items:[
-      {id:'synthetic-a',title:'Ordem ilustrativa',reference:null,date:'2026-11-10',
-       amountScaled:'600000',availableScaled:null,requiredScaled:null},
-     ]},
-    {id:'latePurchases',label:'Compras não recebidas no prazo',count:0,
-     target:'Compras',authority:'test.fixture',totalAmountScaled:null,items:[]},
-   ],
+   authority:'owner_scoped_persisted_postgresql.v1',sampleLimitPerLane:6,
+   lanes:specs.map(([id,label,target])=>({
+    id,label,target,count:id==='overdueReceivables'?2:0,
+    authority:'SYNTHETIC_UI_CONTRACT',totalAmountScaled:id==='overdueReceivables'?'600000':null,
+    items:id==='overdueReceivables'?[{
+     id:'synthetic-a',title:'Título ilustrativo',reference:null,date:'2026-11-10',
+     amountScaled:'600000',availableScaled:null,requiredScaled:null,unit:null,
+    }]:[],
+   })),
   }});
  });
  await page.goto('/');
- await expect(page.getByRole('region',{name:'Torre de controle empresarial'})).toBeVisible();
- const metric=page.getByRole('button',{name:'Recebíveis vencidos: 2'});
- await expect(metric).toBeVisible();
- await expect(metric).toContainText('R$');
- await page.getByRole('textbox',{name:'Data de referência da torre de controle'}).fill('2026-11-21');
+ const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
+ await expect(tower).toBeVisible();
+ const lane=tower.getByRole('article',{name:'Recebíveis vencidos'});
+ await expect(lane).toContainText('2 registros');
+ await expect(lane).toContainText('R$');
+ const date=tower.getByLabel('Data de referência das exceções');
+ await date.fill('2026-11-21');
  await expect.poll(()=>queried.includes('2026-11-21')).toBeTruthy();
- await page.getByRole('button',{name:'Atualizar',exact:true}).first().click();
+ await tower.getByRole('button',{name:'Atualizar exceções'}).click();
  await expect.poll(()=>queried.filter(x=>x==='2026-11-21').length).toBeGreaterThan(1);
- await metric.click();
+ await lane.getByRole('button',{name:'Abrir área'}).click();
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Financeiro');
 });
 

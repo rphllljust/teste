@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, isValidElement, useEffect, useId, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useId, useRef, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
 import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
@@ -74,11 +74,20 @@ export function EnterpriseObjectPage({ title, header, sections=[], children, cla
  const [activeSection,setActiveSection]=useState(sections[0]?.id??'');
  const [navigationOpen,setNavigationOpen]=useState(false);
  const sectionNavigationId=useId();
+ const explicitSectionRef=useRef<string|null>(null);
  const sectionSignature=sections.map(section=>section.id).join('\u0000');
  const activeSectionId=resolveActiveSectionId(sections,activeSection);
  useEffect(()=>{
   if(!sectionSignature||typeof IntersectionObserver==='undefined')return;
   const observer=new IntersectionObserver(entries=>{
+   const requested=explicitSectionRef.current;
+   if(requested){
+     if(entries.some(entry=>entry.target.id===requested&&entry.isIntersecting)){
+       explicitSectionRef.current=null;
+       setActiveSection(current=>current===requested?current:requested);
+     }
+     return;
+   }
    const next=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top)[0]?.target.id;
    if(next)setActiveSection(current=>current===next?current:next);
   },{rootMargin:'-84px 0px -65% 0px',threshold:[0,0.1,0.5]});
@@ -90,7 +99,7 @@ export function EnterpriseObjectPage({ title, header, sections=[], children, cla
  },[sectionSignature]);
  return <section role="region" className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
   <div className="enterprise-object-identity">{header}</div>
-  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
+  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{explicitSectionRef.current=section.id;setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
   <div className="enterprise-object-page-content">{children}</div>
  </section>;
 }
