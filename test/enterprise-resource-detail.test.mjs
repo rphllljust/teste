@@ -15,8 +15,8 @@ test('professional Object Page has real accessible tabs and permission-bounded a
  assert.match(source, /FluentTabList/);
  assert.match(source, /role="tabpanel"/);
  assert.match(source, /detailTab==='summary'/);
- assert.match(source, /detailTab==='history'|:'history'/);
+ assert.match(source, /data\.value==='history'\?'history':'summary'/);
  assert.match(source, /context\.availableCommands\[0\]&&<EnterpriseButton/);
- assert.match(source, /if\(!c\)return/);
+ assert.match(source, /if\(!c\)return;setSaving\(true\)/);
  assert.doesNotMatch(source, />Alocações<\/EnterpriseButton>/);
 });
