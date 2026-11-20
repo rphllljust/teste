@@ -1282,6 +1282,7 @@ function HomeView() {
     <div className="app">
       {sidebar && (
         <EnterpriseButton type="button"
+          appearance="transparent"
           className="sidebar-scrim"
           aria-label="Fechar navegação"
           onClick={() => setSidebar(false)}
@@ -1308,6 +1309,7 @@ function HomeView() {
               <p>{g.group}</p>
               {g.items.map(([name, Icon]) => (
                 <EnterpriseButton type="button"
+                  appearance="subtle"
                   key={name}
                   onClick={() => navigate(name)}
                   className={page === name ? "active" : ""}
@@ -1331,6 +1333,7 @@ function HomeView() {
             Cisne · Plataforma empresarial
           </span>
           <EnterpriseButton type="button"
+            appearance="subtle"
             onClick={() => {
               setPaletteQuery("");
               setPalette(true);
@@ -1344,6 +1347,7 @@ function HomeView() {
         <header className="topbar">
           <div className="crumb">
             <EnterpriseButton type="button"
+              appearance="transparent"
               className="mobile-toggle icon-button"
               aria-label={sidebar ? "Fechar menu" : "Abrir menu"}
               aria-expanded={sidebar}
@@ -1392,6 +1396,12 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Field Service Cockpit",
+              "Resource Planning Board",
+              "Clientes e propostas",
+              "Propostas e PO",
+              "Contratos",
+              "Fiscal e tributos",
               "Profissionais",
               "Frota e ativos",
             ].includes(page) && (

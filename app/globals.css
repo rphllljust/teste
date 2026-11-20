@@ -685,3 +685,19 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
 .enterprise-status-cancelled,.enterprise-status-blocked{color:var(--cisne-status-danger);background:var(--cisne-status-danger-bg)}
 @media(max-width:1200px){:root{--cisne-shell-width:230px;--cisne-topbar-height:68px}}
 @media(max-width:800px){:root{--cisne-shell-width:252px;--cisne-topbar-height:62px}.main{margin-left:0}}
+
+/* Fluent fields need an explicit flex basis inside the shared responsive filter bar. */
+.enterprise-filter-fields>.fui-Field{flex:1 1 230px;width:100%;min-width:0}
+.enterprise-filter-fields .fui-Field__control,.enterprise-filter-fields .fui-Input,.enterprise-filter-fields .fui-Dropdown{width:100%;min-width:0}
+.enterprise-data-grid [role=grid]{min-width:620px}
+@media(max-width:800px){
+ .topbar{min-width:0}
+ .topbar .crumb{flex:1;min-width:0}
+ .topbar .crumb>span,.topbar .crumb>svg{display:none}
+ .topbar .crumb>strong{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .topbar .global-search{flex:0 0 38px;width:38px;min-width:38px;padding:8px}
+ .topbar .global-search> :not(svg){display:none}
+ .topbar .top-actions{flex:0 0 auto;gap:8px}
+ .enterprise-filter-fields>.fui-Field{flex:1 1 auto;width:100%}
+ .enterprise-filter-fields .fui-Field__control,.enterprise-filter-fields .fui-Input,.enterprise-filter-fields .fui-Dropdown{width:100%;min-width:0}
+}

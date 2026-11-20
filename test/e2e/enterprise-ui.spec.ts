@@ -40,6 +40,10 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
   await page.screenshot({ path: test.info().outputPath('resource-grid-tablet.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(grid).toBeVisible();
+  const searchWidth = await page.getByRole('searchbox', { name: 'Buscar recurso' }).evaluate(element => element.getBoundingClientRect().width);
+  expect(searchWidth).toBeGreaterThanOrEqual(200);
+  const topbarFits = await page.locator('.topbar').evaluate(element => element.scrollWidth <= element.clientWidth);
+  expect(topbarFits).toBeTruthy();
   await page.screenshot({ path: test.info().outputPath('resource-grid-mobile.png'), fullPage: true });
 });
 
