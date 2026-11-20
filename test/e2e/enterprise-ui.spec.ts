@@ -586,3 +586,54 @@ test('Fiori finance closing List Report sends filters, sort and pagination to th
  await page.getByRole('button',{name:'Limpar filtros'}).click();
  await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('sort')==='periodEnd.desc')).toBeTruthy();
 });
+
+
+test('Fluent Assets List Report submits SQL sorting, filters and genuine page 2 (mocked UI contract)',async({page})=>{
+ const requests:URLSearchParams[]=[];
+ await page.route('**/api/assets?*',route=>{
+  const p=new URL(route.request().url()).searchParams;
+  requests.push(new URLSearchParams(p));
+  const current=Number(p.get('page')??1);
+  return route.fulfill({json:{
+   items:[{id:'asset-'+current,code:'CI-A-'+current,name:'Asset '+current,
+    kind:'vehicle',status:'active',rowVersion:1,location:null,responsible:null,hourlyCost:100}],
+   pageInfo:{page:current,total:27,hasMore:current===1,sourceTotal:27},
+  }});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Frota e ativos',exact:true}).click();
+ await page.getByRole('combobox',{name:'Ordenar ativos'}).click();
+ await page.getByRole('option',{name:'Maior custo/hora'}).click();
+ await expect.poll(()=>requests.some(p=>p.get('sort')==='hourlyCost.desc')).toBeTruthy();
+ await page.getByRole('button',{name:'Próxima',exact:true}).click();
+ await expect.poll(()=>requests.some(p=>p.get('page')==='2')).toBeTruthy();
+ await expect(page.getByRole('grid',{name:'Lista de ativos e frota'})).toContainText('Asset 2');
+ await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();
+ await expect.poll(()=>requests.at(-1)?.get('sort')).toBe('name.asc');
+});
+
+test('Fluent Professionals List Report paginates beyond 25 and sorts by SQL cost (mocked UI contract)',async({page})=>{
+ const requests:URLSearchParams[]=[];
+ await page.route('**/api/professionals?*',route=>{
+  const p=new URL(route.request().url()).searchParams;
+  requests.push(new URLSearchParams(p));
+  const current=Number(p.get('page')??1);
+  return route.fulfill({json:{
+   items:[{id:'professional-'+current,name:'Professional '+current,
+    registration:'CI-P-'+current,specialty:'Field',department:'Técnico',
+    status:'active',rowVersion:1,phone:null,hourlyCost:125}],
+   pageInfo:{page:current,total:27,hasMore:current===1,sourceTotal:27},
+  }});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Profissionais',exact:true}).click();
+ await page.getByRole('combobox',{name:'Ordenar profissionais'}).click();
+ await page.getByRole('option',{name:'Maior custo/hora'}).click();
+ await expect.poll(()=>requests.some(p=>p.get('sort')==='hourlyCost.desc')).toBeTruthy();
+ await page.getByRole('navigation',{name:'Paginação dos profissionais'})
+  .getByRole('button',{name:'Próxima'}).click();
+ await expect.poll(()=>requests.some(p=>p.get('page')==='2')).toBeTruthy();
+ await expect(page.getByRole('grid',{name:'Profissionais e equipes autorizados'})).toContainText('Professional 2');
+ await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();
+ await expect.poll(()=>requests.at(-1)?.get('sort')).toBe('name.asc');
+});
