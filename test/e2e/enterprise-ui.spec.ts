@@ -315,3 +315,23 @@ test('commercial proposal and contract sorting passes whitelisted values to the 
  await page.getByRole('option',{name:'Referência Z–A',exact:true}).first().click();
  await expect.poll(()=>contractSorts.includes('reference.desc')).toBeTruthy();
 });
+
+
+test('completed OS without actual measurement does not claim measurement or billing completion',async({page})=>{
+ await page.route('**/api/orders?*',route=>route.fulfill({json:{
+  orders:[{id:'order-complete-no-measurement',title:'OS sem medição',
+    client:'Cliente cenário',category:'Serviços',description:'Execução encerrada',
+    status:'COMPLETED',due_date:null,created_at:'2026-11-20T10:00:00Z',
+    relations:{measurements:0,invoices:0,receivables:0},availableCommands:[]}],
+  total:1,pageInfo:{page:1,total:1,hasMore:false},
+  summary:{total:1,drafts:0,planned:0,pendingMeasurements:1},
+ }}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Centro de operações',exact:true}).click();
+ await expect(page.getByRole('heading',{name:'OS sem medição'})).toBeVisible();
+ const measurement=page.locator('.service-progress').getByText('Medições vinculadas');
+ const billing=page.locator('.service-progress').getByText('Faturamento vinculado');
+ await expect(measurement).not.toHaveClass(/has-record|done/);
+ await expect(billing).not.toHaveClass(/has-record|done/);
+ await expect(page.locator('.service-inspector')).toContainText('0 medições');
+});
