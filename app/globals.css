@@ -957,3 +957,20 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
 .enterprise-queue-pagination{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px;border-top:1px solid var(--line);min-width:0}
 .enterprise-queue-pagination span{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;text-align:center}
 @media(max-width:640px){.enterprise-queue-pagination{justify-content:center}.enterprise-queue-pagination span{order:-1;flex:1 1 100%}}
+
+.enterprise-approvals-inbox{min-width:0;padding:18px 22px;border:1px solid var(--line);border-radius:12px;background:#fff;display:grid;gap:15px}
+.enterprise-approvals-heading{display:flex;justify-content:space-between;align-items:start;gap:14px;flex-wrap:wrap}
+.enterprise-approvals-heading h3{font-size:18px;margin:6px 0}
+.enterprise-approvals-heading p{color:var(--muted);line-height:1.55;margin:0;max-width:690px}
+.enterprise-approvals-filters{display:flex;flex-wrap:wrap;gap:8px}
+.enterprise-approvals-list ol{padding:0;margin:0;list-style:none}
+.enterprise-approvals-list li{border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:14px;padding:13px 0}
+.enterprise-approval-identity{display:grid;min-width:0;gap:5px}
+.enterprise-approval-identity small{overflow-wrap:anywhere;color:var(--muted)}
+.enterprise-approval-identity span{font-size:12px;color:var(--muted)}
+.enterprise-approval-actions{display:flex;flex-wrap:wrap;gap:8px}
+.enterprise-approval-dialog{min-width:min(430px,90vw);display:grid;gap:12px}
+.enterprise-approval-dialog form{display:grid;gap:14px}
+.enterprise-approval-dialog label{display:grid;gap:6px}
+.enterprise-approval-dialog footer{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+@media(max-width:640px){.enterprise-approvals-inbox{padding:14px}.enterprise-approvals-heading>button{width:100%}}

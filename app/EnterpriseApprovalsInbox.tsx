@@ -17,7 +17,7 @@ function displayDate(value:string){
  return new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Porto_Velho'}).format(new Date(value));
 }
 
-export default function EnterpriseApprovalsInbox({onClose}:{onClose:()=>void}){
+export default function EnterpriseApprovalsInbox({onClose,onDecided}:{onClose:()=>void;onDecided:()=>void}){
  const [state,setState]=useState<'pending'|'approved'|'rejected'>('pending');
  const [page,setPage]=useState(1);
  const [refresh,setRefresh]=useState(0);
@@ -68,7 +68,7 @@ export default function EnterpriseApprovalsInbox({onClose}:{onClose:()=>void}){
    const result=await response.json() as {error?:string;state?:string};
    if(!response.ok)throw new Error(result.error||'A decisão não foi persistida.');
    setNotice(decision.command==='approve'?'Decisão aprovada e registrada no servidor.':'Rejeição registrada com justificativa.');
-   setDecision(null);setReason('');setRefresh(n=>n+1);
+   setDecision(null);setReason('');setRefresh(n=>n+1);onDecided();
   }catch(cause){
    setError(cause instanceof Error?cause.message:'Decisão indisponível.');
   }finally{setSubmitting(false);}

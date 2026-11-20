@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {EnterpriseButton,EnterpriseInput} from './components/enterprise/EnterprisePrimitives';
 import {moneyScaled} from '../lib/domain/orders';
+import EnterpriseApprovalsInbox from './EnterpriseApprovalsInbox';
 
 export type ControlTowerLaneId='lateOrders'|'unmeasuredOrders'|'overdueReceivables'|'overduePayables'|'latePurchases'|'stockShortage'|'myApprovals';
 type LaneItem={id:string;title:string;reference:string|null;date:string|null;amountScaled:string|null;availableScaled:string|null;requiredScaled:string|null;unit?:string|null};
@@ -26,6 +27,7 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
 }){
  const [cutoff,setCutoff]=useState('');
  const [revision,setRevision]=useState(0);
+ const [showApprovals,setShowApprovals]=useState(false);
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
@@ -63,7 +65,7 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
    {snapshot.lanes.map(lane=><article className="enterprise-control-lane" key={lane.id} aria-label={lane.label}>
     <header><div><h3>{lane.label}</h3><span className="enterprise-control-count">{lane.count} registro{lane.count===1?'':'s'}</span>
       {lane.totalAmountScaled!==null&&<small>Saldo documentado: {amount(lane.totalAmountScaled)}</small>}</div>
-      <EnterpriseButton type="button" appearance="subtle" onClick={()=>onLane(lane.id,snapshot.asOf)}>Abrir área</EnterpriseButton>
+      <EnterpriseButton type="button" appearance="subtle" onClick={()=>lane.id==='myApprovals'?setShowApprovals(true):onLane(lane.id,snapshot.asOf)}>{lane.id==='myApprovals'?'Abrir aprovações':'Abrir área'}</EnterpriseButton>
     </header>
     {lane.items.length>0?<ol className="enterprise-control-items">{lane.items.map(item=><li key={item.id}>
       <div><strong>{item.title}</strong><small>{item.reference??item.id.slice(0,12)} · {date(item.date)}</small>
@@ -71,7 +73,7 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
       {lane.id==='stockShortage'&&<span>Disponível {quantity(item.availableScaled)} / mínimo {quantity(item.requiredScaled)}{item.unit?' '+item.unit:''}</span>}
       </div>
       {recordAccessible.has(lane.id)?<EnterpriseButton type="button" appearance="subtle" onClick={()=>onRecord(lane.id,item.id,snapshot.asOf)} aria-label={'Abrir '+item.title}>Abrir registro</EnterpriseButton>:
-       <span className="enterprise-control-no-link">Abertura individual não disponível</span>}
+       lane.id==='myApprovals'?<EnterpriseButton type="button" appearance="subtle" onClick={()=>setShowApprovals(true)}>Revisar na caixa</EnterpriseButton>:<span className="enterprise-control-no-link">Abertura individual não disponível</span>}
     </li>)}</ol>:<p className="enterprise-control-empty">Nenhuma exceção encontrada para este filtro.</p>}
     {lane.count>lane.items.length&&<p className="enterprise-control-more">Exibidos {lane.items.length} de {lane.count}. Consulte a área para os demais registros.</p>}
    </article>)}
@@ -79,5 +81,6 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
    <span>Fonte: consultas transacionais por proprietário · referência {date(snapshot.asOf)}</span>
    <span>Dados consultados; este painel não confirma uma jornada ponta a ponta.</span>
   </footer></>}
+  {showApprovals&&<EnterpriseApprovalsInbox onClose={()=>setShowApprovals(false)} onDecided={()=>setRevision(n=>n+1)}/>}
  </section>;
 }
