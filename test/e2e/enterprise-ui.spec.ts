@@ -191,3 +191,37 @@ test('professional details only expose populated summary and history tabs', asyn
   await expect(drawer.getByRole('tabpanel')).toContainText('Cadastro registrado');
   await expect(drawer.getByRole('button', { name: 'Editar cadastro' })).toHaveCount(0);
 });
+
+
+test('clients List Report sorts in the backend and resets the server query',async ({page})=>{
+ const sorts:string[]=[];
+ await page.route('**/api/clients?*',async route=>{
+   sorts.push(new URL(route.request().url()).searchParams.get('sort')??'');
+   await route.fulfill({json:{items:[],pageInfo:{total:0,sourceTotal:0,hasMore:false}}});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Clientes e propostas'}).click();
+ const select=page.getByRole('combobox',{name:'Ordenar clientes'});
+ await select.click();
+ await page.getByRole('option',{name:'Mais recentes',exact:true}).click();
+ await expect.poll(()=>sorts.includes('recent')).toBeTruthy();
+ await page.getByRole('button',{name:'Limpar filtros'}).click();
+ await expect.poll(()=>sorts[sorts.length-1]).toBe('name.asc');
+});
+
+test('Redwood task view prioritizes overdue payables using real dueTo and outstanding API filters',async ({page})=>{
+ const queries:string[]=[];
+ await page.route('**/api/payables?*',async route=>{
+   queries.push(route.request().url());
+   await route.fulfill({json:{items:[],pageInfo:{total:0,sourceTotal:0,hasMore:false},aggregates:[],generatedAt:new Date().toISOString()}});
+ });
+ await page.route('**/api/views?*',route=>route.fulfill({json:{views:[]}}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Contas a pagar',exact:true}).click();
+ await page.getByRole('button',{name:'Priorizar títulos vencidos'}).click();
+ await expect.poll(()=>queries.some(q=>{
+   const p=new URL(q).searchParams;
+   return p.get('state')==='outstanding'&&p.get('sort')==='dueDate.asc'&&!!p.get('dueTo');
+ })).toBeTruthy();
+ await expect(page.getByText(/Fila de obrigações com saldo e vencimento/)).toBeVisible();
+});
