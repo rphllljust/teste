@@ -12,7 +12,7 @@ test('global shell hydrates Fluent controls and keeps workspace navigation usabl
   await page.goto('/');
   await expect(page.getByRole('button', { name: 'Clientes e propostas' })).toBeVisible();
   await page.getByRole('button', { name: 'Clientes e propostas' }).click();
-  await expect(page.getByRole('heading', { name: 'Clientes' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Clientes', exact: true })).toBeVisible();
   await expect(page.getByRole('searchbox', { name: 'Buscar clientes' })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Cadastrar cliente' })).toBeVisible();
   expect(await page.locator('button[class*="fui-Button"]').count()).toBeGreaterThan(0);
