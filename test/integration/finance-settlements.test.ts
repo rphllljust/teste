@@ -84,7 +84,7 @@ test('payable payment and reversal deny cross-owner access without leaking or ch
   const payableId = randomUUID();
   const stranger = randomUUID();
   const paymentKey = randomUUID();
-  const paymentDate = '2026-11-16';
+  const paymentDate = '2026-12-16';
   const path = '/api/finance/payables/payments';
   const amount = '400000';
   const payment = { payableId, amount, effectiveDate: paymentDate, reference: 'CI payment', commandKey: paymentKey };
@@ -110,12 +110,12 @@ test('payable payment and reversal deny cross-owner access without leaking or ch
     const reversePath = path + '/' + paymentKey + '/reverse';
     const reverseParams = { params: Promise.resolve({ id: paymentKey }) };
     const deniedReverse = await reversePayable(req(reversePath, 'POST', {
-      commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'Foreign reversal',
+      commandKey: randomUUID(), effectiveDate: '2026-12-17', reference: 'Foreign reversal',
     }, stranger), reverseParams);
     assert.equal(deniedReverse.status, 404, 'Foreign owners cannot reverse an existing payment');
 
     const reversal = await reversePayable(req(reversePath, 'POST', {
-      commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'CI reversal',
+      commandKey: randomUUID(), effectiveDate: '2026-12-17', reference: 'CI reversal',
     }), reverseParams);
     assert.equal(reversal.status, 201, JSON.stringify(await json(reversal.clone())));
     const persisted = await pool.query(
