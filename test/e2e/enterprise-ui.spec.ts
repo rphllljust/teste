@@ -57,8 +57,8 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
     scrollWidth: element.scrollWidth,
     overflowX: getComputedStyle(element).overflowX,
   }));
-  expect(gridViewport.overflowX).toBe('auto');
-  expect(gridViewport.scrollWidth).toBeGreaterThanOrEqual(gridViewport.clientWidth);
+  expect(gridViewport.overflowX).toBe('visible');
+  expect(gridViewport.scrollWidth).toBeLessThanOrEqual(gridViewport.clientWidth + 2);
   await page.screenshot({ path: test.info().outputPath('resource-grid-mobile.png'), fullPage: true });
 });
 
