@@ -158,7 +158,7 @@ export async function registerCashTransfer(context: RequestContext, input: { id:
     const prior = await query('SELECT id,from_account_reference,to_account_reference,amount,request_hash,actor_id FROM cash_transfers WHERE id=$1', [input.id]);
     if (prior.rows.length) {
       const row = prior.rows[0];
-      if (row.request_hash !== input.requestHash || row.actor_id && row.actor_id !== context.actorId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de transferência já utilizado.');
+      if (row.request_hash !== input.requestHash || row.actor_id !== context.actorId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de transferência já utilizado.');
       return { ok: true, replayed: true, resource: { type: 'cashTransfer', id: row.id, amount: String(row.amount) } };
     }
     await query(`INSERT INTO cash_transfers (id,from_account_reference,to_account_reference,amount,effective_date,reference,status,actor_id,request_hash,correlation_id,created_at) VALUES ($1,$2,$3,$4,$5,$6,'posted',$7,$8,$9,$10)`, [input.id, input.fromAccountReference, input.toAccountReference, input.amount, input.effectiveDate, input.reference, context.actorId, input.requestHash, context.correlationId, new Date().toISOString()]);
@@ -169,7 +169,7 @@ export async function registerCashTransfer(context: RequestContext, input: { id:
 
 export async function reverseCashTransfer(context: RequestContext, input: { transferId: string; commandKey: string; requestHash: string; reference: string }) {
   return database().transaction(async query => {
-    const prior = await query('SELECT id,request_hash FROM finance_audit_events WHERE entity_type=$1 AND entity_id=$2 AND action=$3 AND request_hash=$4', ['cash_transfer_reversal', input.transferId, 'transfer_reversed', input.requestHash]);
+    const prior = await query('SELECT id,request_hash FROM finance_audit_events WHERE entity_type=$1 AND entity_id=$2 AND action=$3 AND request_hash=$4 AND actor_id=$5', ['cash_transfer_reversal', input.transferId, 'transfer_reversed', input.requestHash, context.actorId]);
     if (prior.rows.length) return { ok: true, replayed: true, resource: { type: 'cashTransferReversal', id: input.commandKey, transferId: input.transferId } };
     const transfer = await query("SELECT id,from_account_reference,to_account_reference,amount,status FROM cash_transfers WHERE id=$1 AND actor_id=$2 FOR UPDATE", [input.transferId, context.actorId]);
     if (!transfer.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Transferência não encontrada.');
