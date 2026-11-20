@@ -151,6 +151,7 @@ jobs:
             '0011_inventory_consumption',
             '0012_field_service_measurements',
             '0013_workflow_business_commands',
+            '0014_manual_fiscal_documents', '0015_fiscal_bigint_integrity',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
