@@ -240,6 +240,7 @@ function date(v: string | null) {
 function HomeView() {
   const [mrpMaterialId, setMrpMaterialId] = useState("");
   const [mrpOrderId, setMrpOrderId] = useState("");
+  const [payableOrigin, setPayableOrigin] = useState("");
   const [supplyView, setSupplyView] = useState<"inventory" | "mrp">(
     "inventory",
   );
@@ -801,6 +802,7 @@ function HomeView() {
     setContractOrigin("");
     setClientOrigin("");
     setDrillFilters({});
+    setPayableOrigin("");
     setBankAccount("");
     operationGeneration.current++;
     setLinkedViews([]);
@@ -1479,6 +1481,27 @@ function HomeView() {
               onOpenOrder={(id) => {
                 navigate("Ordens de serviço");
                 void openOrigin(id);
+              }}
+              onControlTowerLane={(lane, asOf) => {
+                switch(lane){
+                  case 'lateOrders': navigate('Centro de operações');break;
+                  case 'unmeasuredOrders': navigate('Ordens de serviço');applyView('Concluídas sem medição');break;
+                  case 'overdueReceivables': drillFinance({viewKey:'receivables.worklist',filters:{dueTo:asOf,settlementState:'outstanding',sort:'dueDate.asc'}});break;
+                  case 'overduePayables': drillFinance({viewKey:'payables.worklist',filters:{dueTo:asOf,state:'outstanding',sort:'dueDate.asc'}});break;
+                  case 'latePurchases': navigate('Compras');break;
+                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');break;
+                  case 'myApprovals': navigate('Fechamentos');break;
+                }
+              }}
+              onControlTowerRecord={(lane,id) => {
+                switch(lane){
+                  case 'lateOrders':
+                  case 'unmeasuredOrders': navigate('Ordens de serviço');void openOrigin(id);break;
+                  case 'overdueReceivables': navigate('Financeiro');void openReceivable(id);break;
+                  case 'overduePayables': navigate('Contas a pagar');setPayableOrigin(id);break;
+                  case 'latePurchases': navigate('Compras');setMrpOrderId(id);break;
+                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');setMrpMaterialId(id);break;
+                }
               }}
             />
           ) : isWork ? (
@@ -2480,7 +2503,7 @@ function HomeView() {
               }}
             />
           ) : page === "Contas a pagar" ? (
-            <PayablesWorkspace initialFilters={drillFilters} />
+            <PayablesWorkspace initialFilters={drillFilters} initialId={payableOrigin} />
           ) : page === "Caixa e conciliação" ? (
             <BankReconciliationWorkspace
               initialAccountReference={bankAccount}
