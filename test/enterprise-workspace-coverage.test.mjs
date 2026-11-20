@@ -34,3 +34,37 @@ test('workspace source no longer owns native action buttons', async () => {
     assert.doesNotMatch(source, /<button\b/, entry.name);
   }
 });
+
+test('dropdown consumers do not fabricate HTML select change events', async () => {
+  const files = await readdir(app, { withFileTypes: true });
+  for (const file of files.filter(item => item.isFile() && item.name.endsWith('.tsx'))) {
+    const source = await readFile(new URL(file.name, app), 'utf8');
+    let offset = 0;
+    while (true) {
+      const start = source.indexOf('<EnterpriseDropdown', offset);
+      if (start < 0) break;
+      let depth = 0;
+      let quote = '';
+      let end = -1;
+      for (let i = start; i < source.length; i++) {
+        const char = source[i];
+        if (quote) {
+          if (char === '\\') { i++; continue; }
+          if (char === quote) quote = '';
+        } else if (char === '"' || char === "'" || char === '`') {
+          quote = char;
+        } else if (char === '{') {
+          depth++;
+        } else if (char === '}') {
+          depth--;
+        } else if (char === '>' && depth === 0) {
+          end = i + 1;
+          break;
+        }
+      }
+      assert.ok(end > start, 'unclosed EnterpriseDropdown in ' + file.name);
+      assert.doesNotMatch(source.slice(start, end), /\\bonChange\\s*=/, file.name);
+      offset = end;
+    }
+  }
+});
