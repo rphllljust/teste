@@ -6,7 +6,7 @@ import { assertFinancePeriodOpen } from '../../../../../lib/application/finance'
 export const dynamic = 'force-dynamic';
 type RouteContext = { params: Promise<{ id: string }> };
 const command = z.object({ command: z.literal('cancel'), key: z.string().uuid(), reason: z.string().trim().min(3).max(500) }).strict();
-const notice = 'Documento fiscal registrado manualmente. Integração automática com SEFAZ e prefeitura ainda não habilitada.';
+const notice = 'DOCUMENTO REGISTRADO MANUALMENTE. NÃO TRANSMITIDO À SEFAZ OU À PREFEITURA.';
 
 export async function GET(request: Request, { params }: RouteContext) {
   let context: RequestContext | undefined;
@@ -15,7 +15,7 @@ export async function GET(request: Request, { params }: RouteContext) {
     const { id } = await params;
     if (!z.string().uuid().safeParse(id).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Identificador fiscal inválido.');
     const db = database();
-    const document = await db.prepare(`SELECT id,direction,document_type AS "documentType",number,series,access_key AS "accessKey",issued_on AS "issuedOn",period,customer_id AS "customerId",client_name AS "clientName",supplier,cfop,nature,municipality,tax_regime AS "taxRegime",gross_amount AS "grossAmountScaled",tax_base AS "taxBaseScaled",iss_rate AS "issRateScaled",iss_amount AS "issAmountScaled",icms_rate AS "icmsRateScaled",icms_amount AS "icmsAmountScaled",ipi_amount AS "ipiAmountScaled",pis_amount AS "pisAmountScaled",cofins_amount AS "cofinsAmountScaled",withheld_amount AS "withheldAmountScaled",status,source_reference AS "sourceReference",billing_id AS "billingId",receivable_id AS "receivableId",payable_id AS "payableId",contract_id AS "contractId",order_id AS "orderId",notes,attachment_reference AS "attachmentReference",integration_provider AS "integrationProvider",created_at AS "createdAt",updated_at AS "updatedAt" FROM fiscal_documents WHERE id=? AND actor_id=?`).bind(id, context.actorId).first();
+    const document = await db.prepare(`SELECT id,direction,document_type AS "documentType",number,series,access_key AS "accessKey",issued_on AS "issuedOn",period,customer_id AS "customerId",client_name AS "clientName",supplier,cfop,nature,municipality,tax_regime AS "taxRegime",gross_amount::text AS "grossAmountScaled",tax_base::text AS "taxBaseScaled",iss_rate::text AS "issRateScaled",iss_amount::text AS "issAmountScaled",icms_rate::text AS "icmsRateScaled",icms_amount::text AS "icmsAmountScaled",ipi_amount::text AS "ipiAmountScaled",pis_amount::text AS "pisAmountScaled",cofins_amount::text AS "cofinsAmountScaled",withheld_amount::text AS "withheldAmountScaled",status,source_reference AS "sourceReference",billing_id AS "billingId",receivable_id AS "receivableId",payable_id AS "payableId",contract_id AS "contractId",order_id AS "orderId",notes,attachment_reference AS "attachmentReference",integration_provider AS "integrationProvider",created_at AS "createdAt",updated_at AS "updatedAt" FROM fiscal_documents WHERE id=? AND actor_id=?`).bind(id, context.actorId).first();
     if (!document) throw new ApiError(404, 'NOT_FOUND', 'Documento fiscal não encontrado.');
     const events = await db.prepare(`SELECT id,action,actor_id AS "actorId",metadata,created_at AS "createdAt",correlation_id AS "correlationId" FROM fiscal_document_events WHERE document_id=? AND actor_id=? ORDER BY created_at DESC,id DESC`).bind(id, context.actorId).all();
     return respond({ document, events: events.results, notice }, context);
@@ -37,7 +37,8 @@ export async function POST(request: Request, { params }: RouteContext) {
       if (existing.rows[0]) {
         const old = existing.rows[0] as { actor_id: string; entity_type: string; entity_id: string; request_hash: string; result: string | null };
         if (old.actor_id !== context!.actorId || old.entity_type !== 'fiscalDocument' || old.entity_id !== id || old.request_hash !== hash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de comando fiscal já utilizada.');
-        return old.result ? JSON.parse(old.result) : { resource: { id, status: 'cancelled' }, notice };
+        if (!old.result) throw new ApiError(409, 'IDEMPOTENCY_IN_PROGRESS', 'Comando fiscal ainda está em processamento.');
+        return JSON.parse(old.result);
       }
       await query(`INSERT INTO business_commands(id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [parsed.data.key, context!.actorId, 'fiscalDocument', id, 'cancel', hash, '', context!.correlationId, new Date().toISOString()]);
       const row = await query('SELECT status,issued_on AS "issuedOn",integration_provider AS "integrationProvider" FROM fiscal_documents WHERE id=$1 AND actor_id=$2 FOR UPDATE', [id, context!.actorId]);
