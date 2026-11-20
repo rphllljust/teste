@@ -73,7 +73,7 @@ export default function EnterpriseApprovalsInbox({onClose,onDecided}:{onClose:()
    setError(cause instanceof Error?cause.message:'Decisão indisponível.');
   }finally{setSubmitting(false);}
  }
- return <section className="enterprise-approvals-inbox" aria-label="Aprovações atribuídas" aria-busy={loading}>
+ return <section className="enterprise-approvals-inbox" aria-label="Aprovações atribuídas">
   <header className="enterprise-approvals-heading"><div><span className="eyebrow">SEGREGAÇÃO DE FUNÇÕES</span>
    <h3>Solicitações atribuídas a você</h3>
    <p>Somente o aprovador designado pode decidir. Uma decisão não substitui as transições empresariais que ainda não foram executadas.</p>

@@ -50,7 +50,7 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
   void load();
   return()=>controller.abort();
  },[cutoff,revision]);
- return <section className="enterprise-control-tower" aria-label="Central de exceções empresariais" aria-busy={loading}>
+ return <section className="enterprise-control-tower" aria-label="Central de exceções empresariais">
   <header className="enterprise-control-heading">
    <div><span className="eyebrow">PRIORIDADES TRANSACIONAIS</span><h2>Central de exceções empresariais</h2>
     <p>Filas apuradas por consultas PostgreSQL vinculadas ao proprietário autorizado. Abrir um item não executa comandos financeiros.</p></div>
