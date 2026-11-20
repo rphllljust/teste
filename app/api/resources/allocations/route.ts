@@ -15,7 +15,7 @@ export async function POST(request:Request){
   if(!(ends>starts))throw new ApiError(400,'VALIDATION_FAILED','A janela deve terminar depois do início.');
   const hash=await fingerprint({actor:context.actorId,command:'allocate_resource',payload:p});
   const result=await database().transaction(async q=>{
-   const prior=await q('SELECT result,actor_id,request_hash FROM resource_allocations WHERE id=$1',[p.id]);
+   const prior=await q('SELECT result,actor_id,request_hash FROM resource_allocation_events WHERE id=$1',[p.id]);
    if(prior.rows.length){const old=prior.rows[0] as {result:string;actor_id:string;request_hash:string};if(old.actor_id!==context!.actorId||old.request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave de alocação já utilizada.');return JSON.parse(old.result) as Record<string,unknown>;}
    const order=await q("SELECT id,status FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE",[p.orderId,actor]);
    if(!order.rowCount)throw new ApiError(404,'NOT_FOUND','OS não encontrada.');
