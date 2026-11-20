@@ -650,5 +650,11 @@ tr:has(td):hover{background:#f5f9f5}
 .client-related-grid .related>span:first-child{min-width:0}
 .client-related-grid .related strong,.client-related-grid .related small{display:block;overflow-wrap:anywhere}
 .client-related-grid .related small{margin-top:4px;color:var(--muted);font-size:12px}
+.palette-business-search{max-height:340px;overflow:auto;border-bottom:1px solid var(--line);scrollbar-width:thin}
+.palette-business-search>p{font-size:11px;letter-spacing:.8px;font-weight:600;margin:0;padding:16px 20px 8px;color:var(--muted)}
+.palette-business-search>.palette-result{padding:12px 20px}
+.palette-business-search>.palette-result>span:first-of-type{flex:1;min-width:0}
+.palette-business-search>.palette-result strong,.palette-business-search>.palette-result small{display:block;overflow-wrap:anywhere}
+.palette-business-search>.palette-result small{margin-top:3px;color:var(--muted);font-size:12px}
 @media(max-width:700px){.client-related-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:700px){.enterprise-filter-fields{align-items:stretch;flex-direction:column}.enterprise-filter-fields>label{min-width:0}.enterprise-filter-bar{align-items:stretch}.enterprise-kpi-card{padding:14px}.enterprise-data-grid table{min-width:620px}}

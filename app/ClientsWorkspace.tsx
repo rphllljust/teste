@@ -14,13 +14,13 @@ type NextcrmProfile={
 };
 type NextcrmContext={mapped:boolean;state:'synchronized'|'not_linked'|'not_configured'|'unavailable'|'invalid';message?:string;profile?:NextcrmProfile|null;mapping?:{accountId:string;instanceKey:string;verifiedAt:string}};
 type List={items:Client[];pageInfo:{total:number;sourceTotal:number;hasMore:boolean}};
-function ClientsWorkspace({onCreateOrder,onOrders,onProposal,onContract}:{onCreateOrder:(client:Client)=>void;onOrders:(id:string)=>void;onProposal:(id:string)=>void;onContract:(id:string)=>void}){
+function ClientsWorkspace({onCreateOrder,onOrders,onProposal,onContract,initialId=''}:{onCreateOrder:(client:Client)=>void;onOrders:(id:string)=>void;onProposal:(id:string)=>void;onContract:(id:string)=>void;initialId?:string}){
  const [result,setResult]=useState<List|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(''),[q,setQ]=useState(''),[status,setStatus]=useState(''),[page,setPage]=useState(1),[context,setContext]=useState<Context|null>(null),[contextLoading,setContextLoading]=useState(false),[contextError,setContextError]=useState(''),[nextcrm,setNextcrm]=useState<NextcrmContext|null>(null),[nextcrmLoading,setNextcrmLoading]=useState(false),[nextcrmError,setNextcrmError]=useState(''),[dialog,setDialog]=useState<{key:string;client:Client|null}|null>(null),[saving,setSaving]=useState(false),[commandError,setCommandError]=useState(''),[crmEditing,setCrmEditing]=useState(false);
- const generation=useRef(0),busy=useRef(false),panel=useRef<HTMLElement>(null),commandAttempt=useRef<{key:string;body:string}|null>(null);
+ const generation=useRef(0),busy=useRef(false),panel=useRef<HTMLElement>(null),commandAttempt=useRef<{key:string;body:string}|null>(null),initialHandled=useRef('');
  const load=useCallback(async()=>{const g=++generation.current;setLoading(true);setError('');try{const r=await fetch('/api/clients?'+new URLSearchParams({q,...(status?{status}:{}),page:String(page),pageSize:'25',sort:'name.asc'}));const d=await r.json() as List&{error?:string};if(!r.ok)throw new Error(d.error);if(g===generation.current)setResult(d);}catch(e){if(g===generation.current)setError(e instanceof Error?e.message:'Consulta indisponível.');}finally{if(g===generation.current)setLoading(false);}},[q,status,page]);
  useEffect(()=>{const t=setTimeout(()=>void load(),150);return()=>{clearTimeout(t);};},[load]);
  useEffect(()=>{if(!dialog&&!crmEditing)return;const before=document.activeElement as HTMLElement|null;const node=panel.current;node?.querySelector<HTMLElement>('input,button')?.focus();function key(e:KeyboardEvent){if(e.key==='Escape'&&!busy.current){setDialog(null);setContext(null);}if(e.key!=='Tab')return;const nodes=node?.querySelectorAll<HTMLElement>('button:not(:disabled),input,select');if(!nodes?.length)return;const first=nodes[0],last=nodes[nodes.length-1];if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}}document.addEventListener('keydown',key);return()=>{document.removeEventListener('keydown',key);before?.focus();};},[dialog,crmEditing]);
- async function open(id:string){
+ const open=useCallback(async(id:string)=>{
   setContextLoading(true);setNextcrmLoading(true);setContextError('');setNextcrmError('');setNextcrm(null);setCommandError('');
   try{
    const contextResponse=await fetch('/api/clients/'+encodeURIComponent(id),{cache:'no-store'});
@@ -42,7 +42,8 @@ function ClientsWorkspace({onCreateOrder,onOrders,onProposal,onContract}:{onCrea
    setNextcrmError(message);
    setNextcrm({mapped:false,state:'unavailable',message:'O cadastro ERP continua operacional; ações dependentes do NextCRM ficam indisponíveis até a integração ser restaurada.'});
   }finally{setNextcrmLoading(false);}
- }
+ },[]);
+ useEffect(()=>{if(!initialId){initialHandled.current='';return;}if(initialHandled.current===initialId)return;initialHandled.current=initialId;void open(initialId);},[initialId,open]);
  async function send(url:string,body:object){const encoded=JSON.stringify(body);const prior=commandAttempt.current;if(prior&&prior.body!==encoded)throw new Error('O conteúdo mudou após uma tentativa. Feche e reabra o comando para gerar uma nova chave.');commandAttempt.current={key:(body as {key?:string}).key??'',body:encoded};const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:encoded});const d=await r.json() as {error?:string;data?:unknown};if(!r.ok)throw new Error(d.error);commandAttempt.current=null;return d;}
  async function submit(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(busy.current||!dialog)return;busy.current=true;setSaving(true);setCommandError('');

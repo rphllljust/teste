@@ -164,6 +164,7 @@ type LinkedMetric = {
   generatedAt: string;
   drilldown: { viewKey: string; filters: Record<string, string> };
 };
+type BusinessSearchItem={id:string;kind:'client'|'proposal'|'contract';title:string;subtitle:string;status:string};
 type Event = {
   label: string;
   id: string;
@@ -344,6 +345,8 @@ function HomeView() {
     }>({ items: [], total: 0, query: "" }),
     [paletteLoading, setPaletteLoading] = useState(false),
     [paletteError, setPaletteError] = useState("");
+  const [businessSearch,setBusinessSearch]=useState<{items:BusinessSearchItem[];query:string}>({items:[],query:''});
+  const [businessSearchLoading,setBusinessSearchLoading]=useState(false),[businessSearchError,setBusinessSearchError]=useState('');
   const [linkedViews, setLinkedViews] = useState<
       {
         id: string;
@@ -372,6 +375,7 @@ function HomeView() {
     [businessContract, setBusinessContract] = useState(""),
     [commercialOrigin, setCommercialOrigin] = useState(""),
     [contractOrigin, setContractOrigin] = useState(""),
+    [clientOrigin, setClientOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
   const defaultsApplied = useRef(false);
   const operationGeneration = useRef(0);
@@ -431,6 +435,36 @@ function HomeView() {
       controller.abort();
     };
   }, [palette, paletteQuery]);
+  useEffect(()=>{
+    if(!palette)return;
+    const query=paletteQuery.trim();
+    if(query.length<2)return;
+    const controller=new AbortController();
+    const timer=setTimeout(async()=>{
+      setBusinessSearch({items:[],query});setBusinessSearchLoading(true);setBusinessSearchError('');
+      try{
+        const params=new URLSearchParams({q:query,page:'1',pageSize:'5'});
+        const [clientResponse,proposalResponse,contractResponse]=await Promise.all([
+          fetch('/api/clients?'+params,{signal:controller.signal}),
+          fetch('/api/proposals?'+params,{signal:controller.signal}),
+          fetch('/api/contracts?'+params,{signal:controller.signal}),
+        ]);
+        const [clients,proposals,contracts]=await Promise.all([
+          clientResponse.json() as Promise<{items:{id:string;legalName:string;document:string|null;state:{label:string}}[];error?:string}>,
+          proposalResponse.json() as Promise<{items:{id:string;title:string;clientName:string;state:{label:string}}[];error?:string}>,
+          contractResponse.json() as Promise<{items:{id:string;reference:string;clientName:string;state:{label:string}}[];error?:string}>,
+        ]);
+        if(!clientResponse.ok||!proposalResponse.ok||!contractResponse.ok)throw new Error(clients.error||proposals.error||contracts.error||'Busca empresarial indisponível.');
+        if(!controller.signal.aborted)setBusinessSearch({query,items:[
+          ...clients.items.map(x=>({id:x.id,kind:'client' as const,title:x.legalName,subtitle:x.document??'Documento não informado',status:x.state.label})),
+          ...proposals.items.map(x=>({id:x.id,kind:'proposal' as const,title:x.title,subtitle:x.clientName,status:x.state.label})),
+          ...contracts.items.map(x=>({id:x.id,kind:'contract' as const,title:x.reference,subtitle:x.clientName,status:x.state.label})),
+        ]});
+      }catch(e){if(!controller.signal.aborted)setBusinessSearchError(e instanceof Error?e.message:'Busca empresarial indisponível.');}
+      finally{if(!controller.signal.aborted)setBusinessSearchLoading(false);}
+    },180);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[palette,paletteQuery]);
   function handleQueueKey(e: React.KeyboardEvent<HTMLTableElement>) {
     if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
     const buttons = Array.from(
@@ -760,6 +794,7 @@ function HomeView() {
     setBusinessContract("");
     setCommercialOrigin("");
     setContractOrigin("");
+    setClientOrigin("");
     setDrillFilters({});
     setBankAccount("");
     operationGeneration.current++;
@@ -2513,6 +2548,7 @@ function HomeView() {
             />
           ) : page === "Clientes e propostas" ? (
             <ClientsWorkspace
+              initialId={clientOrigin}
               onCreateOrder={(client) => {
                 navigate("Ordens de serviço");
                 setOrderContract(null);
@@ -3618,6 +3654,14 @@ function HomeView() {
                 )}
               </div>
             )}
+            {paletteQuery.trim().length>=2&&<div className="palette-business-search">
+              <p>CLIENTES, PROPOSTAS E CONTRATOS</p>
+              {businessSearchError&&businessSearch.query===paletteQuery.trim()?<div className="palette-state form-error" role="alert">{businessSearchError}</div>:businessSearchLoading||businessSearch.query!==paletteQuery.trim()?<div className="palette-state" role="status">Consultando registros empresariais…</div>:businessSearch.items.length?businessSearch.items.map(item=><button className="palette-result" key={item.kind+item.id} onClick={()=>{if(item.kind==='client'){navigate('Clientes e propostas');setClientOrigin(item.id);}else if(item.kind==='proposal'){navigate('Propostas e PO');setCommercialOrigin(item.id);}else{navigate('Contratos');setContractOrigin(item.id);}setPalette(false);}}>
+                {item.kind==='client'?<Building2 size={18}/>:item.kind==='proposal'?<FileText size={18}/>:<Receipt size={18}/>}
+                <span><strong>{item.title}</strong><small>{item.kind==='client'?'Cliente':item.kind==='proposal'?'Proposta':'Contrato'} · {item.subtitle}</small></span>
+                <span className="badge">{item.status}</span>
+              </button>):<div className="palette-state">Nenhum cliente, proposta ou contrato corresponde à busca.</div>}
+            </div>}
             <p>ÁREAS DO CISNE</p>
             {modules
               .flatMap((g) => g.items)
@@ -3632,7 +3676,7 @@ function HomeView() {
                 </button>
               ))}
             <footer>
-              <span>Busca por título da OS e cliente informado</span>
+              <span>Busca registros por OS, cliente, proposta e contrato. Resultados limitados aos dados autorizados.</span>
               <kbd>Esc</kbd>
             </footer>
           </section>
