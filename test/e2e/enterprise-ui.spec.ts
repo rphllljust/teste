@@ -165,3 +165,29 @@ test('operations control center is reachable and opens the existing service-orde
   await page.getByRole('button', { name: 'Abrir objeto completo' }).click();
   await expect(page.locator('.topbar')).toContainText('Ordens de serviço');
 });
+
+
+test('professional details only expose populated summary and history tabs', async ({ page }) => {
+  await page.route('**/api/professionals?*', route => route.fulfill({ json: {
+    items: [{ id: 'professional-fixture-1', name: 'Técnica de homologação', registration: 'REG-001',
+      specialty: 'Campo', department: 'Operações', phone: null, hourlyCost: null,
+      status: 'active', rowVersion: 1 }],
+  } }));
+  await page.route('**/api/professionals/professional-fixture-1', route => route.fulfill({ json: {
+    professional: { id: 'professional-fixture-1', name: 'Técnica de homologação', registration: 'REG-001',
+      specialty: 'Campo', department: 'Operações', phone: null, hourlyCost: null,
+      status: 'active', rowVersion: 1, availableCommands: [], history: [
+        { command: 'register', createdAt: '2026-11-20T10:00:00Z' },
+      ] },
+  } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Profissionais', exact: true }).click();
+  const grid = page.getByRole('grid', { name: 'Profissionais e equipes autorizados' });
+  await expect(grid.getByText('Técnica de homologação')).toBeVisible();
+  await grid.getByRole('button', { name: 'Técnica de homologação' }).click();
+  const drawer = page.getByRole('dialog', { name: 'Object Page do profissional' });
+  await expect(drawer.getByRole('tabpanel')).toContainText('Especialidade');
+  await drawer.getByRole('tab', { name: 'Histórico' }).click();
+  await expect(drawer.getByRole('tabpanel')).toContainText('Cadastro registrado');
+  await expect(drawer.getByRole('button', { name: 'Editar cadastro' })).toHaveCount(0);
+});
