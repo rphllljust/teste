@@ -502,7 +502,6 @@ test('inventory search, stock intervention and next page are separate server-bac
 
 
 test('Redwood approvals inbox presents a real confirmation and submits a versioned authorized decision (mocked UI contract)',async({page})=>{
- let posted:Record<string,unknown>|null=null;
  let decided=false;
  const id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
  const item={id,entityType:'finance_period_close',entityId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -534,7 +533,6 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
    page:1,state,total:items.length,hasMore:false,items}});
  });
  await page.route('**/api/workflow/approvals/'+id+'/commands',route=>{
-  posted=route.request().postDataJSON() as Record<string,unknown>;
   decided=true;
   return route.fulfill({json:{id,state:'approved',rowVersion:2,replayed:false}});
  });
@@ -546,11 +544,13 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
  await inbox.getByRole('button',{name:'Avaliar aprovação'}).click();
  const dialog=page.getByRole('dialog',{name:'Confirmar decisão da aprovação'});
  await expect(dialog).toContainText('segregação de funções');
+ const requestReceived=page.waitForRequest(request=>
+   request.method()==='POST'&&request.url().includes('/api/workflow/approvals/'+id+'/commands'));
  await dialog.getByRole('button',{name:'Confirmar aprovação'}).click();
- await expect.poll(()=>posted).not.toBeNull();
- expect(posted?.command).toBe('approve');
- expect(posted?.version).toBe(1);
- expect(String(posted?.key)).toMatch(/^[a-f0-9-]{36}$/);
+ const submitted=(await requestReceived).postDataJSON() as Record<string,unknown>;
+ expect(submitted.command).toBe('approve');
+ expect(submitted.version).toBe(1);
+ expect(String(submitted.key)).toMatch(/^[a-f0-9-]{36}$/);
  await expect(inbox.getByText('Decisão aprovada e registrada no servidor.')).toBeVisible();
  await inbox.getByRole('button',{name:'Aprovadas'}).click();
  await expect(inbox.getByText('Fechamento de período financeiro').first()).toBeVisible();
