@@ -20,7 +20,7 @@ test('data grid contract is accessible and keyboard-operable', () => {
   assert.match(source, /onSortChange=/);
   assert.match(source, /onRowClick\(item\)/);
   assert.match(source, /tabIndex=\{onRowClick\?0:undefined\}/);
-  assert.match(source, /onKeyDown=\{event=>/);
+  assert.match(source, /onKeyDown=\{\(event:KeyboardEvent<HTMLDivElement>\)=>/);
   assert.match(source, /getRowId=\{row=>String\(getRowKey\(row\)\)\}/);
   assert.match(source, /<ul className="enterprise-mobile-records"/);
   assert.match(source, /<dt>\{column.headerLabel\?\?column.header\}<\/dt>/);
