@@ -292,3 +292,26 @@ test('operations cockpit paginates without silently truncating server results',a
  await page.getByRole('button',{name:'Página anterior'}).click();
  await expect.poll(()=>visited.filter(value=>value===1).length).toBeGreaterThan(1);
 });
+
+
+test('commercial proposal and contract sorting passes whitelisted values to the real query layer',async({page})=>{
+ const proposalSorts:string[]=[];
+ const contractSorts:string[]=[];
+ await page.route('**/api/proposals?*',route=>{
+  proposalSorts.push(new URL(route.request().url()).searchParams.get('sort')??'');
+  return route.fulfill({json:{items:[],pageInfo:{total:0,sourceTotal:0,hasMore:false}}});
+ });
+ await page.route('**/api/contracts?*',route=>{
+  contractSorts.push(new URL(route.request().url()).searchParams.get('sort')??'');
+  return route.fulfill({json:{items:[],pageInfo:{total:0,sourceTotal:0,hasMore:false}}});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Propostas e PO',exact:true}).click();
+ await page.getByRole('combobox',{name:'Ordenação comercial'}).click();
+ await page.getByRole('option',{name:'Título A–Z'}).click();
+ await expect.poll(()=>proposalSorts.includes('title.asc')).toBeTruthy();
+ await page.getByRole('button',{name:'Contratos',exact:true}).click();
+ await page.getByRole('combobox',{name:'Ordenar contratos'}).click();
+ await page.getByRole('option',{name:'Referência Z–A'}).click();
+ await expect.poll(()=>contractSorts.includes('reference.desc')).toBeTruthy();
+});
