@@ -18,7 +18,7 @@ const req = (path: string, body: unknown, identity: string, headers: Record<stri
     headers: { 'content-type': 'application/json', ...headers },
     body: JSON.stringify(body),
   }), identity);
-const json = async (response: Response) => response.clone().json() as Promise<Record<string, unknown>>;
+const json = async (response: Response) => response.json() as Promise<Record<string, unknown>>;
 
 async function clean(owner: string, orderId: string, clientId: string) {
   await pool.query('DELETE FROM order_events WHERE actor_id=$1 OR order_id=$2', [owner, orderId]);
@@ -57,8 +57,8 @@ test('Field Service start command enforces owner authorization, optimistic versi
     const start = { id: orderId, version: 2, key: randomUUID(), command: 'start' as const };
     const correlationHeaders = { 'x-correlation-id': 'field-start-ci-001' };
     const started = await orderCommand(req('/api/commands', start, owner, correlationHeaders));
-    assert.equal(started.status, 201, JSON.stringify(await json(started.clone())));
     const startedBody = await json(started) as unknown as { resource: { rowVersion: number } };
+    assert.equal(started.status, 201, JSON.stringify(startedBody));
     assert.equal(startedBody.resource.rowVersion, 3);
 
     const replay = await orderCommand(req('/api/commands', start, owner, correlationHeaders));
