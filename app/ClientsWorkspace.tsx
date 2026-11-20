@@ -3,6 +3,7 @@ import {useCallback,useEffect,useRef,useState} from 'react';
 import {EnterprisePageHeader, EnterpriseErrorBoundary, EnterpriseObjectPage, BusinessObjectHeader, ObjectSection} from './components/enterprise/EnterprisePrimitives';
 import {Plus,RefreshCw,Search,X} from 'lucide-react';
 import type {ClientFields} from '../lib/domain/clients';
+import { changedProfileFields } from '../lib/integrations/nextcrm/changed-profile-fields';
 export type Client={id:string;legalName:string;tradeName:string|null;document:string|null;email:string|null;phone:string|null;state:{code:'active'|'inactive';label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[]};
 type Context=Client&{related:{orders:{total:number}};history:{command:string;createdAt:string}[];warnings:string[]};
 type NextcrmProfile={
@@ -48,8 +49,10 @@ function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder:(client:Client
   const f=new FormData(e.currentTarget),nullable=(name:string)=>String(f.get(name)||'').trim()||null;
   const data:ClientFields={legalName:String(f.get('legalName')).trim(),tradeName:nullable('tradeName'),document:nullable('document'),email:nullable('email'),phone:nullable('phone')};
   const crmNames=['officePhone','website','fax','companyId','vat','billingStreet','billingPostalCode','billingCity','billingState','billingCountry','shippingStreet','shippingPostalCode','shippingCity','shippingState','shippingCountry','description','annualRevenue','memberOf'];
-  const crmChanges:Record<string,string|null>={};for(const name of crmNames)crmChanges[name]=nullable(name);
-  const hasCrmData=Object.values(crmChanges).some(value=>value!==null);
+  const currentCrmValues=Object.fromEntries(crmNames.map(name=>[name,nullable(name)])) as Record<string,string|null>;
+  const priorCrmValues=dialog.client&&nextcrm?.mapped&&nextcrm.profile?nextcrm.profile:{};
+  const crmChanges=changedProfileFields(crmNames,currentCrmValues,priorCrmValues);
+  const hasCrmData=Object.keys(crmChanges).length>0;
   try{
    await send(dialog.client?'/api/clients/'+dialog.client.id+'/commands':'/api/clients',dialog.client?{key:dialog.key,command:'revise',version:dialog.client.state.rowVersion,data}:{id:dialog.key,data});
    const id=dialog.client?.id??dialog.key;

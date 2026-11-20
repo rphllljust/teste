@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -20,10 +21,23 @@ export type EnterpriseObjectPageProps = HTMLAttributes<HTMLElement> & { title:st
 export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) {
  const [activeSection,setActiveSection]=useState(sections[0]?.id??'');
  const [navigationOpen,setNavigationOpen]=useState(false);
- useEffect(()=>{setActiveSection(sections[0]?.id??'');},[title,sections.length]);
+ const sectionSignature=sections.map(section=>section.id).join('\u0000');
+ const activeSectionId=resolveActiveSectionId(sections,activeSection);
+ useEffect(()=>{
+  if(!sectionSignature||typeof IntersectionObserver==='undefined')return;
+  const observer=new IntersectionObserver(entries=>{
+   const next=entries.filter(entry=>entry.isIntersecting).sort((a,b)=>a.boundingClientRect.top-b.boundingClientRect.top)[0]?.target.id;
+   if(next)setActiveSection(current=>current===next?current:next);
+  },{rootMargin:'-84px 0px -65% 0px',threshold:[0,0.1,0.5]});
+  for(const id of sectionSignature.split('\u0000')){
+   const section=document.getElementById(id);
+   if(section)observer.observe(section);
+  }
+  return()=>observer.disconnect();
+ },[sectionSignature]);
  return <main className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
   <div className="enterprise-object-identity">{header}</div>
-  {sections.length>1&&<div className="enterprise-object-nav-wrap"><button type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls="enterprise-object-section-links" onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSection)?.label??'Visão geral'}</button><nav id="enterprise-object-section-links" className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={`#${section.id}`} aria-current={activeSection===section.id?'location':undefined} onClick={()=>{setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
+  {sections.length>1&&<div className="enterprise-object-nav-wrap"><button type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls="enterprise-object-section-links" onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</button><nav id="enterprise-object-section-links" className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={`#${section.id}`} aria-current={activeSectionId===section.id?'location':undefined} onClick={()=>{setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
   <div className="enterprise-object-page-content">{children}</div>
  </main>;
 }
