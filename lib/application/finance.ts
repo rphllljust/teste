@@ -27,7 +27,10 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   if (!input.commandKey || !input.requestHash) throw new ApiError(400, 'VALIDATION_FAILED', 'A operação precisa de idempotência.');
   await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
 
-  const prior = await query('SELECT id, receivable_id, amount, effective_date, reference, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
+  const prior = await query(`SELECT s.id,s.receivable_id,s.amount,s.effective_date,s.reference,s.request_hash
+    FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
+    JOIN invoices i ON i.id=r.invoice_id JOIN service_orders o ON o.id=i.order_id
+    WHERE s.id=$1 AND o.owner_id=$2`, [input.commandKey,context.actorId]);
   if (prior.rows.length) {
     const row = prior.rows[0];
     if (row.request_hash !== input.requestHash || row.receivable_id !== input.receivableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
@@ -37,7 +40,9 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   const receivable = await query(`SELECT r.id, r.amount,
     COALESCE((SELECT SUM(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END)
       FROM receivable_settlements s WHERE s.receivable_id=r.id),0) AS settled
-    FROM receivables r WHERE r.id=$1 FOR UPDATE`, [input.receivableId]);
+    FROM receivables r JOIN invoices i ON i.id=r.invoice_id
+    JOIN service_orders o ON o.id=i.order_id
+    WHERE r.id=$1 AND o.owner_id=$2 FOR UPDATE OF r`, [input.receivableId,context.actorId]);
   if (!receivable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título financeiro não encontrado.');
   const row = receivable.rows[0];
   const balance = Number(row.amount) - Number(row.settled);
@@ -57,7 +62,10 @@ export async function reverseReceivableSettlement(context: RequestContext, input
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
-    const prior = await query('SELECT id, receivable_id, amount, request_hash FROM receivable_settlements WHERE id=$1', [input.commandKey]);
+    const prior = await query(`SELECT s.id,s.receivable_id,s.amount,s.request_hash
+      FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
+      JOIN invoices i ON i.id=r.invoice_id JOIN service_orders o ON o.id=i.order_id
+      WHERE s.id=$1 AND o.owner_id=$2`, [input.commandKey,context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
@@ -65,7 +73,8 @@ export async function reverseReceivableSettlement(context: RequestContext, input
     }
     const original = await query(`SELECT s.id, s.receivable_id, s.amount, r.id AS title_id
       FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
-      WHERE s.id=$1 AND s.kind='receipt' FOR UPDATE`, [input.settlementId]);
+      JOIN invoices i ON i.id=r.invoice_id JOIN service_orders o ON o.id=i.order_id
+      WHERE s.id=$1 AND s.kind='receipt' AND o.owner_id=$2 FOR UPDATE OF s`, [input.settlementId,context.actorId]);
     if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Baixa não encontrada.');
     const row = original.rows[0];
     const alreadyReversed = await query("SELECT 1 FROM receivable_settlements WHERE reverses_id=$1", [input.settlementId]);
@@ -85,7 +94,9 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do pagamento é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
-    const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
+    const prior = await query(`SELECT pp.id,pp.payable_id,pp.amount,pp.request_hash
+      FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
+      WHERE pp.id=$1 AND p.owner_id=$2`, [input.commandKey,context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
@@ -94,7 +105,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     const payable = await query(`SELECT p.id, p.amount,
       COALESCE((SELECT SUM(CASE WHEN x.kind='payment' THEN x.amount ELSE -x.amount END)
         FROM payable_payments x WHERE x.payable_id=p.id),0) AS settled
-      FROM payables p WHERE p.id=$1 FOR UPDATE`, [input.payableId]);
+      FROM payables p WHERE p.id=$1 AND p.owner_id=$2 FOR UPDATE OF p`, [input.payableId,context.actorId]);
     if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
     const row = payable.rows[0];
     const balance = Number(row.amount) - Number(row.settled);
@@ -113,13 +124,18 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
   return database().transaction(async query => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do estorno é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
-    const prior = await query('SELECT id, payable_id, amount, request_hash FROM payable_payments WHERE id=$1', [input.commandKey]);
+    const prior = await query(`SELECT pp.id,pp.payable_id,pp.amount,pp.request_hash
+      FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
+      WHERE pp.id=$1 AND p.owner_id=$2`, [input.commandKey,context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
       return { ok: true, replayed: true, resource: { type: 'payableReversal', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
     }
-    const original = await query("SELECT id, payable_id, amount FROM payable_payments WHERE id=$1 AND kind='payment' FOR UPDATE", [input.paymentId]);
+    const original = await query(`SELECT pp.id,pp.payable_id,pp.amount
+      FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
+      WHERE pp.id=$1 AND pp.kind='payment' AND p.owner_id=$2 FOR UPDATE OF pp`,
+      [input.paymentId,context.actorId]);
     if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
     const row = original.rows[0];
     const alreadyReversed = await query('SELECT 1 FROM payable_payments WHERE reverses_id=$1', [input.paymentId]);

@@ -18,12 +18,12 @@ const invoiceId = randomUUID();
 const receivableId = randomUUID();
 const measurementId = randomUUID();
 const orderId = randomUUID();
-const req = (path: string, method: string, body?: unknown) => setTestIdentity(new Request(`http://localhost${path}`, { method, headers: { 'content-type': 'application/json' }, ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(body) }) }), actor);
+const req = (path: string, method: string, body?: unknown, identity = actor) => setTestIdentity(new Request(`http://localhost${path}`, { method, headers: { 'content-type': 'application/json' }, ...(method === 'GET' || method === 'HEAD' ? {} : { body: JSON.stringify(body) }) }), identity);
 const json = async (response: Response) => response.clone().json() as Promise<Record<string, unknown>>;
 
 before(async () => {
   const now = new Date().toISOString();
-  await pool.query('INSERT INTO service_orders(id,title,client,category,description,created_at) VALUES($1,$2,$3,$4,$5,$6)', [orderId, 'Finance integration order', 'Finance CI', 'Serviços', 'Finance CI', now]);
+  await pool.query('INSERT INTO service_orders(id,owner_id,title,client,category,description,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)', [orderId, actor, 'Finance integration order', 'Finance CI', 'Serviços', 'Finance CI', now]);
   await pool.query('INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,$3,$4,$5,$6)', [measurementId, orderId, 'Finance CI measurement', 10000, 'approved', now]);
   await pool.query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)', [invoiceId, measurementId, orderId, 10000, '2026-12-01', now]);
   await pool.query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)', [receivableId, invoiceId, 10000, '2026-12-01', now]);
@@ -45,11 +45,19 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   const commandKey = randomUUID();
   const first = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '4000', effectiveDate: '2026-11-16', reference: 'CI receipt', commandKey }));
   assert.equal(first.status, 201, JSON.stringify(await json(first.clone())));
+  const stranger = randomUUID();
+  const wrongOwner = await settle(req('/api/finance/receivables/settlements', 'POST',
+    { receivableId, amount: '1000', effectiveDate: '2026-11-16', reference: 'Foreign receipt', commandKey: randomUUID() }, stranger));
+  assert.equal(wrongOwner.status, 404, 'Foreign owners cannot settle a receivable by UUID');
   const replay = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '4000', effectiveDate: '2026-11-16', reference: 'CI receipt', commandKey }));
   assert.equal(replay.status, 200);
   const excessive = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '7000', effectiveDate: '2026-11-16', reference: 'CI excessive', commandKey: randomUUID() }));
   assert.equal(excessive.status, 409);
   const reversalKey = randomUUID();
+  const foreignReverse = await reverse(req(`/api/finance/receivables/settlements/${commandKey}/reverse`, 'POST',
+    { commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'Foreign reversal' }, stranger),
+    { params: Promise.resolve({ id: commandKey }) });
+  assert.equal(foreignReverse.status, 404, 'Foreign owners cannot reverse a settlement by UUID');
   const reversed = await reverse(req(`/api/finance/receivables/settlements/${commandKey}/reverse`, 'POST', { commandKey: reversalKey, effectiveDate: '2026-11-17', reference: 'CI reversal' }), { params: Promise.resolve({ id: commandKey }) });
   assert.equal(reversed.status, 201, JSON.stringify(await json(reversed.clone())));
   const duplicate = await reverse(req(`/api/finance/receivables/settlements/${commandKey}/reverse`, 'POST', { commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'CI duplicate reversal' }), { params: Promise.resolve({ id: commandKey }) });
