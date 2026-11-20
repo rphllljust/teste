@@ -266,3 +266,29 @@ test('Redwood priority task opens the real orders queue filtered for completed w
  await expect(page.getByRole('button',{name:'Concluídas sem medição',exact:true}))
   .toHaveAttribute('aria-pressed','true');
 });
+
+
+test('operations cockpit paginates without silently truncating server results',async({page})=>{
+ const visited:number[]=[];
+ await page.route('**/api/orders?*',async route=>{
+   const current=Number(new URL(route.request().url()).searchParams.get('page')??1);
+   visited.push(current);
+   await route.fulfill({json:{
+    orders:[{id:'order-page-'+current,title:'OS página '+current,client:'Cliente controle',
+      category:'Serviços',description:'Serviço',status:'DRAFT',due_date:null,
+      created_at:'2026-11-20T10:00:00Z',availableCommands:[],
+      relations:{measurements:0,invoices:0,receivables:0}}],
+    total:27,pageInfo:{page:current,total:27,hasMore:current===1},
+    summary:{total:27,drafts:27,planned:0,pendingMeasurements:0},
+   }});
+ });
+ await page.goto('/');
+ await page.getByRole('button',{name:'Centro de operações',exact:true}).click();
+ await expect(page.getByText('OS página 1').first()).toBeVisible();
+ await page.getByRole('button',{name:'Próxima página'}).click();
+ await expect.poll(()=>visited.includes(2)).toBeTruthy();
+ await expect(page.getByText('OS página 2').first()).toBeVisible();
+ await expect(page.getByRole('button',{name:'Próxima página'})).toBeDisabled();
+ await page.getByRole('button',{name:'Página anterior'}).click();
+ await expect.poll(()=>visited.filter(value=>value===1).length).toBeGreaterThan(1);
+});
