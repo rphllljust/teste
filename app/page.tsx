@@ -16,6 +16,7 @@ import TreasuryWorkspace from './TreasuryWorkspace';
 import LedgerWorkspace from './LedgerWorkspace';
 import BankReconciliationWorkspace from './BankReconciliationWorkspace';
 import AccountingWorkspace from './AccountingWorkspace';
+import FiscalWorkspace from './FiscalWorkspace';
 import CloseCenterWorkspace from './CloseCenterWorkspace';
 import InventoryWorkspace from './InventoryWorkspace';
 import ProcurementWorkspace from './ProcurementWorkspace';
