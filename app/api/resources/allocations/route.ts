@@ -3,6 +3,7 @@ import {database} from '../../../../db/raw';
 import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../lib/api/http';
 
 const input=z.object({id:z.string().uuid(),orderId:z.string().uuid(),resourceType:z.enum(['professional','asset']),resourceId:z.string().uuid(),startsAt:z.string().datetime(),endsAt:z.string().datetime()}).strict();
+const storedResult=(value:unknown)=>typeof value==='string'?JSON.parse(value) as Record<string,unknown>:value as Record<string,unknown>;
 
 export async function POST(request:Request){
  let context:RequestContext|undefined;
@@ -16,7 +17,7 @@ export async function POST(request:Request){
   const hash=await fingerprint({actor:context.actorId,command:'allocate_resource',payload:p});
   const result=await database().transaction(async q=>{
    const prior=await q('SELECT result,actor_id,request_hash FROM resource_allocation_events WHERE id=$1',[p.id]);
-   if(prior.rows.length){const old=prior.rows[0] as {result:string;actor_id:string;request_hash:string};if(old.actor_id!==context!.actorId||old.request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave de alocação já utilizada.');return JSON.parse(old.result) as Record<string,unknown>;}
+   if(prior.rows.length){const old=prior.rows[0] as {result:unknown;actor_id:string;request_hash:string};if(old.actor_id!==context!.actorId||old.request_hash!==hash)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave de alocação já utilizada.');return storedResult(old.result);}
    const order=await q("SELECT id,status FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE",[p.orderId,actor]);
    if(!order.rowCount)throw new ApiError(404,'NOT_FOUND','OS não encontrada.');
    if(!['planned','authorized','executing'].includes(String(order.rows[0].status)))throw new ApiError(409,'INVALID_STATE','A OS não aceita alocações neste estado.');
@@ -37,3 +38,4 @@ export async function POST(request:Request){
   return respond(result,context,201);
  }catch(error){if(error instanceof Error&&/resource_allocations_no_overlap|exclusion constraint/i.test(error.message))return failure(new ApiError(409,'SCHEDULE_CONFLICT','O recurso já está alocado nesta janela.'),context);return failure(error,context)}
 }
+

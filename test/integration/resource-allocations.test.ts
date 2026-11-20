@@ -27,6 +27,7 @@ test('resource allocation is tenant-scoped, idempotent, conflict-safe and blocks
  const assetRace=await Promise.all([asset2,asset2].map(resourceId=>allocate(req({id:randomUUID(),orderId:order,resourceType:'asset',resourceId,startsAt:now,endsAt:later},actor))));
  assert.deepEqual(assetRace.map(response=>response.status).sort((a,b)=>a-b),[201,409]);
  const count=await pool.query('SELECT count(*)::int AS n FROM resource_allocations WHERE owner_id=$1',[actor]);
- assert.equal(count.rows[0].n,1);
+ assert.equal(count.rows[0].n,3);
 });
-test.after(async()=>{await pool.query('DELETE FROM resource_allocations WHERE owner_id=$1',[actor]);await pool.query('DELETE FROM assets WHERE id=ANY($1::text[])',[[asset,asset2]]);await pool.query('DELETE FROM professionals WHERE id=ANY($1::text[])',[[professional,professional2]]);await pool.query('DELETE FROM service_orders WHERE id=$1',[order]);await pool.end()});
+test.after(async()=>{await pool.query('DELETE FROM resource_allocation_events WHERE owner_id=$1',[actor]);await pool.query('DELETE FROM resource_allocations WHERE owner_id=$1',[actor]);await pool.query('DELETE FROM assets WHERE id=ANY($1::text[])',[[asset,asset2]]);await pool.query('DELETE FROM professionals WHERE id=ANY($1::text[])',[[professional,professional2]]);await pool.query('DELETE FROM service_orders WHERE id=$1',[order]);await pool.end()});
+
