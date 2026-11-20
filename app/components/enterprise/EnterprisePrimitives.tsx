@@ -1,6 +1,6 @@
 'use client';
 
-import { Children, isValidElement, useEffect, useId, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactElement, type ReactNode } from 'react';
+import { Children, isValidElement, useEffect, useId, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
 import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
@@ -131,7 +131,7 @@ export function EnterpriseDataGrid<T>({ rows, columns, getRowKey, caption, empty
            <DataGridRow>{({renderHeaderCell})=><DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}</DataGridRow>
          </DataGridHeader>
          <DataGridBody<T>>
-           {({item,rowId})=><DataGridRow<T> key={rowId} tabIndex={onRowClick?0:undefined} aria-label={onRowClick?`Abrir registro ${String(getRowKey(item))}`:undefined} onClick={event=>{if(!onRowClick)return;const target=event.target;if(target instanceof Element&&target.closest('a,button,input,select,textarea,[role="button"],[role="link"]'))return;onRowClick(item);}} onKeyDown={event=>{if(!onRowClick||event.target!==event.currentTarget)return;if(event.key==='Enter'||event.key===' '){event.preventDefault();onRowClick(item);}}}>
+           {({item,rowId})=><DataGridRow<T> key={rowId} tabIndex={onRowClick?0:undefined} aria-label={onRowClick?`Abrir registro ${String(getRowKey(item))}`:undefined} onClick={(event:MouseEvent<HTMLDivElement>)=>{if(!onRowClick)return;const target=event.target;if(target instanceof Element&&target.closest('a,button,input,select,textarea,[role="button"],[role="link"]'))return;onRowClick(item);}} onKeyDown={(event:KeyboardEvent<HTMLDivElement>)=>{if(!onRowClick||event.target!==event.currentTarget)return;if(event.key==='Enter'||event.key===' '){event.preventDefault();onRowClick(item);}}}>
              {({renderCell})=><DataGridCell>{renderCell(item)}</DataGridCell>}
            </DataGridRow>}
          </DataGridBody>
