@@ -370,3 +370,63 @@ test('enterprise control tower reads persisted projection, filters the reference
  await metric.click();
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Financeiro');
 });
+
+test('Redwood control tower uses server-valued queues and opens an exact payable Object Page',async({page})=>{
+ const lanes=[
+  ['lateOrders','Ordens em atraso','Centro de operações',[]],
+  ['unmeasuredOrders','Concluídas sem medição aprovada','Medições',[]],
+  ['overdueReceivables','Recebíveis vencidos','Financeiro',[]],
+  ['overduePayables','Obrigações vencidas','Contas a pagar',[
+   {id:'payable-control-1',title:'Fornecedor pendente',reference:'DOC-001',
+    date:'2026-11-10',amountScaled:'1000000',availableScaled:null,requiredScaled:null}]],
+  ['latePurchases','Compras não recebidas no prazo','Compras',[]],
+  ['stockShortage','Materiais abaixo do mínimo','Estoque e compras',[]],
+  ['myApprovals','Aprovações atribuídas','Fechamentos',[]],
+ ] as const;
+ let detailRequests=0;
+ await page.route('**/api/enterprise/control-tower*',route=>route.fulfill({json:{
+  authority:'owner_scoped_persisted_postgresql.v1',asOf:'2026-11-20',
+  generatedAt:'2026-11-20T14:00:00.000Z',sampleLimitPerLane:6,
+  lanes:lanes.map(([id,label,target,items])=>({
+   id,label,target,count:items.length,totalAmountScaled:id==='overduePayables'?'1000000':null,
+   authority:'SYNTHETIC_CONTRACT_TEST',items,
+  })),
+ }}));
+ await page.route('**/api/payables?*',route=>route.fulfill({json:{
+  items:[],pageInfo:{total:0,sourceTotal:0,hasMore:false},aggregates:[],
+  generatedAt:'2026-11-20T14:00:00.000Z',
+ }}));
+ await page.route('**/api/views?*',route=>route.fulfill({json:{views:[]}}));
+ await page.route('**/api/payables/payable-control-1?*',route=>{
+  detailRequests++;
+  return route.fulfill({json:{projection:{
+   identity:{id:'payable-control-1',title:'Fornecedor pendente',subtitle:'DOC-001'},
+   state:{code:'outstanding',label:'Pendente',rowVersion:1},
+   facts:{principalScaled:'1000000',paidScaled:'0',outstandingScaled:'1000000',dueDate:'2026-11-10'},
+   source:{reference:'DOC-001',description:'Compra de teste'},
+   payments:[],paymentsPageInfo:{page:1,total:0,hasMore:false},availableCommands:[],warnings:[],
+  }}});
+ });
+ await page.goto('/');
+ const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
+ await expect(tower).toBeVisible();
+ const payableLane=tower.getByRole('article',{name:'Obrigações vencidas'});
+ await expect(payableLane).toContainText('1 registro');
+ await expect(payableLane).toContainText('Fornecedor pendente');
+ await expect(payableLane).toContainText('R$');
+ await payableLane.getByRole('button',{name:'Abrir Fornecedor pendente'}).click();
+ await expect(page.locator('.topbar')).toContainText('Contas a pagar');
+ await expect.poll(()=>detailRequests).toBeGreaterThan(0);
+ await expect(page.getByRole('region',{name:'Obrigação Fornecedor pendente'})).toBeVisible();
+ await expect(page.getByRole('main')).toHaveCount(1);
+});
+
+test('Redwood control tower fails closed when the API is unavailable',async({page})=>{
+ await page.route('**/api/enterprise/control-tower*',route=>route.fulfill({status:503,
+  json:{error:'O serviço de prioridades está temporariamente indisponível.'}}));
+ await page.goto('/');
+ const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
+ await expect(tower.getByRole('alert')).toContainText('temporariamente indisponível');
+ await expect(tower.getByRole('article')).toHaveCount(0);
+ await expect(tower.getByRole('button',{name:'Tentar novamente'})).toBeVisible();
+});

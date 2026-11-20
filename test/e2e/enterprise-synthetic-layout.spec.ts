@@ -71,10 +71,24 @@ for(const name of destinations){
    }
    const url=new URL(request.url());
    const pageNo=Number(url.searchParams.get('page'))||1;
+   const syntheticTower={
+    ...fakeList(pageNo),authority:'owner_scoped_persisted_postgresql.v1',
+    sampleLimitPerLane:6,
+    lanes:[
+      ['lateOrders','Ordens em atraso','Centro de operações'],
+      ['unmeasuredOrders','Concluídas sem medição aprovada','Medições'],
+      ['overdueReceivables','Recebíveis vencidos','Financeiro'],
+      ['overduePayables','Obrigações vencidas','Contas a pagar'],
+      ['latePurchases','Compras não recebidas no prazo','Compras'],
+      ['stockShortage','Materiais abaixo do mínimo','Estoque e compras'],
+      ['myApprovals','Aprovações atribuídas','Fechamentos'],
+    ].map(([id,label,target])=>({id,label,target,count:0,totalAmountScaled:null,
+      authority:'SYNTHETIC_LAYOUT_ONLY',items:[]})),
+   };
    await route.fulfill({
     status:200,contentType:'application/json',
     headers:{'x-cisne-test-data':'SYNTHETIC_LAYOUT_ONLY','cache-control':'no-store'},
-    body:JSON.stringify(fakeList(pageNo)),
+    body:JSON.stringify(url.pathname==='/api/enterprise/control-tower'?syntheticTower:fakeList(pageNo)),
    });
   });
   for(const size of viewports){

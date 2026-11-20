@@ -7,14 +7,14 @@ import {ApiError,failure,requestContext,respond,validDate,type RequestContext} f
 export const dynamic='force-dynamic';
 const query=z.object({asOf:z.string().refine(validDate).optional()}).strict();
 type Fact={id:string;title?:string;reference?:string;date?:string;
-  availableScaled?:string;requiredScaled?:string;outstandingScaled?:string;
+  availableScaled?:string;requiredScaled?:string;outstandingScaled?:string;unit?:string;
   totalCount?:number|string;totalAmount?:number|string};
 type LaneId='lateOrders'|'unmeasuredOrders'|'overdueReceivables'|
   'overduePayables'|'latePurchases'|'stockShortage'|'myApprovals';
 type Lane={id:LaneId;label:string;target:string;count:number;
   totalAmountScaled:string|null;authority:string;items:Array<{
     id:string;title:string;reference:string|null;date:string|null;
-    amountScaled:string|null;availableScaled:string|null;requiredScaled:string|null;
+    amountScaled:string|null;availableScaled:string|null;requiredScaled:string|null;unit:string|null;
   }>};
 const specs:Array<{id:LaneId;label:string;target:string;authority:string}>= [
  {id:'lateOrders',label:'Ordens em atraso',target:'Centro de operações',authority:'service_orders.due_date.v1'},
@@ -100,6 +100,7 @@ export async function GET(request:Request){
         amountScaled:f.outstandingScaled==null?null:String(f.outstandingScaled),
         availableScaled:f.availableScaled==null?null:String(f.availableScaled),
         requiredScaled:f.requiredScaled==null?null:String(f.requiredScaled),
+        unit:f.unit==null?null:String(f.unit),
       })),
     };
   });
