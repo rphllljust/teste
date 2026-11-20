@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./mrp.css";
+import { EnterpriseUiProvider } from "./components/enterprise/EnterpriseUiProvider";
 
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",
@@ -21,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased"><EnterpriseUiProvider>{children}</EnterpriseUiProvider></body>
     </html>
   );
 }

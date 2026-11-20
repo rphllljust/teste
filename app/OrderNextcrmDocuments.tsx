@@ -1,4 +1,5 @@
 'use client';
+import { EnterpriseButton } from './components/enterprise/EnterprisePrimitives';
 import {useEffect,useState} from 'react';
 import {FileCheck2,ChevronDown,RefreshCw,ShieldCheck,Download} from 'lucide-react';
 
@@ -71,18 +72,18 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
   }
 
   return <section className="order-nextcrm-documents" aria-label="Documentos do NextCRM">
-    <button type="button" className="related" aria-expanded={expanded}
+    <EnterpriseButton type="button" className="related" aria-expanded={expanded}
       onClick={()=>setExpanded(value=>!value)}>
       <span><strong>Documentos vinculados · NextCRM</strong>
         <small>Consulta com autorização atualizada no CRM de origem</small></span>
       <ChevronDown size={16} aria-hidden="true"/>
-    </button>
+    </EnterpriseButton>
     {expanded&&<div className="order-relation-context">
       <header><strong>Documentos autorizados</strong>
-        <button type="button" className="text-button" disabled={busy}
+        <EnterpriseButton type="button" className="text-button" disabled={busy}
           onClick={()=>setGeneration(v=>v+1)}>
           <RefreshCw size={13} aria-hidden="true"/> Atualizar
-        </button>
+        </EnterpriseButton>
       </header>
       {busy&&<p role="status">Verificando permissões no NextCRM…</p>}
       {error&&<p role="alert" className="form-error">{error}</p>}
@@ -98,12 +99,12 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
           <span><strong>{kindLabels[doc.kind]??'Documento'} · versão {doc.version}</strong>
             <small>Registro verificado no NextCRM · vínculo {doc.id.slice(0,8)}</small></span>
           <ShieldCheck size={15} aria-label="Autorização atual verificada"/>
-          {doc.kind==='attachment'&&<button type="button" className="text-button"
+          {doc.kind==='attachment'&&<EnterpriseButton type="button" className="text-button"
             disabled={downloading!==null} onClick={()=>void downloadAttachment(doc)}
             aria-label={'Baixar anexo NextCRM '+doc.id.slice(0,8)}>
             <Download size={14} aria-hidden="true"/>
             {downloading===doc.id?'Baixando…':'Baixar arquivo'}
-          </button>}
+          </EnterpriseButton>}
         </div>)}
     </div>}
   </section>;

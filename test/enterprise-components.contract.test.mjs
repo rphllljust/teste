@@ -14,20 +14,30 @@ test('enterprise primitives expose the governance component contracts', () => {
 });
 
 test('data grid contract is accessible and keyboard-operable', () => {
-  assert.match(source, /<caption className="sr-only">\{caption\}<\/caption>/);
-  assert.match(source, /scope="col"/);
-  assert.match(source, /aria-sort=/);
-  assert.match(source, /tabIndex=\{onRowClick \? 0 : undefined\}/);
-  assert.match(source, /event\.key === 'Enter' \|\| event\.key === ' '/);
-  assert.match(source, /aria-label=\{`Ordenar por/);
+  assert.match(source, /DataGrid as FluentDataGrid/);
+  assert.match(source, /<FluentDataGrid aria-label=\{caption\}/);
+  assert.match(source, /<DataGridHeader>/);
+  assert.match(source, /onSortChange=/);
+  assert.match(source, /onRowClick\?\.\(item\)/);
+  assert.match(source, /getRowId=\{row=>String\(getRowKey\(row\)\)\}/);
 });
 
 test('operational feedback and filters use live or alert semantics', () => {
   assert.match(source, /<form className="enterprise-filter-bar" aria-label=\{label\}/);
+  assert.match(source, /EnterpriseButton type="submit" appearance="subtle"/);
+  assert.match(source, /<FluentField label=\{label\}/);
+  assert.match(source, /<FluentInput type="search"/);
   assert.match(source, /aria-live="polite"/);
   assert.match(source, /role="alert"/);
   assert.match(source, /aria-busy="true"/);
   assert.match(source, /type="button" className="secondary"/);
+});
+
+test('the shared control layer uses the official Fluent UI components', () => {
+  for (const component of ['FluentButton', 'FluentDataGrid', 'FluentField', 'FluentInput', 'FluentDropdown', 'FluentTabList', 'FluentTextarea']) {
+    assert.match(source, new RegExp(`\\b${component}\\b`), component);
+  }
+  assert.match(source, /from '@fluentui\/react-icons'/);
 });
 
 test('enterprise layout contracts include narrow-screen behavior', () => {

@@ -1,4 +1,6 @@
 "use client";
+import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseButton, EnterpriseSearchField, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import PayablesWorkspace from "./PayablesWorkspace";
@@ -164,6 +166,7 @@ type LinkedMetric = {
   generatedAt: string;
   drilldown: { viewKey: string; filters: Record<string, string> };
 };
+type BusinessSearchItem={id:string;kind:'client'|'proposal'|'contract';title:string;subtitle:string;status:string};
 type Event = {
   label: string;
   id: string;
@@ -344,6 +347,8 @@ function HomeView() {
     }>({ items: [], total: 0, query: "" }),
     [paletteLoading, setPaletteLoading] = useState(false),
     [paletteError, setPaletteError] = useState("");
+  const [businessSearch,setBusinessSearch]=useState<{items:BusinessSearchItem[];query:string}>({items:[],query:''});
+  const [businessSearchLoading,setBusinessSearchLoading]=useState(false),[businessSearchError,setBusinessSearchError]=useState('');
   const [linkedViews, setLinkedViews] = useState<
       {
         id: string;
@@ -371,6 +376,8 @@ function HomeView() {
   const [orderContract, setOrderContract] = useState<Contract | null>(null),
     [businessContract, setBusinessContract] = useState(""),
     [commercialOrigin, setCommercialOrigin] = useState(""),
+    [contractOrigin, setContractOrigin] = useState(""),
+    [clientOrigin, setClientOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
   const defaultsApplied = useRef(false);
   const operationGeneration = useRef(0);
@@ -430,6 +437,36 @@ function HomeView() {
       controller.abort();
     };
   }, [palette, paletteQuery]);
+  useEffect(()=>{
+    if(!palette)return;
+    const query=paletteQuery.trim();
+    if(query.length<2)return;
+    const controller=new AbortController();
+    const timer=setTimeout(async()=>{
+      setBusinessSearch({items:[],query});setBusinessSearchLoading(true);setBusinessSearchError('');
+      try{
+        const params=new URLSearchParams({q:query,page:'1',pageSize:'5'});
+        const [clientResponse,proposalResponse,contractResponse]=await Promise.all([
+          fetch('/api/clients?'+params,{signal:controller.signal}),
+          fetch('/api/proposals?'+params,{signal:controller.signal}),
+          fetch('/api/contracts?'+params,{signal:controller.signal}),
+        ]);
+        const [clients,proposals,contracts]=await Promise.all([
+          clientResponse.json() as Promise<{items:{id:string;legalName:string;document:string|null;state:{label:string}}[];error?:string}>,
+          proposalResponse.json() as Promise<{items:{id:string;title:string;clientName:string;state:{label:string}}[];error?:string}>,
+          contractResponse.json() as Promise<{items:{id:string;reference:string;clientName:string;state:{label:string}}[];error?:string}>,
+        ]);
+        if(!clientResponse.ok||!proposalResponse.ok||!contractResponse.ok)throw new Error(clients.error||proposals.error||contracts.error||'Busca empresarial indisponível.');
+        if(!controller.signal.aborted)setBusinessSearch({query,items:[
+          ...clients.items.map(x=>({id:x.id,kind:'client' as const,title:x.legalName,subtitle:x.document??'Documento não informado',status:x.state.label})),
+          ...proposals.items.map(x=>({id:x.id,kind:'proposal' as const,title:x.title,subtitle:x.clientName,status:x.state.label})),
+          ...contracts.items.map(x=>({id:x.id,kind:'contract' as const,title:x.reference,subtitle:x.clientName,status:x.state.label})),
+        ]});
+      }catch(e){if(!controller.signal.aborted)setBusinessSearchError(e instanceof Error?e.message:'Busca empresarial indisponível.');}
+      finally{if(!controller.signal.aborted)setBusinessSearchLoading(false);}
+    },180);
+    return()=>{clearTimeout(timer);controller.abort();};
+  },[palette,paletteQuery]);
   function handleQueueKey(e: React.KeyboardEvent<HTMLTableElement>) {
     if (!["ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) return;
     const buttons = Array.from(
@@ -758,6 +795,8 @@ function HomeView() {
     setBusinessClient("");
     setBusinessContract("");
     setCommercialOrigin("");
+    setContractOrigin("");
+    setClientOrigin("");
     setDrillFilters({});
     setBankAccount("");
     operationGeneration.current++;
@@ -1217,18 +1256,6 @@ function HomeView() {
               "Fiscal e tributos": 5,
               Contabilidade: 6,
             }[page] ?? -1);
-  if (page === "Profissionais")
-    return (
-      <div className="app">
-        <ProfessionalsWorkspace />
-      </div>
-    );
-  if (page === "Frota e ativos")
-    return (
-      <div className="app">
-        <AssetsWorkspace />
-      </div>
-    );
   const moduleDescription: Record<string, string> = {
     Medições:
       "Acompanhamento da produção realizada e das medições vinculadas às ordens de serviço.",
@@ -1254,7 +1281,8 @@ function HomeView() {
   return (
     <div className="app">
       {sidebar && (
-        <button
+        <EnterpriseButton type="button"
+          appearance="transparent"
           className="sidebar-scrim"
           aria-label="Fechar navegação"
           onClick={() => setSidebar(false)}
@@ -1280,7 +1308,8 @@ function HomeView() {
             <div className="nav-group" key={g.group}>
               <p>{g.group}</p>
               {g.items.map(([name, Icon]) => (
-                <button
+                <EnterpriseButton type="button"
+                  appearance="subtle"
                   key={name}
                   onClick={() => navigate(name)}
                   className={page === name ? "active" : ""}
@@ -1293,7 +1322,7 @@ function HomeView() {
                       {loading || error ? "—" : summary.total}
                     </span>
                   )}
-                </button>
+                </EnterpriseButton>
               ))}
             </div>
           ))}
@@ -1303,27 +1332,29 @@ function HomeView() {
             <span />
             Cisne · Plataforma empresarial
           </span>
-          <button
+          <EnterpriseButton type="button"
+            appearance="subtle"
             onClick={() => {
               setPaletteQuery("");
               setPalette(true);
             }}
           >
             <Command size={17} /> Navegação rápida <kbd>Ctrl K</kbd>
-          </button>
+          </EnterpriseButton>
         </div>
       </aside>
       <div className={"main " + (selected && docked ? "with-context" : "")}>
         <header className="topbar">
           <div className="crumb">
-            <button
+            <EnterpriseButton type="button"
+              appearance="transparent"
               className="mobile-toggle icon-button"
               aria-label={sidebar ? "Fechar menu" : "Abrir menu"}
               aria-expanded={sidebar}
               onClick={() => setSidebar(!sidebar)}
             >
               <PanelLeft size={20} />
-            </button>
+            </EnterpriseButton>
             <span>CISNE</span>
             <span className="crumb-divider">/</span>
             <span>
@@ -1336,7 +1367,7 @@ function HomeView() {
             <strong>{page}</strong>
           </div>
           <div className="top-actions">
-            <button
+            <EnterpriseButton type="button"
               className="global-search"
               aria-label="Buscar no Cisne — Ctrl ou Command K"
               aria-keyshortcuts="Control+k Meta+k"
@@ -1346,8 +1377,9 @@ function HomeView() {
               }}
             >
               <Search size={16} />
-              Buscar no Cisne<kbd>Ctrl K</kbd>
-            </button>
+              <span className="global-search-label">Buscar no Cisne</span>
+              <kbd>Ctrl K</kbd>
+            </EnterpriseButton>
             <span className="app-mode-pill">
               <span aria-hidden="true" />
               Workspace
@@ -1365,6 +1397,14 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Field Service Cockpit",
+              "Resource Planning Board",
+              "Clientes e propostas",
+              "Propostas e PO",
+              "Contratos",
+              "Fiscal e tributos",
+              "Profissionais",
+              "Frota e ativos",
             ].includes(page) && (
               <div className="heading">
                 <div>
@@ -1388,10 +1428,10 @@ function HomeView() {
                   </p>
                 </div>
                 {isWork && (
-                  <button className="primary" onClick={newOrder}>
+                  <EnterpriseButton type="button" className="primary" onClick={newOrder}>
                     <Plus size={18} />
                     Nova ordem de serviço
-                  </button>
+                  </EnterpriseButton>
                 )}
               </div>
             )}
@@ -1406,9 +1446,9 @@ function HomeView() {
                 <Check size={18} />
               )}
               {notice}
-              <button aria-label="Fechar aviso" onClick={() => setNotice("")}>
+              <EnterpriseButton type="button" aria-label="Fechar aviso" onClick={() => setNotice("")}>
                 <X size={16} />
-              </button>
+              </EnterpriseButton>
             </div>
           )}
           {[
@@ -1433,14 +1473,14 @@ function HomeView() {
                   (chainEdges.after ? "has-after" : "")
                 }
               >
-                <button
+                <EnterpriseButton type="button"
                   className="chain-navigation chain-previous"
                   aria-label="Ver etapas anteriores"
                   hidden={!chainEdges.before}
                   onClick={() => scrollChain(-1)}
                 >
                   <ChevronLeft size={16} />
-                </button>
+                </EnterpriseButton>
                 <div
                   className="chain-viewport"
                   ref={chainViewport}
@@ -1458,7 +1498,7 @@ function HomeView() {
                             ? "subsequent"
                             : "";
                       return i < 5 ? (
-                        <button
+                        <EnterpriseButton type="button"
                           key={s}
                           data-stage-index={i}
                           className={stageClass}
@@ -1486,7 +1526,7 @@ function HomeView() {
                           </span>
                           {s}
                           <ChevronRight className="stage-divider" size={13} />
-                        </button>
+                        </EnterpriseButton>
                       ) : (
                         <span
                           key={s}
@@ -1506,14 +1546,14 @@ function HomeView() {
                     })}
                   </div>
                 </div>
-                <button
+                <EnterpriseButton type="button"
                   className="chain-navigation chain-next"
                   aria-label="Ver próximas etapas"
                   hidden={!chainEdges.after}
                   onClick={() => scrollChain(1)}
                 >
                   <ChevronRight size={16} />
-                </button>
+                </EnterpriseButton>
               </div>
             </section>
           )}
@@ -1596,7 +1636,7 @@ function HomeView() {
                 className="metrics"
                 aria-label="Resumo das ordens; agregados de todas as ordens"
               >
-                <button
+                <EnterpriseButton type="button"
                   onClick={() => applyView("Todas as ordens")}
                   aria-pressed={
                     view === "Todas as ordens" &&
@@ -1612,8 +1652,8 @@ function HomeView() {
                   <small>
                     Consultar todas as ordens <ArrowUpRight size={14} />
                   </small>
-                </button>
-                <button
+                </EnterpriseButton>
+                <EnterpriseButton type="button"
                   onClick={() => applyView("Rascunhos")}
                   aria-pressed={
                     view === "Rascunhos" && !query && category === categories[0]
@@ -1629,8 +1669,8 @@ function HomeView() {
                   <small>
                     Revisar rascunhos <ArrowUpRight size={14} />
                   </small>
-                </button>
-                <button
+                </EnterpriseButton>
+                <EnterpriseButton type="button"
                   onClick={() => applyView("Com data prevista")}
                   aria-pressed={
                     view === "Com data prevista" &&
@@ -1648,8 +1688,8 @@ function HomeView() {
                   <small>
                     Consultar planejamento <ArrowUpRight size={14} />
                   </small>
-                </button>
-                <button
+                </EnterpriseButton>
+                <EnterpriseButton type="button"
                   onClick={() => applyView("Concluídas sem medição")}
                   aria-pressed={
                     view === "Concluídas sem medição" &&
@@ -1669,7 +1709,7 @@ function HomeView() {
                   <small>
                     Retomar ordens concluídas <ArrowUpRight size={14} />
                   </small>
-                </button>
+                </EnterpriseButton>
               </section>
               <div className="work-layout">
                 <section
@@ -1703,7 +1743,7 @@ function HomeView() {
                           {!savedViews.length && <p>Nenhuma consulta salva.</p>}
                           {savedViews.map((v) => (
                             <div className="saved-view-row" key={v.id}>
-                              <button
+                              <EnterpriseButton type="button"
                                 onClick={() => {
                                   setPageNumber(1);
                                   setQuery(v.query);
@@ -1723,8 +1763,8 @@ function HomeView() {
                               >
                                 {v.name}
                                 {v.isDefault ? " · padrão" : ""}
-                              </button>
-                              <button
+                              </EnterpriseButton>
+                              <EnterpriseButton type="button"
                                 disabled={!v.compatible || !v.rowVersion}
                                 aria-label={
                                   (v.isDefault
@@ -1736,10 +1776,10 @@ function HomeView() {
                                 {v.isDefault
                                   ? "Remover padrão"
                                   : "Definir padrão"}
-                              </button>
+                              </EnterpriseButton>
                             </div>
                           ))}
-                          <button
+                          <EnterpriseButton type="button"
                             className="save-view"
                             onClick={() => {
                               setViewKey(crypto.randomUUID());
@@ -1750,10 +1790,10 @@ function HomeView() {
                           >
                             <Plus size={14} />
                             Salvar consulta
-                          </button>
+                          </EnterpriseButton>
                         </div>
                       </details>
-                      <button
+                      <EnterpriseButton type="button"
                         className="icon-button"
                         disabled={loading}
                         onClick={() => void load()}
@@ -1763,7 +1803,7 @@ function HomeView() {
                           size={17}
                           className={loading ? "spin" : ""}
                         />
-                      </button>
+                      </EnterpriseButton>
                     </div>
                   </div>
                   <div className="tabs">
@@ -1774,7 +1814,7 @@ function HomeView() {
                       "Com data prevista",
                       "Concluídas sem medição",
                     ].map((t) => (
-                      <button
+                      <EnterpriseButton type="button"
                         key={t}
                         onClick={() => {
                           setPageNumber(1);
@@ -1787,25 +1827,17 @@ function HomeView() {
                         {t === "Todas as ordens" && (
                           <span>{loading || error ? "—" : summary.total}</span>
                         )}
-                      </button>
+                      </EnterpriseButton>
                     ))}
                   </div>
                   <div className="filters">
-                    <label className="search-input">
-                      <Search size={17} />
-                      <input
-                        placeholder="Buscar OS ou cliente"
-                        aria-label="Buscar OS ou cliente"
-                        value={query}
-                        onChange={(e) => {
+                    <EnterpriseSearchField label="Buscar OS ou cliente" placeholder="Buscar OS ou cliente" value={query} disabled={false} onValueChange={value => {
                           setPageNumber(1);
-                          setQuery(e.target.value);
-                        }}
-                      />
-                    </label>
+                          setQuery(value);
+                        }} />
                     <label className="select-filter">
                       <Filter size={15} />
-                      <select
+                      <EnterpriseDropdown
                         aria-label="Filtrar atividade"
                         value={category}
                         onChange={(e) => {
@@ -1816,7 +1848,7 @@ function HomeView() {
                         {categories.map((c) => (
                           <option key={c}>{c}</option>
                         ))}
-                      </select>
+                      </EnterpriseDropdown>
                     </label>
                     <details className="options-menu">
                       <summary>
@@ -1827,7 +1859,7 @@ function HomeView() {
                       <div className="view-options">
                         <label className="select-filter">
                           Ordenação
-                          <select
+                          <EnterpriseDropdown
                             aria-label="Ordenar ordens"
                             value={sort}
                             onChange={(e) => {
@@ -1841,11 +1873,11 @@ function HomeView() {
                             <option value="createdAt.asc">Mais antigas</option>
                             <option value="title.asc">Título</option>
                             <option value="dueDate.asc">Data prevista</option>
-                          </select>
+                          </EnterpriseDropdown>
                         </label>
                         <label className="select-filter">
                           Por página
-                          <select
+                          <EnterpriseDropdown
                             aria-label="Ordens por página"
                             value={pageSize}
                             onChange={(e) => {
@@ -1856,12 +1888,12 @@ function HomeView() {
                             {[10, 25, 50, 100].map((n) => (
                               <option key={n}>{n}</option>
                             ))}
-                          </select>
+                          </EnterpriseDropdown>
                         </label>
                       </div>
                     </details>
                     {(query || category !== categories[0]) && (
-                      <button
+                      <EnterpriseButton type="button"
                         onClick={() => {
                           setPageNumber(1);
                           setQuery("");
@@ -1870,14 +1902,14 @@ function HomeView() {
                         className="text-button"
                       >
                         Limpar
-                      </button>
+                      </EnterpriseButton>
                     )}
                   </div>
                   {(query || category !== categories[0]) && (
                     <div className="filter-context">
                       <span>Filtros ativos</span>
                       {query && (
-                        <button
+                        <EnterpriseButton type="button"
                           onClick={() => {
                             setPageNumber(1);
                             setQuery("");
@@ -1886,10 +1918,10 @@ function HomeView() {
                         >
                           Busca: {query}
                           <X size={12} />
-                        </button>
+                        </EnterpriseButton>
                       )}
                       {category !== categories[0] && (
-                        <button
+                        <EnterpriseButton type="button"
                           onClick={() => {
                             setPageNumber(1);
                             setCategory(categories[0]);
@@ -1898,7 +1930,7 @@ function HomeView() {
                         >
                           {category}
                           <X size={12} />
-                        </button>
+                        </EnterpriseButton>
                       )}
                     </div>
                   )}
@@ -1947,12 +1979,12 @@ function HomeView() {
                                   }
                                 >
                                   <td>
-                                    <button
+                                    <EnterpriseButton type="button"
                                       className="row-link"
                                       onClick={() => setSelected(o)}
                                     >
                                       {o.title}
-                                    </button>
+                                    </EnterpriseButton>
                                     <small>
                                       OS · {o.id.slice(0, 8).toUpperCase()}{" "}
                                       <span className="metadata-divider">
@@ -1981,13 +2013,13 @@ function HomeView() {
                                   </td>
                                   <td>
                                     {next ? (
-                                      <button
+                                      <EnterpriseButton type="button"
                                         className="row-command"
                                         disabled={saving}
                                         onClick={() => command(next.name, o)}
                                       >
                                         {next.label}
-                                      </button>
+                                      </EnterpriseButton>
                                     ) : (
                                       <span className="cell-secondary">
                                         Sem ação nesta etapa
@@ -1995,7 +2027,7 @@ function HomeView() {
                                     )}
                                   </td>
                                   <td>
-                                    <button
+                                    <EnterpriseButton type="button"
                                       className="icon-button row-context"
                                       onClick={() => setSelected(o)}
                                       aria-label={
@@ -2003,7 +2035,7 @@ function HomeView() {
                                       }
                                     >
                                       <ChevronRight size={17} />
-                                    </button>
+                                    </EnterpriseButton>
                                   </td>
                                 </tr>
                               );
@@ -2038,25 +2070,25 @@ function HomeView() {
                             : "Registre uma ordem para definir o cliente, a atividade e o escopo da operação.")}
                       </p>
                       {error ? (
-                        <button
+                        <EnterpriseButton type="button"
                           className="secondary"
                           onClick={() => void load()}
                         >
                           <RefreshCw size={15} />
                           Tentar novamente
-                        </button>
+                        </EnterpriseButton>
                       ) : summary.total ? (
-                        <button
+                        <EnterpriseButton type="button"
                           className="secondary"
                           onClick={() => applyView("Todas as ordens")}
                         >
                           Limpar filtros
-                        </button>
+                        </EnterpriseButton>
                       ) : (
-                        <button className="secondary" onClick={newOrder}>
+                        <EnterpriseButton type="button" className="secondary" onClick={newOrder}>
                           <Plus size={16} />
                           Registrar primeira ordem
-                        </button>
+                        </EnterpriseButton>
                       )}
                     </div>
                   )}
@@ -2076,20 +2108,20 @@ function HomeView() {
                       </span>
                     )}
                     <div className="pagination">
-                      <button
+                      <EnterpriseButton type="button"
                         disabled={loading || !!error || pageNumber === 1}
                         onClick={() => setPageNumber((n) => n - 1)}
                       >
                         Anterior
-                      </button>
-                      <button
+                      </EnterpriseButton>
+                      <EnterpriseButton type="button"
                         disabled={
                           loading || !!error || pageNumber * pageSize >= total
                         }
                         onClick={() => setPageNumber((n) => n + 1)}
                       >
                         Próxima
-                      </button>
+                      </EnterpriseButton>
                     </div>
                   </footer>
                 </section>
@@ -2117,7 +2149,7 @@ function HomeView() {
                       {!linkedViews.length && <p>Nenhuma consulta salva.</p>}
                       {linkedViews.map((v) => (
                         <div className="saved-view-row" key={v.id}>
-                          <button
+                          <EnterpriseButton type="button"
                             disabled={!v.compatible || !v.definition}
                             onClick={() => {
                               if (v.definition) applyLinkedView(v.definition);
@@ -2126,8 +2158,8 @@ function HomeView() {
                             {v.name}
                             {v.isDefault ? " · padrão" : ""}
                             {!v.compatible ? " · incompatível" : ""}
-                          </button>
-                          <button
+                          </EnterpriseButton>
+                          <EnterpriseButton type="button"
                             disabled={!v.compatible || !v.rowVersion}
                             aria-label={
                               (v.isDefault
@@ -2137,10 +2169,10 @@ function HomeView() {
                             onClick={() => void defaultView(v, true)}
                           >
                             {v.isDefault ? "Remover padrão" : "Definir padrão"}
-                          </button>
+                          </EnterpriseButton>
                         </div>
                       ))}
-                      <button
+                      <EnterpriseButton type="button"
                         className="save-view"
                         onClick={() => {
                           setViewKey(crypto.randomUUID());
@@ -2158,33 +2190,24 @@ function HomeView() {
                       >
                         <Plus size={14} />
                         Salvar consulta
-                      </button>
+                      </EnterpriseButton>
                     </div>
                   </details>
-                  <button
+                  <EnterpriseButton type="button"
                     className="icon-button"
                     onClick={() => void loadOperation()}
                     aria-label="Atualizar registros"
                   >
                     <RefreshCw size={17} />
-                  </button>
+                  </EnterpriseButton>
                 </div>
               </div>
               <div className="filters linked-filters">
-                <label className="search-input">
-                  <Search size={17} />
-                  <input
-                    aria-label="Buscar registros por OS, cliente ou identificador"
-                    placeholder="Buscar OS, cliente ou identificador"
-                    value={linkedQuery}
-                    onChange={(e) =>
-                      changeLinked(() => setLinkedQuery(e.target.value))
-                    }
-                  />
-                </label>
+                <EnterpriseSearchField label="Buscar registros por OS, cliente ou identificador" placeholder="Buscar OS, cliente ou identificador" value={linkedQuery} disabled={false} onValueChange={value =>
+                      changeLinked(() => setLinkedQuery(value))} />
                 <label className="select-filter">
                   Ordenação
-                  <select
+                  <EnterpriseDropdown
                     aria-label="Ordenar registros"
                     value={linkedSort}
                     onChange={(e) =>
@@ -2197,11 +2220,11 @@ function HomeView() {
                     <option value="dueDate.asc">
                       {page === "Medições" ? "Data prevista" : "Vencimento"}
                     </option>
-                  </select>
+                  </EnterpriseDropdown>
                 </label>
                 <label className="select-filter">
                   Por página
-                  <select
+                  <EnterpriseDropdown
                     aria-label="Registros por página"
                     value={linkedSize}
                     onChange={(e) =>
@@ -2211,12 +2234,12 @@ function HomeView() {
                     {[10, 25, 50, 100].map((n) => (
                       <option key={n}>{n}</option>
                     ))}
-                  </select>
+                  </EnterpriseDropdown>
                 </label>
                 {page === "Financeiro" && (
                   <label className="select-filter">
                     Liquidação
-                    <select
+                    <EnterpriseDropdown
                       aria-label="Filtrar situação da liquidação"
                       value={settlementState}
                       onChange={(e) =>
@@ -2228,13 +2251,13 @@ function HomeView() {
                       <option value="open">Em aberto</option>
                       <option value="partial">Parciais</option>
                       <option value="settled">Liquidadas</option>
-                    </select>
+                    </EnterpriseDropdown>
                   </label>
                 )}
                 {page === "Medições" && (
                   <label className="select-filter">
                     Situação
-                    <select
+                    <EnterpriseDropdown
                       aria-label="Situação da medição"
                       value={linkedStatus}
                       onChange={(e) =>
@@ -2245,12 +2268,12 @@ function HomeView() {
                       <option value="draft">Rascunho</option>
                       <option value="approved">Aprovada</option>
                       <option value="billed">Faturada</option>
-                    </select>
+                    </EnterpriseDropdown>
                   </label>
                 )}
                 <label className="select-filter">
                   {page === "Medições" ? "Previsão de" : "Vencimento de"}
-                  <input
+                  <EnterpriseInput
                     type="date"
                     aria-label="Data inicial dos registros"
                     value={dueFrom}
@@ -2261,7 +2284,7 @@ function HomeView() {
                 </label>
                 <label className="select-filter">
                   Até
-                  <input
+                  <EnterpriseInput
                     type="date"
                     aria-label="Data final dos registros"
                     value={dueTo}
@@ -2275,9 +2298,9 @@ function HomeView() {
                   settlementState ||
                   dueFrom ||
                   dueTo) && (
-                  <button className="text-button" onClick={clearLinkedFilters}>
+                  <EnterpriseButton type="button" className="text-button" onClick={clearLinkedFilters}>
                     Limpar filtros
-                  </button>
+                  </EnterpriseButton>
                 )}
               </div>
               <section
@@ -2285,7 +2308,7 @@ function HomeView() {
                 aria-label="Totais dos registros filtrados"
               >
                 {linkedMetrics.map((metric) => (
-                  <button
+                  <EnterpriseButton type="button"
                     key={metric.metricId}
                     disabled={
                       linkedLoading ||
@@ -2304,7 +2327,7 @@ function HomeView() {
                           : String(metric.value)}
                     </strong>
                     <small>Consultar registros deste total</small>
-                  </button>
+                  </EnterpriseButton>
                 ))}
               </section>
               <div className="linked-info">
@@ -2319,7 +2342,7 @@ function HomeView() {
                   <span>
                     Contexto: OS · {businessOrder.slice(0, 8).toUpperCase()}
                   </span>
-                  <button
+                  <EnterpriseButton type="button"
                     onClick={() => {
                       setBusinessOrder("");
                       setLinkedNumber(1);
@@ -2327,7 +2350,7 @@ function HomeView() {
                   >
                     Remover contexto
                     <X size={12} />
-                  </button>
+                  </EnterpriseButton>
                 </div>
               )}
               {linkedLoading ? (
@@ -2338,12 +2361,12 @@ function HomeView() {
                 <div className="empty">
                   <h3>Registros indisponíveis</h3>
                   <p>{operationError}</p>
-                  <button
+                  <EnterpriseButton type="button"
                     className="secondary"
                     onClick={() => void loadOperation()}
                   >
                     Tentar novamente
-                  </button>
+                  </EnterpriseButton>
                 </div>
               ) : linkedRows.length ? (
                 <div className="table-wrap" id="linked-results" tabIndex={-1}>
@@ -2361,14 +2384,14 @@ function HomeView() {
                       {linkedRows.map((r) => (
                         <tr key={r.id}>
                           <td>
-                            <button
+                            <EnterpriseButton type="button"
                               className="row-link"
                               onClick={() => {
                                 void openOrigin(r.order_id);
                               }}
                             >
                               {r.title}
-                            </button>
+                            </EnterpriseButton>
                             <small>{r.client}</small>
                           </td>
                           <td>
@@ -2400,15 +2423,15 @@ function HomeView() {
                           </td>
                           <td>
                             {nextCommand(r) ? (
-                              <button
+                              <EnterpriseButton type="button"
                                 className="secondary"
                                 disabled={saving}
                                 onClick={() => command(nextCommand(r)!.name, r)}
                               >
                                 {nextCommand(r)!.label}
-                              </button>
+                              </EnterpriseButton>
                             ) : (
-                              <button
+                              <EnterpriseButton type="button"
                                 className="text-button"
                                 onClick={() => {
                                   void openReceivable(
@@ -2424,7 +2447,7 @@ function HomeView() {
                                 {page === "Financeiro"
                                   ? "Consultar título"
                                   : "Consultar registro"}
-                              </button>
+                              </EnterpriseButton>
                             )}
                           </td>
                         </tr>
@@ -2456,11 +2479,11 @@ function HomeView() {
                           : "As cobranças geradas a partir de medições aprovadas originam os títulos a receber."}
                   </p>
                   {linkedInfo?.sourceTotal ? (
-                    <button className="secondary" onClick={clearLinkedFilters}>
+                    <EnterpriseButton type="button" className="secondary" onClick={clearLinkedFilters}>
                       Retomar registros
-                    </button>
+                    </EnterpriseButton>
                   ) : (
-                    <button
+                    <EnterpriseButton type="button"
                       className="secondary"
                       onClick={() =>
                         navigate(
@@ -2472,7 +2495,7 @@ function HomeView() {
                     >
                       Abrir{" "}
                       {page === "Medições" ? "ordens de serviço" : "medições"}
-                    </button>
+                    </EnterpriseButton>
                   )}
                 </div>
               )}
@@ -2483,22 +2506,22 @@ function HomeView() {
                     : `${linkedInfo?.total ?? "—"} registros · página ${linkedNumber}`}
                 </span>
                 <div className="pagination">
-                  <button
+                  <EnterpriseButton type="button"
                     disabled={
                       linkedLoading || !!operationError || linkedNumber === 1
                     }
                     onClick={() => setLinkedNumber((n) => n - 1)}
                   >
                     Anterior
-                  </button>
-                  <button
+                  </EnterpriseButton>
+                  <EnterpriseButton type="button"
                     disabled={
                       linkedLoading || !!operationError || !linkedInfo?.hasMore
                     }
                     onClick={() => setLinkedNumber((n) => n + 1)}
                   >
                     Próxima
-                  </button>
+                  </EnterpriseButton>
                 </div>
                 <span>
                   {linkedGeneratedAt && !linkedLoading && !operationError
@@ -2507,6 +2530,10 @@ function HomeView() {
                 </span>
               </footer>
             </section>
+          ) : page === "Profissionais" ? (
+            <ProfessionalsWorkspace />
+          ) : page === "Frota e ativos" ? (
+            <AssetsWorkspace />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
               onClients={() => navigate("Clientes e propostas")}
@@ -2517,6 +2544,7 @@ function HomeView() {
             />
           ) : page === "Clientes e propostas" ? (
             <ClientsWorkspace
+              initialId={clientOrigin}
               onCreateOrder={(client) => {
                 navigate("Ordens de serviço");
                 setOrderContract(null);
@@ -2532,6 +2560,14 @@ function HomeView() {
                 setView("Todas as ordens");
                 setCategory(categories[0]);
               }}
+              onProposal={(id) => {
+                navigate("Propostas e PO");
+                setCommercialOrigin(id);
+              }}
+              onContract={(id) => {
+                navigate("Contratos");
+                setContractOrigin(id);
+              }}
             />
           ) : page === "Execução" ? (
             <ExecutionWorkspace
@@ -2543,6 +2579,7 @@ function HomeView() {
             />
           ) : page === "Contratos" ? (
             <ContractsWorkspace
+              initialId={contractOrigin}
               onSource={(id) => {
                 navigate("Propostas e PO");
                 setCommercialOrigin(id);
@@ -2565,7 +2602,13 @@ function HomeView() {
               }}
             />
           ) : page === "Propostas e PO" ? (
-            <ProposalsWorkspace initialId={commercialOrigin} />
+            <ProposalsWorkspace
+              initialId={commercialOrigin}
+              onContract={(id) => {
+                navigate("Contratos");
+                setContractOrigin(id);
+              }}
+            />
           ) : page === "Visão financeira" ? (
             <FinanceOverviewWorkspace onDrilldown={drillFinance} />
           ) : page === "Fluxo de caixa" ? (
@@ -2600,7 +2643,7 @@ function HomeView() {
                 role="tablist"
                 aria-label="Selecionar área de suprimentos"
               >
-                <button
+                <EnterpriseButton type="button"
                   role="tab"
                   id="tab-inventory"
                   aria-controls="panel-supply"
@@ -2609,8 +2652,8 @@ function HomeView() {
                   onClick={() => setSupplyView("inventory")}
                 >
                   Estoque e materiais
-                </button>
-                <button
+                </EnterpriseButton>
+                <EnterpriseButton type="button"
                   role="tab"
                   id="tab-mrp"
                   aria-controls="panel-supply"
@@ -2619,7 +2662,7 @@ function HomeView() {
                   onClick={() => setSupplyView("mrp")}
                 >
                   Planejamento MRP
-                </button>
+                </EnterpriseButton>
               </div>
               <div
                 id="panel-supply"
@@ -2660,13 +2703,13 @@ function HomeView() {
                       Esta área está em preparação. Os registros e as ações
                       serão disponibilizados nas próximas etapas de implantação.
                     </p>
-                    <button
+                    <EnterpriseButton type="button"
                       className="secondary"
                       onClick={() => navigate("Ordens de serviço")}
                     >
                       <ClipboardList size={16} />
                       Voltar à operação
-                    </button>
+                    </EnterpriseButton>
                   </div>
                 </div>
                 <aside>
@@ -2691,27 +2734,27 @@ function HomeView() {
           {businessContract && (
             <div className="filter-context">
               <span>Ordens do contrato vinculado</span>
-              <button
+              <EnterpriseButton type="button"
                 onClick={() => {
                   setBusinessContract("");
                   setPageNumber(1);
                 }}
               >
                 Remover contexto
-              </button>
+              </EnterpriseButton>
             </div>
           )}
           {businessClient && (
             <div className="filter-context">
               <span>Ordens do cliente vinculado</span>
-              <button
+              <EnterpriseButton type="button"
                 onClick={() => {
                   setBusinessClient("");
                   setPageNumber(1);
                 }}
               >
                 Remover contexto
-              </button>
+              </EnterpriseButton>
             </div>
           )}
           <footer className="page-footer">
@@ -2745,14 +2788,14 @@ function HomeView() {
                     ? "FATURAMENTO"
                     : "CONTAS A RECEBER"}
               </span>
-              <button
+              <EnterpriseButton type="button"
                 className="icon-button"
                 aria-label="Fechar registro"
                 autoFocus
                 onClick={() => setReceivableContext(null)}
               >
                 <X size={21} />
-              </button>
+              </EnterpriseButton>
             </header>
             <span className="badge">
               {receivableContext.state?.label ?? "Título registrado"}
@@ -2791,7 +2834,7 @@ function HomeView() {
                 </h3>
                 <div className="command-buttons">
                   {receivableContext.availableCommands?.map((c) => (
-                    <button
+                    <EnterpriseButton type="button"
                       className="primary"
                       key={c.id}
                       onClick={() =>
@@ -2813,7 +2856,7 @@ function HomeView() {
                       }
                     >
                       {c.label}
-                    </button>
+                    </EnterpriseButton>
                   ))}
                 </div>
               </div>
@@ -2824,7 +2867,7 @@ function HomeView() {
                   {receivableContext.availableCommands?.some(
                     (c) => c.id === "record_receipt",
                   ) && (
-                    <button
+                    <EnterpriseButton type="button"
                       className="primary"
                       onClick={() =>
                         setSettlementAction({
@@ -2834,7 +2877,7 @@ function HomeView() {
                       }
                     >
                       Registrar recebimento
-                    </button>
+                    </EnterpriseButton>
                   )}
                 </div>
                 <h3>Histórico financeiro</h3>
@@ -2851,7 +2894,7 @@ function HomeView() {
                         </small>
                       </span>
                       {entry.canReverse === 1 && (
-                        <button
+                        <EnterpriseButton type="button"
                           className="text-button"
                           onClick={() =>
                             setSettlementAction({
@@ -2862,7 +2905,7 @@ function HomeView() {
                           }
                         >
                           Estornar
-                        </button>
+                        </EnterpriseButton>
                       )}
                     </div>
                   ))
@@ -2874,7 +2917,7 @@ function HomeView() {
                       · página {receivableContext.settlementsPageInfo.page}
                     </span>
                     <div className="pagination">
-                      <button
+                      <EnterpriseButton type="button"
                         disabled={
                           saving ||
                           receivableContext.settlementsPageInfo.page === 1
@@ -2888,8 +2931,8 @@ function HomeView() {
                         }
                       >
                         Anterior
-                      </button>
-                      <button
+                      </EnterpriseButton>
+                      <EnterpriseButton type="button"
                         disabled={
                           saving ||
                           !receivableContext.settlementsPageInfo.hasMore
@@ -2903,7 +2946,7 @@ function HomeView() {
                         }
                       >
                         Próxima
-                      </button>
+                      </EnterpriseButton>
                     </div>
                   </footer>
                 )}
@@ -2938,7 +2981,7 @@ function HomeView() {
                 )}
                 {receivableContext.evidencePageInfo.total > 50 && (
                   <div className="pagination">
-                    <button
+                    <EnterpriseButton type="button"
                       disabled={receivableContext.evidencePageInfo.page === 1}
                       onClick={() =>
                         void openReceivable(
@@ -2951,12 +2994,12 @@ function HomeView() {
                       }
                     >
                       Anterior
-                    </button>
+                    </EnterpriseButton>
                     <span>
                       {receivableContext.evidencePageInfo.total} evidências ·
                       página {receivableContext.evidencePageInfo.page}
                     </span>
-                    <button
+                    <EnterpriseButton type="button"
                       disabled={!receivableContext.evidencePageInfo.hasMore}
                       onClick={() =>
                         void openReceivable(
@@ -2969,7 +3012,7 @@ function HomeView() {
                       }
                     >
                       Próxima
-                    </button>
+                    </EnterpriseButton>
                   </div>
                 )}
               </>
@@ -2994,7 +3037,7 @@ function HomeView() {
                 </dd>
               </div>
             </dl>
-            <button
+            <EnterpriseButton type="button"
               className="related"
               onClick={() => {
                 setReceivableContext(null);
@@ -3006,7 +3049,7 @@ function HomeView() {
                 <small>Consultar ordem de origem</small>
               </span>
               <ChevronRight size={16} />
-            </button>
+            </EnterpriseButton>
           </aside>
         </div>
       )}
@@ -3024,13 +3067,13 @@ function HomeView() {
                   ? "Registrar recebimento"
                   : "Estornar recebimento"}
               </h2>
-              <button
+              <EnterpriseButton type="button"
                 className="icon-button"
                 onClick={() => setSettlementAction(null)}
                 aria-label="Fechar lançamento"
               >
                 <X size={20} />
-              </button>
+              </EnterpriseButton>
             </header>
             <p className="muted">
               {settlementAction.command === "record_receipt"
@@ -3041,7 +3084,7 @@ function HomeView() {
               {settlementAction.command === "record_receipt" && (
                 <label>
                   Valor recebido (R$)
-                  <input
+                  <EnterpriseInput
                     autoFocus
                     name="amount"
                     inputMode="decimal"
@@ -3052,11 +3095,11 @@ function HomeView() {
               )}
               <label>
                 Data do fato
-                <input type="date" name="effectiveDate" required />
+                <EnterpriseInput type="date" name="effectiveDate" required />
               </label>
               <label>
                 Referência / comprovante
-                <input
+                <EnterpriseInput
                   name="reference"
                   minLength={3}
                   maxLength={160}
@@ -3069,17 +3112,17 @@ function HomeView() {
                 </p>
               )}
               <footer>
-                <button
+                <EnterpriseButton
                   type="button"
                   className="secondary"
                   disabled={saving}
                   onClick={() => setSettlementAction(null)}
                 >
                   Cancelar
-                </button>
-                <button className="primary" disabled={saving}>
+                </EnterpriseButton>
+                <EnterpriseButton type="submit" className="primary" disabled={saving}>
                   {saving ? "Registrando…" : "Confirmar"}
-                </button>
+                </EnterpriseButton>
               </footer>
             </form>
           </section>
@@ -3103,14 +3146,14 @@ function HomeView() {
           >
             <header>
               <span className="eyebrow">CONTEXTO DA ORDEM</span>
-              <button
+              <EnterpriseButton type="button"
                 className="icon-button"
                 aria-label="Fechar contexto"
                 autoFocus
                 onClick={() => setSelected(null)}
               >
                 <X size={21} />
-              </button>
+              </EnterpriseButton>
             </header>
             <span className={"badge status-" + selected.status}>
               {statusNames[selected.status]}
@@ -3158,14 +3201,14 @@ function HomeView() {
               </p>
               <div className="command-buttons">
                 {selected.availableCommands?.map((c) => (
-                  <button
+                  <EnterpriseButton type="button"
                     className={c.primary ? "primary" : "secondary"}
                     key={c.id}
                     disabled={saving || !!contextError}
                     onClick={() => command(c.id, selected)}
                   >
                     {c.label}
-                  </button>
+                  </EnterpriseButton>
                 ))}
               </div>
             </div>
@@ -3176,7 +3219,7 @@ function HomeView() {
             )}
             <h3 className="drawer-section-title">Origem comercial</h3>
             {(selected.client_id ?? selected.relations?.clientId) && (
-              <button
+              <EnterpriseButton type="button"
                 className="related"
                 onClick={() =>
                   void openOrderRelation(
@@ -3191,10 +3234,10 @@ function HomeView() {
                   <small>Consultar cadastro sem sair da OS</small>
                 </span>
                 <ChevronRight size={16} />
-              </button>
+              </EnterpriseButton>
             )}
             {(selected.contract_id ?? selected.relations?.contractId) && (
-              <button
+              <EnterpriseButton type="button"
                 className="related"
                 onClick={() =>
                   void openOrderRelation(
@@ -3209,7 +3252,7 @@ function HomeView() {
                   <small>Consultar termo, proposta e PO vinculados</small>
                 </span>
                 <ChevronRight size={16} />
-              </button>
+              </EnterpriseButton>
             )}
             {!(selected.client_id ?? selected.relations?.clientId) && (
               <p className="muted">
@@ -3231,19 +3274,19 @@ function HomeView() {
                           ? "Proposta"
                           : "PO"}
                   </strong>
-                  <button
+                  <EnterpriseButton type="button"
                     className="text-button"
                     onClick={() => setOrderRelation(null)}
                   >
                     Fechar contexto
-                  </button>
+                  </EnterpriseButton>
                 </header>
                 {orderRelation.loading ? (
                   <p role="status">Consultando documento…</p>
                 ) : orderRelation.error ? (
                   <div role="alert" className="form-error">
                     {orderRelation.error}
-                    <button
+                    <EnterpriseButton type="button"
                       className="secondary"
                       onClick={() =>
                         void openOrderRelation(
@@ -3258,7 +3301,7 @@ function HomeView() {
                       }
                     >
                       Tentar novamente
-                    </button>
+                    </EnterpriseButton>
                   </div>
                 ) : (
                   orderRelation.projection && (
@@ -3282,7 +3325,7 @@ function HomeView() {
                         <p>{orderRelation.projection.email}</p>
                       )}
                       {orderRelation.projection.proposalId && (
-                        <button
+                        <EnterpriseButton type="button"
                           className="related"
                           onClick={() =>
                             void openOrderRelation(
@@ -3294,10 +3337,10 @@ function HomeView() {
                         >
                           Consultar proposta de origem
                           <ChevronRight size={16} />
-                        </button>
+                        </EnterpriseButton>
                       )}
                       {orderRelation.projection.purchaseOrderId && (
-                        <button
+                        <EnterpriseButton type="button"
                           className="related"
                           onClick={() =>
                             void openOrderRelation(
@@ -3309,7 +3352,7 @@ function HomeView() {
                         >
                           Consultar PO de origem
                           <ChevronRight size={16} />
-                        </button>
+                        </EnterpriseButton>
                       )}
                     </>
                   )
@@ -3320,7 +3363,7 @@ function HomeView() {
               <OrderNextcrmDocuments key={selected.id} orderId={selected.id} />
             )}
             <h3 className="drawer-section-title">Registros relacionados</h3>
-            <button
+            <EnterpriseButton type="button"
               className="related"
               onClick={() => {
                 const id = selected.id;
@@ -3332,9 +3375,9 @@ function HomeView() {
                 <strong>Apontamentos de execução</strong>
                 <small>Consultar produção e recursos declarados</small>
               </span>
-            </button>
+            </EnterpriseButton>
             {["Medições", "Faturamento", "Financeiro"].map((n) => (
-              <button
+              <EnterpriseButton type="button"
                 key={n}
                 className="related"
                 onClick={() => navigate(n, selected?.id)}
@@ -3356,7 +3399,7 @@ function HomeView() {
                   </small>
                 </span>
                 <ChevronRight size={16} />
-              </button>
+              </EnterpriseButton>
             ))}
             <details className="drawer-history">
               <summary>Histórico operacional recente</summary>
@@ -3393,13 +3436,13 @@ function HomeView() {
                   )?.label
                 }
               </h2>
-              <button
+              <EnterpriseButton type="button"
                 className="icon-button"
                 aria-label="Fechar comando"
                 onClick={() => setAction(null)}
               >
                 <X size={22} />
-              </button>
+              </EnterpriseButton>
             </header>
             <p className="muted">
               {action.record.title} · {action.record.client}
@@ -3409,7 +3452,7 @@ function HomeView() {
                 <>
                   <label>
                     Descrição da produção
-                    <textarea
+                    <EnterpriseTextarea
                       autoFocus
                       name="description"
                       minLength={3}
@@ -3420,7 +3463,7 @@ function HomeView() {
                   </label>
                   <label>
                     Valor da medição (R$)
-                    <input
+                    <EnterpriseInput
                       name="amount"
                       inputMode="decimal"
                       placeholder="0,0000"
@@ -3437,7 +3480,7 @@ function HomeView() {
                   </p>
                   <label>
                     Vencimento
-                    <input autoFocus type="date" name="dueDate" required />
+                    <EnterpriseInput autoFocus type="date" name="dueDate" required />
                   </label>
                 </>
               ) : (
@@ -3452,15 +3495,15 @@ function HomeView() {
                 </p>
               )}
               <footer>
-                <button
+                <EnterpriseButton
                   type="button"
                   className="secondary"
                   disabled={saving}
                   onClick={() => setAction(null)}
                 >
                   Voltar
-                </button>
-                <button
+                </EnterpriseButton>
+                <EnterpriseButton type="submit"
                   autoFocus={
                     action.command !== "measure" && action.command !== "invoice"
                   }
@@ -3468,7 +3511,7 @@ function HomeView() {
                   disabled={saving}
                 >
                   {saving ? "Executando…" : "Confirmar comando"}
-                </button>
+                </EnterpriseButton>
               </footer>
             </form>
           </section>
@@ -3484,13 +3527,13 @@ function HomeView() {
           >
             <header>
               <h2 id="view-title">Salvar consulta</h2>
-              <button
+              <EnterpriseButton type="button"
                 className="icon-button"
                 aria-label="Fechar consulta"
                 onClick={() => setSavingView(false)}
               >
                 <X size={20} />
-              </button>
+              </EnterpriseButton>
             </header>
             <p className="muted">
               {savingViewFor === "serviceOrders.worklist"
@@ -3500,7 +3543,7 @@ function HomeView() {
             <form onSubmit={saveView}>
               <label>
                 Nome da consulta
-                <input
+                <EnterpriseInput
                   autoFocus
                   name="name"
                   required
@@ -3515,16 +3558,16 @@ function HomeView() {
                 </p>
               )}
               <footer>
-                <button
+                <EnterpriseButton
                   type="button"
                   className="secondary"
                   onClick={() => setSavingView(false)}
                 >
                   Cancelar
-                </button>
-                <button className="primary" disabled={saving}>
+                </EnterpriseButton>
+                <EnterpriseButton type="submit" className="primary" disabled={saving}>
                   {saving ? "Salvando…" : "Salvar consulta"}
-                </button>
+                </EnterpriseButton>
               </footer>
             </form>
           </section>
@@ -3542,23 +3585,7 @@ function HomeView() {
             aria-label="Busca global"
             onClick={(e) => e.stopPropagation()}
           >
-            <label className="search-input">
-              <Search size={20} />
-              <input
-                autoFocus
-                aria-label="Buscar ordens, clientes ou áreas"
-                placeholder="Buscar ordens, clientes ou áreas…"
-                value={paletteQuery}
-                onChange={(e) => setPaletteQuery(e.target.value)}
-              />
-              <button
-                className="icon-button"
-                aria-label="Fechar busca"
-                onClick={() => setPalette(false)}
-              >
-                <X size={18} />
-              </button>
-            </label>
+            <EnterpriseSearchField label="Buscar ordens, clientes ou áreas" placeholder="Buscar ordens, clientes ou áreas…" value={paletteQuery} disabled={false} onValueChange={value => setPaletteQuery(value)} />
             {paletteQuery.trim().length >= 2 && (
               <div className="palette-orders">
                 <p>ORDENS DE SERVIÇO</p>
@@ -3574,7 +3601,7 @@ function HomeView() {
                 ) : paletteResult.items.length ? (
                   <>
                     {paletteResult.items.map((o) => (
-                      <button
+                      <EnterpriseButton type="button"
                         className="palette-result"
                         key={o.id}
                         onClick={() => {
@@ -3593,7 +3620,7 @@ function HomeView() {
                         <span className={"badge status-" + o.status}>
                           {statusNames[o.status]}
                         </span>
-                      </button>
+                      </EnterpriseButton>
                     ))}
                     <small className="palette-result-count">
                       {paletteResult.total} resultados ·{" "}
@@ -3607,6 +3634,14 @@ function HomeView() {
                 )}
               </div>
             )}
+            {paletteQuery.trim().length>=2&&<div className="palette-business-search">
+              <p>CLIENTES, PROPOSTAS E CONTRATOS</p>
+              {businessSearchError&&businessSearch.query===paletteQuery.trim()?<div className="palette-state form-error" role="alert">{businessSearchError}</div>:businessSearchLoading||businessSearch.query!==paletteQuery.trim()?<div className="palette-state" role="status">Consultando registros empresariais…</div>:businessSearch.items.length?businessSearch.items.map(item=><EnterpriseButton type="button" className="palette-result" key={item.kind+item.id} onClick={()=>{if(item.kind==='client'){navigate('Clientes e propostas');setClientOrigin(item.id);}else if(item.kind==='proposal'){navigate('Propostas e PO');setCommercialOrigin(item.id);}else{navigate('Contratos');setContractOrigin(item.id);}setPalette(false);}}>
+                {item.kind==='client'?<Building2 size={18}/>:item.kind==='proposal'?<FileText size={18}/>:<Receipt size={18}/>}
+                <span><strong>{item.title}</strong><small>{item.kind==='client'?'Cliente':item.kind==='proposal'?'Proposta':'Contrato'} · {item.subtitle}</small></span>
+                <span className="badge">{item.status}</span>
+              </EnterpriseButton>):<div className="palette-state">Nenhum cliente, proposta ou contrato corresponde à busca.</div>}
+            </div>}
             <p>ÁREAS DO CISNE</p>
             {modules
               .flatMap((g) => g.items)
@@ -3614,14 +3649,14 @@ function HomeView() {
                 n.toLowerCase().includes(paletteQuery.toLowerCase()),
               )
               .map(([n, Icon]) => (
-                <button key={n} onClick={() => navigate(n)}>
+                <EnterpriseButton type="button" key={n} onClick={() => navigate(n)}>
                   <Icon size={18} />
                   {n}
                   <ChevronRight size={15} />
-                </button>
+                </EnterpriseButton>
               ))}
             <footer>
-              <span>Busca por título da OS e cliente informado</span>
+              <span>Busca registros por OS, cliente, proposta e contrato. Resultados limitados aos dados autorizados.</span>
               <kbd>Esc</kbd>
             </footer>
           </section>
