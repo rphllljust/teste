@@ -33,9 +33,9 @@ export async function GET(request:Request){
   if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Data de referência inválida.');
   const asOf=parsed.data.asOf??new Date().toISOString().slice(0,10);
   const db=database();
-  // Each projection is bounded to six rows but COUNT and SUM use the entire
-  // eligible owner-scoped set. One transaction prevents inter-lane partial reads.
-  const rows=await db.batch([
+  // REPEATABLE READ gives all seven owner-scoped lanes a consistent snapshot;
+  // each lane samples six rows but computes totals over the full eligible set.
+  const rows=await db.snapshot([
    db.prepare(`SELECT o.id,o.title,o.due_date AS date,COUNT(*) OVER() AS "totalCount"
      FROM service_orders o WHERE o.owner_id=? AND o.status IN ('draft','authorized','executing')
        AND o.due_date IS NOT NULL AND o.due_date<?
