@@ -22,6 +22,7 @@ const migrations = [
   { id: '0011_inventory_consumption', file: '../drizzle-pg/0011_inventory_consumption.sql' },
   { id: '0012_field_service_measurements', file: '../drizzle-pg/0012_field_service_measurements.sql' },
   { id: '0013_workflow_business_commands', file: '../drizzle-pg/0013_workflow_business_commands.sql' },
+  { id: '0014_manual_fiscal_documents', file: '../drizzle-pg/0014_manual_fiscal_documents.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });

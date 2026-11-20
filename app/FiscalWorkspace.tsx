@@ -25,7 +25,10 @@ export default function FiscalWorkspace() {
     finally { setLoading(false); }
   }, [period, q, page]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    const timer = setTimeout(() => { void load(); }, 0);
+    return () => clearTimeout(timer);
+  }, [load]);
   const money = (value: string) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(value) / 10000);
 
   return <section className="worklist" aria-busy={loading}>
