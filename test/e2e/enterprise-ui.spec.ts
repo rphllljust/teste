@@ -574,7 +574,7 @@ test('Fiori finance closing List Report sends filters, sort and pagination to th
  });
  await page.goto('/');
  await page.getByRole('button',{name:'Fechamentos',exact:true}).click();
- const search=page.getByRole('textbox',{name:'Buscar referência de fechamento'});
+ const search=page.getByRole('searchbox',{name:'Buscar referência de fechamento'});
  await search.fill('CI fiscal');
  await expect.poll(()=>requests.some(q=>new URLSearchParams(q).get('q')==='CI fiscal')).toBeTruthy();
  await page.getByRole('combobox',{name:'Ordenação dos fechamentos'}).click();
