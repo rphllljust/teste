@@ -102,8 +102,8 @@ export default function EnterpriseApprovalsInbox({onClose,onDecided}:{onClose:()
     <span role="status">Página {page} · {list.total} solicitações {state==='pending'?'pendentes':state==='approved'?'aprovadas':'rejeitadas'}</span>
     <EnterpriseButton type="button" className="secondary" disabled={loading||!list.hasMore} onClick={()=>setPage(n=>n+1)}>Próxima</EnterpriseButton>
    </nav></>}
-  {decision&&<EnterpriseDialog open={true} ariaLabel="Confirmar decisão da aprovação" onDismiss={closeDecision}>
-   <div ref={modalRef} className="enterprise-approval-dialog">
+  <EnterpriseDialog open={Boolean(decision)} ariaLabel="Confirmar decisão da aprovação" onDismiss={closeDecision}>
+   {decision&&<div ref={modalRef} className="enterprise-approval-dialog">
     <h3>{decision.command==='approve'?'Confirmar aprovação':'Confirmar rejeição'}</h3>
     <p>{entityLabels[decision.item.entityType]} · solicitação {decision.item.id}</p>
     <p>O servidor revalidará a identidade do aprovador, a segregação de funções, o estado e a versão do registro. A decisão será auditada.</p>
@@ -115,7 +115,7 @@ export default function EnterpriseApprovalsInbox({onClose,onDecided}:{onClose:()
        {submitting?'Validando…':decision.command==='approve'?'Confirmar aprovação':'Confirmar rejeição'}
       </EnterpriseButton></footer>
     </form>
-   </div>
-  </EnterpriseDialog>}
+   </div>}
+  </EnterpriseDialog>
  </section>;
 }
