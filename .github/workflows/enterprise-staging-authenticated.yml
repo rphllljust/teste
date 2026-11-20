@@ -1,5 +1,8 @@
 name: Enterprise authenticated staging audit
 on:
+  pull_request:
+    branches: [feat/fluent-form-parity-20261120]
+    types: [labeled]
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -10,6 +13,13 @@ permissions:
   contents: read
 jobs:
   staging:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' && github.event.action == 'labeled' &&
+       github.event.label.name == 'enterprise-auth-acceptance' &&
+       github.event.pull_request.number == 151 &&
+       github.event.pull_request.head.repo.full_name == github.repository &&
+       github.event.pull_request.head.ref == 'feat/cisne-tier1-enterprise-shell-20261120')
     name: Authenticated staging business UI
     runs-on: ubuntu-latest
     environment: staging
@@ -20,13 +30,16 @@ jobs:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.ref }}
       - name: Fail closed if source or secret are not authorized
         shell: bash
         env:
-          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          EXPECTED_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.commit_sha }}
           CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
         run: |
-          test "$GITHUB_REF" = 'refs/heads/feat/cisne-tier1-enterprise-shell-20261120' || { echo '::error::Invalid candidate branch'; exit 1; }
+          if [[ "$GITHUB_EVENT_NAME" == 'workflow_dispatch' ]]; then
+            test "$GITHUB_REF" = 'refs/heads/feat/cisne-tier1-enterprise-shell-20261120' || { echo '::error::Invalid candidate branch'; exit 1; }
+          fi
           test "$EXPECTED_SHA" = "$(git rev-parse HEAD)" || { echo '::error::SHA does not match the checked-out candidate'; exit 1; }
           test -n "$CISNE_STAGING_PASSPHRASE" || { echo '::error::Staging passphrase not configured; NO-GO'; exit 1; }
       - uses: pnpm/action-setup@v4
@@ -42,7 +55,7 @@ jobs:
         env:
           CISNE_AUTHENTICATED_E2E: '1'
           CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
-          CISNE_EXPECTED_STAGING_SHA: ${{ inputs.commit_sha }}
+          CISNE_EXPECTED_STAGING_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.commit_sha }}
           CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
         run: pnpm test:e2e
       - name: Source inventory; not a homologation certificate
