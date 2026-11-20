@@ -9,8 +9,8 @@ const areas = [
 ];
 
 test('operations, resources and finance use official Fluent DataGrid rows with business keys', async () => {
- for (const module of areas) {
-  const source = await readFile(new URL('../app/'+module+'.tsx', import.meta.url), 'utf8');
+ for (const workspaceName of areas) {
+  const source = await readFile(new URL('../app/'+workspaceName+'.tsx', import.meta.url), 'utf8');
   assert.match(source, /import \{ EnterpriseDataGrid \} from/);
   assert.match(source, /<EnterpriseDataGrid</);
   assert.match(source, /getRowKey=\{\(item\)=>item\.(?:id|date)\}/);

@@ -3,8 +3,8 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 test('payables, professionals and treasury render official Fluent grids', async () => {
- for(const module of ['PayablesWorkspace','ProfessionalsWorkspace','TreasuryWorkspace']){
-  const source=await readFile(new URL('../app/'+module+'.tsx',import.meta.url),'utf8');
+ for(const workspaceName of ['PayablesWorkspace','ProfessionalsWorkspace','TreasuryWorkspace']){
+  const source=await readFile(new URL('../app/'+workspaceName+'.tsx',import.meta.url),'utf8');
   assert.match(source, /<EnterpriseDataGrid</);
   assert.doesNotMatch(source, /<table\b/);
  }
