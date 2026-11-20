@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { closeDatabase } from '../../db/raw';
-import { POST as submitApproval } from '../../app/api/workflow/approvals/route';
+import { POST as submitApproval, GET as listAssigned } from '../../app/api/workflow/approvals/route';
+import { GET as getControlTower } from '../../app/api/enterprise/control-tower/route';
 import { POST as decideApproval } from '../../app/api/workflow/approvals/[id]/commands/route';
 
 if (process.env.NODE_ENV !== 'test') throw new Error('Integration harness must run with NODE_ENV=test');
@@ -53,6 +54,31 @@ test('finance approval is server-authoritative, segregated, versioned, audited a
   assert.equal(submitted.status, 201, JSON.stringify(await json(submitted.clone())));
   assert.deepEqual((await json(submitted)).state, 'pending');
 
+  const readAs=(actor:string,params='state=pending')=>setTestIdentity(
+    new Request('http://localhost/api/workflow/approvals?'+params),actor);
+  const assigned=await listAssigned(readAs(approver));
+  assert.equal(assigned.status,200);
+  const assignedData=await assigned.json() as {authority:string;items:Array<{id:string;requestedBy:string;rowVersion:number}>;total:number};
+  assert.equal(assignedData.authority,'assigned_approver_postgresql.v1');
+  assert.equal(assignedData.total,1);
+  assert.deepEqual(assignedData.items.map(item=>item.id),[approvalId]);
+  assert.equal(assignedData.items[0].requestedBy,requester);
+  assert.equal(assignedData.items[0].rowVersion,1);
+  const requesterInbox=await listAssigned(readAs(requester));
+  assert.equal(requesterInbox.status,200);
+  assert.equal((await requesterInbox.json() as {total:number}).total,0);
+  const strangerInbox=await listAssigned(readAs(stranger));
+  assert.equal(strangerInbox.status,200);
+  assert.equal((await strangerInbox.json() as {total:number}).total,0);
+  assert.equal((await listAssigned(readAs(approver,'page=0'))).status,400);
+  assert.equal((await listAssigned(readAs(approver,'state=blocked'))).status,400);
+  assert.equal((await listAssigned(new Request('http://localhost/api/workflow/approvals'))).status,401);
+  const tower=await getControlTower(readAs(approver));
+  assert.equal(tower.status,200,JSON.stringify(await tower.clone().json()));
+  const towerData=await tower.json() as {lanes:Array<{id:string;count:number;items:Array<{id:string}>}>};
+  assert.equal(towerData.lanes.find(lane=>lane.id==='myApprovals')?.count,1);
+  assert.deepEqual(towerData.lanes.find(lane=>lane.id==='myApprovals')?.items.map(item=>item.id),[approvalId]);
+
   const replay = await submitApproval(req('/api/workflow/approvals', 'POST', requester, payload));
   assert.equal(replay.status, 200);
   assert.equal((await json(replay)).replayed, true);
@@ -64,6 +90,13 @@ test('finance approval is server-authoritative, segregated, versioned, audited a
   const approved = await decideApproval(req(`/api/workflow/approvals/${approvalId}/commands`, 'POST', approver, { key: decisionKey, version: 1, command: 'approve' }), params);
   assert.equal(approved.status, 200, JSON.stringify(await json(approved.clone())));
   assert.deepEqual((await json(approved)).state, 'approved');
+
+  const pendingAfter=await listAssigned(readAs(approver));
+  assert.equal((await pendingAfter.json() as {total:number}).total,0);
+  const approvedAfter=await listAssigned(readAs(approver,'state=approved'));
+  const approvalList=await approvedAfter.json() as {items:Array<{id:string;rowVersion:number}>;total:number};
+  assert.equal(approvalList.total,1);
+  assert.equal(approvalList.items[0].rowVersion,2);
 
   const decisionReplay = await decideApproval(req(`/api/workflow/approvals/${approvalId}/commands`, 'POST', approver, { key: decisionKey, version: 1, command: 'approve' }), params);
   assert.equal(decisionReplay.status, 200);

@@ -492,3 +492,60 @@ test('inventory search, stock intervention and next page are separate server-bac
  await expect(paginator).toContainText('1 materiais no filtro');
  await expect(page.getByRole('main')).toHaveCount(1);
 });
+
+
+test('Redwood approvals inbox presents a real confirmation and submits a versioned authorized decision (mocked UI contract)',async({page})=>{
+ let posted:Record<string,unknown>|null=null;
+ let decided=false;
+ const id='bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+ const item={id,entityType:'finance_period_close',entityId:'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+   command:'close',state:'pending',requestedBy:'other-owner',rowVersion:1,createdAt:'2026-11-20T10:00:00.000Z',decidedAt:null};
+ const specs=[
+  ['lateOrders','Ordens em atraso','Centro de operações'],
+  ['unmeasuredOrders','Concluídas sem medição aprovada','Medições'],
+  ['overdueReceivables','Recebíveis vencidos','Financeiro'],
+  ['overduePayables','Obrigações vencidas','Contas a pagar'],
+  ['latePurchases','Compras não recebidas no prazo','Compras'],
+  ['stockShortage','Materiais abaixo do mínimo','Estoque e compras'],
+  ['myApprovals','Aprovações atribuídas','Visão operacional'],
+ ];
+ await page.route('**/api/enterprise/control-tower*',route=>route.fulfill({json:{
+   authority:'owner_scoped_persisted_postgresql.v1',asOf:'2026-11-20',generatedAt:'2026-11-20T12:00:00.000Z',
+   sampleLimitPerLane:6,lanes:specs.map(([key,label,target])=>({
+    id:key,label,target,count:key==='myApprovals'&&!decided?1:0,
+    authority:'SYNTHETIC_UI_TEST',totalAmountScaled:null,
+    items:key==='myApprovals'&&!decided?[{
+     id,title:'finance_period_close · close',date:item.createdAt,reference:null,
+     amountScaled:null,availableScaled:null,requiredScaled:null,unit:null,
+    }]:[],
+   })),
+ }}));
+ await page.route('**/api/workflow/approvals?*',route=>{
+  const state=new URL(route.request().url()).searchParams.get('state');
+  const items=state==='pending'&&!decided?[item]:state==='approved'&&decided?[{...item,state:'approved',rowVersion:2}]:[];
+  return route.fulfill({json:{authority:'assigned_approver_postgresql.v1',
+   page:1,state,total:items.length,hasMore:false,items}});
+ });
+ await page.route('**/api/workflow/approvals/'+id+'/commands',route=>{
+  posted=route.request().postDataJSON() as Record<string,unknown>;
+  decided=true;
+  return route.fulfill({json:{id,state:'approved',rowVersion:2,replayed:false}});
+ });
+ await page.goto('/');
+ await page.getByRole('region',{name:'Central de exceções empresariais'})
+   .getByRole('button',{name:'Abrir aprovações'}).click();
+ const inbox=page.getByRole('region',{name:'Aprovações atribuídas'});
+ await expect(inbox.getByText('Fechamento de período financeiro').first()).toBeVisible();
+ await inbox.getByRole('button',{name:'Avaliar aprovação'}).click();
+ const dialog=page.getByRole('dialog',{name:'Confirmar decisão da aprovação'});
+ await expect(dialog).toContainText('segregação de funções');
+ await dialog.getByRole('button',{name:'Confirmar aprovação'}).click();
+ await expect.poll(()=>posted).not.toBeNull();
+ expect(posted?.command).toBe('approve');
+ expect(posted?.version).toBe(1);
+ expect(String(posted?.key)).toMatch(/^[a-f0-9-]{36}$/);
+ await expect(inbox.getByText('Decisão aprovada e registrada no servidor.')).toBeVisible();
+ await inbox.getByRole('button',{name:'Aprovadas'}).click();
+ await expect(inbox.getByText('Fechamento de período financeiro').first()).toBeVisible();
+ await expect(inbox.getByRole('button',{name:'Avaliar aprovação'})).toHaveCount(0);
+});
