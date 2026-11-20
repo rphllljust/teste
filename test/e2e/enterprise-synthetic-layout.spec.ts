@@ -32,6 +32,7 @@ function fakeList(page:number){
     outstanding:0,received:0,paid:0,balance:0,alerts:0,draft:0,approved:0,
     projectedIn:0,projectedOut:0,realizedIn:0,realizedOut:0,netProjected:0,netRealized:0},
   totals:{leads:0,opportunities:0},
+  lanes:[],authority:'SYNTHETIC_LAYOUT_ONLY',sampleLimitPerLane:6,
   limits:{leads:0,opportunities:0},
   measurements:[],relations:[],suppliers:[],inventoryItems:[],
   warnings:[],emptyState:null,openingBankBalanceScaled:'0',

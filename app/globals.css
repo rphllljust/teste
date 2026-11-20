@@ -882,3 +882,46 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
  .worklist>.filters>*{min-width:0;width:100%;max-width:100%}
  .worklist>.filters :is(.fui-Input,.fui-Dropdown,.fui-Field__control){width:100%;min-width:0}
 }
+
+
+/* Tier 1 integrated, source-authoritative control tower */
+.erp-control-tower{min-width:0;max-width:100%;margin:16px 0 24px;background:white;border:1px solid var(--line);border-radius:var(--cisne-radius-surface,8px);overflow:hidden}
+.erp-control-head{display:flex;flex-wrap:wrap;align-items:flex-start;justify-content:space-between;gap:18px;padding:22px 24px;border-bottom:1px solid var(--line)}
+.erp-control-head>div:first-child{flex:1 1 300px;min-width:0}
+.erp-control-head .eyebrow{font-size:10px;font-weight:700;letter-spacing:.09em;color:var(--muted)}
+.erp-control-head h2{font-size:21px;line-height:1.35;font-weight:650;margin:6px 0}
+.erp-control-head p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.erp-control-actions{display:flex;flex-wrap:wrap;align-items:flex-end;gap:8px}
+.erp-control-actions label{display:flex;flex-direction:column;gap:4px;color:var(--muted);font-size:12px;font-weight:600}
+.erp-control-actions input{font:inherit;min-height:40px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;max-width:100%}
+.erp-control-actions button{min-height:40px}
+.erp-control-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(178px,100%),1fr));gap:10px;padding:16px 20px}
+.erp-control-metric{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:8px;min-height:116px;min-width:0;padding:15px;background:#f7faf8;border:1px solid var(--line);border-radius:8px}
+.erp-control-metric:hover{border-color:var(--teal);background:#edf5f1}
+.erp-control-metric>span{font-size:12px;font-weight:600;line-height:1.35;white-space:normal}
+.erp-control-metric>strong{font-size:26px;line-height:1;font-variant-numeric:tabular-nums}
+.erp-control-metric>small{font-size:11px;color:var(--muted);line-height:1.45;white-space:normal}
+.erp-control-queues{padding:0 20px 20px}
+.erp-control-queues>header{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;border-top:1px solid var(--line);padding:16px 0 12px}
+.erp-control-queues>header h3{font-size:16px;margin:0}
+.erp-control-queues>header small{color:var(--muted);font-size:12px}
+.erp-control-lane{border:1px solid var(--line);border-radius:8px;overflow:hidden;min-width:0;margin-bottom:10px}
+.erp-control-lane>header{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap;background:#f7faf8;padding:12px 14px}
+.erp-control-lane>header h4{font-size:14px;margin:0 0 3px}
+.erp-control-lane>header small{font-size:11px;color:var(--muted)}
+.erp-control-lane ul{list-style:none;margin:0;padding:0}
+.erp-control-lane li{padding:12px 14px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap;min-width:0}
+.erp-control-lane li>div{min-width:0;flex:1 1 180px}
+.erp-control-lane li strong{font-size:13px;overflow-wrap:anywhere}
+.erp-control-lane li small{font-size:11px;color:var(--muted)}
+.erp-control-lane li>div small{display:block;margin-top:4px}
+.erp-control-amount{font-variant-numeric:tabular-nums;white-space:nowrap}
+.erp-control-feedback{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:20px;color:var(--muted);font-size:13px}
+.erp-control-foot{border-top:1px solid var(--line);padding:12px 22px;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11px;line-height:1.5;color:var(--muted)}
+@media(max-width:640px){
+.erp-control-head{padding:16px}.erp-control-actions{width:100%}
+.erp-control-actions label,.erp-control-actions button{flex:1 1 auto;min-width:0}
+.erp-control-cards{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px}
+.erp-control-metric{min-height:110px;padding:12px}.erp-control-metric>strong{font-size:23px}
+.erp-control-queues{padding:0 12px 12px}.erp-control-lane>header button{max-width:100%;white-space:normal}
+}
