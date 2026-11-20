@@ -9,7 +9,7 @@ import { TabList as FluentTabList, Tab as FluentTab } from '@fluentui/react-comp
 type Professional={id:string;name:string;registration:string;specialty:string;department:string;phone:string|null;hourlyCost:number|null;status:'active'|'inactive';rowVersion:number};
 type Context=Professional&{history:{command:string;createdAt:string}[];availableCommands:{id:string;label:string;expectedVersion:number}[]};
 const money=(c:number|null)=>c==null?'Não informado':new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(c/100);
-export default function ProfessionalsWorkspace(){const [items,setItems]=useState<Professional[]>([]),[q,setQ]=useState(''),[status,setStatus]=useState(''),[sort,setSort]=useState('name.asc'),[page,setPage]=useState(1),[total,setTotal]=useState(0),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[context,setContext]=useState<Context|null>(null),[form,setForm]=useState<Professional|true|false>(false),[saving,setSaving]=useState(false),[message,setMessage]=useState('');
+export default function ProfessionalsWorkspace(){const [items,setItems]=useState<Professional[]>([]),[q,setQ]=useState(''),[status,setStatus]=useState(''),[sort,setSort]=useState('name.asc'),[page,setPage]=useState(1),[total,setTotal]=useState(0),[sourceTotal,setSourceTotal]=useState(0),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[context,setContext]=useState<Context|null>(null),[form,setForm]=useState<Professional|true|false>(false),[saving,setSaving]=useState(false),[message,setMessage]=useState('');
  const requestGeneration=useRef(0);
  const [detailTab,setDetailTab]=useState<'summary'|'history'>('summary');
  const load=useCallback(async()=>{
@@ -17,13 +17,13 @@ export default function ProfessionalsWorkspace(){const [items,setItems]=useState
   setLoading(true);setError('');
   try{
    const response=await fetch('/api/professionals?'+new URLSearchParams({q,status,sort,page:String(page),pageSize:'25'}));
-   const data=await response.json() as {items:Professional[];pageInfo:{total:number;hasMore:boolean};error?:string};
+   const data=await response.json() as {items:Professional[];pageInfo:{total:number;sourceTotal:number;hasMore:boolean};error?:string};
    if(!response.ok)throw new Error(data.error||'Profissionais indisponíveis.');
    if(id!==requestGeneration.current)return;
-   setItems(data.items);setTotal(data.pageInfo.total);setHasMore(data.pageInfo.hasMore);
+   setItems(data.items);setTotal(data.pageInfo.total);setSourceTotal(data.pageInfo.sourceTotal);setHasMore(data.pageInfo.hasMore);
   }catch(cause){
    if(id!==requestGeneration.current)return;
-   setItems([]);setTotal(0);setHasMore(false);
+   setItems([]);setTotal(0);setSourceTotal(0);setHasMore(false);
    setError(cause instanceof Error?cause.message:'Profissionais indisponíveis.');
   }finally{if(id===requestGeneration.current)setLoading(false);}
  },[q,status,sort,page]);
@@ -38,7 +38,7 @@ export default function ProfessionalsWorkspace(){const [items,setItems]=useState
  {key:'department',header:'Departamento',render:item=>item.department},
  {key:'cost',header:'Custo/hora',render:item=><span className="amount">{money(item.hourlyCost)}</span>},
  {key:'status',header:'Situação',render:item=><span className={'badge status-'+item.status}>{item.status==='active'?'Ativo':'Inativo'}</span>}
-]} />:<div className="empty"><h3>Nenhum profissional cadastrado</h3><p>Cadastre a primeira pessoa autorizada para execução.</p><EnterpriseButton type="button" className="primary" onClick={()=>setForm(true)}><Plus size={16}/>Cadastrar profissional</EnterpriseButton></div>}<footer className="table-footer"><span role="status">{loading?'Consultando…':`${items.length} de ${total} profissionais · página ${page}`}</span><span>Dados persistidos · controle por empresa</span><nav className="pagination" aria-label="Paginação dos profissionais"><EnterpriseButton type="button" className="secondary" disabled={loading||page===1} onClick={()=>setPage(n=>Math.max(1,n-1))}>Anterior</EnterpriseButton><EnterpriseButton type="button" className="secondary" disabled={loading||!hasMore} onClick={()=>setPage(n=>n+1)}>Próxima</EnterpriseButton></nav></footer>
+]} />:<div className="empty"><h3>{sourceTotal?'Nenhum profissional neste filtro':'Nenhum profissional cadastrado'}</h3><p>{sourceTotal?'Ajuste a pesquisa ou a situação para localizar a equipe.':'Cadastre a primeira pessoa autorizada para execução.'}</p><EnterpriseButton type="button" className="primary" onClick={()=>setForm(true)}><Plus size={16}/>Cadastrar profissional</EnterpriseButton></div>}<footer className="table-footer"><span role="status">{loading?'Consultando…':`${items.length} de ${total} profissionais · página ${page}`}</span><span>Dados persistidos · controle por empresa</span><nav className="pagination" aria-label="Paginação dos profissionais"><EnterpriseButton type="button" className="secondary" disabled={loading||page===1} onClick={()=>setPage(n=>Math.max(1,n-1))}>Anterior</EnterpriseButton><EnterpriseButton type="button" className="secondary" disabled={loading||!hasMore} onClick={()=>setPage(n=>n+1)}>Próxima</EnterpriseButton></nav></footer>
  {context&&<div className="overlay"><aside className="drawer" role="dialog" aria-modal="true" aria-label="Object Page do profissional"><header><span className="eyebrow">OBJECT PAGE · PROFISSIONAL</span><EnterpriseButton type="button" className="icon-button" aria-label="Fechar" onClick={()=>setContext(null)}><X size={20}/></EnterpriseButton></header><span className={'badge status-'+context.status}>{context.status==='active'?'Ativo':'Inativo'}</span><h2>{context.name}</h2><p className="muted">Matrícula {context.registration}</p><FluentTabList aria-label="Seções do profissional" selectedValue={detailTab} onTabSelect={(_,data)=>setDetailTab(data.value==='history'?'history':'summary')}>
    <FluentTab id="professional-summary-tab" value="summary">Resumo</FluentTab>
    <FluentTab id="professional-history-tab" value="history">Histórico</FluentTab>
