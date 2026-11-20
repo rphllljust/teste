@@ -73,7 +73,7 @@ test('finance approval is server-authoritative, segregated, versioned, audited a
   assert.equal((await listAssigned(readAs(approver,'page=0'))).status,400);
   assert.equal((await listAssigned(readAs(approver,'state=blocked'))).status,400);
   assert.equal((await listAssigned(new Request('http://localhost/api/workflow/approvals'))).status,401);
-  const tower=await getControlTower(readAs(approver));
+  const tower=await getControlTower(setTestIdentity(new Request('http://localhost/api/enterprise/control-tower?asOf=2026-11-20'),approver));
   assert.equal(tower.status,200,JSON.stringify(await tower.clone().json()));
   const towerData=await tower.json() as {lanes:Array<{id:string;count:number;items:Array<{id:string}>}>};
   assert.equal(towerData.lanes.find(lane=>lane.id==='myApprovals')?.count,1);
