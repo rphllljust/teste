@@ -65,7 +65,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: success()
         with:
-          name: enterprise-authenticated-${{ inputs.commit_sha }}
+          name: enterprise-authenticated-${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || inputs.commit_sha }}
           path: |
             test-results/enterprise/**/*.png
             test-results/enterprise/source-audit.json
