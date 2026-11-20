@@ -94,6 +94,7 @@ type Order = {
 };
 const modules: { group: string; items: [string, LucideIcon][] }[] = [
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
+  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
   {
     group: "OPERAÇÃO",
     items: [
