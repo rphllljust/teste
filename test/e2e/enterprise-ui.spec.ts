@@ -430,3 +430,35 @@ test('Redwood control tower fails closed when the API is unavailable',async({pag
  await expect(tower.getByRole('article')).toHaveCount(0);
  await expect(tower.getByRole('button',{name:'Tentar novamente'})).toBeVisible();
 });
+
+test('procurement List Report paginates server-side and resets page on business filter',async({page})=>{
+ const pages:number[]=[];
+ await page.route('**/api/procurement?*',route=>{
+  const params=new URL(route.request().url()).searchParams;
+  const current=Number(params.get('page')??1);
+  pages.push(current);
+  return route.fulfill({json:{
+   items:[{id:'ci-order-'+current,reference:'PC-CI-'+current,
+    total:100000,expectedOn:'2026-12-01',status:'draft',rowVersion:1,
+    supplier:'Fornecedor CI',lineCount:1,quantity:1000,receivedQuantity:0}],
+   total:26,page:current,hasMore:current===1,
+   summary:{total:26,draft:26,approved:0},suppliers:[],inventoryItems:[],
+  }});
+ });
+ await page.route('**/api/procurement/ci-order-*',route=>route.fulfill({json:{
+  order:{id:'ci-order',reference:'PC-CI-1',supplier:'Fornecedor CI',status:'draft',total:100000,
+   expectedOn:'2026-12-01',rowVersion:1,quantity:1000,receivedQuantity:0},
+  lines:[],receipts:[],reconciled:false,
+ }}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Compras',exact:true}).click();
+ const paginator=page.getByRole('navigation',{name:'Paginação de compras'});
+ await expect(paginator).toContainText('26 pedidos no filtro');
+ await paginator.getByRole('button',{name:'Próxima'}).click();
+ await expect.poll(()=>pages.includes(2)).toBeTruthy();
+ await expect(page.getByText('PC-CI-2').first()).toBeVisible();
+ await page.getByRole('button',{name:'Aprovação',exact:true}).click();
+ await expect.poll(()=>pages.filter(n=>n===1).length).toBeGreaterThan(1);
+ await expect(paginator).toContainText('Página 1');
+ await expect(page.getByRole('main')).toHaveCount(1);
+});
