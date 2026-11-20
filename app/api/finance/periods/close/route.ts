@@ -2,7 +2,8 @@ import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../../lib/api/http';
 
-const command = z.object({ id: z.string().uuid(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160) }).const periodListQuery=z.object({
+const command = z.object({ id: z.string().uuid(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160) }).strict();
+const periodListQuery=z.object({
  q:z.string().trim().max(160).default(''),
  from:z.union([z.literal(''),z.string().refine(validDate)]).default(''),
  to:z.union([z.literal(''),z.string().refine(validDate)]).default(''),
@@ -51,9 +52,6 @@ export async function GET(request: Request) {
     page:filter.page,total,hasMore:filter.page*25<total,
   }},context);
  }catch(error){return failure(error,context);}
-}
-
-ext); }
 }
 
 export async function POST(request: Request) {
