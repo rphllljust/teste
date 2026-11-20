@@ -37,3 +37,9 @@ jobs:
       - run: pnpm exec playwright install --with-deps chromium
       - run: pnpm build
       - run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: enterprise-ui-screenshots-${{ github.sha }}
+          path: test-results/enterprise/**/*.png
+          if-no-files-found: warn
