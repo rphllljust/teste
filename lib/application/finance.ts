@@ -96,7 +96,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query(`SELECT pp.id,pp.payable_id,pp.amount,pp.request_hash
       FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
-      WHERE pp.id=$1 AND p.owner_id=$2`, [input.commandKey,context.actorId]);
+      WHERE pp.id=$1 AND p.actor_id=$2`, [input.commandKey,context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
@@ -105,7 +105,7 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     const payable = await query(`SELECT p.id, p.amount,
       COALESCE((SELECT SUM(CASE WHEN x.kind='payment' THEN x.amount ELSE -x.amount END)
         FROM payable_payments x WHERE x.payable_id=p.id),0) AS settled
-      FROM payables p WHERE p.id=$1 AND p.owner_id=$2 FOR UPDATE OF p`, [input.payableId,context.actorId]);
+      FROM payables p WHERE p.id=$1 AND p.actor_id=$2 FOR UPDATE OF p`, [input.payableId,context.actorId]);
     if (!payable.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Título a pagar não encontrado.');
     const row = payable.rows[0];
     const balance = Number(row.amount) - Number(row.settled);
@@ -126,7 +126,7 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
     const prior = await query(`SELECT pp.id,pp.payable_id,pp.amount,pp.request_hash
       FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
-      WHERE pp.id=$1 AND p.owner_id=$2`, [input.commandKey,context.actorId]);
+      WHERE pp.id=$1 AND p.actor_id=$2`, [input.commandKey,context.actorId]);
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
@@ -134,7 +134,7 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
     }
     const original = await query(`SELECT pp.id,pp.payable_id,pp.amount
       FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id
-      WHERE pp.id=$1 AND pp.kind='payment' AND p.owner_id=$2 FOR UPDATE OF pp`,
+      WHERE pp.id=$1 AND pp.kind='payment' AND p.actor_id=$2 FOR UPDATE OF pp`,
       [input.paymentId,context.actorId]);
     if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
     const row = original.rows[0];
