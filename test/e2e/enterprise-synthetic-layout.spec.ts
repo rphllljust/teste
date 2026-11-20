@@ -86,7 +86,7 @@ for(const name of destinations){
      path:test.info().outputPath('SYNTHETIC-'+id+'-'+size.name+'.png'),
      fullPage:true,
    });
-   snapshots.push({workspace:name,viewport:size.name,...metrics,
+   snapshots.push({workspace:name,breakpoint:size.name,...metrics,
     horizontalOverflowPx:Math.max(0,metrics.documentWidth-metrics.viewport)});
   }
   const slug=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'')
