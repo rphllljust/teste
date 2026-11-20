@@ -753,3 +753,49 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
 .enterprise-list-cell-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .enterprise-list-cell-actions .text-button{min-width:max-content}
 .enterprise-data-grid .enterprise-list-primary{padding-block:3px}
+
+
+/* Enterprise screenshot review — align commercial List Report identity and actions. */
+.cisne-enterprise-experience>.enterprise-page-header{margin-bottom:16px;border-bottom:0;padding-bottom:4px}
+.cisne-enterprise-experience>.worklist>.list-title{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:20px;padding:22px 24px;border-bottom:1px solid var(--line)}
+.cisne-enterprise-experience>.worklist>.list-title>div:first-child{display:flex;flex-direction:column;align-items:flex-start;gap:5px;min-width:0}
+.cisne-enterprise-experience>.worklist>.list-title .eyebrow{display:block;font-size:10px;font-weight:700;letter-spacing:.11em;line-height:1.45;color:var(--cisne-neutral-600);margin:0}
+.cisne-enterprise-experience>.worklist>.list-title h2{font-size:21px;font-weight:650;line-height:1.3;letter-spacing:-.025em;margin:0}
+.cisne-enterprise-experience>.worklist>.list-title p{font-size:13px;line-height:1.5;color:var(--muted);max-width:65ch;margin:0}
+.cisne-enterprise-experience>.worklist>.list-title .command-buttons{display:flex;align-items:center;justify-content:flex-end;flex-wrap:wrap;gap:8px;max-width:430px}
+.cisne-enterprise-experience>.worklist>.list-title .command-buttons button{white-space:nowrap}
+.cisne-enterprise-experience .enterprise-list-report-controls{border-top:0}
+.cisne-enterprise-experience .enterprise-list-report-filters{flex-wrap:wrap}
+.cisne-enterprise-experience .enterprise-list-report-controls-end button{min-height:34px}
+
+/* Operations resource board — compact, consistent filters and legible resource identity. */
+.planning-board .enterprise-filter-bar{display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:14px 16px}
+.planning-board .enterprise-filter-fields{display:flex;align-items:end;flex:1 1 390px;min-width:0;gap:12px;flex-wrap:wrap}
+.planning-board .enterprise-filter-fields>.fui-Field{flex:1 1 180px;min-width:0}
+.planning-board .enterprise-filter-fields>.fui-Field:first-child{flex-grow:1.5}
+.planning-board .enterprise-filter-fields>.fui-Field .fui-Input,
+.planning-board .enterprise-filter-fields>.fui-Field .fui-Dropdown{width:100%;min-width:0}
+.planning-board .enterprise-filter-count{margin-left:auto;font-variant-numeric:tabular-nums}
+.planning-board .planning-resource-cell{display:grid;grid-template-columns:18px minmax(0,1fr);column-gap:8px;row-gap:3px;align-items:center}
+.planning-board .planning-resource-cell>svg{grid-column:1;grid-row:1;align-self:center}
+.planning-board .planning-resource-cell>strong{grid-column:2;grid-row:1;min-width:0;overflow-wrap:anywhere}
+.planning-board .planning-resource-cell>small{grid-column:2;grid-row:2;min-width:0;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.planning-board .enterprise-data-grid [role=columnheader]{white-space:nowrap}
+.planning-board .enterprise-data-grid [role=gridcell]{vertical-align:middle}
+
+@media(max-width:800px){
+ .cisne-enterprise-experience>.worklist>.list-title{grid-template-columns:minmax(0,1fr);gap:14px;padding:18px}
+ .cisne-enterprise-experience>.worklist>.list-title .command-buttons{max-width:none;justify-content:flex-start}
+ .planning-board .enterprise-filter-fields{flex-basis:100%}
+ .planning-board .enterprise-filter-count{margin-left:0}
+}
+@media(max-width:580px){
+ .cisne-enterprise-experience>.worklist>.list-title h2{font-size:19px}
+ .cisne-enterprise-experience>.worklist>.list-title .command-buttons{width:100%}
+ .cisne-enterprise-experience>.worklist>.list-title .command-buttons button{flex:1 1 auto}
+ .planning-board .enterprise-filter-bar{gap:10px;padding:10px 0}
+ .planning-board .enterprise-filter-fields{display:flex;flex-direction:column;align-items:stretch;gap:9px;width:100%}
+ .planning-board .enterprise-filter-fields>.fui-Field{width:100%;flex:0 0 auto;min-width:0}
+ .planning-board .enterprise-filter-count{font-size:12px}
+ .planning-board .enterprise-filter-bar>.text-button{margin-left:auto;min-height:34px}
+}
