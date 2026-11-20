@@ -1,4 +1,6 @@
 'use client';
+import { EnterpriseDataGrid } from './components/enterprise/EnterprisePrimitives';
+
 
 import { EnterpriseButton, EnterpriseInput,} from './components/enterprise/EnterprisePrimitives';
 import { useCallback, useEffect, useState } from 'react';
@@ -44,7 +46,17 @@ export default function CloseCenterWorkspace() {
   return <section className="worklist" aria-busy={loading}>
     <div className="list-title"><div><h2>Fechamento financeiro</h2><p>Períodos fechados com auditoria. Baixas, pagamentos, transferências e importações retroativas são bloqueados.</p></div><EnterpriseButton type="button" className="primary" onClick={() => { setKey(crypto.randomUUID()); setRunning(true); setNotice(''); }}>Fechar período</EnterpriseButton></div>
     <div className="linked-info">O fechamento é idempotente, por proprietário e não permite sobreposição de períodos.</div>
-    {error ? <div className="empty" role="alert">{error}<EnterpriseButton type="button" className="secondary" onClick={() => void load()}>Tentar novamente</EnterpriseButton></div> : loading ? <div className="empty" role="status">Consultando períodos fechados…</div> : items.length ? <div className="table-wrap"><table><thead><tr><th>Período</th><th>Referência</th><th>Fechado em</th><th>Status</th></tr></thead><tbody>{items.map(item => <tr key={item.id}><td>{date(item.periodStart)} a {date(item.periodEnd)}</td><td>{item.reference || '—'}</td><td>{timestamp(item.closedAt)}</td><td><span className="badge">{item.status === 'closed' ? 'Fechado' : item.status}</span></td></tr>)}</tbody></table></div> : <div className="empty"><h3>Nenhum período fechado</h3><p>Feche o primeiro período depois de conferir os lançamentos e a conciliação.</p></div>}
+    {error ? <div className="empty" role="alert">{error}<EnterpriseButton type="button" className="secondary" onClick={() => void load()}>Tentar novamente</EnterpriseButton></div> : loading ? <div className="empty" role="status">Consultando períodos fechados…</div> : items.length ? <EnterpriseDataGrid<Close>
+  caption="Períodos contábeis fechados"
+  rows={items}
+  getRowKey={(item)=>item.id}
+  columns={[
+ {key:'period',header:'Período',render:item=><span>{date(item.periodStart)} a {date(item.periodEnd)}</span>},
+ {key:'reference',header:'Referência',render:item=>item.reference||'—'},
+ {key:'closed',header:'Fechado em',render:item=>timestamp(item.closedAt)},
+ {key:'status',header:'Status',render:item=><span className="badge">{item.status==='closed'?'Fechado':item.status}</span>}
+]}
+ /> : <div className="empty"><h3>Nenhum período fechado</h3><p>Feche o primeiro período depois de conferir os lançamentos e a conciliação.</p></div>}
     {notice && !running && <p role="status" className="linked-info">{notice}</p>}
     {running && <div className="overlay modal-overlay"><section className="modal" role="dialog" aria-modal="true" aria-label="Fechar período"><header><h2>Fechar período</h2><EnterpriseButton type="button" className="icon-button" onClick={() => setRunning(false)} aria-label="Fechar janela">Fechar</EnterpriseButton></header><form onSubmit={execute}><div className="form-row"><label>Início<EnterpriseInput type="date" name="periodStart" required /></label><label>Fim<EnterpriseInput type="date" name="periodEnd" required /></label></div><label>Referência<EnterpriseInput name="reference" minLength={1} maxLength={160} placeholder="Ex.: Fechamento novembro/2026" required /></label><p className="muted">Após confirmar, operações com data dentro do período serão recusadas com conflito e permanecerão auditadas.</p>{notice && <p role="alert" className="form-error">{notice}</p>}<footer><EnterpriseButton type="button" className="secondary" onClick={() => setRunning(false)}>Cancelar</EnterpriseButton><EnterpriseButton type="submit" className="primary" disabled={saving}>Confirmar fechamento</EnterpriseButton></footer></form></section></div>}
   </section>;
