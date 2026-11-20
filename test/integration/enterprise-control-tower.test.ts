@@ -54,7 +54,7 @@ async function seed(c:typeof cases[number]){
  await pool.query('INSERT INTO inventory_movements(id,item_id,owner_id,delta,reference,created_at,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
   [c.movement,c.item,actor,12000,'CI incoming',stamp,randomUUID(),randomUUID()]);
  await pool.query('INSERT INTO inventory_reservations(id,item_id,owner_id,source_document_type,source_document_id,source_reference,quantity,consumed_quantity,status,created_at,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)',
-  [c.reservation,c.item,actor,'service_order',c.lateOrder,'CI',4000,0,'reserved',stamp,randomUUID(),randomUUID()]);
+  [c.reservation,c.item,actor,'service-order',c.lateOrder,'CI',4000,0,'reserved',stamp,randomUUID(),randomUUID()]);
  await pool.query('INSERT INTO supplier_purchase_orders(id,owner_id,supplier_id,item_id,reference,quantity,unit_price,total,expected_on,status,created_at,updated_at,request_hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$11,$12)',
   [c.purchase,actor,c.supplier,c.item,'PO-'+actor,1000,1000,1000,'2026-11-10','approved',stamp,randomUUID()]);
  await pool.query('INSERT INTO workflow_approval_requests(id,owner_id,entity_type,entity_id,command,state,requested_by,approver_id,expected_version,payload,request_hash,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',

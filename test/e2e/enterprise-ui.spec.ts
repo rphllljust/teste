@@ -335,3 +335,38 @@ test('completed OS without actual measurement does not claim measurement or bill
  await expect(billing).not.toHaveClass(/has-record|done/);
  await expect(page.locator('.service-inspector')).toContainText('0 medições');
 });
+
+
+test('enterprise control tower reads persisted projection, filters the reference date and routes the action',async({page})=>{
+ const queried:string[]=[];
+ await page.route('**/api/orders?*',route=>route.fulfill({json:{
+  orders:[],total:0,summary:{total:0,drafts:0,planned:0,pendingMeasurements:0},
+ }}));
+ await page.route('**/api/enterprise/control-tower?*',route=>{
+  queried.push(new URL(route.request().url()).searchParams.get('asOf')??'');
+  return route.fulfill({json:{
+   asOf:'2026-11-20',generatedAt:'2026-11-20T12:00:00.000Z',
+   authority:'SYNTHETIC_LAYOUT_ONLY',sampleLimitPerLane:6,
+   lanes:[
+    {id:'overdueReceivables',label:'Recebíveis vencidos',count:2,
+     target:'Financeiro',authority:'test.fixture',totalAmountScaled:'600000',items:[
+      {id:'synthetic-a',title:'Ordem ilustrativa',reference:null,date:'2026-11-10',
+       amountScaled:'600000',availableScaled:null,requiredScaled:null},
+     ]},
+    {id:'latePurchases',label:'Compras não recebidas no prazo',count:0,
+     target:'Compras',authority:'test.fixture',totalAmountScaled:null,items:[]},
+   ],
+  }});
+ });
+ await page.goto('/');
+ await expect(page.getByRole('region',{name:'Torre de controle empresarial'})).toBeVisible();
+ const metric=page.getByRole('button',{name:'Recebíveis vencidos: 2'});
+ await expect(metric).toBeVisible();
+ await expect(metric).toContainText('R$');
+ await page.getByRole('textbox',{name:'Data de referência da torre de controle'}).fill('2026-11-21');
+ await expect.poll(()=>queried.includes('2026-11-21')).toBeTruthy();
+ await page.getByRole('button',{name:'Atualizar',exact:true}).first().click();
+ await expect.poll(()=>queried.filter(x=>x==='2026-11-21').length).toBeGreaterThan(1);
+ await metric.click();
+ await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Financeiro');
+});
