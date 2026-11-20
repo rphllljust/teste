@@ -1,0 +1,60 @@
+name: Enterprise authenticated staging audit
+on:
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'SHA checked out and deployed on Railway staging'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  staging:
+    name: Authenticated staging business UI
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: enterprise-authenticated-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Fail closed if source or secret are not authorized
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.commit_sha }}
+          CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
+        run: |
+          test "$GITHUB_REF" = 'refs/heads/feat/cisne-tier1-enterprise-shell-20261120' || { echo '::error::Invalid candidate branch'; exit 1; }
+          test "$EXPECTED_SHA" = "$(git rev-parse HEAD)" || { echo '::error::SHA does not match the checked-out candidate'; exit 1; }
+          test -n "$CISNE_STAGING_PASSPHRASE" || { echo '::error::Staging passphrase not configured; NO-GO'; exit 1; }
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Real authenticated Playwright (no API mocks)
+        env:
+          CISNE_AUTHENTICATED_E2E: '1'
+          CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
+          CISNE_EXPECTED_STAGING_SHA: ${{ inputs.commit_sha }}
+          CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
+        run: pnpm test:e2e
+      - name: Source inventory; not a homologation certificate
+        run: |
+          mkdir -p test-results/enterprise
+          node scripts/audit-enterprise-workspaces.mjs --strict > test-results/enterprise/source-audit.json
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: enterprise-authenticated-${{ inputs.commit_sha }}
+          path: |
+            test-results/enterprise/**/*.png
+            test-results/enterprise/source-audit.json
+          if-no-files-found: error
+          retention-days: 14

@@ -4,6 +4,11 @@ const externalBaseURL = process.env.CISNE_BASE_URL;
 
 export default defineConfig({
   testDir: './test/e2e',
+  testIgnore: process.env.CISNE_AUTHENTICATED_E2E === '1'
+    ? ['**/enterprise-ui.spec.ts']
+    : ['**/staging-authenticated.spec.ts'],
+  workers: process.env.CISNE_AUTHENTICATED_E2E === '1' ? 1 : undefined,
+  timeout: process.env.CISNE_AUTHENTICATED_E2E === '1' ? 90000 : 30000,
   outputDir: './test-results/enterprise',
   fullyParallel: true,
   retries: 0,
