@@ -1450,6 +1450,7 @@ function HomeView() {
           ) : page === "Centro de operações" ? (
             <ServiceOperationsWorkspace
               onCreate={newOrder}
+              onPendingMeasurements={() => { navigate("Ordens de serviço"); applyView("Concluídas sem medição"); }}
               onOpen={(id) => {
                 navigate("Ordens de serviço");
                 void openOrigin(id);

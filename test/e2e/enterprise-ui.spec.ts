@@ -251,3 +251,18 @@ test('mobile List Report preserves all client fields, actions and record identit
  await expect(records.getByRole('button',{name:'Cliente Móvel'})).toBeVisible();
  await expect(page.getByRole('grid',{name:'Lista de clientes'})).toBeHidden();
 });
+
+
+test('Redwood priority task opens the real orders queue filtered for completed work without measurement',async({page})=>{
+ await page.route('**/api/orders?*',route=>route.fulfill({json:{
+  orders:[],total:4,summary:{total:4,drafts:1,planned:0,pendingMeasurements:2},
+ }}));
+ await page.goto('/');
+ await page.getByRole('button',{name:'Visão operacional',exact:true}).click();
+ const pending=page.getByRole('button',{name:/Aguardando medição/}).first();
+ await expect(pending).toBeVisible();
+ await pending.click();
+ await expect(page.locator('.topbar')).toContainText('Ordens de serviço');
+ await expect(page.getByRole('button',{name:'Concluídas sem medição',exact:true}))
+  .toHaveAttribute('aria-pressed','true');
+});
