@@ -61,8 +61,8 @@ test('Assets and Professionals use bounded real SQL paging, sort, filters and te
   const otherData=await fromOther.json() as {items:Array<{id:string}>};
   assert.deepEqual(otherData.items.map(x=>x.id),[foreignProfessional]);
  }finally{
-  await pool.query('DELETE FROM assets WHERE id=ANY($1::text[])',[...assetIds,foreignAsset]);
-  await pool.query('DELETE FROM professionals WHERE id=ANY($1::text[])',[...professionalIds,foreignProfessional]);
+  await pool.query('DELETE FROM assets WHERE id=ANY($1::text[])',[[...assetIds,foreignAsset]]);
+  await pool.query('DELETE FROM professionals WHERE id=ANY($1::text[])',[[...professionalIds,foreignProfessional]]);
   await closeDatabase();await pool.end();
  }
 });
