@@ -39,7 +39,11 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
   await expect(grid).toBeVisible();
   await page.screenshot({ path: test.info().outputPath('resource-grid-tablet.png'), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
-  await expect(grid).toBeVisible();
+  const mobileList = page.getByRole('list', { name: 'Recursos operacionais — versão compacta' });
+  await expect(mobileList).toBeVisible();
+  await expect(mobileList.getByText('Profissional de teste')).toBeVisible();
+  await expect(mobileList.getByText('T-001')).toBeVisible();
+  await expect(grid).toBeHidden();
   const searchWidth = await page.getByRole('searchbox', { name: 'Buscar recurso' }).evaluate(element => element.getBoundingClientRect().width);
   expect(searchWidth).toBeGreaterThanOrEqual(200);
   const topbarFits = await page.locator('.topbar').evaluate(element => element.scrollWidth <= element.clientWidth);
@@ -224,4 +228,26 @@ test('Redwood task view prioritizes overdue payables using real dueTo and outsta
    return p.get('state')==='outstanding'&&p.get('sort')==='dueDate.asc'&&!!p.get('dueTo');
  })).toBeTruthy();
  await expect(page.getByText(/Fila de obrigações com saldo e vencimento/)).toBeVisible();
+});
+
+
+test('mobile List Report preserves all client fields, actions and record identity without horizontal table',async({page})=>{
+ await page.route('**/api/clients?*',route=>route.fulfill({json:{
+  items:[{id:'mobile-client-1',legalName:'Cliente Móvel',tradeName:'Unidade 01',
+   document:'12345678000190',email:'cliente@example.invalid',phone:null,
+   state:{code:'active',label:'Ativo',rowVersion:1},availableCommands:[]}],
+  pageInfo:{total:1,sourceTotal:1,hasMore:false},
+ }}));
+ await page.setViewportSize({width:390,height:844});
+ await page.goto('/');
+ await page.getByRole('button',{name:'Abrir menu'}).click();
+ await page.getByRole('navigation',{name:'Módulos empresariais'})
+  .getByRole('button',{name:'Clientes e propostas'}).click();
+ const records=page.getByRole('list',{name:'Lista de clientes — versão compacta'});
+ await expect(records).toBeVisible();
+ await expect(records.getByText('Cliente Móvel')).toBeVisible();
+ await expect(records.getByText('12345678000190')).toBeVisible();
+ await expect(records.getByText('cliente@example.invalid')).toBeVisible();
+ await expect(records.getByRole('button',{name:'Cliente Móvel'})).toBeVisible();
+ await expect(page.getByRole('grid',{name:'Lista de clientes'})).toBeHidden();
 });

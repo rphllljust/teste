@@ -799,3 +799,25 @@ button:focus-visible,a:focus-visible{outline-color:var(--cisne-brand-focus)}
  .planning-board .enterprise-filter-count{font-size:12px}
  .planning-board .enterprise-filter-bar>.text-button{margin-left:auto;min-height:34px}
 }
+
+
+/* Mobile List Reports: all server-returned fields stay available, no fake client paging. */
+.enterprise-data-grid .enterprise-mobile-report{display:none}
+@media(max-width:640px){
+  .enterprise-data-grid{overflow:visible;border:0;background:transparent}
+  .enterprise-data-grid>.enterprise-desktop-grid{display:none}
+  .enterprise-data-grid .enterprise-mobile-report{display:block}
+  .enterprise-mobile-records{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:0;margin:0;list-style:none}
+  .enterprise-mobile-record{min-width:0;border:1px solid var(--cisne-neutral-300);background:var(--cisne-neutral-0);border-radius:var(--cisne-radius-surface);padding:12px 14px}
+  .enterprise-mobile-record dl{display:grid;grid-template-columns:minmax(0,1fr);gap:9px;margin:0}
+  .enterprise-mobile-record-field{display:grid;grid-template-columns:minmax(105px,35%) minmax(0,1fr);column-gap:12px;align-items:start;min-width:0}
+  .enterprise-mobile-record-field:first-child{display:block;border-bottom:1px solid var(--cisne-neutral-100);padding-bottom:9px}
+  .enterprise-mobile-record-field dt{font-size:11px;line-height:1.45;font-weight:650;letter-spacing:.01em;color:var(--cisne-neutral-600);min-width:0}
+  .enterprise-mobile-record-field dd{font-size:13px;line-height:1.5;margin:0;min-width:0;overflow-wrap:anywhere;color:var(--cisne-neutral-950)}
+  .enterprise-mobile-record-field dd button{white-space:normal;text-align:left;max-width:100%;overflow-wrap:anywhere}
+  .enterprise-mobile-record-field:first-child dd{font-weight:600;margin-top:3px}
+  .enterprise-mobile-record-field .amount{white-space:normal}
+  .enterprise-mobile-record-open{margin-top:12px}
+  .enterprise-mobile-report-sort{display:flex;gap:6px;flex-wrap:wrap;padding:8px 0 12px}
+}
+@media(max-width:360px){.enterprise-mobile-record-field{grid-template-columns:minmax(82px,32%) minmax(0,1fr);column-gap:8px}}

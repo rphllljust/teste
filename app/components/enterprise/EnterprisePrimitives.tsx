@@ -99,8 +99,62 @@ export function EnterpriseFilterBar({ children, onReset, label='Filtros', result
 export type EnterpriseColumn<T> = { key:string; header:string; render:(row:T)=>ReactNode; sortable?:boolean; sortValue?:(row:T)=>string|number; headerLabel?:string };
 export type EnterpriseDataGridProps<T> = { rows:T[]; columns:EnterpriseColumn<T>[]; getRowKey:(row:T)=>Key; caption:string; empty?:ReactNode; loading?:boolean; onRowClick?:(row:T)=>void; sort?:{key:string;direction:'asc'|'desc'}; onSort?:(key:string)=>void };
 export function EnterpriseDataGrid<T>({ rows, columns, getRowKey, caption, empty='Nenhum registro encontrado.', loading, onRowClick, sort, onSort }:EnterpriseDataGridProps<T>) {
- const fluentColumns:TableColumnDefinition<T>[] = columns.map(column=>createTableColumn<T>({columnId:column.key,compare:column.sortValue?(a,b)=>{const left=column.sortValue!(a),right=column.sortValue!(b);return typeof left==='number'&&typeof right==='number'?left-right:String(left).localeCompare(String(right),'pt-BR',{numeric:true,sensitivity:'base'});}:undefined,renderHeaderCell:()=>column.header,renderCell:row=>column.render(row)}));
- return <div className="enterprise-data-grid" role="region" aria-label={caption} tabIndex={0}>{loading?<LoadingState label="Carregando registros…"/>:rows.length===0?<EmptyState title={typeof empty==='string'?empty:'Nenhum registro'}>{typeof empty==='string'?undefined:empty}</EmptyState>:<FluentDataGrid aria-label={caption} items={rows} columns={fluentColumns} getRowId={row=>String(getRowKey(row))} sortable={columns.some(column=>column.sortable&&column.sortValue)} sortState={sort?{sortColumn:sort.key,sortDirection:sort.direction==='asc'?'ascending':'descending'}:undefined} onSortChange={(_,next)=>{if(next.sortColumn)onSort?.(String(next.sortColumn));}}><DataGridHeader><DataGridRow>{({renderHeaderCell})=><DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}</DataGridRow></DataGridHeader><DataGridBody<T>>{({item,rowId})=><DataGridRow<T> key={rowId} onClick={()=>onRowClick?.(item)}>{({renderCell})=><DataGridCell>{renderCell(item)}</DataGridCell>}</DataGridRow>}</DataGridBody></FluentDataGrid>}</div>;
+ const fluentColumns:TableColumnDefinition<T>[] = columns.map(column=>createTableColumn<T>({
+   columnId:column.key,
+   compare:column.sortValue?(a,b)=>{
+     const left=column.sortValue!(a),right=column.sortValue!(b);
+     return typeof left==='number'&&typeof right==='number'
+       ?left-right:String(left).localeCompare(String(right),'pt-BR',{numeric:true,sensitivity:'base'});
+   }:undefined,
+   renderHeaderCell:()=>column.header,
+   renderCell:row=>column.render(row),
+ }));
+ const sortable=columns.filter(column=>column.sortable&&onSort);
+ return <div className="enterprise-data-grid" role="region" aria-label={caption} tabIndex={0}>
+   {loading?<LoadingState label="Carregando registros…"/>:rows.length===0?
+     <EmptyState title={typeof empty==='string'?empty:'Nenhum registro'}>
+       {typeof empty==='string'?undefined:empty}
+     </EmptyState>:
+     <>
+       <FluentDataGrid
+         className="enterprise-desktop-grid"
+         aria-label={caption}
+         items={rows}
+         columns={fluentColumns}
+         getRowId={row=>String(getRowKey(row))}
+         sortable={columns.some(column=>column.sortable&&column.sortValue)}
+         sortState={sort?{sortColumn:sort.key,sortDirection:sort.direction==='asc'?'ascending':'descending'}:undefined}
+         onSortChange={(_,next)=>{if(next.sortColumn)onSort?.(String(next.sortColumn));}}
+       >
+         <DataGridHeader>
+           <DataGridRow>{({renderHeaderCell})=><DataGridHeaderCell>{renderHeaderCell()}</DataGridHeaderCell>}</DataGridRow>
+         </DataGridHeader>
+         <DataGridBody<T>>
+           {({item,rowId})=><DataGridRow<T> key={rowId} onClick={()=>onRowClick?.(item)}>
+             {({renderCell})=><DataGridCell>{renderCell(item)}</DataGridCell>}
+           </DataGridRow>}
+         </DataGridBody>
+       </FluentDataGrid>
+       <div className="enterprise-mobile-report">
+         {sortable.length>0&&<div className="enterprise-mobile-report-sort" aria-label="Ordenação de registros">
+           {sortable.map(column=><EnterpriseButton type="button" key={column.key} appearance="subtle" onClick={()=>onSort?.(column.key)}>
+             Ordenar por {column.headerLabel??column.header}
+           </EnterpriseButton>)}
+         </div>}
+         <ul className="enterprise-mobile-records" aria-label={caption+' — versão compacta'}>
+           {rows.map(row=><li className="enterprise-mobile-record" key={getRowKey(row)}>
+             <dl>{columns.map(column=><div className="enterprise-mobile-record-field" key={column.key}>
+               <dt>{column.headerLabel??column.header}</dt>
+               <dd>{column.render(row)}</dd>
+             </div>)}</dl>
+             {onRowClick&&<EnterpriseButton type="button" appearance="subtle" className="enterprise-mobile-record-open" onClick={()=>onRowClick(row)}>
+               Abrir registro
+             </EnterpriseButton>}
+           </li>)}
+         </ul>
+       </div>
+     </>}
+ </div>;
 }
 
 export type EnterpriseWorklistProps = { label:string; title?:string; count?:number; children:ReactNode; filters?:ReactNode; actions?:ReactNode };
