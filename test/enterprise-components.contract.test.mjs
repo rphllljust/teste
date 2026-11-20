@@ -18,7 +18,9 @@ test('data grid contract is accessible and keyboard-operable', () => {
   assert.match(source, /<FluentDataGrid\s+className="enterprise-desktop-grid"\s+aria-label=\{caption\}/);
   assert.match(source, /<DataGridHeader>/);
   assert.match(source, /onSortChange=/);
-  assert.match(source, /onRowClick\?\.\(item\)/);
+  assert.match(source, /onRowClick\(item\)/);
+  assert.match(source, /tabIndex=\{onRowClick\?0:undefined\}/);
+  assert.match(source, /onKeyDown=\{event=>/);
   assert.match(source, /getRowId=\{row=>String\(getRowKey\(row\)\)\}/);
   assert.match(source, /<ul className="enterprise-mobile-records"/);
   assert.match(source, /<dt>\{column.headerLabel\?\?column.header\}<\/dt>/);
@@ -55,4 +57,13 @@ test('Fluent dropdown uses value callbacks and does not fabricate native change 
   assert.match(source, /setUncontrolledValue\(next\)/);
   assert.match(source, /name=\{name\} value=\{selectedValue\} disabled=\{disabled\}/);
   assert.doesNotMatch(source, /as ChangeEvent<HTMLSelectElement>/);
+});
+ 
+test('Object Page is one accessible region with linked sections and no nested main',()=>{
+ assert.match(source,/return <section role="region" className=/);
+ assert.doesNotMatch(source,/return <main className=/);
+ assert.match(source,/const sectionNavigationId=useId\(\)/);
+ assert.match(source,/aria-controls=\{sectionNavigationId\}/);
+ assert.match(source,/href=\{'#'\+section.id\}/);
+ assert.match(source,/aria-current=\{section.id===activeSectionId\?'location':undefined\}/);
 });
