@@ -643,4 +643,12 @@ tr:has(td):hover{background:#f5f9f5}
 .enterprise-kpi-card strong{font-size:clamp(22px,2vw,30px);line-height:1.15;font-variant-numeric:tabular-nums}
 .enterprise-kpi-card small,.enterprise-kpi-label{color:var(--muted);font-size:12px}
 .enterprise-kpi-card:focus-visible{outline:3px solid #27b5b9;outline-offset:2px}
+.client-related-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+.client-related-grid>section{display:grid;align-content:start;gap:10px;min-width:0}
+.client-related-grid h4{margin:0;color:var(--muted);font-size:13px;font-weight:600}
+.client-related-grid .related{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left}
+.client-related-grid .related>span:first-child{min-width:0}
+.client-related-grid .related strong,.client-related-grid .related small{display:block;overflow-wrap:anywhere}
+.client-related-grid .related small{margin-top:4px;color:var(--muted);font-size:12px}
+@media(max-width:700px){.client-related-grid{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:700px){.enterprise-filter-fields{align-items:stretch;flex-direction:column}.enterprise-filter-fields>label{min-width:0}.enterprise-filter-bar{align-items:stretch}.enterprise-kpi-card{padding:14px}.enterprise-data-grid table{min-width:620px}}

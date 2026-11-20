@@ -371,6 +371,7 @@ function HomeView() {
   const [orderContract, setOrderContract] = useState<Contract | null>(null),
     [businessContract, setBusinessContract] = useState(""),
     [commercialOrigin, setCommercialOrigin] = useState(""),
+    [contractOrigin, setContractOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
   const defaultsApplied = useRef(false);
   const operationGeneration = useRef(0);
@@ -758,6 +759,7 @@ function HomeView() {
     setBusinessClient("");
     setBusinessContract("");
     setCommercialOrigin("");
+    setContractOrigin("");
     setDrillFilters({});
     setBankAccount("");
     operationGeneration.current++;
@@ -1217,18 +1219,6 @@ function HomeView() {
               "Fiscal e tributos": 5,
               Contabilidade: 6,
             }[page] ?? -1);
-  if (page === "Profissionais")
-    return (
-      <div className="app">
-        <ProfessionalsWorkspace />
-      </div>
-    );
-  if (page === "Frota e ativos")
-    return (
-      <div className="app">
-        <AssetsWorkspace />
-      </div>
-    );
   const moduleDescription: Record<string, string> = {
     Medições:
       "Acompanhamento da produção realizada e das medições vinculadas às ordens de serviço.",
@@ -1365,6 +1355,8 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Profissionais",
+              "Frota e ativos",
             ].includes(page) && (
               <div className="heading">
                 <div>
@@ -2507,6 +2499,10 @@ function HomeView() {
                 </span>
               </footer>
             </section>
+          ) : page === "Profissionais" ? (
+            <ProfessionalsWorkspace />
+          ) : page === "Frota e ativos" ? (
+            <AssetsWorkspace />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
               onClients={() => navigate("Clientes e propostas")}
@@ -2532,6 +2528,14 @@ function HomeView() {
                 setView("Todas as ordens");
                 setCategory(categories[0]);
               }}
+              onProposal={(id) => {
+                navigate("Propostas e PO");
+                setCommercialOrigin(id);
+              }}
+              onContract={(id) => {
+                navigate("Contratos");
+                setContractOrigin(id);
+              }}
             />
           ) : page === "Execução" ? (
             <ExecutionWorkspace
@@ -2543,6 +2547,7 @@ function HomeView() {
             />
           ) : page === "Contratos" ? (
             <ContractsWorkspace
+              initialId={contractOrigin}
               onSource={(id) => {
                 navigate("Propostas e PO");
                 setCommercialOrigin(id);
@@ -2565,7 +2570,13 @@ function HomeView() {
               }}
             />
           ) : page === "Propostas e PO" ? (
-            <ProposalsWorkspace initialId={commercialOrigin} />
+            <ProposalsWorkspace
+              initialId={commercialOrigin}
+              onContract={(id) => {
+                navigate("Contratos");
+                setContractOrigin(id);
+              }}
+            />
           ) : page === "Visão financeira" ? (
             <FinanceOverviewWorkspace onDrilldown={drillFinance} />
           ) : page === "Fluxo de caixa" ? (
