@@ -128,3 +128,25 @@ test('enterprise navigation is collapsible, keyboard operable, and preserves sel
   await expect(crm).toHaveAttribute('aria-current', 'page');
   await expect(page.locator('#cisne-workspace-content')).toBeVisible();
 });
+
+
+test('client list report renders real Fluent grid, searches API and clears filters without a write', async ({ page }) => {
+  const queries: string[] = [];
+  await page.route('**/api/clients?*', async route => {
+    queries.push(new URL(route.request().url()).searchParams.get('q') ?? '');
+    await route.fulfill({ json: {
+      items: [{ id: 'client-fixture-1', legalName: 'Cliente de homologação', tradeName: 'Unidade Centro', document: '00.000.000/0001-00', email: null, phone: null, state: { code: 'active', label: 'Ativo', rowVersion: 1 }, availableCommands: [] }],
+      pageInfo: { total: 1, sourceTotal: 1, hasMore: false },
+    } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Clientes e propostas' }).click();
+  const grid = page.getByRole('grid', { name: 'Lista de clientes' });
+  await expect(grid).toBeVisible();
+  await expect(grid.getByText('Cliente de homologação')).toBeVisible();
+  await page.getByRole('searchbox', { name: 'Buscar clientes' }).fill('homologação');
+  await expect.poll(() => queries.includes('homologação')).toBeTruthy();
+  await page.getByRole('button', { name: 'Limpar filtros' }).click();
+  await expect(page.getByRole('searchbox', { name: 'Buscar clientes' })).toHaveValue('');
+  await expect.poll(() => queries[queries.length - 1]).toBe('');
+});
