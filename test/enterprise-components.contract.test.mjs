@@ -15,11 +15,13 @@ test('enterprise primitives expose the governance component contracts', () => {
 
 test('data grid contract is accessible and keyboard-operable', () => {
   assert.match(source, /DataGrid as FluentDataGrid/);
-  assert.match(source, /<FluentDataGrid aria-label=\{caption\}/);
+  assert.match(source, /<FluentDataGrid\s+className="enterprise-desktop-grid"\s+aria-label=\{caption\}/);
   assert.match(source, /<DataGridHeader>/);
   assert.match(source, /onSortChange=/);
   assert.match(source, /onRowClick\?\.\(item\)/);
   assert.match(source, /getRowId=\{row=>String\(getRowKey\(row\)\)\}/);
+  assert.match(source, /<ul className="enterprise-mobile-records"/);
+  assert.match(source, /<dt>\{column.headerLabel\?\?column.header\}<\/dt>/);
 });
 
 test('operational feedback and filters use live or alert semantics', () => {
