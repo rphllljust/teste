@@ -17,6 +17,7 @@ import {POST as commandOrder} from '../../app/api/commands/route';
 import {POST as reportExecution} from '../../app/api/orders/[id]/execution/route';
 import {POST as createMeasurement} from '../../app/api/orders/[id]/measurements/route';
 import {POST as commandMeasurement} from '../../app/api/orders/[id]/measurements/[measurementId]/commands/route';
+import {POST as generateBilling} from '../../app/api/finance/billing/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw new Error('NO-GO: enterprise journey requires disposable PostgreSQL and NODE_ENV=test');
@@ -117,6 +118,18 @@ test('one isolated owner-linked client -> proposal -> PO -> contract -> OS -> ex
     await assertStatus(await commandMeasurement(request('POST','/api/orders/'+orderId+'/measurements/'+measurementId+'/commands',owner,{
       key:randomUUID(),version:1,command:'submit',
     }),{params:Promise.resolve({id:orderId,measurementId})}),200,'Submit measurement');
+
+
+    // Submitted measurement is not approved. The product has no verified
+    // approval command in this journey, so billing MUST fail closed.
+    // This is a real negative business assertion, not a mock approval.
+    const forbiddenBilling=await generateBilling(request('POST','/api/finance/billing',owner,{
+      measurementId,dueDate:'2026-12-20',commandKey:randomUUID(),
+    }));
+    assert.equal(forbiddenBilling.status,409,'Unapproved measurement cannot generate an invoice');
+    const forbiddenCount=await pool.query(
+      'SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measurementId]);
+    assert.equal(forbiddenCount.rows[0].n,0,'Rejected billing must not create a financial document');
 
     const relationships=await pool.query(
       'SELECT o.owner_id,o.client_id,o.contract_id,c.proposal_id,c.purchase_order_id FROM service_orders o JOIN contracts c ON c.id=o.contract_id WHERE o.id=$1',[orderId]);
