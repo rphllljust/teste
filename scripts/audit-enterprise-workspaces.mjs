@@ -4,6 +4,38 @@ import { resolve } from 'node:path';
 
 const root = new URL('../', import.meta.url);
 const app = new URL('../app/', import.meta.url);
+// Reconciled against the actual dispatch in app/page.tsx at the evaluated SHA.
+// "contextual-command" and "embedded-workspace" are NOT direct menu destinations.
+const entryPoints = {
+  AccountingWorkspace:['Contabilidade','navigation'],
+  AssetsWorkspace:['Frota e ativos','navigation'],
+  BankReconciliationWorkspace:['Caixa e conciliação','navigation'],
+  BillingPreparation:['Faturamento','contextual-command'],
+  CRMWorkspace:['CRM e Vendas','navigation'],
+  CashFlowWorkspace:['Fluxo de caixa','navigation'],
+  ClientsWorkspace:['Clientes e propostas','navigation'],
+  CloseCenterWorkspace:['Fechamentos','navigation'],
+  ContractsWorkspace:['Contratos','navigation'],
+  ExecutionWorkspace:['Execução','navigation'],
+  FieldServiceCockpit:['Field Service Cockpit','navigation'],
+  FinanceOverviewWorkspace:['Visão financeira','navigation'],
+  FiscalWorkspace:['Fiscal e tributos','navigation'],
+  InventoryWorkspace:['Estoque e compras','navigation-tab'],
+  LedgerWorkspace:['Razão contábil','navigation'],
+  MRPWorkspace:['Estoque e compras','navigation-tab'],
+  MeasurementPreparation:['Medições','contextual-command'],
+  OrderNextcrmDocuments:['Ordens de serviço','object-section'],
+  OrderPreparation:['Ordens de serviço','contextual-command'],
+  PayablesWorkspace:['Contas a pagar','navigation'],
+  ProcurementWorkspace:['Compras','navigation'],
+  ProfessionalsWorkspace:['Profissionais','navigation'],
+  ProposalsWorkspace:['Propostas e PO','navigation'],
+  ResourcePlanningBoard:['Resource Planning Board','navigation'],
+  ServiceOperationsAgenda:['Ordens de serviço','embedded-workspace'],
+  ServiceOperationsWorkspace:['Centro de operações','navigation'],
+  TreasuryWorkspace:['Tesouraria','navigation'],
+};
+
 const workspacePattern = /(?:Workspace|Cockpit|Board|Agenda|Preparation|Documents)\.tsx$/;
 
 export async function auditEnterpriseWorkspaces() {
@@ -29,15 +61,36 @@ export async function auditEnterpriseWorkspaces() {
     const alias = imports.get(file) ?? null;
     const workspace = await readFile(new URL(file, app), 'utf8');
     const usedInRoot = Boolean(alias && new RegExp('<' + alias + '(?:\\s|\\/|>)').test(page));
+    const name=file.slice(0,-4);
+    const entry=entryPoints[name];
+    if(!entry)throw new Error('Unclassified workspace: '+name);
+    const [navigationLabel,accessMode]=entry;
+    if(!navigation.includes(navigationLabel))throw new Error('Unrecognized workspace navigation: '+name);
+    const apiPrefixes=[...new Set([...workspace.matchAll(/['"](\/api\/[a-z][\w/-]*)/gi)].map(m=>m[1]))].sort();
+    const hasGrid=/<EnterpriseDataGrid\b/.test(workspace);
+    const hasObjectPage=/<EnterpriseObjectPage\b/.test(workspace);
     return {
-      file: 'app/' + file,
-      rootImport: alias,
-      mountedInRoot: usedInRoot,
-      fluentRendered: /<Enterprise(?:Button|Input|Textarea|Checkbox|Dropdown|SearchField|SelectField|DataGrid|FilterBar|ObjectPage|PageHeader)\b/.test(workspace),
-      objectPagePattern: /<EnterpriseObjectPage\b/.test(workspace),
-      fluentGridPattern: /<EnterpriseDataGrid\b/.test(workspace),
-      browserHomologated: false,
-      stagingHomologated: false,
+      file:'app/'+file,
+      name,
+      rootImport:alias,
+      mountedInRoot:usedInRoot,
+      entryPoint:{navigationLabel,accessMode,verified:usedInRoot},
+      fluentRendered:/<Enterprise(?:Button|Input|Textarea|Checkbox|Dropdown|SearchField|SelectField|DataGrid|FilterBar|ObjectPage|PageHeader)\b/.test(workspace),
+      objectPagePattern:hasObjectPage,
+      fluentGridPattern:hasGrid,
+      fioriEvidence:hasObjectPage?'ObjectPage source only':hasGrid?'DataGrid source only':'Specialized source only',
+      redwoodEvidence:/onOpen(?:Order)?\b|onNavigate\b|onDrilldown\b/.test(workspace)?'navigation callbacks in source':'not evidenced',
+      formsPresent:/<form\b|<EnterpriseDialog\b/.test(workspace),
+      filtersPresent:/<Enterprise(?:FilterBar|ListReportFilters|SearchField|Dropdown|SelectField)\b/.test(workspace),
+      commandsPresent:/availableCommands|onCreate|onSubmit|onClick/.test(workspace),
+      apiPrefixes,
+      actualPersistence:'UNTESTED',
+      authenticatedAuthorization:'UNTESTED',
+      realBusinessJourney:'UNTESTED',
+      screenshot:{desktop:'UNTESTED',tablet:'UNTESTED',mobile:'UNTESTED'},
+      browserHomologated:false,
+      stagingHomologated:false,
+      acceptance:'NOT_TESTED',
     };
   }));
 
@@ -48,6 +101,8 @@ export async function auditEnterpriseWorkspaces() {
     totalWorkspaceFiles: workspaces.length,
     totalMountedInRoot: workspaces.filter(entry => entry.mountedInRoot).length,
     unmountedFiles: workspaces.filter(entry => !entry.mountedInRoot).map(entry => entry.file),
+    verifiedAuthenticated: 0,
+    fullyHomologated: 0,
     workspaces,
   };
 }
