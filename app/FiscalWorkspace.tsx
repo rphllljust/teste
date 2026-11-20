@@ -24,4 +24,4 @@ function FiscalWorkspace(){
  </section>;
 }
 
-export default function FiscalWorkspaceEnterprise(props: Parameters<typeof FiscalWorkspace>[0]) { return <EnterpriseErrorBoundary><section className="enterprise-module cisne-enterprise-experience"><EnterprisePageHeader eyebrow="CISNE ENTERPRISE EXPERIENCE" title="Documentos fiscais manuais" description="Registro manual, rastreabilidade e auditoria fiscal sem transmissão automática."/><FiscalWorkspace {...props}/></section></EnterpriseErrorBoundary>; }
+export default function FiscalWorkspaceEnterprise() { return <EnterpriseErrorBoundary><section className="enterprise-module cisne-enterprise-experience"><EnterprisePageHeader eyebrow="CISNE ENTERPRISE EXPERIENCE" title="Documentos fiscais manuais" description="Registro manual, rastreabilidade e auditoria fiscal sem transmissão automática."/><FiscalWorkspace/></section></EnterpriseErrorBoundary>; }
