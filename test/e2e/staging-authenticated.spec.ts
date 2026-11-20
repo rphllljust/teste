@@ -43,7 +43,10 @@ test.beforeEach(async ({page})=>{
 async function navigate(page:Page,name:string){
   const nav=page.getByRole('navigation',{name:'Módulos empresariais'});
   if(!(await nav.isVisible()))await page.getByRole('button',{name:'Abrir menu'}).click();
-  const button=nav.getByRole('button',{name,exact:true});
+  // OS nav includes an authorized count badge, so the accessible name includes it.
+  const button=name==='Ordens de serviço'
+    ?nav.getByRole('button',{name:/^Ordens de serviço/})
+    :nav.getByRole('button',{name,exact:true});
   if(!(await button.isVisible()))
     await button.locator('xpath=ancestor::*[contains(@class,"nav-group")]').locator('.nav-group-toggle').click();
   await button.click();
