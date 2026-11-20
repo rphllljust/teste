@@ -29,14 +29,23 @@ function fakeList(page:number){
   views:[],lines:[],metrics:[],alerts:[],balances:[],pending:[],
   pageInfo, total:0,page,hasMore:false,sourceTotal:0,
   summary:{total:0,drafts:0,planned:0,pendingMeasurements:0,amount:0,
-    outstanding:0,received:0,paid:0,balance:0,alerts:0},
+    outstanding:0,received:0,paid:0,balance:0,alerts:0,draft:0,approved:0,
+    projectedIn:0,projectedOut:0,realizedIn:0,realizedOut:0,netProjected:0,netRealized:0},
+  totals:{leads:0,opportunities:0},
+  limits:{leads:0,opportunities:0},
+  measurements:[],relations:[],suppliers:[],inventoryItems:[],
+  warnings:[],emptyState:null,openingBankBalanceScaled:'0',
+  availableCash:{value:null,reason:'Dados reais não disponíveis na fixture sintética'},
+  from:'2026-11-01',to:'2026-11-30',asOf:'2026-11-20',
   aggregates:[],generatedAt:'2026-11-20T12:00:00.000Z',
  };
 }
 async function openDestination(page:Page,name:string){
  const nav=page.getByRole('navigation',{name:'Módulos empresariais'});
  if(!(await nav.isVisible()))await page.getByRole('button',{name:'Abrir menu'}).click();
- const button=nav.getByRole('button',{name,exact:true});
+ const button=name==='Ordens de serviço'
+  ? nav.getByRole('button',{name:/^Ordens de serviço/})
+  : nav.getByRole('button',{name,exact:true});
  if(!(await button.isVisible())){
   await button.locator('xpath=ancestor::*[contains(@class,"nav-group")]')
    .locator('.nav-group-toggle').click();
