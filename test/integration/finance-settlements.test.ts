@@ -5,6 +5,9 @@ import { Pool } from 'pg';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { closeDatabase } from '../../db/raw';
 import { POST as settle } from '../../app/api/finance/receivables/settlements/route';
+import { POST as registerPayable } from '../../app/api/payables/route';
+import { POST as payPayable } from '../../app/api/finance/payables/payments/route';
+import { POST as reversePayable } from '../../app/api/finance/payables/payments/[id]/reverse/route';
 import { POST as reverse } from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
 import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
 import { GET as listClosedPeriods } from '../../app/api/finance/periods/close/route';
@@ -74,4 +77,58 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   assert.equal(((await json(listed)) as { items: Array<{ id: string }> }).items[0].id, periodId);
   const blocked = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '1000', effectiveDate: '2026-11-20', reference: 'CI blocked', commandKey: randomUUID() }));
   assert.equal(blocked.status, 409);
+});
+
+
+test('payable payment and reversal deny cross-owner access without leaking or changing balance', async () => {
+  const payableId = randomUUID();
+  const stranger = randomUUID();
+  const paymentKey = randomUUID();
+  const paymentDate = '2026-11-16';
+  const path = '/api/finance/payables/payments';
+  const amount = '400000';
+  const payment = { payableId, amount, effectiveDate: paymentDate, reference: 'CI payment', commandKey: paymentKey };
+  try {
+    const payable = await registerPayable(req('/api/payables', 'POST', {
+      id: payableId,
+      supplier: 'Fornecedor teste isolado',
+      sourceReference: 'CI-PO-PAYABLE-01',
+      description: 'Obrigação de teste descartável',
+      amount: '100,00',
+      dueDate: '2026-12-01',
+    }));
+    assert.equal(payable.status, 201, JSON.stringify(await json(payable.clone())));
+    const denied = await payPayable(req(path, 'POST', payment, stranger));
+    assert.equal(denied.status, 404, 'A payable UUID must not authorize a foreign owner');
+    const unchanged = await pool.query('SELECT count(*)::int AS n FROM payable_payments WHERE payable_id=$1', [payableId]);
+    assert.equal(unchanged.rows[0].n, 0, 'Denied request cannot create a payment');
+
+    const paid = await payPayable(req(path, 'POST', payment));
+    assert.equal(paid.status, 201, JSON.stringify(await json(paid.clone())));
+    assert.equal((await payPayable(req(path, 'POST', payment))).status, 200, 'Idempotent replay');
+
+    const reversePath = path + '/' + paymentKey + '/reverse';
+    const reverseParams = { params: Promise.resolve({ id: paymentKey }) };
+    const deniedReverse = await reversePayable(req(reversePath, 'POST', {
+      commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'Foreign reversal',
+    }, stranger), reverseParams);
+    assert.equal(deniedReverse.status, 404, 'Foreign owners cannot reverse an existing payment');
+
+    const reversal = await reversePayable(req(reversePath, 'POST', {
+      commandKey: randomUUID(), effectiveDate: '2026-11-17', reference: 'CI reversal',
+    }), reverseParams);
+    assert.equal(reversal.status, 201, JSON.stringify(await json(reversal.clone())));
+    const persisted = await pool.query(
+      'SELECT kind,amount FROM payable_payments WHERE payable_id=$1 ORDER BY kind',
+      [payableId],
+    );
+    assert.deepEqual(persisted.rows, [
+      { kind: 'payment', amount: 400000 },
+      { kind: 'reversal', amount: 400000 },
+    ]);
+  } finally {
+    await pool.query("DELETE FROM finance_audit_events WHERE entity_type='payable' AND entity_id=$1", [payableId]);
+    await pool.query('DELETE FROM payable_payments WHERE payable_id=$1', [payableId]);
+    await pool.query('DELETE FROM payables WHERE id=$1 AND actor_id=$2', [payableId, actor]);
+  }
 });
