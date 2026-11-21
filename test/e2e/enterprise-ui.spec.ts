@@ -670,9 +670,13 @@ test('service order evidence is requested on demand from the owner-scoped detail
   await page.route('**/api/orders?*', route => route.fulfill({ json: {
     orders: [{ id, title: 'OS rastreável', client: 'Cliente autorizado', category: 'Serviços',
       description: 'Atendimento validado', status: 'PREPARED', due_date: null,
-      created_at: '2026-11-20T10:00:00Z', availableCommands: [] }],
-    total: 1, pageInfo: { page: 1, total: 1, hasMore: false },
-    summary: { total: 1, drafts: 0, planned: 1, pendingMeasurements: 0 },
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [] },
+      { id: '33333333-3333-4333-8333-333333333333', title: 'OS alternativa',
+        client: 'Cliente autorizado', category: 'Serviços', description: 'Outra ordem',
+        status: 'DRAFT', due_date: null, created_at: '2026-11-20T10:00:00Z',
+        availableCommands: [] }],
+    total: 2, pageInfo: { page: 1, total: 2, hasMore: false },
+    summary: { total: 2, drafts: 1, planned: 1, pendingMeasurements: 0 },
   } }));
   await page.route('**/api/orders/' + id, route => {
     detailRequests++;
@@ -716,6 +720,14 @@ test('service order evidence is requested on demand from the owner-scoped detail
   const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
   await expect(timeline).toContainText('OS autorizada');
   await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
+  // Switching records must never reuse relations verified for another OS.
+  const queue = page.getByRole('complementary', { name: 'Fila operacional' });
+  await queue.getByRole('button', { name: /OS alternativa/ }).click();
+  await expect(page.getByRole('region', { name: 'Ordem de serviço OS alternativa' })).toBeVisible();
+  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await queue.getByRole('button', { name: /OS rastreável/ }).click();
+  await expect(relatedFact.locator('strong')).toHaveText('—');
+  expect(detailRequests).toBe(1);
   await page.setViewportSize({ width: 390, height: 844 });
   const mobileSections = object.getByRole('button', { name: /Seções do registro/ });
   await expect(mobileSections).toBeVisible();
