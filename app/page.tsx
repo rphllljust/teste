@@ -1502,6 +1502,7 @@ function HomeView() {
           ) : page === "Visão operacional" ? (
             <EnterpriseCommandCenter
               summary={summary}
+              dataState={loading ? "loading" : error ? "unavailable" : "ready"}
               navigate={navigate}
               onCreate={newOrder}
               onPendingMeasurements={() => { navigate("Ordens de serviço"); applyView("Concluídas sem medição"); }}
