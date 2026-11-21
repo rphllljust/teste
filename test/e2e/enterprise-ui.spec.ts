@@ -653,3 +653,14 @@ test('global workflow shortcuts open existing enterprise modules using real navi
   await related.getByRole('button', { name: 'Abrir Medições' }).click();
   await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Medições');
 });
+
+test('unauthorized operational metrics are unavailable rather than fabricated zero', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 401,
+    json: { error: 'Acesse a homologação com credencial autorizada.' },
+  }));
+  await page.goto('/');
+  await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
+  await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
+  await expect(page.getByText('Acesse a homologação com credencial autorizada.').first()).toBeVisible();
+});
