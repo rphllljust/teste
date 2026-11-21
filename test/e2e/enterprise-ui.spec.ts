@@ -646,11 +646,11 @@ test('global workflow shortcuts open existing enterprise modules using real navi
   await page.goto('/');
   const related = page.getByRole('navigation', { name: 'Fluxos empresariais relacionados' });
   await expect(related).toBeVisible();
-  await related.getByRole('button', { name: 'Abrir Centro de operações' }).click();
+  await related.getByRole('link', { name: 'Abrir Centro de operações' }).click();
   await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Centro de operações');
-  await related.getByRole('button', { name: 'Abrir Ordens de serviço' }).click();
+  await related.getByRole('link', { name: 'Abrir Ordens de serviço' }).click();
   await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Ordens de serviço');
-  await related.getByRole('button', { name: 'Abrir Medições' }).click();
+  await related.getByRole('link', { name: 'Abrir Medições' }).click();
   await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Medições');
 });
 
