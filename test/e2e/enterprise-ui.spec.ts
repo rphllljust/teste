@@ -711,6 +711,14 @@ test('service order evidence is requested on demand from the owner-scoped detail
   const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
   await expect(timeline).toContainText('OS autorizada');
   await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileSections = object.getByRole('button', { name: /Seções do registro/ });
+  await expect(mobileSections).toBeVisible();
+  await mobileSections.click();
+  await expect(sections.getByRole('link', { name: 'Etapas' })).toBeVisible();
+  await sections.getByRole('link', { name: 'Etapas' }).click();
+  await expect(object.locator('#service-order-process')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(originalHash);
 });
 
 test('service order evidence denies detail without authorization and never invents counts', async ({ page }) => {
