@@ -1146,3 +1146,6 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
  .service-operations .service-operations-toolbar>.search-input{grid-column:1}
  .service-operations .service-operations-toolbar .toolbar-count{grid-column:1;justify-self:start;text-align:left}
 }
+
+/* Fail-closed metrics: never visually equate unavailable records with confirmed zero. */
+.enterprise-data-availability{margin:12px 0;padding:10px 14px;border:1px solid #e1d2a6;border-left:3px solid #9b7932;border-radius:7px;background:#fffaf0;color:#594b2f;font-size:13px;line-height:1.45}
