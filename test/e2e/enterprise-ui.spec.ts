@@ -774,3 +774,15 @@ test('Fiori client Object Page anchors preserve the selected workspace route and
   await expect(objectPage.locator('#client-history')).toBeFocused();
   expect(await page.evaluate(() => window.location.hash)).toBe(workspaceHash);
 });
+
+test('malformed successful order projection does not crash the main enterprise shell', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 200, json: { items: [], pageInfo: { total: 0 } },
+  }));
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Módulos empresariais' })).toBeVisible();
+  await page.getByRole('button', { name: 'Visão operacional', exact: true }).click();
+  await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
+  await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
+  await expect(page.getByRole('button', { name: 'Clientes e propostas' })).toBeVisible();
+});
