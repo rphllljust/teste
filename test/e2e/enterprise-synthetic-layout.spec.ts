@@ -56,8 +56,7 @@ async function openDestination(page:Page,name:string){
   await button.locator('xpath=ancestor::*[contains(@class,"nav-group")]')
    .locator('.nav-group-toggle').click();
  }
- await button.scrollIntoViewIfNeeded();
- await button.click({force:true});
+ await button.evaluate((element) => (element as HTMLButtonElement).click());
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText(name);
  await expect(page.locator('#cisne-workspace-content')).toBeVisible();
 }
