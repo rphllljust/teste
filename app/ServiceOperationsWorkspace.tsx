@@ -25,10 +25,18 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
      }));
      const data=await response.json() as {orders?:Order[];total?:number;pageInfo?:{total:number};error?:string};
      if(!response.ok)throw new Error(data.error||'Ordens indisponíveis.');
+     // A successful HTTP response without the required worklist projection is
+     // not an empty queue. Require the server's pagination contract.
+     const verifiedTotal=data.pageInfo?.total??data.total;
+     if(!Array.isArray(data.orders)||typeof verifiedTotal!=='number'||
+        !Number.isSafeInteger(verifiedTotal)||verifiedTotal<0||
+        verifiedTotal<data.orders.length){
+       throw new Error('O servidor não confirmou a lista e a paginação de ordens.');
+     }
      if(generation!==requestGeneration.current)return;
-     const currentOrders=data.orders??[];
+     const currentOrders=data.orders;
      setOrders(currentOrders);
-     setTotal(data.pageInfo?.total??data.total??currentOrders.length);
+     setTotal(verifiedTotal);
      setSelectedId(current=>currentOrders.some(order=>order.id===current)?current:(currentOrders[0]?.id??''));
    }catch(cause){
      if(generation!==requestGeneration.current)return;
