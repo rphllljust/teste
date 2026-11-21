@@ -55,7 +55,7 @@ async function openDestination(page:Page,name:string){
   await toggle.evaluate((element) => (element as HTMLButtonElement).click());
   await expect(button).toBeVisible();
  }
- await button.evaluate((element) => (element as HTMLButtonElement).click());
+ await button.click({force:true});
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText(name);
  await expect(page.locator('#cisne-workspace-content')).toBeVisible();
 }
