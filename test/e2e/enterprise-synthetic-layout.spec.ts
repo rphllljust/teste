@@ -51,8 +51,9 @@ async function openDestination(page:Page,name:string){
   ? nav.getByRole('button',{name:/^Ordens de serviço/})
   : nav.getByRole('button',{name,exact:true});
  if(!(await button.isVisible())){
-  await button.locator('xpath=ancestor::*[contains(@class,"nav-group")]')
-   .locator('.nav-group-toggle').click();
+  const toggle=button.locator('xpath=ancestor::*[contains(@class,"nav-group")]').locator('.nav-group-toggle');
+  await toggle.evaluate((element) => (element as HTMLButtonElement).click());
+  await expect(button).toBeVisible();
  }
  await button.evaluate((element) => (element as HTMLButtonElement).click());
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText(name);
