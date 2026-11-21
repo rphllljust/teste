@@ -59,7 +59,8 @@ test('enterprise workflow context links every known workspace without inventing 
   }
   assert.match(page, /<EnterpriseWorkspaceContext activePage=\{page\} onNavigate=\{navigate\}/);
   assert.match(context, /aria-label="Fluxos empresariais relacionados"/);
-  assert.match(context, /onClick=\{\(\) => onNavigate\(name\)\}/);
+  assert.match(context, /href=\{'#' \+ encodeURIComponent\(name\)\}/);
+  assert.match(context, /event.preventDefault\(\); onNavigate\(name\);/);
   assert.match(css, /\.enterprise-workflow-context-actions/);
 });
 
