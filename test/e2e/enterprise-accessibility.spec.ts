@@ -46,9 +46,13 @@ test('client Object Page keeps one main landmark and functional Fiori anchors',a
  await expect(object).toBeVisible();
  await expect(page.getByRole('main')).toHaveCount(1);
  const nav=object.getByRole('navigation',{name:'Seções do objeto'});
+ const workspaceHash=await page.evaluate(()=>window.location.hash);
  await nav.getByRole('link',{name:'Histórico'}).click();
  await expect(nav.getByRole('link',{name:'Histórico'})).toHaveAttribute('aria-current','location');
- await expect(page).toHaveURL(/#client-history$/);
+ // The application owns the hash for workspace routing: Fiori section links
+ // scroll and focus within the Object Page without leaving the client module.
+ expect(await page.evaluate(()=>window.location.hash)).toBe(workspaceHash);
+ await expect(object.locator('#client-history')).toBeFocused();
  await expect(object.getByRole('button',{name:'Ativar cliente'})).toHaveCount(0);
  await expect(object.getByRole('button',{name:'Desativar cliente'})).toHaveCount(0);
  await page.setViewportSize({width:390,height:844});
