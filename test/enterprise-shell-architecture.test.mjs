@@ -107,5 +107,5 @@ test('new enterprise components only use official Microsoft Fluent React primiti
   assert.match(contract, /www\.sap\.com\/design-system\/fiori-design-web/);
   assert.match(contract, /fluent2\.microsoft\.design/);
   assert.match(contract, /docs\.oracle\.com\/en\/middleware\/developer-tools\/jet/);
-  assert.match(contract, /não copiar o CSS Oracle JET/i);
+  assert.match(contract, /sem copiar o CSS Oracle JET/i);
 });
