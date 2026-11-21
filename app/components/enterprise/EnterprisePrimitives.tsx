@@ -2,7 +2,7 @@
 
 import { Children, isValidElement, useEffect, useId, useRef, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
-import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
+import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Link as FluentLink, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
 
 export const EnterpriseInput = FluentInput;
@@ -99,7 +99,7 @@ export function EnterpriseObjectPage({ title, header, sections=[], children, cla
  },[sectionSignature]);
  return <section role="region" className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
   <div className="enterprise-object-identity">{header}</div>
-  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{explicitSectionRef.current=section.id;setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
+  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><FluentLink key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{explicitSectionRef.current=section.id;setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</FluentLink>)}</nav></div>}
   <div className="enterprise-object-page-content">{children}</div>
  </section>;
 }
