@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useId, useState } from 'react';
-import { CalendarClock, ChevronDown, Link2, RefreshCw } from 'lucide-react';
+import { ChevronDownRegular } from '@fluentui/react-icons';
 import { EnterpriseButton } from './EnterprisePrimitives';
 
 type HistoryEvent = {
@@ -91,9 +91,8 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
           aria-controls={contentId}
           onClick={() => setOpen(value => !value)}
         >
-          <CalendarClock size={16} aria-hidden="true" />
           {open ? 'Recolher histórico e vínculos' : 'Consultar histórico e vínculos'}
-          <ChevronDown size={15} aria-hidden="true" />
+          <ChevronDownRegular aria-hidden="true" />
         </EnterpriseButton>
         <span>Dados consultados sob autorização</span>
       </div>
@@ -106,14 +105,14 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
             <div role="alert" className="service-evidence-error">
               <p>{error}</p>
               <EnterpriseButton type="button" appearance="subtle" onClick={() => setRevision(v => v + 1)}>
-                <RefreshCw size={15} aria-hidden="true" /> Tentar novamente
+                Tentar novamente
               </EnterpriseButton>
             </div>
           )}
           {state === 'ready' && detail && (
             <>
               <section aria-label="Vínculos confirmados" className="service-evidence-relations">
-                <h4><Link2 size={16} aria-hidden="true" /> Vínculos confirmados</h4>
+                <h4>Vínculos confirmados</h4>
                 <dl>
                   <div><dt>Medições</dt><dd>{detail.relations.measurements}</dd></div>
                   <div><dt>Faturas</dt><dd>{detail.relations.invoices}</dd></div>
@@ -121,7 +120,7 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
                 </dl>
               </section>
               <section aria-label="Linha do tempo autorizada" className="service-evidence-timeline">
-                <h4><CalendarClock size={16} aria-hidden="true" /> Linha do tempo da OS</h4>
+                <h4>Linha do tempo da OS</h4>
                 {detail.sublists.history.items.length > 0 ? (
                   <ol>
                     {detail.sublists.history.items.map(event => (
