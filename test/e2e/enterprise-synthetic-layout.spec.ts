@@ -43,7 +43,12 @@ function fakeList(page:number){
 }
 async function openDestination(page:Page,name:string){
  const nav=page.getByRole('navigation',{name:'Módulos empresariais'});
- if(!(await nav.isVisible()))await page.getByRole('button',{name:'Abrir menu'}).click();
+ // At tablet/mobile the sidebar keeps the navigation mounted but off-canvas.
+ // Open it explicitly before querying module buttons.
+ if((await page.evaluate(()=>window.innerWidth))<=900){
+  const menu=page.getByRole('button',{name:'Abrir menu'});
+  if(await menu.isVisible()) await menu.click();
+ }
  const button=name==='Ordens de serviço'
   ? nav.getByRole('button',{name:/^Ordens de serviço/})
   : nav.getByRole('button',{name,exact:true});
@@ -51,7 +56,8 @@ async function openDestination(page:Page,name:string){
   await button.locator('xpath=ancestor::*[contains(@class,"nav-group")]')
    .locator('.nav-group-toggle').click();
  }
- await button.click();
+ await button.scrollIntoViewIfNeeded();
+ await button.click({force:true});
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText(name);
  await expect(page.locator('#cisne-workspace-content')).toBeVisible();
 }
