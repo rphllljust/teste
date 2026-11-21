@@ -700,6 +700,9 @@ test('service order evidence is requested on demand from the owner-scoped detail
   await expect(object.locator('#service-order-history')).toBeFocused();
   expect(await page.evaluate(() => window.location.hash)).toBe(originalHash);
   expect(detailRequests).toBe(0);
+  const relatedFact = object.locator('.object-facts div').filter({ hasText: 'Registros vinculados' });
+  await expect(relatedFact.locator('strong')).toHaveText('—');
+  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
   await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
   await expect.poll(() => detailRequests).toBe(1);
   const relations = page.getByRole('region', { name: 'Vínculos confirmados' });
@@ -708,6 +711,8 @@ test('service order evidence is requested on demand from the owner-scoped detail
   await expect(relations).toContainText('Faturas');
   await expect(relations).toContainText('Recebíveis');
   await expect(relations.locator('dd')).toHaveText(['2', '1', '0']);
+  await expect(relatedFact.locator('strong')).toHaveText('3');
+  await expect(page.locator('.service-inspector')).toContainText('2 medições · 1 faturas verificadas.');
   const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
   await expect(timeline).toContainText('OS autorizada');
   await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
@@ -738,6 +743,9 @@ test('service order evidence denies detail without authorization and never inven
   await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
   const evidence = page.getByRole('region', { name: 'Histórico e vínculos da ordem' });
   await expect(evidence.getByRole('alert')).toContainText('Consulta não autorizada.');
+  const record = page.getByRole('region', { name: 'Ordem de serviço OS limitada' });
+  await expect(record.locator('.object-facts div').filter({ hasText: 'Registros vinculados' }).locator('strong')).toHaveText('—');
+  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
   await expect(evidence.getByRole('region', { name: 'Vínculos confirmados' })).toHaveCount(0);
   await expect(evidence.getByRole('region', { name: 'Linha do tempo autorizada' })).toHaveCount(0);
 });
