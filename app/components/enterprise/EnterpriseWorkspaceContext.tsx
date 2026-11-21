@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowUpRight, Network } from 'lucide-react';
+import { ArrowRightRegular } from '@fluentui/react-icons';
 import { EnterpriseButton } from './EnterprisePrimitives';
 
 // Navigation is intentionally cross-module: these destinations are existing
@@ -46,7 +46,6 @@ export function EnterpriseWorkspaceContext({ activePage, onNavigate }: Props) {
   return (
     <nav className="enterprise-workflow-context" aria-label="Fluxos empresariais relacionados">
       <div className="enterprise-workflow-context-heading">
-        <Network size={17} aria-hidden="true" />
         <span>Trabalho relacionado</span>
       </div>
       <div className="enterprise-workflow-context-actions" aria-label="Acessar outros módulos do processo">
@@ -60,7 +59,7 @@ export function EnterpriseWorkspaceContext({ activePage, onNavigate }: Props) {
             aria-label={`Abrir ${name}`}
           >
             <span>{name}</span>
-            <ArrowUpRight size={14} aria-hidden="true" />
+            <ArrowRightRegular aria-hidden="true" />
           </EnterpriseButton>
         ))}
       </div>
