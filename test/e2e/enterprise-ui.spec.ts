@@ -721,3 +721,16 @@ test('service order evidence denies detail without authorization and never inven
   await expect(evidence.getByRole('region', { name: 'Vínculos confirmados' })).toHaveCount(0);
   await expect(evidence.getByRole('region', { name: 'Linha do tempo autorizada' })).toHaveCount(0);
 });
+
+test('Fiori worklist refuses invalid HTTP 200 responses rather than reporting an empty queue', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 200,
+    json: { items: [], pageInfo: { total: 0 } },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  const workbench = page.getByRole('region', { name: 'Centro de operações de serviços' });
+  await expect(workbench.getByRole('alert')).toContainText('O servidor não confirmou a lista e a paginação de ordens.');
+  await expect(workbench.getByRole('status', { name: '' }).filter({ hasText: 'Dados indisponíveis' })).toBeVisible();
+  await expect(workbench.getByText('Nenhuma ordem em execução.')).toHaveCount(0);
+});
