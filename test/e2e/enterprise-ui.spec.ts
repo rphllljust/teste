@@ -687,6 +687,18 @@ test('service order evidence is requested on demand from the owner-scoped detail
   await page.goto('/');
   await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
   await expect(page.getByText('OS rastreável').first()).toBeVisible();
+  // SAP Fiori Object Page floorplan: accessible sections and anchored navigation
+  // must not hijack the app's existing hash-based workspace routing.
+  const object = page.getByRole('region', { name: 'Ordem de serviço OS rastreável' });
+  await expect(object).toBeVisible();
+  const sections = object.getByRole('navigation', { name: 'Seções do objeto' });
+  await expect(sections.getByRole('link')).toHaveCount(3);
+  const originalHash = await page.evaluate(() => window.location.hash);
+  const history = sections.getByRole('link', { name: 'Histórico' });
+  await history.click();
+  await expect(history).toHaveAttribute('aria-current', 'location');
+  await expect(object.locator('#service-order-history')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(originalHash);
   expect(detailRequests).toBe(0);
   await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
   await expect.poll(() => detailRequests).toBe(1);
