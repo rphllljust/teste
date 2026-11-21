@@ -663,3 +663,61 @@ test('unauthorized operational metrics are unavailable rather than fabricated ze
   await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
   await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
 });
+
+test('service order evidence is requested on demand from the owner-scoped detail endpoint', async ({ page }) => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  let detailRequests = 0;
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: [{ id, title: 'OS rastreável', client: 'Cliente autorizado', category: 'Serviços',
+      description: 'Atendimento validado', status: 'PREPARED', due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [] }],
+    total: 1, pageInfo: { page: 1, total: 1, hasMore: false },
+    summary: { total: 1, drafts: 0, planned: 1, pendingMeasurements: 0 },
+  } }));
+  await page.route('**/api/orders/' + id, route => {
+    detailRequests++;
+    return route.fulfill({ json: { order: {
+      relations: { measurements: 2, invoices: 1, receivables: 0 },
+      sublists: { history: { items: [
+        { id: 'event-1', command: 'authorize', label: 'OS autorizada',
+          created_at: '2026-11-20T12:00:00Z' },
+      ], pageInfo: { total: 1, hasMore: false } } },
+    } } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  await expect(page.getByText('OS rastreável').first()).toBeVisible();
+  expect(detailRequests).toBe(0);
+  await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
+  await expect.poll(() => detailRequests).toBe(1);
+  const relations = page.getByRole('region', { name: 'Vínculos confirmados' });
+  await expect(relations).toBeVisible();
+  await expect(relations).toContainText('Medições');
+  await expect(relations).toContainText('Faturas');
+  await expect(relations).toContainText('Recebíveis');
+  await expect(relations.locator('dd')).toHaveText(['2', '1', '0']);
+  const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
+  await expect(timeline).toContainText('OS autorizada');
+  await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
+});
+
+test('service order evidence denies detail without authorization and never invents counts', async ({ page }) => {
+  const id = '22222222-2222-4222-8222-222222222222';
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: [{ id, title: 'OS limitada', client: 'Cliente com escopo', category: 'Serviços',
+      description: 'Sem permissão para histórico', status: 'DRAFT', due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [] }],
+    total: 1, pageInfo: { page: 1, total: 1, hasMore: false },
+    summary: { total: 1, drafts: 1, planned: 0, pendingMeasurements: 0 },
+  } }));
+  await page.route('**/api/orders/' + id, route => route.fulfill({
+    status: 403, json: { error: 'Consulta não autorizada.' },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
+  const evidence = page.getByRole('region', { name: 'Histórico e vínculos da ordem' });
+  await expect(evidence.getByRole('alert')).toContainText('Consulta não autorizada.');
+  await expect(evidence.getByRole('region', { name: 'Vínculos confirmados' })).toHaveCount(0);
+  await expect(evidence.getByRole('region', { name: 'Linha do tempo autorizada' })).toHaveCount(0);
+});
