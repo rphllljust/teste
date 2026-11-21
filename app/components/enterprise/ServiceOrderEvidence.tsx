@@ -10,6 +10,11 @@ type HistoryEvent = {
   label: string;
   created_at: string;
 };
+export type ServiceOrderVerifiedRelations = {
+  measurements: number;
+  invoices: number;
+  receivables: number;
+};
 type VerifiedDetail = {
   relations: {
     measurements: number;
@@ -39,7 +44,12 @@ function formatEventDate(value: string) {
  * is a list projection; it must not be treated as authoritative history.
  * This API checks owner_id server-side. Never derive a zero from HTTP failure.
  */
-export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
+export function ServiceOrderEvidence({
+  orderId, onVerified,
+}: {
+  orderId: string;
+  onVerified?: (orderId: string, relations: ServiceOrderVerifiedRelations | null) => void;
+}) {
   const contentId = useId();
   const [open, setOpen] = useState(false);
   const [revision, setRevision] = useState(0);
@@ -53,6 +63,7 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
     async function load() {
       setState('loading');
       setDetail(null);
+      onVerified?.(orderId, null);
       setError('');
       try {
         const response = await fetch('/api/orders/' + encodeURIComponent(orderId), {
@@ -66,8 +77,17 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
             !order.sublists?.history || !Array.isArray(order.sublists.history.items)) {
           throw new Error('O servidor não retornou uma projeção de histórico verificável.');
         }
+        if (![order.relations.measurements, order.relations.invoices, order.relations.receivables]
+          .every(value => Number.isSafeInteger(value) && value >= 0)) {
+          throw new Error('O servidor não confirmou os totais de documentos vinculados.');
+        }
         if (!controller.signal.aborted) {
           setDetail(order);
+          onVerified?.(orderId, {
+            measurements: order.relations.measurements,
+            invoices: order.relations.invoices,
+            receivables: order.relations.receivables,
+          });
           setState('ready');
         }
       } catch (cause) {
@@ -79,7 +99,7 @@ export function ServiceOrderEvidence({ orderId }: { orderId: string }) {
     }
     void load();
     return () => controller.abort();
-  }, [open, orderId, revision]);
+  }, [open, orderId, revision, onVerified]);
 
   return (
     <section className="service-evidence" aria-label="Histórico e vínculos da ordem">
