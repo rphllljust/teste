@@ -731,6 +731,6 @@ test('Fiori worklist refuses invalid HTTP 200 responses rather than reporting an
   await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
   const workbench = page.getByRole('region', { name: 'Centro de operações de serviços' });
   await expect(workbench.getByRole('alert')).toContainText('O servidor não confirmou a lista e a paginação de ordens.');
-  await expect(workbench.getByRole('status', { name: '' }).filter({ hasText: 'Dados indisponíveis' })).toBeVisible();
+  await expect(workbench.locator('.toolbar-count')).toContainText('Dados indisponíveis');
   await expect(workbench.getByText('Nenhuma ordem em execução.')).toHaveCount(0);
 });
