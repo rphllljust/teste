@@ -1077,3 +1077,5 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
 /* The full desktop grid is hidden at this breakpoint; compact records retain natural width. */
 @media (max-width:640px){
   .enterprise-data-grid{overflow:visible}
+
+}
