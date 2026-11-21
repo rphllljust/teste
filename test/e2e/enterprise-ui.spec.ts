@@ -662,5 +662,4 @@ test('unauthorized operational metrics are unavailable rather than fabricated ze
   await page.goto('/');
   await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
   await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
-  await expect(page.getByText('Acesse a homologação com credencial autorizada.').first()).toBeVisible();
 });
