@@ -76,7 +76,11 @@ test('service order object evidence is fetched only on demand and remains owner-
   const workbench = await readFile(new URL('../app/ServiceOperationsWorkspace.tsx', import.meta.url), 'utf8');
   const evidence = await readFile(new URL('../app/components/enterprise/ServiceOrderEvidence.tsx', import.meta.url), 'utf8');
   const detailRoute = await readFile(new URL('../app/api/orders/[id]/route.ts', import.meta.url), 'utf8');
-  assert.match(workbench, /<ServiceOrderEvidence key=\{selected.id\} orderId=\{selected.id\}/);
+  assert.match(workbench, /<EnterpriseObjectPage key=\{selected.id\} title=/);
+  assert.match(workbench, /id:'service-order-process',label:'Etapas'/);
+  assert.match(workbench, /id:'service-order-context',label:'Contexto'/);
+  assert.match(workbench, /id:'service-order-history',label:'Histórico'/);
+  assert.match(workbench, /<ServiceOrderEvidence orderId=\{selected.id\}/);
   assert.match(evidence, /if \(!open\) return;/);
   assert.match(evidence, /fetch\('\/api\/orders\/' \+ encodeURIComponent\(orderId\)/);
   assert.match(evidence, /if \(!response.ok\) throw new Error/);
