@@ -767,6 +767,20 @@ function HomeView() {
         );
       }
       if (!r.ok) throw new Error(d.error || "Falha ao carregar ordens.");
+      // The shell and its overview depend on a verified list projection.
+      // HTTP 200 with missing orders or summary must never crash the app
+      // or silently become a confirmed empty worklist.
+      if (
+        !Array.isArray(d.orders) ||
+        !Number.isSafeInteger(d.total) ||
+        d.total < 0 ||
+        d.total < d.orders.length ||
+        !d.summary ||
+        !Number.isSafeInteger(d.summary.total) ||
+        d.summary.total < 0
+      ) {
+        throw new Error("O servidor não confirmou os dados operacionais.");
+      }
       if (generation !== requestGeneration.current) return;
       setOrders(d.orders);
       setTotal(d.total);
