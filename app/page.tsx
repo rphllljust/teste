@@ -817,7 +817,10 @@ function HomeView() {
     setBusinessOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
-    window.history.pushState(null, "", "#" + encodeURIComponent(name));
+    // Use the native hash transition so the route listener and browser history
+    // observe the same workspace change as the local React state.
+    const nextHash = "#" + encodeURIComponent(name);
+    if (window.location.hash !== nextHash) window.location.hash = encodeURIComponent(name);
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
