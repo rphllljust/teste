@@ -64,6 +64,8 @@ test('Object Page is one accessible region with linked sections and no nested ma
  assert.doesNotMatch(source,/return <main className=/);
  assert.match(source,/const sectionNavigationId=useId\(\)/);
  assert.match(source,/aria-controls=\{sectionNavigationId\}/);
+ assert.match(source,/Link as FluentLink/);
+ assert.match(source,/<FluentLink key=\{section.id\}/);
  assert.match(source,/href=\{'#'\+section.id\}/);
  assert.match(source,/aria-current=\{section.id===activeSectionId\?'location':undefined\}/);
 });
