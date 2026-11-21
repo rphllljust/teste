@@ -1,7 +1,7 @@
 'use client';
 
 import { ArrowRightRegular } from '@fluentui/react-icons';
-import { EnterpriseButton } from './EnterprisePrimitives';
+import { Link as FluentLink } from '@fluentui/react-components';
 
 // Navigation is intentionally cross-module: these destinations are existing
 // workspaces, not mocked tasks or invented financial commands.
@@ -50,17 +50,16 @@ export function EnterpriseWorkspaceContext({ activePage, onNavigate }: Props) {
       </div>
       <div className="enterprise-workflow-context-actions" aria-label="Acessar outros módulos do processo">
         {related.map(name => (
-          <EnterpriseButton
-            type="button"
-            appearance="subtle"
+          <FluentLink
+            href={'#' + encodeURIComponent(name)}
             className="enterprise-workflow-link"
             key={name}
-            onClick={() => onNavigate(name)}
+            onClick={(event) => { event.preventDefault(); onNavigate(name); }}
             aria-label={`Abrir ${name}`}
           >
             <span>{name}</span>
             <ArrowRightRegular aria-hidden="true" />
-          </EnterpriseButton>
+          </FluentLink>
         ))}
       </div>
     </nav>
