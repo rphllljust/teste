@@ -80,7 +80,7 @@ test('service order object evidence is fetched only on demand and remains owner-
   assert.match(workbench, /id:'service-order-process',label:'Etapas'/);
   assert.match(workbench, /id:'service-order-context',label:'Contexto'/);
   assert.match(workbench, /id:'service-order-history',label:'Histórico'/);
-  assert.match(workbench, /<ServiceOrderEvidence orderId=\{selected.id\}/);
+  assert.match(workbench, /<ServiceOrderEvidence orderId=\{selected.id\} onVerified=\{onVerified\}/);
   assert.match(evidence, /if \(!open\) return;/);
   assert.match(evidence, /fetch\('\/api\/orders\/' \+ encodeURIComponent\(orderId\)/);
   assert.match(evidence, /if \(!response.ok\) throw new Error/);
@@ -121,4 +121,16 @@ test('application shell validates order and summary projections before storing d
   assert.match(page.slice(guard, commit), /Number\.isSafeInteger\(d.total\)/);
   assert.match(page.slice(guard, commit), /Number\.isSafeInteger\(d.summary.total\)/);
   assert.match(page.slice(guard, commit), /O servidor não confirmou os dados operacionais/);
+});
+
+test('unknown service-order relations are not represented as zero before authorized lookup', async () => {
+  const workbench = await readFile(new URL('../app/ServiceOperationsWorkspace.tsx', import.meta.url), 'utf8');
+  const evidence = await readFile(new URL('../app/components/enterprise/ServiceOrderEvidence.tsx', import.meta.url), 'utf8');
+  assert.match(workbench, /const confirmedRelations=selected&&verifiedRelation\?\.id===selected.id/);
+  assert.match(workbench, /confirmedRelations \? confirmedRelations.measurements\+confirmedRelations.invoices\+confirmedRelations.receivables : '—'/);
+  assert.match(workbench, /Vínculos não consultados/);
+  assert.doesNotMatch(workbench, /selected\?\.relations\?\.measurements\?\?0/);
+  assert.match(evidence, /Number.isSafeInteger\(value\) && value >= 0/);
+  assert.match(evidence, /onVerified\?\.\(orderId, null\)/);
+  assert.match(evidence, /onVerified\?\.\(orderId, \{/);
 });
