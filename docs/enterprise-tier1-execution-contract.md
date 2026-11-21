@@ -48,6 +48,7 @@ Capturas de Ordens de serviço, Centro de operações e Visão operacional mostr
 - Barra compartilhada de navegação contextual, com três destinos operacionais reais por workspace.
 - Centro de operações com filtro de busca + visão + categoria + ordenação em um painel coeso com labels visíveis.
 - CSS responsivo para a barra de contexto e filtros; preservação das ações e consultas originais.
+- Indicadores da visão operacional mostram `—` durante carregamento ou indisponibilidade, não `0` falso; zeragem somente após resposta de dados autorizados.
 - Testes de contrato de integridade dos 26 destinos e de navegação no Playwright.
 
 **Ainda não implementado integralmente:** floorplan List Report + Object Page e fluxos autenticados/aceitos em todos os módulos. Este arquivo é uma diretriz de continuidade, não um certificado Tier 1.
