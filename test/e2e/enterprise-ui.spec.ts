@@ -814,3 +814,34 @@ test('malformed successful order projection does not crash the main enterprise s
   await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
   await expect(page.getByRole('button', { name: 'Clientes e propostas' })).toBeVisible();
 });
+
+test('canonical order states are grouped correctly in the Fiori operational worklist', async ({ page }) => {
+  const states = [
+    ['draft', 'OS em rascunho'],
+    ['authorized', 'OS autorizada'],
+    ['executing', 'OS em execução'],
+    ['completed', 'OS concluída'],
+    ['cancelled', 'OS cancelada'],
+  ];
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: states.map(([status, title], index) => ({
+      id: '11111111-1111-4111-8111-' + String(index + 1).padStart(12, '0'),
+      title, client: 'Cliente com autorização', category: 'Serviços',
+      description: 'Projeção do domínio', status, due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [],
+    })),
+    total: states.length,
+    pageInfo: { page: 1, total: states.length, hasMore: false },
+    summary: { total: states.length, drafts: 1, planned: 0, pendingMeasurements: 1 },
+  } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  const queue = page.getByRole('complementary', { name: 'Fila operacional' });
+  const sections = queue.locator('section');
+  await expect(sections.nth(0)).toContainText('OS autorizada');
+  await expect(sections.nth(0)).toContainText('OS em execução');
+  await expect(sections.nth(1)).toContainText('OS em rascunho');
+  await expect(sections.nth(2)).toContainText('2 ordens concluídas ou encerradas');
+  await expect(page.getByRole('region', { name: 'Ordem de serviço OS em rascunho' })).toHaveCount(1);
+  await expect(page.getByText('Autorizada', { exact: true }).first()).toBeVisible();
+});
