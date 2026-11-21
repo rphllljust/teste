@@ -15,6 +15,29 @@
 
 Não copiar código, ícones sujeitos a licença própria, imagens, CSS proprietário, marcas ou ativos de produtos fechados (SAP S/4HANA, Oracle Fusion Cloud, Microsoft Dynamics 365). Documentação de design inspira composição; dependências abertas exigem licença e notices. Não instalar frameworks duplicados sem matriz de compatibilidade, performance, bundle e SSR React 19 / Vinext.
 
+
+## Regra verificável: somente SAP, Microsoft e Oracle
+
+**Todo floorplan, componente novo e mudança visual deve ser justificado por documentação oficial publicada por um destes três fornecedores.** Nenhuma inspiração de shadcn/ui, Material UI, Ant, Bootstrap, AdminLTE, tema de dashboard de terceiros ou mockup genérico é fonte autorizada para esta evolução. Não remover indiscriminadamente dependências antigas sem auditoria de compatibilidade; não introduzi-las nas novas implementações.
+
+| Fornecedor | Documentação oficial verificável | Regra aplicada |
+|---|---|---|
+| SAP Fiori | https://www.sap.com/design-system/fiori-design-web/v1-120/page-types/floorplans/when-to-use-which-floorplan | Overview Page para visão de tarefas; List Report para consultar e filtrar muitos registros; Worklist para tarefas selecionadas; Object Page com cabeçalho flexível, âncoras e seções |
+| SAP Fiori | https://www.sap.com/design-system/fiori-design-web/v1-120/page-types/floorplan-overview | Dynamic Page: cabeçalho + conteúdo + comandos de rodapé conforme o contexto |
+| Microsoft Fluent 2 | https://fluent2.microsoft.design/components/web/react | Componentes React reais: Button, Nav, Field, Dropdown, DataGrid, Dialog, Tooltip, MessageBar; não fabricar controles paralelos |
+| Microsoft Fluent 2 | https://fluent2.microsoft.design/components/web/react/core/nav/usage | Navegação clara, resumida, contextual, com item ativo e agrupamento coerente; não usar ícones sem nomes visíveis |
+| Microsoft Fluent 2 | https://fluent2.microsoft.design/components/web/react/core/toolbar/usage | Comandos por tarefa e priorização; controles responsivos sem interações forçadas ou inacessíveis |
+| Microsoft Fluent 2 | https://fluent2.microsoft.design/components/web/react/core/dropdown/usage | Filtros ordenáveis com rótulos visíveis; opção padrão selecionada coerentemente |
+| Microsoft Fluent 2 | https://fluent2.microsoft.design/layout | Grade, agrupamento por proximidade, densidade e reflow responsivo documentados |
+| Oracle Redwood | https://docs.oracle.com/en/middleware/developer-tools/jet/19/develop/use-css-themes-oracle-jet-apps.html | Redwood define escalas grandes, médias e pequenas; escala média como referência de maior eficiência e densidade, sem copiar o CSS Oracle JET para uma aplicação Fluent |
+| Oracle Visual Builder | https://docs.oracle.com/en/cloud/paas/visual-builder/visualbuilder-building-appui/add-components-page.html | Conceitos de páginas baseadas em padrões e componentes dinâmicos, sem pressupor o uso do runtime Visual Builder |
+
+**Fonte executável prioritária:** `@fluentui/react-components` e `@fluentui/react-icons`, que já são dependências da aplicação. **Fontes referenciais não executáveis no projeto atual:** guias de floorplans SAP Fiori e padrões/escala Oracle Redwood. Não afirmar que componentes próprios são componentes SAP ou Oracle nem que a aplicação implementa SAPUI5/Oracle JET. Adicionar UI5 ou Oracle JET somente se um caso concreto justificar, sem incompatibilidade de eventos, CSS, acessibilidade, SSR e bundle.
+
+Para cada módulo revisado, incluir na PR uma matriz com: **comportamento atual**, **página oficial (URL)**, **componente ou floorplan específico**, **alteração de código efetiva**, **teste funcional**, **screenshot anterior e posterior** e **evidência de autenticação e integridade empresarial**. Sem fonte oficial explícita, a mudança visual não deve ser aprovada.
+
+**Licenciamento e propriedade intelectual:** usar somente código e ativos que a licença permita distribuir; conservar avisos de licença e respeitar marcas. Não copiar componentes de implementação fechada de SAP S/4HANA, Oracle Fusion Cloud ou Microsoft Dynamics 365.
+
 ## Diagnóstico observado na homologação 21/11/2026
 
 Capturas de Ordens de serviço, Centro de operações e Visão operacional mostram headers e controles corporativos parcialmente adotados, mas falta uma experiência integrada de processo. A fila retorna mensagem de credencial autorizada e o dashboard pode ficar sem dados. **401/403 não são prova de fila vazia ou módulo aprovado.** Nunca contornar login, falsificar dados ou divulgar segredos.
