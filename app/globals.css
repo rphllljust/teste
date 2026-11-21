@@ -1072,3 +1072,9 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
 :where(button,input,select,textarea,a):focus-visible{outline:3px solid color-mix(in srgb,var(--cisne-focus,#0f8f91) 70%,white);outline-offset:2px}
 @media (max-width:900px){.enterprise-page-header,.business-object-header{flex-direction:column}.enterprise-page-actions,.object-page-actions{width:100%;justify-content:flex-start}.enterprise-page-actions>*:first-child,.object-page-actions>*:first-child{margin-left:0}.enterprise-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.enterprise-section-header,.object-section-header{padding:16px}.enterprise-section-body,.object-section-body{padding:16px}.command-bar{overflow-x:auto;flex-wrap:nowrap;padding-inline:4px}.command-bar>*{white-space:nowrap;flex:0 0 auto}}
 @media (max-width:560px){.enterprise-page-header,.business-object-header{padding:14px 0}.enterprise-page-header h1,.business-object-header h1{font-size:24px}.enterprise-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.enterprise-kpi{padding:13px}.enterprise-kpi strong{font-size:21px}.enterprise-filter-bar{padding:12px;gap:7px}.enterprise-filter-bar .search-input{min-width:100%;flex-basis:100%}.enterprise-section,.object-section,.enterprise-card{border-radius:8px}.enterprise-data-grid table{min-width:680px}}
+
+/* Mobile List Reports must not inherit the desktop DataGrid scroll container. */
+/* The full desktop grid is hidden at this breakpoint; compact records retain natural width. */
+@media (max-width:640px){
+  .enterprise-data-grid{overflow:visible}
+}
