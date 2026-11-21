@@ -712,7 +712,7 @@ test('service order evidence is requested on demand from the owner-scoped detail
   await expect(relations).toContainText('Recebíveis');
   await expect(relations.locator('dd')).toHaveText(['2', '1', '0']);
   await expect(relatedFact.locator('strong')).toHaveText('3');
-  await expect(page.locator('.service-inspector')).toContainText('2 medições · 1 faturas verificadas.');
+  await expect(page.locator('.service-inspector')).toContainText('2 medições · 1 fatura verificada.');
   const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
   await expect(timeline).toContainText('OS autorizada');
   await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
