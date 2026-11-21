@@ -37,3 +37,28 @@ test('legacy service operations cockpit is mounted as an actionable workspace', 
   assert.match(page, /page === "Centro de operações" \? \(/);
   assert.match(page, /onOpen=\{\(id\) =>/);
 });
+
+test('enterprise workflow context links every known workspace without inventing destinations', async () => {
+  const context = await readFile(new URL('../app/components/enterprise/EnterpriseWorkspaceContext.tsx', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../app/globals.css', import.meta.url), 'utf8');
+  const modulesBlock = page.slice(page.indexOf('const modules:'), page.indexOf('const chain ='));
+  const names = [...modulesBlock.matchAll(/^\s*\["([^"]+)",\s*[A-Za-z]+\],?\s*$/gm)].map(match => match[1]);
+  const mappings = [...context.matchAll(/^\s*'([^']+)':\s*\[([^\]]+)\],?\s*$/gm)]
+    .map(match => ({ name: match[1], targets: [...match[2].matchAll(/'([^']+)'/g)].map(value => value[1]) }));
+
+  assert.equal(names.length, 26, 'the enterprise shell must preserve all 26 known navigation destinations');
+  assert.equal(new Set(names).size, 26, 'no duplicate navigation destinations');
+  assert.equal(mappings.length, 26, 'every workspace must have real cross-module actions');
+  assert.deepEqual(new Set(mappings.map(link => link.name)), new Set(names));
+  for (const { name, targets } of mappings) {
+    assert.equal(targets.length, 3, name + ' must have three relevant destinations');
+    for (const target of targets) {
+      assert.ok(names.includes(target), name + ' points to missing workspace ' + target);
+      assert.notEqual(target, name, 'self navigation adds no operational value');
+    }
+  }
+  assert.match(page, /<EnterpriseWorkspaceContext activePage=\{page\} onNavigate=\{navigate\}/);
+  assert.match(context, /aria-label="Fluxos empresariais relacionados"/);
+  assert.match(context, /onClick=\{\(\) => onNavigate\(name\)\}/);
+  assert.match(css, /\.enterprise-workflow-context-actions/);
+});
