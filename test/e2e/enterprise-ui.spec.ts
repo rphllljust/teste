@@ -734,3 +734,43 @@ test('Fiori worklist refuses invalid HTTP 200 responses rather than reporting an
   await expect(workbench.locator('.toolbar-count')).toContainText('Dados indisponíveis');
   await expect(workbench.getByText('Nenhuma ordem em execução.')).toHaveCount(0);
 });
+
+test('Fiori client Object Page anchors preserve the selected workspace route and focus', async ({ page }) => {
+  const client = {
+    id: 'fiori-client-1',
+    legalName: 'Cliente de verificação',
+    tradeName: 'Unidade Fiori',
+    document: '11.111.111/0001-11',
+    email: null,
+    phone: null,
+    state: { code: 'active', label: 'Ativo', rowVersion: 1 },
+    availableCommands: [],
+  };
+  await page.route('**/api/clients?*', route => route.fulfill({
+    json: { items: [client], pageInfo: { total: 1, sourceTotal: 1, hasMore: false } },
+  }));
+  await page.route('**/api/clients/fiori-client-1', route => route.fulfill({
+    json: { projection: {
+      ...client,
+      related: { orders: { total: 0 }, proposals: [], contracts: [] },
+      history: [],
+      warnings: [],
+    } },
+  }));
+  await page.route('**/api/clients/fiori-client-1/nextcrm', route => route.fulfill({
+    json: { mapped: false, state: 'not_linked' },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Clientes e propostas' }).click();
+  const workspaceHash = await page.evaluate(() => window.location.hash);
+  const grid = page.getByRole('grid', { name: 'Lista de clientes' });
+  await expect(grid.getByRole('button', { name: 'Cliente de verificação' })).toBeVisible();
+  await grid.getByRole('button', { name: 'Cliente de verificação' }).click();
+  const objectPage = page.getByRole('region', { name: 'Cliente Cliente de verificação' });
+  await expect(objectPage).toBeVisible();
+  const history = objectPage.getByRole('navigation', { name: 'Seções do objeto' }).getByRole('link', { name: 'Histórico' });
+  await history.click();
+  await expect(history).toHaveAttribute('aria-current', 'location');
+  await expect(objectPage.locator('#client-history')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(workspaceHash);
+});
