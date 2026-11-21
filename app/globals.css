@@ -1043,6 +1043,8 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
  .process-strip{overflow-x:auto}.process-stages{justify-content:flex-start;min-width:max-content}.filters{flex-wrap:wrap;padding:12px 14px}.filters .search-input{max-width:none;flex-basis:100%}.table-wrap{margin-inline:-1px}.list-title{padding:16px 14px 12px}.tabs{padding-inline:14px;overflow-x:auto}.page-footer{flex-direction:column;gap:8px}
 }
 @media (max-width:560px){
+ .enterprise-data-grid{overflow:visible}
+
  .sidebar{width:0;overflow:visible;background:transparent}.sidebar>*{display:none}.main{margin-left:0}.topbar{height:58px}.crumb{font-size:11px;max-width:48vw;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}.global-search{font-size:0}.global-search kbd{display:none}.avatar{margin-left:0}.main main{padding:14px 12px 18px}h1{font-size:26px}.heading p{font-size:13px}.metrics{grid-template-columns:repeat(2,minmax(0,1fr));border-radius:9px}.metrics>button{padding:14px 13px}.metrics strong{font-size:25px}.crm-workspace .cisne-crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}.crm-workspace .cisne-crm-metrics>*{padding:14px 12px}.crm-workspace .cisne-crm-metrics strong{font-size:25px}.worklist,.work-context{border-radius:9px}.table-wrap{overflow-x:auto}.table-wrap table{min-width:640px}.primary,.secondary{min-height:42px}.process-label{display:none}.process-strip{padding:6px 8px}.page-footer{padding-top:18px}
 }
 
