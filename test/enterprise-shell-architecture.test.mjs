@@ -92,3 +92,20 @@ test('business-domain breadcrumbs preserve navigation semantics', async () => {
   }
   assert.match(navigation, /const groupLabel = groupLabels\[group\] \?\? group/);
 });
+
+test('new enterprise components only use official Microsoft Fluent React primitives', async () => {
+  const sources = await Promise.all([
+    readFile(new URL('../app/components/enterprise/EnterpriseWorkspaceContext.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../app/components/enterprise/ServiceOrderEvidence.tsx', import.meta.url), 'utf8'),
+  ]);
+  for (const source of sources) {
+    assert.match(source, /from '@fluentui\/react-icons'/);
+    assert.doesNotMatch(source, /from ['"](?:lucide-react|@shadcn|@mui|@radix-ui|antd)['"]/);
+  }
+  assert.match(sources[0], /from '@fluentui\/react-components'/);
+  const contract = await readFile(new URL('../docs/enterprise-tier1-execution-contract.md', import.meta.url), 'utf8');
+  assert.match(contract, /www\.sap\.com\/design-system\/fiori-design-web/);
+  assert.match(contract, /fluent2\.microsoft\.design/);
+  assert.match(contract, /docs\.oracle\.com\/en\/middleware\/developer-tools\/jet/);
+  assert.match(contract, /não copiar o CSS Oracle JET/i);
+});
