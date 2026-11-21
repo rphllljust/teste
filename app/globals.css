@@ -1079,3 +1079,70 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
   .enterprise-data-grid{overflow:visible}
 
 }
+
+
+/* CISNE GLOBAL ENTERPRISE WORKBENCH — Fiori workflow relationships and Fluent worklists */
+.enterprise-workflow-context{
+  display:flex;align-items:center;gap:20px;min-height:58px;padding:10px clamp(16px,2.5vw,36px);
+  background:var(--cisne-neutral-0,#fff);border-bottom:1px solid var(--cisne-neutral-100,#e5ece8);
+  box-shadow:0 1px 2px rgba(20,55,64,.025);min-width:0
+}
+.enterprise-workflow-context-heading{
+  display:flex;flex:0 0 auto;align-items:center;gap:8px;color:var(--cisne-neutral-600,#63756d);
+  font-size:11px;font-weight:750;letter-spacing:.065em;text-transform:uppercase;white-space:nowrap
+}
+.enterprise-workflow-context-heading svg{color:var(--cisne-brand-600,#087e81)}
+.enterprise-workflow-context-actions{
+  display:flex;align-items:center;min-width:0;gap:8px;overflow-x:auto;scrollbar-width:thin;
+  overscroll-behavior-inline:contain;padding:2px 0
+}
+.enterprise-workflow-context .enterprise-workflow-link{
+  display:inline-flex;gap:6px;align-items:center;min-height:34px;max-width:240px;
+  flex:0 0 auto;white-space:nowrap;padding:6px 11px;
+  border:1px solid var(--cisne-neutral-100,#e5ece8);background:var(--cisne-neutral-25,#f8faf9);
+  border-radius:7px;color:var(--cisne-neutral-800,#30463b);
+  font-size:12px;font-weight:600
+}
+.enterprise-workflow-link svg{color:var(--cisne-brand-600,#087e81);flex:none}
+.enterprise-workflow-context .enterprise-workflow-link:hover{background:#e9f5f3;border-color:#9bcac4}
+.enterprise-workflow-context .enterprise-workflow-link:focus-visible{outline:2px solid var(--cisne-brand-focus,#149b9e);outline-offset:1px}
+/* The service-order filter bar is one query surface, not four disconnected form cards. */
+.service-operations .service-operations-toolbar{
+  display:grid;grid-template-columns:minmax(240px,2fr) repeat(3,minmax(145px,1fr));
+  align-items:end;column-gap:12px;row-gap:10px;margin:14px 0 18px;padding:16px;
+  border:1px solid var(--cisne-neutral-100,#e5ece8);border-radius:10px;
+  background:#fff;box-shadow:0 3px 12px rgba(16,45,52,.035);min-width:0
+}
+.service-operations .service-operations-toolbar .search-input{
+  width:100%;max-width:none;min-width:0;flex:auto;padding:0;margin:0;
+  background:transparent;border:0;border-radius:0;box-shadow:none
+}
+.service-operations .service-operations-toolbar .search-input :is(.fui-Input,input){width:100%;min-width:0}
+.service-operations-filter{display:flex;flex-direction:column;min-width:0;gap:7px}
+.service-operations-filter-label{font-size:12px;font-weight:650;color:var(--cisne-neutral-600,#63756d);line-height:1.25}
+.service-operations-filter :is(.fui-Dropdown,[role="combobox"]){width:100%;min-width:0;min-height:40px}
+.service-operations .service-operations-toolbar .toolbar-count{
+  grid-column:1/-1;justify-self:end;min-width:0;margin:0;text-align:right;
+  padding-top:3px;font-size:12px;color:var(--cisne-neutral-600,#63756d)
+}
+.service-operations > .empty[role="alert"]{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;min-height:210px;background:#fff;border:1px solid var(--cisne-neutral-100,#e5ece8);
+  border-radius:10px;text-align:center
+}
+.service-operations > .empty[role="alert"] p{max-width:590px;margin:0;line-height:1.6}
+@media(max-width:1199px){
+ .service-operations .service-operations-toolbar{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .service-operations .service-operations-toolbar>.search-input{grid-column:1/-1}
+}
+@media(max-width:800px){
+ .enterprise-workflow-context{align-items:flex-start;flex-direction:column;gap:5px;padding:9px 14px}
+ .enterprise-workflow-context-heading{font-size:10px}
+ .enterprise-workflow-context-actions{width:100%;max-width:100%}
+ .enterprise-workflow-context .enterprise-workflow-link{min-height:38px}
+}
+@media(max-width:640px){
+ .service-operations .service-operations-toolbar{grid-template-columns:minmax(0,1fr);gap:12px;padding:12px}
+ .service-operations .service-operations-toolbar>.search-input{grid-column:1}
+ .service-operations .service-operations-toolbar .toolbar-count{grid-column:1;justify-self:start;text-align:left}
+}
