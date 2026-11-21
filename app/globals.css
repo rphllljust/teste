@@ -1176,3 +1176,6 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
  .service-evidence-relations dl>div{padding:11px 8px}
  .service-evidence-relations dd{font-size:19px}
 }
+
+/* Order worklist loading is not an empty result. */
+.service-operations-loading{display:flex;align-items:center;justify-content:center;min-height:210px;padding:25px;border:1px solid var(--cisne-neutral-100,#e5ece8);border-radius:10px;background:#fff;color:var(--cisne-neutral-600,#63756d);font-size:13px;text-align:center}
