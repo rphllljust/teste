@@ -62,3 +62,11 @@ test('enterprise workflow context links every known workspace without inventing 
   assert.match(context, /onClick=\{\(\) => onNavigate\(name\)\}/);
   assert.match(css, /\.enterprise-workflow-context-actions/);
 });
+
+test('unauthorized operational data cannot appear as confirmed zero', async () => {
+  const command = await readFile(new URL('../app/EnterpriseCommandCenter.tsx', import.meta.url), 'utf8');
+  assert.match(page, /dataState=\{loading \? "loading" : error \? "unavailable" : "ready"\}/);
+  assert.match(command, /dataState==='ready'\?value:'—'/);
+  assert.match(command, /dataState==='ready'\?summary.total:'—'/);
+  assert.match(command, /Indicadores indisponíveis/);
+});
