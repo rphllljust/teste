@@ -641,3 +641,15 @@ test('Fluent Professionals List Report paginates beyond 25 and sorts by SQL cost
  await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();
  await expect.poll(()=>requests.at(-1)?.get('sort')).toBe('name.asc');
 });
+
+test('global workflow shortcuts open existing enterprise modules using real navigation', async ({ page }) => {
+  await page.goto('/');
+  const related = page.getByRole('navigation', { name: 'Fluxos empresariais relacionados' });
+  await expect(related).toBeVisible();
+  await related.getByRole('button', { name: 'Abrir Centro de operações' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Centro de operações');
+  await related.getByRole('button', { name: 'Abrir Ordens de serviço' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Ordens de serviço');
+  await related.getByRole('button', { name: 'Abrir Medições' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Medições');
+});
