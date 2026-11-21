@@ -68,4 +68,9 @@ test('Object Page is one accessible region with linked sections and no nested ma
  assert.match(source,/<FluentLink key=\{section.id\}/);
  assert.match(source,/href=\{'#'\+section.id\}/);
  assert.match(source,/aria-current=\{section.id===activeSectionId\?'location':undefined\}/);
+ // Workspace routing owns the hash; Object Page anchors must scroll internally.
+ assert.match(source,/event.preventDefault\(\)/);
+ assert.match(source,/target\?\.focus\(\{preventScroll:true\}\)/);
+ assert.match(source,/target\?\.scrollIntoView\(\{/);
+ assert.match(source,/tabIndex=\{id \? -1 : undefined\}/);
 });
