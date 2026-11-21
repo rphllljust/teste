@@ -43,19 +43,19 @@ function fakeList(page:number){
 }
 async function openDestination(page:Page,name:string){
  const nav=page.getByRole('navigation',{name:'Módulos empresariais'});
- if((await page.evaluate(()=>window.innerWidth))<=900){
+ // Mobile uses a real off-canvas drawer; tablet keeps the complete sidebar.
+ if((await page.evaluate(()=>window.innerWidth))<=800){
   const menu=page.getByRole('button',{name:'Abrir menu'});
-  if(await menu.isVisible()) await menu.click();
+  await expect(menu).toBeVisible();
+  await menu.click();
  }
+ await expect(nav).toBeVisible();
  const button=name==='Ordens de serviço'
   ? nav.getByRole('button',{name:/^Ordens de serviço/})
   : nav.getByRole('button',{name,exact:true});
- if(!(await button.isVisible())){
-  const toggle=button.locator('xpath=ancestor::*[contains(@class,"nav-group")]').locator('.nav-group-toggle');
-  await toggle.evaluate((element) => (element as HTMLButtonElement).click());
-  await expect(button).toBeVisible();
- }
- await button.click({force:true});
+ await expect(button).toBeVisible();
+ // Do not bypass the user's hit testing, accessible name or navigation handlers.
+ await button.click();
  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText(name);
  await expect(page.locator('#cisne-workspace-content')).toBeVisible();
 }
