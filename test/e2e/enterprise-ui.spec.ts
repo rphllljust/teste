@@ -322,25 +322,44 @@ test('commercial proposal and contract sorting passes whitelisted values to the 
 
 
 test('completed OS without actual measurement does not claim measurement or billing completion',async({page})=>{
+ const id='11111111-1111-4111-8111-111111111999';
+ let detailRequests=0;
  await page.route('**/api/orders?*',route=>route.fulfill({json:{
-  orders:[{id:'order-complete-no-measurement',title:'OS sem medição',
+  orders:[{id,title:'OS sem medição',
     client:'Cliente cenário',category:'Serviços',description:'Execução encerrada',
-    status:'COMPLETED',due_date:null,created_at:'2026-11-20T10:00:00Z',
-    relations:{measurements:0,invoices:0,receivables:0},availableCommands:[]}],
+    status:'completed',due_date:null,created_at:'2026-11-20T10:00:00Z',
+    availableCommands:[]}],
   total:1,pageInfo:{page:1,total:1,hasMore:false},
   summary:{total:1,drafts:0,planned:0,pendingMeasurements:1},
  }}));
+ await page.route('**/api/orders/'+id,route=>{
+  detailRequests++;
+  return route.fulfill({json:{order:{
+   relations:{measurements:0,invoices:0,receivables:0},
+   sublists:{history:{items:[],pageInfo:{total:0,hasMore:false}}},
+  }}});
+ });
  await page.goto('/');
  await page.getByRole('button',{name:'Centro de operações',exact:true}).click();
  await expect(page.getByRole('heading',{name:'OS sem medição'})).toBeVisible();
- const measurement=page.locator('.service-progress').getByText('Medições vinculadas');
- const billing=page.locator('.service-progress').getByText('Faturamento vinculado');
+ const object=page.getByRole('region',{name:'Ordem de serviço OS sem medição'});
+ const measurement=object.locator('.service-progress').getByText('Medições vinculadas');
+ const billing=object.locator('.service-progress').getByText('Faturamento vinculado');
  await expect(measurement).not.toHaveClass(/has-record|done/);
  await expect(billing).not.toHaveClass(/has-record|done/);
- await expect(page.locator('.service-inspector')).toContainText('0 medições');
+ const linked=object.locator('.object-facts div').filter({hasText:'Registros vinculados'}).locator('strong');
+ await expect(linked).toHaveText('—');
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+ expect(detailRequests).toBe(0);
+ await object.getByRole('button',{name:'Consultar histórico e vínculos'}).click();
+ await expect.poll(()=>detailRequests).toBe(1);
+ const relations=object.getByRole('region',{name:'Vínculos confirmados'});
+ await expect(relations.locator('dd')).toHaveText(['0','0','0']);
+ await expect(linked).toHaveText('0');
+ await expect(page.locator('.service-inspector')).toContainText('0 medições · 0 faturas verificadas.');
+ await expect(measurement).not.toHaveClass(/has-record|done/);
+ await expect(billing).not.toHaveClass(/has-record|done/);
 });
-
-
 test('Redwood control tower refreshes real API query contracts and opens the financial workspace (mocked UI)',async({page})=>{
  const queried:string[]=[];
  await page.route('**/api/enterprise/control-tower*',route=>{
