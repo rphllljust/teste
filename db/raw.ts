@@ -45,6 +45,23 @@ export function database() {
         return results;
       } catch (error) { await client.query('ROLLBACK'); throw error; } finally { client.release(); }
     },
+    // All projections see the same committed PostgreSQL snapshot. A database
+    // READ ONLY transaction rejects accidental writes from reporting code.
+    async snapshot(statements: Array<{ _bound?: BoundStatement }>) {
+      const client = await getPool().connect();
+      const results: Array<SqlRowsResult> = [];
+      try {
+        await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
+        for (const statement of statements) {
+          if (!statement._bound) throw new Error('Unbound statement in reporting snapshot');
+          const result = await clientStatement(client, statement._bound, 0);
+          results.push({ results: result.rows, success: true, meta: { changes: 0 } });
+        }
+        await client.query('COMMIT');
+        return results;
+      } catch (error) { await client.query('ROLLBACK'); throw error; }
+      finally { client.release(); }
+    },
     async transaction<T>(work: (query: (sql: string, params?: unknown[]) => Promise<QueryResult>) => Promise<T>): Promise<T> {
       const client = await getPool().connect();
       try {

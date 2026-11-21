@@ -1,5 +1,7 @@
 'use client';
 
+import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseButton, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, X } from 'lucide-react';
 
@@ -199,7 +201,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
     !q||[o.title,snapshot?.leads.find(l=>l.id===o.leadId)?.companyName]
       .some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)));
   const active=(snapshot?.opportunities??[]).filter(o=>o.stage!=='won'&&o.stage!=='lost').length;
-  return <section className="cisne-crm" aria-label="CRM nativo do CISNE">
+  return <section className="cisne-crm cisne-workspace crm-workspace" data-workspace="crm" aria-label="CRM nativo do CISNE">
     <header className="cisne-crm-heading">
       <div>
         <span className="eyebrow">GESTÃO COMERCIAL · CISNE RONDÔNIA</span>
@@ -207,8 +209,8 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
         <p>Leads, oportunidades e relacionamento no mesmo workspace do ERP, com dados persistidos no Field.</p>
       </div>
       <div className="cisne-crm-actions">
-        <button className="secondary" onClick={()=>void load()} disabled={loading||sending}><RefreshCw size={16}/> Atualizar</button>
-        <button className="primary" onClick={()=>{resetForms();setNewLeadOpen(true);}} disabled={sending}><Plus size={17}/> Novo lead</button>
+        <EnterpriseButton type="button" className="secondary" onClick={()=>void load()} disabled={loading||sending}><RefreshCw size={16}/> Atualizar</EnterpriseButton>
+        <EnterpriseButton type="button" className="primary" onClick={()=>{resetForms();setNewLeadOpen(true);}} disabled={sending}><Plus size={17}/> Novo lead</EnterpriseButton>
       </div>
     </header>
 
@@ -216,15 +218,15 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
       <CircleAlert size={19}/><span><strong>Dados do CRM não disponíveis.</strong> {error}
       <small>Os registros só são exibidos após autenticação válida. Nenhum dado é inventado durante a falha de acesso.</small>
       {needsAuth&&<form onSubmit={e=>void login(e)} className="cisne-crm-login">
-        <label>Credencial de homologação <input name="passphrase" type="password" autoComplete="off"
+        <label>Credencial de homologação <EnterpriseInput name="passphrase" type="password" autoComplete="off"
           minLength={24} maxLength={160} placeholder="Credencial de acesso ao CISNE HML" required/></label>
-        <button className="primary" disabled={loginBusy}>{loginBusy?'Autenticando…':'Entrar no CISNE'}</button>
+        <EnterpriseButton type="submit" className="primary" disabled={loginBusy}>{loginBusy?'Autenticando…':'Entrar no CISNE'}</EnterpriseButton>
         <small>Uma sessão segura de até 8 horas libera o CRM e os módulos operacionais no mesmo Field.</small>
       </form>}</span>
     </div>}
     {notice&&<div className={'cisne-crm-notice '+(notice.error?'is-error':'is-success')} role={notice.error?'alert':'status'}>
       {notice.error?<CircleAlert size={17}/>:<CheckCircle2 size={17}/>}<span>{notice.message}</span>
-      <button aria-label="Dispensar aviso" onClick={()=>setNotice(null)}><X size={16}/></button>
+      <EnterpriseButton type="button" aria-label="Dispensar aviso" onClick={()=>setNotice(null)}><X size={16}/></EnterpriseButton>
     </div>}
 
     <div className="cisne-crm-metrics">
@@ -236,12 +238,12 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
 
     <div className="cisne-crm-toolbar">
       <div className="cisne-crm-tabs" role="tablist" aria-label="Áreas comerciais">
-        <button role="tab" aria-selected={tab==='leads'} className={tab==='leads'?'selected':''}
-          onClick={()=>setTab('leads')}>Leads</button>
-        <button role="tab" aria-selected={tab==='opportunities'} className={tab==='opportunities'?'selected':''}
-          onClick={()=>setTab('opportunities')}>Oportunidades</button>
+        <EnterpriseButton type="button" role="tab" aria-selected={tab==='leads'} className={tab==='leads'?'selected':''}
+          onClick={()=>setTab('leads')}>Leads</EnterpriseButton>
+        <EnterpriseButton type="button" role="tab" aria-selected={tab==='opportunities'} className={tab==='opportunities'?'selected':''}
+          onClick={()=>setTab('opportunities')}>Oportunidades</EnterpriseButton>
       </div>
-      <label className="cisne-crm-search"><Search size={16}/><input aria-label="Buscar registros comerciais"
+      <label className="cisne-crm-search"><Search size={16}/><EnterpriseInput aria-label="Buscar registros comerciais"
         placeholder="Buscar por nome ou empresa..." value={query} onChange={e=>setQuery(e.target.value)}/></label>
     </div>
 
@@ -253,10 +255,10 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
           <span>{sourceLabel[l.source]??l.source}</span>
           <span className={'cisne-crm-status '+l.status}>{l.status==='new'?'Novo':l.status==='qualified'?'Qualificado':'Descartado'}</span>
           <div className="cisne-crm-row-actions">
-            {l.status==='new'&&<button className="secondary" disabled={sending}
-              onClick={()=>{resetForms();setQualifyLead(l);}}>Classificar</button>}
-            {l.status==='qualified'&&<button className="secondary" disabled={sending}
-              onClick={()=>{resetForms();setOpportunityLead(l);}}>Nova oportunidade <ArrowRight size={14}/></button>}
+            {l.status==='new'&&<EnterpriseButton type="button" className="secondary" disabled={sending}
+              onClick={()=>{resetForms();setQualifyLead(l);}}>Classificar</EnterpriseButton>}
+            {l.status==='qualified'&&<EnterpriseButton type="button" className="secondary" disabled={sending}
+              onClick={()=>{resetForms();setOpportunityLead(l);}}>Nova oportunidade <ArrowRight size={14}/></EnterpriseButton>}
             {l.clientId&&<span className="cisne-crm-owner">Cliente vinculado</span>}
           </div>
         </div>):<div className="cisne-crm-state">Nenhum lead para o filtro atual.</div>}
@@ -266,29 +268,29 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
         {stages.map(stage=><div className="cisne-crm-column" key={stage}>
           <header><strong>{stageLabel[stage]}</strong><span>{opportunities.filter(o=>o.stage===stage).length}</span></header>
           {opportunities.filter(o=>o.stage===stage).map(o=><article className="cisne-crm-deal" key={o.id}>
-            <button className="cisne-crm-deal-title" onClick={()=>void openOpportunity(o.id)} disabled={opportunityLoading}>{o.title}</button>
+            <EnterpriseButton type="button" className="cisne-crm-deal-title" onClick={()=>void openOpportunity(o.id)} disabled={opportunityLoading}>{o.title}</EnterpriseButton>
             <small>{snapshot.leads.find(l=>l.id===o.leadId)?.companyName??'Lead de origem'}</small>
             <b>{money(o.amountCents)}</b>
             {o.proposalId&&<small className="cisne-crm-proposal-linked">
               Proposta ERP: {o.proposalId.slice(0,8)} · {o.proposalStatus==='draft'?'Rascunho':o.proposalStatus??'Vinculada'}
-              <button className="text-button" onClick={()=>onProposals(o.proposalId!)}>Abrir proposta no CISNE <ArrowRight size={12}/></button>
+              <EnterpriseButton type="button" className="text-button" onClick={()=>onProposals(o.proposalId!)}>Abrir proposta no CISNE <ArrowRight size={12}/></EnterpriseButton>
             </small>}
             {stage==='proposal'&&!o.proposalId&&!o.clientId&&<small className="cisne-crm-proposal-warning">
               Vincule um cliente ativo do ERP ao lead antes de gerar a proposta
             </small>}
             <div className="cisne-crm-deal-actions">
-              <button className="text-button" disabled={opportunityLoading} onClick={()=>void openOpportunity(o.id)}>Abrir ficha</button>
+              <EnterpriseButton type="button" className="text-button" disabled={opportunityLoading} onClick={()=>void openOpportunity(o.id)}>Abrir ficha</EnterpriseButton>
               {stage==='proposal'&&!o.proposalId&&o.clientId&&
-                <button className="secondary" disabled={sending}
+                <EnterpriseButton type="button" className="secondary" disabled={sending}
                   onClick={()=>{resetForms();setProposalOpportunity(o);}}>
                   Gerar proposta <ArrowRight size={13}/>
-                </button>}
-              {nextStage[stage]&&<button className="secondary" disabled={sending}
+                </EnterpriseButton>}
+              {nextStage[stage]&&<EnterpriseButton type="button" className="secondary" disabled={sending}
                 onClick={()=>void moveOpportunity(o,nextStage[stage]!)}>
                 {nextStage[stage]==='won'?'Marcar ganha':'Avançar'} <ArrowRight size={13}/>
-              </button>}
-              {stage!=='won'&&stage!=='lost'&&<button className="text-button" disabled={sending}
-                onClick={()=>void moveOpportunity(o,'lost')}>Perdida</button>}
+              </EnterpriseButton>}
+              {stage!=='won'&&stage!=='lost'&&<EnterpriseButton type="button" className="text-button" disabled={sending}
+                onClick={()=>void moveOpportunity(o,'lost')}>Perdida</EnterpriseButton>}
             </div>
           </article>)}
           {!opportunities.some(o=>o.stage===stage)&&<p className="cisne-crm-empty">Sem oportunidades</p>}
@@ -297,15 +299,15 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
 
     <footer className="cisne-crm-footer">
       <span><Users size={15}/> O CRM utiliza o mesmo proprietário e o PostgreSQL do Field.</span>
-      <div><button className="text-button" onClick={onClients}>Clientes do ERP <ArrowRight size={14}/></button>
-      <button className="text-button" onClick={()=>onProposals()}>Propostas e pedidos <ArrowRight size={14}/></button></div>
+      <div><EnterpriseButton type="button" className="text-button" onClick={onClients}>Clientes do ERP <ArrowRight size={14}/></EnterpriseButton>
+      <EnterpriseButton type="button" className="text-button" onClick={()=>onProposals()}>Propostas e pedidos <ArrowRight size={14}/></EnterpriseButton></div>
     </footer>
 
     {selectedOpportunity&&<div className="overlay" onClick={()=>setSelectedOpportunity(null)}>
       <aside className="drawer cisne-crm-opportunity-drawer" role="dialog" aria-modal="true" aria-label="Ficha da oportunidade"
         onClick={e=>e.stopPropagation()}>
         <header><div><span className="eyebrow">OBJECT PAGE · OPORTUNIDADE</span><h2>{selectedOpportunity.title}</h2></div>
-          <button className="icon-button" aria-label="Fechar ficha da oportunidade" onClick={()=>setSelectedOpportunity(null)}><X size={19}/></button>
+          <EnterpriseButton type="button" className="icon-button" aria-label="Fechar ficha da oportunidade" onClick={()=>setSelectedOpportunity(null)}><X size={19}/></EnterpriseButton>
         </header>
         <div className="cisne-crm-object-status"><span className={'cisne-crm-status '+selectedOpportunity.stage}>{stageLabel[selectedOpportunity.stage as Opportunity['stage']]??selectedOpportunity.stage}</span>
           <strong>{money(selectedOpportunity.amountCents)}</strong></div>
@@ -313,7 +315,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
           <div><dt>Lead de origem</dt><dd>{selectedOpportunity.lead.companyName}<small>{selectedOpportunity.lead.contactName}{selectedOpportunity.lead.contactEmail?' · '+selectedOpportunity.lead.contactEmail:''}</small></dd></div>
           <div><dt>Cliente ERP</dt><dd>{selectedOpportunity.client?.legalName??'Sem cliente vinculado'}<small>{selectedOpportunity.client?'Vínculo ativo no Field':'Necessário para gerar proposta'}</small></dd></div>
         </dl></section>
-        <section><h3>Proposta</h3>{selectedOpportunity.proposal?<div className="cisne-crm-linked-object"><strong>{selectedOpportunity.proposal.status==='draft'?'Rascunho':selectedOpportunity.proposal.status}</strong><small>{moneyScaled4(selectedOpportunity.proposal.total)} · validade {selectedOpportunity.proposal.validUntil}</small><button className="text-button" onClick={()=>onProposals(selectedOpportunity.proposal!.id)}>Abrir proposta no CISNE <ArrowRight size={12}/></button></div>:<p className="muted">Nenhuma proposta vinculada. Avance a oportunidade para “Proposta” e use a ação de geração.</p>}</section>
+        <section><h3>Proposta</h3>{selectedOpportunity.proposal?<div className="cisne-crm-linked-object"><strong>{selectedOpportunity.proposal.status==='draft'?'Rascunho':selectedOpportunity.proposal.status}</strong><small>{moneyScaled4(selectedOpportunity.proposal.total)} · validade {selectedOpportunity.proposal.validUntil}</small><EnterpriseButton type="button" className="text-button" onClick={()=>onProposals(selectedOpportunity.proposal!.id)}>Abrir proposta no CISNE <ArrowRight size={12}/></EnterpriseButton></div>:<p className="muted">Nenhuma proposta vinculada. Avance a oportunidade para “Proposta” e use a ação de geração.</p>}</section>
         <section><h3>Histórico de comandos</h3>{selectedOpportunity.history.length?selectedOpportunity.history.map((event,index)=><div className="cisne-crm-history-row" key={event.createdAt+'-'+index}><strong>{event.action}</strong><small>{new Date(event.createdAt).toLocaleString('pt-BR')}</small></div>):<p className="muted">Nenhum comando registrado.</p>}</section>
       </aside>
     </div>}
@@ -322,50 +324,50 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
       <section className="modal cisne-crm-modal" role="dialog" aria-modal="true" aria-label="Ação comercial"
         onClick={e=>e.stopPropagation()}>
         <header><h2>{newLeadOpen?'Novo lead':qualifyLead?'Classificar lead':opportunityLead?'Nova oportunidade':'Rascunho de proposta'}</h2>
-          <button className="icon-button" aria-label="Fechar" disabled={sending} onClick={resetForms}><X size={19}/></button>
+          <EnterpriseButton type="button" className="icon-button" aria-label="Fechar" disabled={sending} onClick={resetForms}><X size={19}/></EnterpriseButton>
         </header>
         {newLeadOpen&&<form onSubmit={e=>void submitLead(e)}>
-          <label>Nome do contato<input name="contactName" required minLength={2} maxLength={120}/></label>
-          <label>Empresa<input name="companyName" required minLength={2} maxLength={160}/></label>
-          <label>E-mail<input name="contactEmail" type="email" maxLength={254}/></label>
-          <label>Origem<select name="source" defaultValue="manual">
+          <label>Nome do contato<EnterpriseInput name="contactName" required minLength={2} maxLength={120}/></label>
+          <label>Empresa<EnterpriseInput name="companyName" required minLength={2} maxLength={160}/></label>
+          <label>E-mail<EnterpriseInput name="contactEmail" type="email" maxLength={254}/></label>
+          <label>Origem<EnterpriseDropdown name="source" defaultValue="manual">
             <option value="manual">Cadastro manual</option><option value="referral">Indicação</option>
             <option value="web">Site</option><option value="event">Evento</option>
-          </select></label>
-          <footer><button type="button" className="secondary" onClick={resetForms}>Cancelar</button>
-            <button className="primary" disabled={sending}>{sending?'Salvando…':'Registrar lead'}</button></footer>
+          </EnterpriseDropdown></label>
+          <footer><EnterpriseButton type="button" className="secondary" onClick={resetForms}>Cancelar</EnterpriseButton>
+            <EnterpriseButton type="submit" className="primary" disabled={sending}>{sending?'Salvando…':'Registrar lead'}</EnterpriseButton></footer>
         </form>}
         {qualifyLead&&<form onSubmit={e=>void submitQualification(e)}>
           <p>{qualifyLead.contactName} · {qualifyLead.companyName}</p>
-          <label>Resultado<select name="outcome" defaultValue="qualified">
+          <label>Resultado<EnterpriseDropdown name="outcome" defaultValue="qualified">
             <option value="qualified">Qualificado</option><option value="disqualified">Descartado</option>
-          </select></label>
-          <label>Vincular a cliente existente (opcional)<select value={qualifyClient} onChange={e=>setQualifyClient(e.target.value)}>
+          </EnterpriseDropdown></label>
+          <label>Vincular a cliente existente (opcional)<EnterpriseDropdown value={qualifyClient} onValueChange={value =>setQualifyClient(value)}>
             <option value="">Ainda não vincular</option>
             {snapshot?.clients.map(c=><option key={c.id} value={c.id}>{c.legalName}</option>)}
-          </select></label>
+          </EnterpriseDropdown></label>
           <p className="muted">O vínculo é validado pelo servidor e não cria um cliente duplicado.</p>
-          <footer><button type="button" className="secondary" onClick={resetForms}>Cancelar</button>
-            <button className="primary" disabled={sending}>{sending?'Registrando…':'Confirmar'}</button></footer>
+          <footer><EnterpriseButton type="button" className="secondary" onClick={resetForms}>Cancelar</EnterpriseButton>
+            <EnterpriseButton type="submit" className="primary" disabled={sending}>{sending?'Registrando…':'Confirmar'}</EnterpriseButton></footer>
         </form>}
         {proposalOpportunity&&<form onSubmit={e=>void submitDraftProposal(e)}>
           <p><strong>{proposalOpportunity.title}</strong></p>
           <p className="muted">Valor estimado: {money(proposalOpportunity.amountCents)}. A conversão cria somente um rascunho; não registra aceite nem cria ordem de serviço.</p>
-          <label>Escopo dos serviços<textarea name="scope" required minLength={3} maxLength={4000}
+          <label>Escopo dos serviços<EnterpriseTextarea name="scope" required minLength={3} maxLength={4000}
             rows={5} placeholder="Descreva os serviços da proposta a revisar."/></label>
-          <label>Validade da proposta<input name="validUntil" type="date" required/></label>
+          <label>Validade da proposta<EnterpriseInput name="validUntil" type="date" required/></label>
           <p className="muted">Requer cliente ativo vinculado. Cada oportunidade admite uma proposta nesta etapa.</p>
-          <footer><button type="button" className="secondary" disabled={sending} onClick={resetForms}>Cancelar</button>
-            <button className="primary" disabled={sending}>{sending?'Registrando…':'Criar rascunho'}</button></footer>
+          <footer><EnterpriseButton type="button" className="secondary" disabled={sending} onClick={resetForms}>Cancelar</EnterpriseButton>
+            <EnterpriseButton type="submit" className="primary" disabled={sending}>{sending?'Registrando…':'Criar rascunho'}</EnterpriseButton></footer>
         </form>}
         {opportunityLead&&<form onSubmit={e=>void submitOpportunity(e)}>
           <p>Lead de origem: {opportunityLead.companyName}</p>
-          <label>Oportunidade<input name="title" required minLength={3} maxLength={160}
+          <label>Oportunidade<EnterpriseInput name="title" required minLength={3} maxLength={160}
             defaultValue={'Negociação · '+opportunityLead.companyName}/></label>
-          <label>Valor estimado (R$)<input name="amount" inputMode="decimal"
+          <label>Valor estimado (R$)<EnterpriseInput name="amount" inputMode="decimal"
             placeholder="1250,50" pattern="[0-9]{1,10}([,.][0-9]{1,2})?" required/></label>
-          <footer><button type="button" className="secondary" onClick={resetForms}>Cancelar</button>
-            <button className="primary" disabled={sending}>{sending?'Registrando…':'Criar oportunidade'}</button></footer>
+          <footer><EnterpriseButton type="button" className="secondary" onClick={resetForms}>Cancelar</EnterpriseButton>
+            <EnterpriseButton type="submit" className="primary" disabled={sending}>{sending?'Registrando…':'Criar oportunidade'}</EnterpriseButton></footer>
         </form>}
       </section>
     </div>}

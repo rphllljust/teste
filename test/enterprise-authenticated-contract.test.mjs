@@ -1,0 +1,18 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+
+test('authenticated E2E excludes every mock-driven suite and remains SHA/secret gated',async()=>{
+ const config=await readFile(new URL('../playwright.config.ts',import.meta.url),'utf8');
+ const spec=await readFile(new URL('./e2e/staging-authenticated.spec.ts',import.meta.url),'utf8');
+ const workflow=await readFile(new URL('../.github/workflows/enterprise-staging-authenticated.yml',import.meta.url),'utf8');
+ assert.match(config,/testMatch: process\.env\.CISNE_AUTHENTICATED_E2E/);
+ assert.match(config,/staging-authenticated\.spec\.ts/);
+ assert.doesNotMatch(spec,/page\.route\(|route\.fulfill\(/);
+ assert.match(spec,/api\/release\/identity/);
+ assert.match(spec,/api\/auth\/staging-login/);
+ assert.match(spec,/apiFailures/);
+ assert.match(workflow,/enterprise-auth-acceptance/);
+ assert.match(workflow,/environment: staging/);
+ assert.match(workflow,/CISNE_STAGING_PASSPHRASE/);
+});

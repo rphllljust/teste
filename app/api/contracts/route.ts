@@ -21,6 +21,7 @@ const filters=z.object({
   status:z.enum(['','draft','active','closed','cancelled']).default(''),
   page:z.coerce.number().int().min(1).max(100000).default(1),
   pageSize:z.coerce.number().int().min(1).max(50).default(25),
+  sort:z.enum(['recent','reference.asc','reference.desc','startsOn.asc']).default('recent'),
 }).strict();
 
 const from=`FROM contracts ct
@@ -39,7 +40,7 @@ export async function GET(request:Request){
     const params=new URL(request.url).searchParams;
     const parsed=filters.safeParse({
       q:params.get('q')??'',status:params.get('status')??'',
-      page:params.get('page')??'1',pageSize:params.get('pageSize')??'25',
+      page:params.get('page')??'1',sort:params.get('sort')??'recent',pageSize:params.get('pageSize')??'25',
     });
     if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros de contratos inválidos.');
     const p=parsed.data,where=['ct.owner_id=?'],values:unknown[]=[context.actorId];
@@ -47,9 +48,10 @@ export async function GET(request:Request){
     if(p.q){where.push('(ct.reference ILIKE ? OR c.legal_name ILIKE ? OR p.title ILIKE ?)');
       const like='%'+p.q+'%';values.push(like,like,like);}
     const expression=where.join(' AND ');
+    const sortOrder=p.sort==='reference.asc'?'ct.reference ASC,ct.id ASC':p.sort==='reference.desc'?'ct.reference DESC,ct.id DESC':p.sort==='startsOn.asc'?'ct.starts_on ASC,ct.id ASC':'ct.created_at DESC,ct.id DESC';
     const [items,totalResult]=await Promise.all([
       database().prepare(`${select} ${from} WHERE ${expression}
-        ORDER BY ct.created_at DESC,ct.id DESC LIMIT ? OFFSET ?`)
+        ORDER BY ${sortOrder} LIMIT ? OFFSET ?`)
         .bind(...values,p.pageSize,(p.page-1)*p.pageSize).all<ContractRow>(),
       database().prepare(`SELECT count(*)::int AS total ${from} WHERE ${expression}`)
         .bind(...values).first<{total:number}>(),

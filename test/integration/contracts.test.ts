@@ -4,7 +4,9 @@ import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {POST as registerClient} from '../../app/api/clients/route';
+import {GET as detailClient} from '../../app/api/clients/[id]/route';
 import {POST as registerProposal} from '../../app/api/proposals/route';
+import {GET as detailProposal} from '../../app/api/proposals/[id]/route';
 import {POST as actionProposal} from '../../app/api/proposals/[id]/commands/route';
 import {POST as registerPO} from '../../app/api/purchase-orders/route';
 import {POST as cancelPO} from '../../app/api/purchase-orders/[id]/commands/route';
@@ -85,6 +87,11 @@ test('contract registration requires accepted, owner-matched proposal and active
   assert.equal(listed.status,200);
   const body=await read(listed) as {items:Array<{id:string}>};
   assert.equal(body.items[0].id,contractId);
+  const clientContext=await read(await detailClient(req('GET','/api/clients/'+clientId,actor),param(clientId))) as {projection:{related:{proposals:Array<{id:string}>;contracts:Array<{id:string}>}}};
+  assert.deepEqual(clientContext.projection.related.proposals.map(x=>x.id),[proposalId]);
+  assert.deepEqual(clientContext.projection.related.contracts.map(x=>x.id),[contractId]);
+  const proposalContext=await read(await detailProposal(req('GET','/api/proposals/'+proposalId,actor),param(proposalId))) as {projection:{related:{contract:{id:string;reference:string;status:string}|null}}};
+  assert.deepEqual(proposalContext.projection.related.contract,{id:contractId,reference:'CONTRATO-CI-RO-001',status:'draft'});
   const hidden=await read(await listContracts(req('GET','/api/contracts',stranger))) as {items:unknown[]};
   assert.deepEqual(hidden.items,[]);
   const detail=await detailContract(req('GET','/api/contracts/'+contractId,actor),param(contractId));
@@ -197,4 +204,14 @@ test('public staging ignores forged owner header for contract mutations',async()
     if(previous===undefined)delete process.env.RAILWAY_ENVIRONMENT_NAME;
     else process.env.RAILWAY_ENVIRONMENT_NAME=previous;
   }
+});
+
+
+test('contract list ordering is database-backed, stable, owner-scoped and rejects unknown columns',async()=>{
+ const result=await listContracts(req('GET','/api/contracts?sort=reference.asc&page=1&pageSize=25',actor));
+ assert.equal(result.status,200);
+ const data=await result.json() as {items:Array<{id:string}>};
+ const expected=await db.query('SELECT id FROM contracts WHERE owner_id=$1 ORDER BY reference ASC,id ASC LIMIT 25',[actor]);
+ assert.deepEqual(data.items.map(item=>item.id),expected.rows.map(row=>row.id));
+ assert.equal((await listContracts(req('GET','/api/contracts?sort=id.desc',actor))).status,400);
 });
