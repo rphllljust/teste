@@ -109,3 +109,12 @@ test('new enterprise components only use official Microsoft Fluent React primiti
   assert.match(contract, /docs\.oracle\.com\/en\/middleware\/developer-tools\/jet/);
   assert.match(contract, /sem copiar o CSS Oracle JET/i);
 });
+
+test('application shell validates order and summary projections before storing data', () => {
+  const guard = page.indexOf('!Array.isArray(d.orders)');
+  const commit = page.indexOf('setOrders(d.orders)', guard);
+  assert.ok(guard >= 0 && commit > guard, 'validate payload before writing React state');
+  assert.match(page.slice(guard, commit), /Number\.isSafeInteger\(d.total\)/);
+  assert.match(page.slice(guard, commit), /Number\.isSafeInteger\(d.summary.total\)/);
+  assert.match(page.slice(guard, commit), /O servidor não confirmou os dados operacionais/);
+});
