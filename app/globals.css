@@ -1179,3 +1179,27 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
 
 /* Order worklist loading is not an empty result. */
 .service-operations-loading{display:flex;align-items:center;justify-content:center;min-height:210px;padding:25px;border:1px solid var(--cisne-neutral-100,#e5ece8);border-radius:10px;background:#fff;color:var(--cisne-neutral-600,#63756d);font-size:13px;text-align:center}
+
+/* SAP Fiori Object Page composition for the selected service-order master/detail. */
+.service-operations .service-object>.enterprise-object-page-v2{
+  min-width:0;margin:0;background:transparent;border:0;box-shadow:none
+}
+.service-operations .service-object .enterprise-object-identity{
+  min-width:0;padding:0;background:transparent
+}
+.service-operations .service-object .enterprise-object-page-content{
+  display:flex;flex-direction:column;min-width:0;gap:0
+}
+.service-operations .service-object .enterprise-object-nav-wrap{
+  position:sticky;top:0;z-index:5;min-width:0;border-left:0;border-right:0;
+  border-color:var(--cisne-neutral-100,#e5ece8);background:#fff
+}
+.service-operations .service-object :is(#service-order-process,#service-order-context,#service-order-history){
+  min-width:0;scroll-margin-top:108px
+}
+.service-operations .service-object .service-evidence-anchor{
+  min-width:0;background:#fff
+}
+.service-operations .service-object :is(#service-order-process,#service-order-context,#service-order-history):focus-visible{
+  outline:2px solid var(--cisne-brand-focus,#149b9e);outline-offset:-2px
+}
