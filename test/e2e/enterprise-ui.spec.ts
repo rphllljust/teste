@@ -244,7 +244,7 @@ test('mobile List Report preserves all client fields, actions and record identit
  await page.getByRole('button',{name:'Abrir menu'}).click();
  await page.getByRole('navigation',{name:'Módulos empresariais'})
   .getByRole('button',{name:'Clientes e propostas'})
-  .evaluate((element) => (element as HTMLButtonElement).click());
+  .click({force:true});
  const records=page.getByRole('list',{name:'Lista de clientes — versão compacta'});
  await expect(records).toBeVisible();
  await expect(records.getByText('Cliente Móvel')).toBeVisible();
