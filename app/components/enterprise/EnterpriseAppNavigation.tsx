@@ -100,13 +100,16 @@ type TopbarProps = {
 export function EnterpriseTopbar({
   activePage, group, sidebarOpen, onToggleSidebar, onSearch,
 }: TopbarProps) {
-  const groupLabel = group === 'OPERAÇÃO'
-    ? 'Operação'
-    : group === 'RELACIONAMENTO'
-      ? 'Relacionamento'
-      : group === 'GESTÃO INTEGRADA'
-        ? 'Gestão integrada'
-        : group;
+  const groupLabels: Record<string, string> = {
+    'OPERAÇÃO': 'Operação',
+    'PLANEJAMENTO E RECURSOS': 'Planejamento e recursos',
+    'RELACIONAMENTO': 'Relacionamento',
+    'FINANÇAS': 'Finanças',
+    'SUPRIMENTOS': 'Suprimentos',
+    'FISCAL E CONTABILIDADE': 'Fiscal e contabilidade',
+    'GESTÃO INTEGRADA': 'Gestão integrada',
+  };
+  const groupLabel = groupLabels[group] ?? group;
   return (
     <header className="topbar">
       <nav className="crumb" aria-label="Localização no CISNE">
