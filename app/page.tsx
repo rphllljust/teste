@@ -3,6 +3,7 @@ import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives
 import { EnterpriseButton, EnterpriseSearchField, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/EnterpriseAppNavigation";
+import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
 import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
@@ -97,6 +98,8 @@ type Order = {
   created_at: string;
 };
 const modules: { group: string; items: [string, LucideIcon][] }[] = [
+  // Keep the existing public workspace names and navigation contracts intact.
+  // Each business domain owns a coherent set of workspaces, not a CRUD menu.
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
   // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
   {
@@ -104,21 +107,31 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
     items: [
       ["Visão operacional", LayoutDashboard],
       ["Centro de operações", Activity],
-      ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
       ["Ordens de serviço", ClipboardList],
       ["Execução", HardHat],
       ["Medições", SlidersHorizontal],
-      ["Clientes e propostas", Users],
-      ["Propostas e PO", FileText],
-      ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "PLANEJAMENTO E RECURSOS",
+    items: [
+      ["Field Service Cockpit", Activity],
+      ["Resource Planning Board", CalendarDays],
       ["Frota e ativos", Truck],
       ["Profissionais", HardHat],
     ],
   },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
   {
-    group: "GESTÃO INTEGRADA",
+    group: "RELACIONAMENTO",
+    items: [
+      ["CRM e Vendas", Users],
+      ["Clientes e propostas", Users],
+      ["Propostas e PO", FileText],
+      ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "FINANÇAS",
     items: [
       ["Faturamento", Receipt],
       ["Visão financeira", LayoutDashboard],
@@ -127,12 +140,22 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Tesouraria", Landmark],
       ["Contas a pagar", Receipt],
       ["Caixa e conciliação", Landmark],
+    ],
+  },
+  {
+    group: "SUPRIMENTOS",
+    items: [
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "FISCAL E CONTABILIDADE",
+    items: [
       ["Fiscal e tributos", FileText],
       ["Contabilidade", BookOpen],
       ["Razão contábil", BookOpen],
       ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
     ],
   },
 ];
@@ -1308,11 +1331,12 @@ function HomeView() {
       <div className={"main " + (selected && docked ? "with-context" : "")}>
         <EnterpriseTopbar
           activePage={page}
-          group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'GESTÃO INTEGRADA'}
+          group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'OPERAÇÃO'}
           sidebarOpen={sidebar}
           onToggleSidebar={() => setSidebar(value => !value)}
           onSearch={() => { setPaletteQuery(""); setPalette(true); }}
         />
+        {!creating && !action && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
         <main
           id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
