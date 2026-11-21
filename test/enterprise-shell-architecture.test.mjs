@@ -70,3 +70,24 @@ test('unauthorized operational data cannot appear as confirmed zero', async () =
   assert.match(command, /dataState==='ready'\?summary.total:'—'/);
   assert.match(command, /Indicadores indisponíveis/);
 });
+
+test('service order object evidence is fetched only on demand and remains owner-scoped', async () => {
+  const workbench = await readFile(new URL('../app/ServiceOperationsWorkspace.tsx', import.meta.url), 'utf8');
+  const evidence = await readFile(new URL('../app/components/enterprise/ServiceOrderEvidence.tsx', import.meta.url), 'utf8');
+  const detailRoute = await readFile(new URL('../app/api/orders/[id]/route.ts', import.meta.url), 'utf8');
+  assert.match(workbench, /<ServiceOrderEvidence key=\{selected.id\} orderId=\{selected.id\}/);
+  assert.match(evidence, /if \(!open\) return;/);
+  assert.match(evidence, /fetch\('\/api\/orders\/' \+ encodeURIComponent\(orderId\)/);
+  assert.match(evidence, /if \(!response.ok\) throw new Error/);
+  assert.match(evidence, /state === 'error'/);
+  assert.match(detailRoute, /owner_id=\$2/);
+  assert.match(detailRoute, /requestContext\(request\)/);
+});
+
+test('business-domain breadcrumbs preserve navigation semantics', async () => {
+  const navigation = await readFile(new URL('../app/components/enterprise/EnterpriseAppNavigation.tsx', import.meta.url), 'utf8');
+  for (const group of ['OPERAÇÃO', 'PLANEJAMENTO E RECURSOS', 'RELACIONAMENTO', 'FINANÇAS', 'SUPRIMENTOS', 'FISCAL E CONTABILIDADE']) {
+    assert.ok(navigation.includes("'" + group + "':"), 'missing localized breadcrumb: ' + group);
+  }
+  assert.match(navigation, /const groupLabel = groupLabels\[group\] \?\? group/);
+});
