@@ -15,3 +15,19 @@ test('workspaces with dedicated enterprise headers do not receive another shell 
     assert.ok(shellHeading.includes(`"${page}"`), `Missing heading exclusion: ${page}`);
   }
 });
+
+test('all enterprise destinations are grouped once across six business domains', () => {
+  const block = source.slice(source.indexOf('const modules:'), source.indexOf('const chain = ['));
+  const groups = [...block.matchAll(/group: "([^"]+)"/g)].map(match => match[1]);
+  assert.deepEqual(groups, [
+    'OPERAÇÃO',
+    'COMERCIAL E CONTRATOS',
+    'RECURSOS E PLANEJAMENTO',
+    'SUPRIMENTOS',
+    'FINANCEIRO',
+    'FISCAL E CONTABILIDADE',
+  ]);
+  const destinations = [...block.matchAll(/^\s*\["([^"]+)",\s*[A-Za-z]+\],?$/gm)].map(match => match[1]);
+  assert.equal(destinations.length, 25);
+  assert.equal(new Set(destinations).size, destinations.length, 'Each destination must appear exactly once');
+});
