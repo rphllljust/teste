@@ -1702,3 +1702,5 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .order-preparation form>.preparation-object-header{grid-template-columns:minmax(0,1fr) auto!important;}
 .order-preparation form>.preparation-object-header>div:first-child{min-width:0;width:100%!important;}
 .order-preparation .preparation-title,.order-preparation .preparation-facts{max-width:none!important;}
+
+.order-preparation form>.preparation-object-header>.command-buttons{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;flex-wrap:nowrap!important;}
