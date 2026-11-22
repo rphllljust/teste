@@ -76,19 +76,27 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
   })).filter(group => group.items.length);
 
   useEffect(() => {
-    setFavourites(readStoredNames(FAVOURITES_KEY, allNames));
-    setRecent(readStoredNames(RECENTS_KEY, allNames));
-    try { setCompact(window.localStorage.getItem(DENSITY_KEY) === 'compact'); } catch { /* no persisted preference */ }
-    setReady(true);
+    // Restore browser preferences after hydration, keeping server/client first paint identical.
+    const frame = window.requestAnimationFrame(() => {
+      setFavourites(readStoredNames(FAVOURITES_KEY, allNames));
+      setRecent(readStoredNames(RECENTS_KEY, allNames));
+      try { setCompact(window.localStorage.getItem(DENSITY_KEY) === 'compact'); } catch { /* storage disabled */ }
+      setReady(true);
+    });
+    return () => window.cancelAnimationFrame(frame);
   }, [allNames]);
 
   useEffect(() => {
     if (!ready || !allNames.has(activePage)) return;
-    setRecent(previous => {
-      const updated = [activePage, ...previous.filter(name => name !== activePage)].slice(0, 7);
-      persist(RECENTS_KEY, updated);
-      return updated;
+    // Workspace changes update recents outside the synchronous effect phase.
+    const frame = window.requestAnimationFrame(() => {
+      setRecent(previous => {
+        const updated = [activePage, ...previous.filter(name => name !== activePage)].slice(0, 7);
+        persist(RECENTS_KEY, updated);
+        return updated;
+      });
     });
+    return () => window.cancelAnimationFrame(frame);
   }, [activePage, allNames, ready]);
 
   useEffect(() => {
