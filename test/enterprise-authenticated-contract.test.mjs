@@ -16,7 +16,9 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(workflow,/\[enterprise-auth\]/);
  assert.match(workflow,/github\.repository == 'rphllljust\/teste'/);
  assert.match(workflow,/git rev-parse HEAD/);
- assert.match(workflow,/git rev-parse FETCH_HEAD/);
+ assert.match(workflow,/cisne-candidate-ref\\.json/);
+ assert.match(workflow,/GH_TOKEN:/);
+ assert.match(workflow,/persist-credentials: false/);
  assert.match(workflow,/api\/release\/identity/);
  assert.match(workflow,/Railway runtime SHA differs from tested candidate/);
  assert.doesNotMatch(workflow,/pull_request_target/);
