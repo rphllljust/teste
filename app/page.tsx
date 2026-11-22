@@ -6,7 +6,6 @@ import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/Ent
 import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
 import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
 import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
-import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
 import { EnterpriseModuleWorkspace } from "./components/enterprise/EnterpriseModuleWorkspace";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
