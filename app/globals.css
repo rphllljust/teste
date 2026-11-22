@@ -2264,3 +2264,11 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 @media (max-width:767px){.cisne-staging-access{gap:8px!important;padding:6px 10px!important}.cisne-staging-access-copy{gap:6px!important}.cisne-staging-access-kicker{font-size:0!important}.cisne-staging-access-copy strong{font-size:12px!important;overflow:hidden;text-overflow:ellipsis}.cisne-staging-access>.fui-Button{font-size:0!important;width:32px!important;padding:0!important}.cisne-staging-access>.fui-Button::after{content:'×';font-size:18px!important}}
 
 .service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important}
+
+/* Reconciled #161/#162: reset mobile flex basis so header cannot reserve 420px of vertical space. */
+@media (max-width:800px){
+ .cisne-enterprise-hub-banner{flex-direction:column!important;align-items:stretch!important;min-height:0!important}
+ .cisne-enterprise-hub-heading{flex:0 1 auto!important;width:100%!important;min-height:0!important;align-self:flex-start!important}
+ .cisne-enterprise-hub-actions{width:100%!important;justify-content:flex-start!important}
+ .cisne-enterprise-hub-actions .fui-Button{flex:0 1 auto!important}
+}
