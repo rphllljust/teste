@@ -127,9 +127,9 @@ export function EnterpriseTopbar({
           type="button"
           appearance="transparent"
           className="mobile-toggle icon-button"
-          aria-label={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Abrir menu'}
+          aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
           aria-expanded={sidebarOpen}
-          title={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Abrir menu'}
+          title={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
           onClick={onToggleSidebar}
         >
           <PanelLeft size={20} />
