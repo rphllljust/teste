@@ -3,7 +3,7 @@ import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import { executionInput, quantityScaled } from '../../../../../lib/domain/execution';
 
-const query = z.object({ state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
+const query = z.object({ q: z.string().default(''), state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
 
 function project(row: Record<string, unknown>) {
   return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
@@ -20,9 +20,9 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const offset = (parsed.data.page - 1) * parsed.data.pageSize;
     const db = database();
     const rows = await db.batch([
-      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
-      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
-      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'}`).bind(id, context.actorId),
+      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND owner_id=?').bind(id, context.actorId),
+      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=? AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
+      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=? AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'}`).bind(id, context.actorId),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
@@ -43,7 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const p = parsed.data;
     const hash = await fingerprint({ actor: context.actorId, orderId: id, payload: p });
     const result = await database().transaction(async query => {
-      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND (owner_id IS NULL OR owner_id=$2) FOR UPDATE', [id, context!.actorId]);
+      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [id, context!.actorId]);
       if (!order.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem não encontrada.');
       const row = order.rows[0] as { id: string; status: string; version: number };
       if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');

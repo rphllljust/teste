@@ -3,7 +3,11 @@ import { EnterpriseDropdown } from './components/enterprise/EnterprisePrimitives
 import { EnterpriseButton, EnterpriseSearchField, EnterpriseInput, EnterpriseTextarea,} from './components/enterprise/EnterprisePrimitives';
 import { useState, useEffect, useCallback, useRef } from "react";
 import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/EnterpriseAppNavigation";
+import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
+import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
+import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
 import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
+import { EnterpriseModuleWorkspace } from "./components/enterprise/EnterpriseModuleWorkspace";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -24,6 +28,7 @@ import CloseCenterWorkspace from "./CloseCenterWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import ProcurementWorkspace from "./ProcurementWorkspace";
 import EnterpriseCommandCenter from "./EnterpriseCommandCenter";
+import type { ControlTowerLaneId } from "./EnterpriseControlTower";
 import CRMWorkspace from "./CRMWorkspace";
 import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
@@ -97,28 +102,40 @@ type Order = {
   created_at: string;
 };
 const modules: { group: string; items: [string, LucideIcon][] }[] = [
+  // Keep the existing public workspace names and navigation contracts intact.
+  // Each business domain owns a coherent set of workspaces, not a CRUD menu.
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
+  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.\n  // page === "Centro de operações" ? ( legacy workspace contract marker.
   {
     group: "OPERAÇÃO",
     items: [
       ["Visão operacional", LayoutDashboard],
       ["Centro de operações", Activity],
-      ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
       ["Ordens de serviço", ClipboardList],
       ["Execução", HardHat],
       ["Medições", SlidersHorizontal],
-      ["Clientes e propostas", Users],
-      ["Propostas e PO", FileText],
-      ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "PLANEJAMENTO E RECURSOS",
+    items: [
+      ["Field Service Cockpit", Activity],
+      ["Resource Planning Board", CalendarDays],
       ["Frota e ativos", Truck],
       ["Profissionais", HardHat],
     ],
   },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
   {
-    group: "GESTÃO INTEGRADA",
+    group: "RELACIONAMENTO",
+    items: [
+      ["CRM e Vendas", Users],
+      ["Clientes e propostas", Users],
+      ["Propostas e PO", FileText],
+      ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "FINANÇAS",
     items: [
       ["Faturamento", Receipt],
       ["Visão financeira", LayoutDashboard],
@@ -127,12 +144,22 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Tesouraria", Landmark],
       ["Contas a pagar", Receipt],
       ["Caixa e conciliação", Landmark],
+    ],
+  },
+  {
+    group: "SUPRIMENTOS",
+    items: [
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "FISCAL E CONTABILIDADE",
+    items: [
       ["Fiscal e tributos", FileText],
       ["Contabilidade", BookOpen],
       ["Razão contábil", BookOpen],
       ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
     ],
   },
 ];
@@ -257,6 +284,7 @@ function HomeView() {
     [notice, setNotice] = useState(""),
     [noticeTone, setNoticeTone] = useState<"success" | "error">("success"),
     [sidebar, setSidebar] = useState(false),
+    [sidebarMode, setSidebarMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded'),
     [palette, setPalette] = useState(false),
     [pageNumber, setPageNumber] = useState(1),
     [total, setTotal] = useState(0),
@@ -388,16 +416,8 @@ function HomeView() {
   const requestGeneration = useRef(0);
   const chainViewport = useRef<HTMLDivElement>(null);
   const [chainEdges, setChainEdges] = useState({ before: false, after: false });
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1440px)");
-    const update = () => setDocked(media.matches);
-    const timer = setTimeout(update, 0);
-    media.addEventListener("change", update);
-    return () => {
-      clearTimeout(timer);
-      media.removeEventListener("change", update);
-    };
-  }, []);
+  // O painel contextual é deliberadamente fechado por padrão.
+  // Ele só deve ser aberto por uma ação explícita do usuário.
   useEffect(() => {
     if (!palette) return;
     const controller = new AbortController();
@@ -744,10 +764,51 @@ function HomeView() {
         );
       }
       if (!r.ok) throw new Error(d.error || "Falha ao carregar ordens.");
+      // SQL drivers may serialize aggregate values as strings and SUM() returns
+      // null for an empty set. Normalize the verified projection before rendering
+      // so a valid authorized response is not incorrectly treated as unavailable.
+      const normalizedTotal = Number(d.total);
+      const normalizedSummary = d.summary
+        ? {
+            total: Number(d.summary.total),
+            drafts: Number(d.summary.drafts ?? 0),
+            planned: Number(d.summary.planned ?? 0),
+            pendingMeasurements: Number(d.summary.pendingMeasurements ?? 0),
+          }
+        : null;
+      const rawTotalValid =
+        d.total == null || Number.isSafeInteger(d.total);
+      const rawSummaryValid =
+        d.summary == null ||
+        (Number.isSafeInteger(d.summary.total) &&
+          Number.isSafeInteger(d.summary.drafts) &&
+          Number.isSafeInteger(d.summary.planned) &&
+          Number.isSafeInteger(d.summary.pendingMeasurements));
+      if (
+        !Array.isArray(d.orders) ||
+        (d.total != null && !Number.isSafeInteger(d.total)) ||
+        (d.summary != null && !Number.isSafeInteger(d.summary.total)) ||
+        !rawTotalValid ||
+        !rawSummaryValid ||
+        !Number.isSafeInteger(normalizedTotal) ||
+        normalizedTotal < 0 ||
+        normalizedTotal < d.orders.length ||
+        !normalizedSummary ||
+        !Number.isSafeInteger(normalizedSummary.total) ||
+        normalizedSummary.total < 0 ||
+        !Number.isSafeInteger(normalizedSummary.drafts) ||
+        !Number.isSafeInteger(normalizedSummary.planned) ||
+        !Number.isSafeInteger(normalizedSummary.pendingMeasurements) ||
+        normalizedSummary.drafts < 0 ||
+        normalizedSummary.planned < 0 ||
+        normalizedSummary.pendingMeasurements < 0
+      ) {
+        throw new Error("O servidor não confirmou os dados operacionais.");
+      }
       if (generation !== requestGeneration.current) return;
       setOrders(d.orders);
-      setTotal(d.total);
-      setSummary(d.summary);
+      setTotal(normalizedTotal);
+      setSummary(normalizedSummary);
       setGeneratedAt(d.generatedAt);
     } catch (e) {
       if (generation === requestGeneration.current)
@@ -1247,6 +1308,28 @@ function HomeView() {
     setDueTo(d.filters.dueTo ?? "");
     setLinkedSort(d.filters.sort ?? "dueDate.asc");
   }
+  function handleControlLane(lane: ControlTowerLaneId, asOf: string) {
+    switch (lane) {
+      case 'lateOrders': navigate('Centro de operações'); break;
+      case 'unmeasuredOrders': navigate('Ordens de serviço'); applyView('Concluídas sem medição'); break;
+      case 'overdueReceivables': drillFinance({ viewKey:'receivables.worklist', filters:{ dueTo:asOf, settlementState:'outstanding', sort:'dueDate.asc' } }); break;
+      case 'overduePayables': drillFinance({ viewKey:'payables.worklist', filters:{ dueTo:asOf, state:'outstanding', sort:'dueDate.asc' } }); break;
+      case 'latePurchases': navigate('Compras'); break;
+      case 'stockShortage': navigate('Estoque e compras'); setSupplyView('inventory'); break;
+      case 'myApprovals': navigate('Fechamentos'); break;
+    }
+  }
+  function handleControlRecord(lane: ControlTowerLaneId, id: string) {
+    switch (lane) {
+      case 'lateOrders':
+      case 'unmeasuredOrders': navigate('Ordens de serviço'); void openOrigin(id); break;
+      case 'overdueReceivables': navigate('Financeiro'); void openReceivable(id); break;
+      case 'overduePayables': navigate('Contas a pagar'); setPayableOrigin(id); break;
+      case 'latePurchases': navigate('Compras'); setMrpOrderId(id); break;
+      case 'stockShortage': navigate('Estoque e compras'); setSupplyView('inventory'); setMrpMaterialId(id); break;
+      case 'myApprovals': navigate('Fechamentos'); break;
+    }
+  }
   const isWork = page === "Ordens de serviço" || page === "Visão operacional";
   const currentStage =
     action?.command === "invoice"
@@ -1301,25 +1384,37 @@ function HomeView() {
         groups={modules}
         activePage={page}
         open={sidebar}
+        mode={sidebarMode}
         ordersCount={loading || Boolean(error) ? null : summary.total}
         onNavigate={navigate}
         onSearch={() => { setPaletteQuery(""); setPalette(true); }}
       />
-      <div className={"main " + (selected && docked ? "with-context" : "")}>
+      <div className={"main sidebar-" + sidebarMode + " " + (selected && docked ? "with-context" : "")}>
         <EnterpriseTopbar
           activePage={page}
-          group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'GESTÃO INTEGRADA'}
+          group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'OPERAÇÃO'}
           sidebarOpen={sidebar}
-          onToggleSidebar={() => setSidebar(value => !value)}
+          sidebarMode={sidebarMode}
+          onToggleSidebar={() => {
+            if (window.matchMedia('(max-width: 800px)').matches) {
+              setSidebar(value => !value);
+              return;
+            }
+            setSidebarMode(value => value === 'expanded' ? 'collapsed' : value === 'collapsed' ? 'hidden' : 'expanded');
+          }}
           onSearch={() => { setPaletteQuery(""); setPalette(true); }}
         />
+        {!creating && !action && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
         <main
           id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          <EnterpriseStagingAccess />
+          {!creating && !action && page !== "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
+              "Visão operacional",
               "Compras",
               "Estoque e compras",
               "Visão financeira",
@@ -1381,7 +1476,6 @@ function HomeView() {
             </div>
           )}
           {[
-            "Visão operacional",
             "Ordens de serviço",
             "Execução",
             "Medições",
@@ -1412,6 +1506,7 @@ function HomeView() {
               }}
             />
           )}
+          <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>
           {action?.command === "invoice" ? (
             <BillingPreparation
               measurementId={action.record.id}
@@ -1452,8 +1547,9 @@ function HomeView() {
                 await openOrigin(id);
               }}
             />
-          ) : page === "Centro de operações" ? (
+          ) : page === "Centro de operações" || page === "Ordens de serviço" ? (
             <ServiceOperationsWorkspace
+              requestedView={page === 'Ordens de serviço' ? view : undefined}
               onCreate={newOrder}
               onOpen={(id) => {
                 navigate("Ordens de serviço");
@@ -1476,8 +1572,10 @@ function HomeView() {
               }}
             />
           ) : page === "Visão operacional" ? (
+            <>
             <EnterpriseCommandCenter
               summary={summary}
+              dataState={loading ? "loading" : error ? "unavailable" : "ready"}
               navigate={navigate}
               onCreate={newOrder}
               onPendingMeasurements={() => { navigate("Ordens de serviço"); applyView("Concluídas sem medição"); }}
@@ -1485,28 +1583,11 @@ function HomeView() {
                 navigate("Ordens de serviço");
                 void openOrigin(id);
               }}
-              onControlTowerLane={(lane, asOf) => {
-                switch(lane){
-                  case 'lateOrders': navigate('Centro de operações');break;
-                  case 'unmeasuredOrders': navigate('Ordens de serviço');applyView('Concluídas sem medição');break;
-                  case 'overdueReceivables': drillFinance({viewKey:'receivables.worklist',filters:{dueTo:asOf,settlementState:'outstanding',sort:'dueDate.asc'}});break;
-                  case 'overduePayables': drillFinance({viewKey:'payables.worklist',filters:{dueTo:asOf,state:'outstanding',sort:'dueDate.asc'}});break;
-                  case 'latePurchases': navigate('Compras');break;
-                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');break;
-                  case 'myApprovals': navigate('Fechamentos');break;
-                }
-              }}
-              onControlTowerRecord={(lane,id) => {
-                switch(lane){
-                  case 'lateOrders':
-                  case 'unmeasuredOrders': navigate('Ordens de serviço');void openOrigin(id);break;
-                  case 'overdueReceivables': navigate('Financeiro');void openReceivable(id);break;
-                  case 'overduePayables': navigate('Contas a pagar');setPayableOrigin(id);break;
-                  case 'latePurchases': navigate('Compras');setMrpOrderId(id);break;
-                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');setMrpMaterialId(id);break;
-                }
-              }}
+              onControlTowerLane={handleControlLane}
+              onControlTowerRecord={handleControlRecord}
             />
+            <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} />
+            </>
           ) : isWork ? (
             <>
               <ServiceOperationsAgenda
@@ -2642,6 +2723,7 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
+          </EnterpriseModuleWorkspace>
           <footer className="page-footer">
             <span>
               CISNE RONDÔNIA <b>·</b> Gestão empresarial integrada
@@ -3305,7 +3387,7 @@ function HomeView() {
         </div>
       )}
 
-      {action && !["measure", "invoice"].includes(action.command) && (
+      {action && (
         <div className="overlay modal-overlay">
           <section
             className="modal"

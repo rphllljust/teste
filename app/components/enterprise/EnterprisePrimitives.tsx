@@ -2,7 +2,7 @@
 
 import { Children, isValidElement, useEffect, useId, useRef, useState, Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type KeyboardEvent, type ReactElement, type ReactNode } from 'react';
 import { resolveActiveSectionId } from '../../../lib/ui/enterprise-sections';
-import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
+import { Button as FluentButton, Checkbox as FluentCheckbox, DataGrid as FluentDataGrid, DataGridBody, DataGridCell, DataGridHeader, DataGridHeaderCell, DataGridRow, Dialog as FluentDialog, DialogSurface, Dropdown as FluentDropdown, Field as FluentField, Input as FluentInput, MessageBar as FluentMessageBar, MessageBarBody, MessageBarTitle, Link as FluentLink, Option as FluentOption, Spinner as FluentSpinner, Tab as FluentTab, TabList as FluentTabList, Textarea as FluentTextarea, createTableColumn, type ButtonProps, type TableColumnDefinition } from '@fluentui/react-components';
 import { SearchRegular } from '@fluentui/react-icons';
 
 export const EnterpriseInput = FluentInput;
@@ -99,7 +99,20 @@ export function EnterpriseObjectPage({ title, header, sections=[], children, cla
  },[sectionSignature]);
  return <section role="region" className={`enterprise-object-page enterprise-object-page-v2${className ? ` ${className}` : ''}`} aria-label={title} {...props}>
   <div className="enterprise-object-identity">{header}</div>
-  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><a key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={()=>{explicitSectionRef.current=section.id;setActiveSection(section.id);setNavigationOpen(false);}}>{section.label}</a>)}</nav></div>}
+  {sections.length>1&&<div className="enterprise-object-nav-wrap"><EnterpriseButton type="button" className="enterprise-object-nav-toggle" aria-expanded={navigationOpen} aria-controls={sectionNavigationId} onClick={()=>setNavigationOpen(v=>!v)}>Seções do registro · {sections.find(s=>s.id===activeSectionId)?.label??'Visão geral'}</EnterpriseButton><nav id={sectionNavigationId} className={`enterprise-object-tabs ${navigationOpen?'is-open':''}`} aria-label="Seções do objeto">{sections.map(section=><FluentLink key={section.id} href={'#'+section.id} aria-current={section.id===activeSectionId?'location':undefined} onClick={(event)=>{
+    // The application uses the URL hash for workspace routing. Internal
+    // Object Page anchors must not replace that route with a section ID.
+    event.preventDefault();
+    explicitSectionRef.current=section.id;
+    setActiveSection(section.id);
+    setNavigationOpen(false);
+    const target=document.getElementById(section.id);
+    target?.focus({preventScroll:true});
+    target?.scrollIntoView({
+      behavior:window.matchMedia('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',
+      block:'start',
+    });
+   }}>{section.label}</FluentLink>)}</nav></div>}
   <div className="enterprise-object-page-content">{children}</div>
  </section>;
 }
@@ -177,7 +190,7 @@ export function EnterpriseKpiCard({ label, value, trend, description, icon, onCl
 export type AnalyticalDatum = { label:string; value:number; description?:string; tone?:'neutral'|'positive'|'warning'|'negative' };
 export function EnterpriseAnalyticalChart({ title, data, onSelect, valueLabel='valor' }:{ title:string; data:AnalyticalDatum[]; onSelect?:(datum:AnalyticalDatum)=>void; valueLabel?:string }) { const max = Math.max(...data.map(item => item.value), 1); return <section className="enterprise-analytical-chart" aria-label={title}><div className="enterprise-analytical-heading"><h2>{title}</h2><span>{valueLabel}</span></div><div className="enterprise-analytical-bars" role="list">{data.map(item => { const bar = <span className={`enterprise-analytical-bar ${item.tone ?? 'neutral'}`} style={{ width:`${Math.max((item.value/max)*100, item.value ? 4 : 0)}%` }} aria-hidden="true" />; return <div className="enterprise-analytical-row" role="listitem" key={item.label}>{onSelect ? <FluentButton type="button" appearance="subtle" className="enterprise-analytical-control" onClick={() => onSelect(item)} aria-label={`${item.label}: ${item.value} ${valueLabel}`}>{bar}<span>{item.label}</span><strong>{item.value}</strong></FluentButton> : <div>{bar}<span>{item.label}</span><strong>{item.value}</strong></div>}</div>; })}</div></section>; }
 
-export function ObjectSection({ title, eyebrow, children, actions, id }:{title:string;eyebrow?:string;children:ReactNode;actions?:ReactNode;id?:string}) { return <section className="enterprise-object-section" id={id} aria-labelledby={id ? `${id}-title` : undefined}><header className="enterprise-object-section-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h3 id={id ? `${id}-title` : undefined}>{title}</h3></div>{actions && <div className="enterprise-object-section-actions">{actions}</div>}</header>{children}</section>; }
+export function ObjectSection({ title, eyebrow, children, actions, id }:{title:string;eyebrow?:string;children:ReactNode;actions?:ReactNode;id?:string}) { return <section className="enterprise-object-section" id={id} tabIndex={id ? -1 : undefined} aria-labelledby={id ? `${id}-title` : undefined}><header className="enterprise-object-section-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h3 id={id ? `${id}-title` : undefined}>{title}</h3></div>{actions && <div className="enterprise-object-section-actions">{actions}</div>}</header>{children}</section>; }
 export function EmptyState({ title, description, action, children }:{title:string;description?:string;action?:ReactNode;children?:ReactNode}) { return <div className="enterprise-empty-state" role="status"><h3>{title}</h3>{description && <p>{description}</p>}{children}{action}</div>; }
 export function LoadingState({ label='Carregando dados…' }:{label?:string}) { return <div className="enterprise-loading-state" role="status" aria-live="polite" aria-busy="true"><FluentSpinner size="tiny"/><span>{label}</span></div>; }
 export function ErrorState({ message, onRetry }:{message:string;onRetry?:()=>void}) { return <FluentMessageBar className="enterprise-error-state" intent="error" role="alert"><MessageBarBody><MessageBarTitle>Não foi possível concluir</MessageBarTitle><p>{message}</p>{onRetry && <EnterpriseButton type="button" className="secondary" onClick={onRetry}>Tentar novamente</EnterpriseButton>}</MessageBarBody></FluentMessageBar>; }

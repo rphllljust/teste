@@ -1,10 +1,10 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Building2, ChevronDown, ChevronRight, Command, Layers, PanelLeft, Search,
+  Bell, Building2, ChevronDown, ChevronRight, Command, Layers, PanelLeft, Search, UserCircle,
 } from 'lucide-react';
 import { EnterpriseButton } from './EnterprisePrimitives';
 
@@ -17,18 +17,25 @@ type SidebarProps = {
   groups: EnterpriseNavigationGroup[];
   activePage: string;
   open: boolean;
+  mode: 'expanded' | 'collapsed' | 'hidden';
   ordersCount: number | null;
   onNavigate: (name: string) => void;
   onSearch: () => void;
 };
 
 export function EnterpriseSidebar({
-  groups, activePage, open, ordersCount, onNavigate, onSearch,
+  groups, activePage, open, mode, ordersCount, onNavigate, onSearch,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.group, false])));
+  useEffect(() => {
+    const activeGroup = groups.find(group => group.items.some(([name]) => name === activePage))?.group;
+    if (!activeGroup) return;
+    const timer = setTimeout(() => setCollapsed(previous => ({ ...previous, [activeGroup]: false })), 0);
+    return () => clearTimeout(timer);
+  }, [activePage, groups]);
   return (
-    <aside className={'sidebar ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE">
-      <Link className="brand" href="/" aria-label="Cisne início">
+    <aside className={'sidebar sidebar-' + mode + ' ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE" data-sidebar-mode={mode}>
+      <Link prefetch={false} className="brand" href="/" aria-label="Cisne início">
         <span className="brand-mark"><Layers size={24} /></span>
         <span>CISNE<small>RONDÔNIA</small></span>
       </Link>
@@ -93,20 +100,26 @@ type TopbarProps = {
   activePage: string;
   group: string;
   sidebarOpen: boolean;
+  sidebarMode: 'expanded' | 'collapsed' | 'hidden';
   onToggleSidebar: () => void;
   onSearch: () => void;
 };
 
 export function EnterpriseTopbar({
-  activePage, group, sidebarOpen, onToggleSidebar, onSearch,
+  activePage, group, sidebarOpen, sidebarMode, onToggleSidebar, onSearch,
 }: TopbarProps) {
-  const groupLabel = group === 'OPERAÇÃO'
-    ? 'Operação'
-    : group === 'RELACIONAMENTO'
-      ? 'Relacionamento'
-      : group === 'GESTÃO INTEGRADA'
-        ? 'Gestão integrada'
-        : group;
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const groupLabels: Record<string, string> = {
+    'OPERAÇÃO': 'Operação',
+    'PLANEJAMENTO E RECURSOS': 'Planejamento e recursos',
+    'RELACIONAMENTO': 'Relacionamento',
+    'FINANÇAS': 'Finanças',
+    'SUPRIMENTOS': 'Suprimentos',
+    'FISCAL E CONTABILIDADE': 'Fiscal e contabilidade',
+    'GESTÃO INTEGRADA': 'Gestão integrada',
+  };
+  const groupLabel = groupLabels[group] ?? group;
   return (
     <header className="topbar">
       <nav className="crumb" aria-label="Localização no CISNE">
@@ -116,9 +129,20 @@ export function EnterpriseTopbar({
           className="mobile-toggle icon-button"
           aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
           aria-expanded={sidebarOpen}
+          title={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
           onClick={onToggleSidebar}
         >
           <PanelLeft size={20} />
+        </EnterpriseButton>
+        <EnterpriseButton
+          type="button"
+          appearance="transparent"
+          className="desktop-sidebar-toggle icon-button"
+          aria-label={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Expandir menu'}
+          aria-expanded={sidebarMode === 'expanded'}
+          onClick={onToggleSidebar}
+        >
+          <PanelLeft size={20} aria-hidden="true" />
         </EnterpriseButton>
         <span>CISNE</span><span className="crumb-divider">/</span>
         <span>{groupLabel}</span><ChevronRight size={14} aria-hidden="true" />
@@ -136,6 +160,26 @@ export function EnterpriseTopbar({
           <span className="global-search-label">Buscar no Cisne</span>
           <kbd>Ctrl K</kbd>
         </EnterpriseButton>
+        <div className="shell-action">
+          <EnterpriseButton type="button" appearance="subtle" className="icon-button shell-icon-button" aria-label="Notificações" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(value => !value); setProfileOpen(false); }}>
+            <Bell size={17} aria-hidden="true" />
+            
+          </EnterpriseButton>
+          {notificationsOpen && <div className="shell-popover" role="status" aria-label="Notificações">
+            <strong>Notificações</strong>
+            <p>A central global de notificações ainda não está conectada. Consulte as filas de cada módulo para verificar pendências autorizadas.</p>
+          </div>}
+        </div>
+        <div className="shell-action">
+          <EnterpriseButton type="button" appearance="subtle" className="profile-button" aria-label="Abrir perfil e preferências" aria-expanded={profileOpen} onClick={() => { setProfileOpen(value => !value); setNotificationsOpen(false); }}>
+            <UserCircle size={18} aria-hidden="true" />
+            <span className="profile-label">Perfil</span>
+          </EnterpriseButton>
+          {profileOpen && <div className="shell-popover shell-profile-popover" role="region" aria-label="Perfil e preferências">
+            <strong>Perfil e preferências</strong>
+            <p>Favoritos e densidade podem ser ajustados na área de trabalho. A administração de perfil ainda não está integrada.</p>
+          </div>}
+        </div>
         <span className="app-mode-pill"><span aria-hidden="true" />Workspace</span>
       </div>
     </header>

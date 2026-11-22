@@ -52,13 +52,10 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
   expect(searchLabelHidden).toBeTruthy();
   const workspacePillWidth = await page.locator('.app-mode-pill').evaluate(element => element.getBoundingClientRect().width);
   expect(workspacePillWidth).toBeLessThanOrEqual(36);
-  const gridViewport = await page.locator('.enterprise-data-grid').evaluate(element => ({
-    clientWidth: element.clientWidth,
-    scrollWidth: element.scrollWidth,
-    overflowX: getComputedStyle(element).overflowX,
-  }));
-  expect(gridViewport.overflowX).toBe('visible');
-  expect(gridViewport.scrollWidth).toBeLessThanOrEqual(gridViewport.clientWidth + 2);
+  // Validate the document users actually see on mobile, not a hidden desktop grid.
+  const documentOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(documentOverflow).toBeLessThanOrEqual(2);
   await page.screenshot({ path: test.info().outputPath('resource-grid-mobile.png'), fullPage: true });
 });
 
@@ -267,8 +264,8 @@ test('Redwood priority task opens the real orders queue filtered for completed w
  await expect(pending).toBeVisible();
  await pending.click();
  await expect(page.locator('.topbar')).toContainText('Ordens de serviço');
- await expect(page.getByRole('button',{name:'Concluídas sem medição',exact:true}))
-  .toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('combobox',{name:'Visão operacional'}))
+  .toContainText('Concluídas sem medição');
 });
 
 
@@ -322,25 +319,46 @@ test('commercial proposal and contract sorting passes whitelisted values to the 
 
 
 test('completed OS without actual measurement does not claim measurement or billing completion',async({page})=>{
+ const id='11111111-1111-4111-8111-111111111999';
+ let detailRequests=0;
  await page.route('**/api/orders?*',route=>route.fulfill({json:{
-  orders:[{id:'order-complete-no-measurement',title:'OS sem medição',
+  orders:[{id,title:'OS sem medição',
     client:'Cliente cenário',category:'Serviços',description:'Execução encerrada',
-    status:'COMPLETED',due_date:null,created_at:'2026-11-20T10:00:00Z',
-    relations:{measurements:0,invoices:0,receivables:0},availableCommands:[]}],
+    status:'completed',due_date:null,created_at:'2026-11-20T10:00:00Z',
+    availableCommands:[]}],
   total:1,pageInfo:{page:1,total:1,hasMore:false},
   summary:{total:1,drafts:0,planned:0,pendingMeasurements:1},
  }}));
+ await page.route('**/api/orders/'+id,route=>{
+  detailRequests++;
+  return route.fulfill({json:{order:{
+   relations:{measurements:0,invoices:0,receivables:0},
+   sublists:{history:{items:[],pageInfo:{total:0,hasMore:false}}},
+  }}});
+ });
  await page.goto('/');
  await page.getByRole('button',{name:'Centro de operações',exact:true}).click();
  await expect(page.getByRole('heading',{name:'OS sem medição'})).toBeVisible();
- const measurement=page.locator('.service-progress').getByText('Medições vinculadas');
- const billing=page.locator('.service-progress').getByText('Faturamento vinculado');
+ const object=page.getByRole('region',{name:'Ordem de serviço OS sem medição'});
+ const measurement=object.locator('.service-progress').getByText('Medições vinculadas');
+ const billing=object.locator('.service-progress').getByText('Faturamento vinculado');
  await expect(measurement).not.toHaveClass(/has-record|done/);
  await expect(billing).not.toHaveClass(/has-record|done/);
- await expect(page.locator('.service-inspector')).toContainText('0 medições');
+ const linked=object.locator('.object-facts div').filter({hasText:'Registros vinculados'}).locator('strong');
+ await expect(linked).toHaveText('—');
+ await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+ expect(detailRequests).toBe(0);
+ await object.getByRole('button',{name:'Consultar histórico e vínculos'}).click();
+ await expect.poll(()=>detailRequests).toBe(1);
+ const relations=object.getByRole('region',{name:'Vínculos confirmados'});
+ await expect(relations.locator('dd')).toHaveText(['0','0','0']);
+ await expect(linked).toHaveText('0');
+ await expect(page.locator('.service-inspector')).toContainText('0 medições · 0 faturas verificadas.');
+ await expect(measurement).not.toHaveClass(/has-record|done/);
+ await expect(billing).not.toHaveClass(/has-record|done/);
 });
-
-
 test('Redwood control tower refreshes real API query contracts and opens the financial workspace (mocked UI)',async({page})=>{
  const queried:string[]=[];
  await page.route('**/api/enterprise/control-tower*',route=>{
@@ -368,6 +386,7 @@ test('Redwood control tower refreshes real API query contracts and opens the fin
   }});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower).toBeVisible();
  const lane=tower.getByRole('article',{name:'Recebíveis vencidos'});
@@ -419,6 +438,7 @@ test('Redwood control tower uses server-valued queues and opens an exact payable
   }}});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower).toBeVisible();
  const payableLane=tower.getByRole('article',{name:'Obrigações vencidas'});
@@ -436,6 +456,7 @@ test('Redwood control tower fails closed when the API is unavailable',async({pag
  await page.route('**/api/enterprise/control-tower*',route=>route.fulfill({status:503,
   json:{error:'O serviço de prioridades está temporariamente indisponível.'}}));
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower.getByRole('alert')).toContainText('temporariamente indisponível');
  await expect(tower.getByRole('article')).toHaveCount(0);
@@ -541,6 +562,7 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
   return route.fulfill({json:{id,state:'approved',rowVersion:2,replayed:false}});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  await page.getByRole('region',{name:'Central de exceções empresariais'})
    .getByRole('button',{name:'Abrir aprovações'}).click();
  const inbox=page.getByRole('region',{name:'Aprovações atribuídas'});
@@ -640,4 +662,224 @@ test('Fluent Professionals List Report paginates beyond 25 and sorts by SQL cost
  await expect(page.getByRole('grid',{name:'Profissionais e equipes autorizados'})).toContainText('Professional 2');
  await page.getByRole('button',{name:'Limpar filtros',exact:true}).click();
  await expect.poll(()=>requests.at(-1)?.get('sort')).toBe('name.asc');
+});
+
+test('global workflow shortcuts open existing enterprise modules using real navigation', async ({ page }) => {
+  await page.goto('/');
+  const related = page.getByRole('navigation', { name: 'Fluxos empresariais relacionados' });
+  await expect(related).toBeVisible();
+  await related.getByRole('link', { name: 'Abrir Centro de operações' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Centro de operações');
+  await related.getByRole('link', { name: 'Abrir Ordens de serviço' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Ordens de serviço');
+  await related.getByRole('link', { name: 'Abrir Medições' }).click();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Medições');
+});
+
+test('unauthorized operational metrics are unavailable rather than fabricated zero', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 401,
+    json: { error: 'Acesse a homologação com credencial autorizada.' },
+  }));
+  await page.goto('/');
+  await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
+  await expect(page.locator('.cisne-command-metric-value')).toHaveText(['—', '—', '—', '—']);
+});
+
+test('service order evidence is requested on demand from the owner-scoped detail endpoint', async ({ page }) => {
+  const id = '11111111-1111-4111-8111-111111111111';
+  let detailRequests = 0;
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: [{ id, title: 'OS rastreável', client: 'Cliente autorizado', category: 'Serviços',
+      description: 'Atendimento validado', status: 'PREPARED', due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [] },
+      { id: '33333333-3333-4333-8333-333333333333', title: 'OS alternativa',
+        client: 'Cliente autorizado', category: 'Serviços', description: 'Outra ordem',
+        status: 'DRAFT', due_date: null, created_at: '2026-11-20T10:00:00Z',
+        availableCommands: [] }],
+    total: 2, pageInfo: { page: 1, total: 2, hasMore: false },
+    summary: { total: 2, drafts: 1, planned: 1, pendingMeasurements: 0 },
+  } }));
+  await page.route('**/api/orders/' + id, route => {
+    detailRequests++;
+    return route.fulfill({ json: { order: {
+      relations: { measurements: 2, invoices: 1, receivables: 0 },
+      sublists: { history: { items: [
+        { id: 'event-1', command: 'authorize', label: 'OS autorizada',
+          created_at: '2026-11-20T12:00:00Z' },
+      ], pageInfo: { total: 1, hasMore: false } } },
+    } } });
+  });
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  await expect(page.getByText('OS rastreável').first()).toBeVisible();
+  // SAP Fiori Object Page floorplan: accessible sections and anchored navigation
+  // must not hijack the app's existing hash-based workspace routing.
+  const object = page.getByRole('region', { name: 'Ordem de serviço OS rastreável' });
+  await expect(object).toBeVisible();
+  const sections = object.getByRole('navigation', { name: 'Seções do objeto' });
+  await expect(sections.getByRole('link')).toHaveCount(3);
+  const originalHash = await page.evaluate(() => window.location.hash);
+  const history = sections.getByRole('link', { name: 'Histórico' });
+  await history.click();
+  await expect(history).toHaveAttribute('aria-current', 'location');
+  await expect(object.locator('#service-order-history')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(originalHash);
+  expect(detailRequests).toBe(0);
+  const relatedFact = object.locator('.object-facts div').filter({ hasText: 'Registros vinculados' });
+  await expect(relatedFact.locator('strong')).toHaveText('—');
+  await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
+  await expect.poll(() => detailRequests).toBe(1);
+  const relations = page.getByRole('region', { name: 'Vínculos confirmados' });
+  await expect(relations).toBeVisible();
+  await expect(relations).toContainText('Medições');
+  await expect(relations).toContainText('Faturas');
+  await expect(relations).toContainText('Recebíveis');
+  await expect(relations.locator('dd')).toHaveText(['2', '1', '0']);
+  await expect(relatedFact.locator('strong')).toHaveText('3');
+  await expect(page.locator('.service-inspector')).toContainText('2 medições · 1 fatura verificada.');
+  const timeline = page.getByRole('region', { name: 'Linha do tempo autorizada' });
+  await expect(timeline).toContainText('OS autorizada');
+  await expect(page.getByRole('button', { name: 'Abrir objeto completo' })).toBeVisible();
+  // Switching records must never reuse relations verified for another OS.
+  const queue = page.getByRole('complementary', { name: 'Fila operacional' });
+  await queue.getByRole('button', { name: /OS alternativa/ }).click();
+  await expect(page.getByRole('region', { name: 'Ordem de serviço OS alternativa' })).toBeVisible();
+  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await queue.getByRole('button', { name: /OS rastreável/ }).click();
+  await expect(relatedFact.locator('strong')).toHaveText('—');
+  expect(detailRequests).toBe(1);
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileSections = object.getByRole('button', { name: /Seções do registro/ });
+  await expect(mobileSections).toBeVisible();
+  await mobileSections.click();
+  await expect(sections.getByRole('link', { name: 'Etapas' })).toBeVisible();
+  await sections.getByRole('link', { name: 'Etapas' }).click();
+  await expect(object.locator('#service-order-process')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(originalHash);
+});
+
+test('service order evidence denies detail without authorization and never invents counts', async ({ page }) => {
+  const id = '22222222-2222-4222-8222-222222222222';
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: [{ id, title: 'OS limitada', client: 'Cliente com escopo', category: 'Serviços',
+      description: 'Sem permissão para histórico', status: 'DRAFT', due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [] }],
+    total: 1, pageInfo: { page: 1, total: 1, hasMore: false },
+    summary: { total: 1, drafts: 1, planned: 0, pendingMeasurements: 0 },
+  } }));
+  await page.route('**/api/orders/' + id, route => route.fulfill({
+    status: 403, json: { error: 'Consulta não autorizada.' },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
+  const evidence = page.getByRole('region', { name: 'Histórico e vínculos da ordem' });
+  await expect(evidence.getByRole('alert')).toContainText('Consulta não autorizada.');
+  const record = page.getByRole('region', { name: 'Ordem de serviço OS limitada' });
+  await expect(record.locator('.object-facts div').filter({ hasText: 'Registros vinculados' }).locator('strong')).toHaveText('—');
+  await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await expect(evidence.getByRole('region', { name: 'Vínculos confirmados' })).toHaveCount(0);
+  await expect(evidence.getByRole('region', { name: 'Linha do tempo autorizada' })).toHaveCount(0);
+});
+
+test('Fiori worklist refuses invalid HTTP 200 responses rather than reporting an empty queue', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 200,
+    json: { items: [], pageInfo: { total: 0 } },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  const workbench = page.getByRole('region', { name: 'Centro de operações de serviços' });
+  await expect(workbench.getByRole('alert')).toContainText('O servidor não confirmou a lista e a paginação de ordens.');
+  await expect(workbench.locator('.toolbar-count')).toContainText('Dados indisponíveis');
+  await expect(workbench.getByText('Nenhuma ordem em execução.')).toHaveCount(0);
+});
+
+test('Fiori client Object Page anchors preserve the selected workspace route and focus', async ({ page }) => {
+  const client = {
+    id: 'fiori-client-1',
+    legalName: 'Cliente de verificação',
+    tradeName: 'Unidade Fiori',
+    document: '11.111.111/0001-11',
+    email: null,
+    phone: null,
+    state: { code: 'active', label: 'Ativo', rowVersion: 1 },
+    availableCommands: [],
+  };
+  await page.route('**/api/clients?*', route => route.fulfill({
+    json: { items: [client], pageInfo: { total: 1, sourceTotal: 1, hasMore: false } },
+  }));
+  await page.route('**/api/clients/fiori-client-1', route => route.fulfill({
+    json: { projection: {
+      ...client,
+      related: { orders: { total: 0 }, proposals: [], contracts: [] },
+      history: [],
+      warnings: [],
+    } },
+  }));
+  await page.route('**/api/clients/fiori-client-1/nextcrm', route => route.fulfill({
+    json: { mapped: false, state: 'not_linked' },
+  }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Clientes e propostas' }).click();
+  const workspaceHash = await page.evaluate(() => window.location.hash);
+  const grid = page.getByRole('grid', { name: 'Lista de clientes' });
+  await expect(grid.getByRole('button', { name: 'Cliente de verificação' })).toBeVisible();
+  await grid.getByRole('button', { name: 'Cliente de verificação' }).click();
+  const objectPage = page.getByRole('region', { name: 'Cliente Cliente de verificação' });
+  await expect(objectPage).toBeVisible();
+  const history = objectPage.getByRole('navigation', { name: 'Seções do objeto' }).getByRole('link', { name: 'Histórico' });
+  await history.click();
+  await expect(history).toHaveAttribute('aria-current', 'location');
+  await expect(objectPage.locator('#client-history')).toBeFocused();
+  expect(await page.evaluate(() => window.location.hash)).toBe(workspaceHash);
+});
+
+test('malformed successful order projection does not crash the main enterprise shell', async ({ page }) => {
+  await page.route('**/api/orders?*', route => route.fulfill({
+    status: 200, json: { items: [], pageInfo: { total: 0 } },
+  }));
+  await page.goto('/');
+  await expect(page.getByRole('navigation', { name: 'Módulos empresariais' })).toBeVisible();
+  await page.getByRole('button', { name: 'Visão operacional', exact: true }).click();
+  await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
+  await expect(page.locator('.cisne-command-metric-value')).toHaveText(['—', '—', '—', '—']);
+  await expect(page.getByRole('button', { name: 'Clientes e propostas' })).toBeVisible();
+});
+
+test('canonical order states are grouped correctly in the Fiori operational worklist', async ({ page }) => {
+  const states = [
+    ['draft', 'OS em rascunho'],
+    ['authorized', 'OS autorizada'],
+    ['executing', 'OS em execução'],
+    ['completed', 'OS concluída'],
+    ['cancelled', 'OS cancelada'],
+  ];
+  await page.route('**/api/orders?*', route => route.fulfill({ json: {
+    orders: states.map(([status, title], index) => ({
+      id: '11111111-1111-4111-8111-' + String(index + 1).padStart(12, '0'),
+      title, client: 'Cliente com autorização', category: 'Serviços',
+      description: 'Projeção do domínio', status, due_date: null,
+      created_at: '2026-11-20T10:00:00Z', availableCommands: [],
+    })),
+    total: states.length,
+    pageInfo: { page: 1, total: states.length, hasMore: false },
+    summary: { total: states.length, drafts: 1, planned: 0, pendingMeasurements: 1 },
+  } }));
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Centro de operações', exact: true }).click();
+  const queue = page.getByRole('complementary', { name: 'Fila operacional' });
+  const sections = queue.locator('section');
+  await expect(sections.nth(0)).toContainText('OS autorizada');
+  await expect(sections.nth(0)).toContainText('OS em execução');
+  await expect(sections.nth(1)).toContainText('OS em rascunho');
+  await expect(sections.nth(2)).toContainText('2 ordens concluídas ou encerradas');
+  await expect(page.getByRole('region', { name: 'Ordem de serviço OS em rascunho' })).toHaveCount(1);
+  await expect(page.getByText('Autorizada', { exact: true }).first()).toBeVisible();
 });

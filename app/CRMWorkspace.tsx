@@ -52,7 +52,7 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
   const [loading,setLoading]=useState(true),[sending,setSending]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState<Notice|null>(null);
   const [needsAuth,setNeedsAuth]=useState(false),[loginBusy,setLoginBusy]=useState(false);
-  const [tab,setTab]=useState<'leads'|'opportunities'>('leads');
+  const [tab,setTab]=useState<'leads'|'opportunities'>('opportunities');
   const [query,setQuery]=useState('');
   const [newLeadOpen,setNewLeadOpen]=useState(false);
   const [qualifyLead,setQualifyLead]=useState<Lead|null>(null);
