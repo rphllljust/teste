@@ -1365,6 +1365,8 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Field Service Cockpit",
+              "Resource Planning Board",
             ].includes(page) && (
               <div className="heading">
                 <div>
