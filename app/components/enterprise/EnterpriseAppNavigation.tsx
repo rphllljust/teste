@@ -134,6 +134,16 @@ export function EnterpriseTopbar({
         >
           <PanelLeft size={20} />
         </EnterpriseButton>
+        <EnterpriseButton
+          type="button"
+          appearance="transparent"
+          className="desktop-sidebar-toggle icon-button"
+          aria-label={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Expandir menu'}
+          aria-expanded={sidebarMode === 'expanded'}
+          onClick={onToggleSidebar}
+        >
+          <PanelLeft size={20} aria-hidden="true" />
+        </EnterpriseButton>
         <span>CISNE</span><span className="crumb-divider">/</span>
         <span>{groupLabel}</span><ChevronRight size={14} aria-hidden="true" />
         <strong aria-current="page">{activePage}</strong>
