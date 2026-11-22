@@ -20,6 +20,7 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test:domain
+      - run: node --test test/enterprise-process-journey-navigation.contract.test.mjs
       - run: pnpm build
   enterprise-ui-playwright:
     name: Enterprise UI browser regression
