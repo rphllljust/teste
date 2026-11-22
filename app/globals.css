@@ -1451,3 +1451,13 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .cisne-module-workspace .cisne-crm-metrics,.cisne-module-workspace .metrics{margin-top:0}
 @media(max-width:1050px){.cisne-module-workspace-body{grid-template-columns:minmax(0,1fr)}.cisne-module-context{display:none}}
 @media(max-width:650px){.cisne-module-workspace-header{flex-direction:column;padding:16px}.cisne-module-workspace-actions{justify-content:flex-start}.cisne-module-process{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 12px}.cisne-module-workspace-content{padding:12px}.cisne-module-workspace{border-radius:11px}}
+
+
+/* Tablet-safe workspace composition: contextual rail is opt-in, never steals the work area. */
+.cisne-module-workspace-body{display:block!important}
+.cisne-module-workspace-content{width:100%;max-width:none!important;padding:17px 18px 22px!important}
+.cisne-module-context{display:none!important}
+.cisne-module-workspace{overflow:visible}
+.cisne-module-workspace-process,.cisne-module-process{max-width:100%;overflow-x:auto}
+@media(max-width:1280px){.cisne-module-workspace-header{padding-inline:18px}.cisne-module-workspace-content{padding-inline:14px!important}}
+@media(max-width:700px){.cisne-module-workspace-header{padding:14px}.cisne-module-workspace-content{padding:10px!important}.cisne-module-workspace-title h2{font-size:22px}}
