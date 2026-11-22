@@ -1503,3 +1503,17 @@ body{background:var(--cisne-next-bg);color:var(--cisne-next-ink)}
  .cisne-command-total{flex-wrap:wrap}
 }
 @media(prefers-reduced-motion:reduce){.cisne-command-v2 .cisne-command-domain,.cisne-command-v2 .cisne-command-metric{transition:none}}
+
+/* Fiori-style medium-viewport workspace reflow: actions must never force the
+   dynamic header past its containing width, even at 834px. */
+@media(min-width:801px) and (max-width:1160px){
+ .app .cisne-enterprise-hub-banner{flex-direction:column;align-items:stretch;gap:15px}
+ .app .cisne-enterprise-hub-heading{width:100%;min-width:0;flex:0 1 auto}
+ .app .cisne-enterprise-hub-actions{width:100%;min-width:0;flex:0 1 auto;justify-content:flex-start;gap:7px}
+ .app .cisne-enterprise-hub-actions .fui-Button{flex:1 1 auto;min-width:0}
+}
+@media(max-width:800px){
+ .app .cisne-enterprise-hub-heading{flex:0 1 auto;width:100%;min-width:0}
+ .app .cisne-enterprise-hub-actions{flex:0 1 auto;width:100%;min-width:0;justify-content:flex-start;flex-wrap:wrap}
+ .app .cisne-enterprise-hub-actions .fui-Button{min-width:0}
+}
