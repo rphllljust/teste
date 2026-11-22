@@ -123,7 +123,7 @@ export default function EnterpriseCommandCenter({
           <EnterpriseButton type="button" key={code}
             className={'cisne-command-domain cisne-command-domain-' + tone}
             onClick={() => navigate(target)}
-            aria-label={'Abrir área ' + title + ': ' + target}>
+            aria-label={'Abrir área ' + title + ' — jornada empresarial'}>
             <span className="cisne-command-domain-head"><span className="cisne-command-domain-icon"><Icon fontSize={24} aria-hidden="true" /></span><span className="cisne-command-domain-number">{code} / 06</span></span>
             <strong>{title}</strong><span className="cisne-command-domain-subtitle">{subtitle}</span>
             <span className="cisne-command-domain-description">{detail}</span>
