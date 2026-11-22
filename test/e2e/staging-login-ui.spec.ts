@@ -25,11 +25,11 @@ test('staging gateway validates the passphrase locally and renders server auth f
   await expect(gateway.getByText('Entre para consultar registros autorizados')).toBeVisible();
   const submit = gateway.getByRole('button', { name: 'Entrar na homologação' });
   await expect(submit).toBeDisabled();
-  await gateway.getByRole('textbox', { name: 'Frase de acesso da homologação' }).fill('a'.repeat(24));
+  await gateway.getByLabel('Frase de acesso da homologação').fill('a'.repeat(24));
   await expect(submit).toBeEnabled();
   await submit.click();
   await expect(gateway.getByRole('alert')).toHaveText('Credencial não autorizada. Confira a frase de acesso.');
-  await expect(gateway.getByRole('textbox', { name: 'Frase de acesso da homologação' })).toHaveValue('');
+  await expect(gateway.getByLabel('Frase de acesso da homologação')).toHaveValue('');
   expect(loginRequests).toBe(1);
 });
 
@@ -53,7 +53,7 @@ test('gateway confirms the server session and supports verified sign-out', async
   });
   await page.goto('/');
   const gateway = page.getByRole('region', { name: 'Autenticação de homologação' });
-  await gateway.getByRole('textbox', { name: 'Frase de acesso da homologação' }).fill('x'.repeat(25));
+  await gateway.getByLabel('Frase de acesso da homologação').fill('x'.repeat(25));
   await gateway.getByRole('button', { name: 'Entrar na homologação' }).click();
   await expect(gateway.getByRole('button', { name: 'Encerrar sessão de homologação' })).toBeVisible();
   expect(signInRequests).toBe(1);
