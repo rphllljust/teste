@@ -5,6 +5,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/EnterpriseAppNavigation";
 import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
 import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
+import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
 import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
@@ -1379,6 +1380,7 @@ function HomeView() {
           id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          <EnterpriseStagingAccess />
           {!creating && !action && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
