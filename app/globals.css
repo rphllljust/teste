@@ -594,3 +594,11 @@ tr:has(td):hover{background:#f5f9f5}
 .client-registration-form input,.client-registration-form textarea{display:block;width:100%;padding:10px 12px;background:#fff;border:1px solid #d6e1e4;border-radius:5px;margin-top:6px;font-size:14px;color:var(--ink)}
 .client-registration-form textarea{resize:vertical}
 @media(max-width:560px){.client-registration-form .form-grid{grid-template-columns:1fr}.modal{padding:20px}.drawer{padding:20px}}
+
+/* Enterprise-wide header and action responsiveness. */
+.enterprise-page-header,.business-object-header,.enterprise-page-header-copy,.business-object-heading{min-width:0}
+.enterprise-page-header h1,.business-object-header h2,.enterprise-breadcrumb{overflow-wrap:anywhere}
+.enterprise-page-actions,.business-object-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.enterprise-page-actions button,.business-object-actions button{max-width:100%}
+@media(max-width:760px){.enterprise-page-header,.business-object-header{flex-wrap:wrap;gap:14px}.enterprise-page-actions,.business-object-actions{width:100%;justify-content:flex-start}.enterprise-page-actions button,.business-object-actions button{min-height:40px}}
+@media(max-width:480px){.enterprise-page-actions,.business-object-actions{align-items:stretch}.enterprise-page-actions button,.business-object-actions button{white-space:normal}}
