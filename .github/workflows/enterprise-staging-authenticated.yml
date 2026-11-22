@@ -2,10 +2,10 @@ name: Enterprise authenticated staging audit
 
 # Staging acceptance is intentionally not a required PR check: it needs a
 # real protected environment, real data and an independently provisioned secret.
-# Explicitly trigger it with a commit message containing [enterprise-auth].
+# For the authorized staging branch, opt in with a commit message containing [enterprise-auth].
 on:
   push:
-    branches: [feat/cisne-enterprise-workbench-global-20261121]
+    branches: [feat/cisne-shell-fiori-redwood-20261122]
   workflow_dispatch:
     inputs:
       commit_sha:
@@ -44,7 +44,7 @@ jobs:
           CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
         run: |
           set -euo pipefail
-          readonly allowed_ref='refs/heads/feat/cisne-enterprise-workbench-global-20261121'
+          readonly allowed_ref='refs/heads/feat/cisne-shell-fiori-redwood-20261122'
           [[ "$GITHUB_REF" == "$allowed_ref" ]] || { echo '::error::Candidate branch not authorized'; exit 1; }
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo '::error::Invalid candidate SHA'; exit 1; }
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]] || { echo '::error::Checkout differs from candidate SHA'; exit 1; }
@@ -53,7 +53,7 @@ jobs:
           curl --fail --silent --show-error --max-time 25 \
             -H "Authorization: Bearer $GH_TOKEN" \
             -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-enterprise-workbench-global-20261121" \
+            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-shell-fiori-redwood-20261122" \
             --output "$RUNNER_TEMP/cisne-candidate-ref.json"
           node -e '
             const fs = require("node:fs");
