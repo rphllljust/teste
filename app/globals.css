@@ -1349,3 +1349,73 @@ html[data-cisne-density="compact"] .enterprise-page-header,html[data-cisne-densi
 .shell-profile-popover button{border:0;background:transparent;text-align:left;border-radius:6px;padding:8px;color:var(--ink);font:inherit;font-size:12px;cursor:pointer}
 .shell-profile-popover button:hover,.shell-profile-popover button:focus-visible{background:var(--cisne-neutral-100);outline:none}
 @media(max-width:480px){.profile-label{display:none}.profile-button{width:36px;min-width:36px;padding:0;justify-content:center}.shell-popover{right:-6px}}
+
+
+/* CISNE Global Enterprise Workspace 2026 — applied across every module. */
+:root{
+  --cisne-surface:#ffffff;--cisne-canvas:#f3f7f8;--cisne-ink:#173645;
+  --cisne-muted:#617985;--cisne-line:#d9e6e9;--cisne-accent:#087d83;
+  --cisne-accent-soft:#e7f5f2;--cisne-radius:14px;
+}
+body{background:var(--cisne-canvas);color:var(--cisne-ink)}
+.main main{background:linear-gradient(180deg,#f7fafb 0,#f3f7f8 180px);min-height:calc(100vh - 70px)}
+.main main>*{max-width:1540px;margin-left:auto;margin-right:auto}
+.main main>.cisne-enterprise-hub{max-width:1540px}
+.heading,.list-title,.enterprise-page-header{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:24px;
+  padding:22px 24px;margin:0 0 16px!important;border:1px solid var(--cisne-line);
+  border-radius:var(--cisne-radius);background:linear-gradient(110deg,#fff 0,#fff 68%,#eef8f7 100%);
+  box-shadow:0 8px 24px rgba(19,53,69,.055)
+}
+.heading h1,.list-title h2,.enterprise-page-header h1{margin:5px 0 6px;font-size:clamp(25px,2.4vw,34px);font-weight:760;letter-spacing:-.04em;color:var(--cisne-ink)}
+.heading p,.list-title p,.enterprise-page-header p{max-width:720px;margin:0;color:var(--cisne-muted);line-height:1.55;font-size:13px}
+.eyebrow{color:#36727b!important;font-size:10px!important;letter-spacing:.11em!important;font-weight:800!important}
+.command-buttons,.page-actions,.enterprise-page-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.command-buttons button,.page-actions button,.enterprise-page-actions button{min-height:38px;border-radius:9px;font-weight:700}
+.command-buttons .primary,.page-actions .primary,.enterprise-page-actions .primary{background:var(--cisne-accent)!important;border-color:var(--cisne-accent)!important;color:#fff!important;box-shadow:0 5px 14px rgba(8,125,131,.18)}
+.filters,.enterprise-filter-bar,.service-operations-toolbar{
+  display:flex;align-items:end;gap:12px;flex-wrap:wrap;padding:14px 16px!important;
+  margin:0 0 14px!important;border:1px solid var(--cisne-line)!important;
+  border-radius:11px!important;background:#fff!important;box-shadow:0 4px 16px rgba(19,53,69,.04)
+}
+.filters label,.filters select{min-height:38px}
+.search-input{min-width:240px;flex:1 1 280px}
+.table-wrap,.enterprise-data-grid,.worklist .table-wrap{
+  overflow:auto;border:1px solid var(--cisne-line);border-radius:var(--cisne-radius);
+  background:#fff;box-shadow:0 8px 25px rgba(19,53,69,.05)
+}
+.table-wrap table,.enterprise-data-grid table{width:100%;border-collapse:separate;border-spacing:0}
+.table-wrap thead th,.enterprise-data-grid th{
+  position:sticky;top:0;z-index:1;padding:12px 15px;background:#f1f6f7;
+  color:#4b6875;font-size:10px;letter-spacing:.07em;text-transform:uppercase;font-weight:800;
+  border-bottom:1px solid var(--cisne-line);white-space:nowrap
+}
+.table-wrap tbody td,.enterprise-data-grid td{padding:15px;border-bottom:1px solid #e8eff0;color:#294653;font-size:13px;vertical-align:middle}
+.table-wrap tbody tr:last-child td,.enterprise-data-grid tbody tr:last-child td{border-bottom:0}
+.table-wrap tbody tr:hover,.enterprise-data-grid tbody tr:hover{background:#f2faf8}
+.table-wrap .row-link,.enterprise-data-grid a{font-weight:750;color:#176d75}
+.badge,.enterprise-status{display:inline-flex;align-items:center;min-height:25px;padding:3px 9px;border-radius:999px;border:1px solid #cfe3e1;background:#edf7f5;color:#26726f;font-size:11px;font-weight:750}
+.kpi-grid,.metrics-grid,.summary-grid,.enterprise-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;margin:0 0 18px!important;border:1px solid var(--cisne-line);border-radius:var(--cisne-radius);overflow:hidden;background:#fff;box-shadow:0 8px 24px rgba(19,53,69,.05)}
+.kpi-grid>*,.metrics-grid>*,.summary-grid>*,.enterprise-kpi-grid>*{border-right:1px solid var(--cisne-line);border-radius:0!important;box-shadow:none!important}
+.kpi-grid>*:last-child,.metrics-grid>*:last-child,.summary-grid>*:last-child,.enterprise-kpi-grid>*:last-child{border-right:0}
+.worklist,.enterprise-worklist,.enterprise-section,.object-section,.enterprise-card{
+  border:1px solid var(--cisne-line)!important;border-radius:var(--cisne-radius)!important;
+  background:#fff!important;box-shadow:0 8px 25px rgba(19,53,69,.045)!important
+}
+.worklist{padding:0!important;overflow:hidden}
+.worklist>.list-title{border:0;border-bottom:1px solid var(--cisne-line);border-radius:0;box-shadow:none;margin:0!important}
+.worklist>.filters{margin:14px!important}
+.worklist>.table-wrap,.worklist>.empty,.worklist>.table-footer{margin-left:14px;margin-right:14px}
+.empty,.enterprise-empty-state{padding:42px 24px!important;text-align:center;border:1px dashed #bfd5d8!important;border-radius:12px!important;background:#f8fbfb!important;color:var(--cisne-muted)}
+.empty h3,.enterprise-empty-state h3{margin:0 0 7px;color:var(--cisne-ink)}
+.drawer,.modal,.palette{
+  border:1px solid #cbdde0!important;border-radius:16px!important;box-shadow:0 24px 70px rgba(11,39,51,.22)!important;background:#fff!important
+}
+.drawer header,.modal header{border-bottom:1px solid var(--cisne-line);padding-bottom:14px;margin-bottom:16px}
+.drawer h2,.modal h2{font-size:25px;letter-spacing:-.03em}
+.drawer-section-title{margin-top:24px;padding-top:18px;border-top:1px solid var(--cisne-line);font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#52717c}
+.related{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:52px;margin-top:7px;padding:10px 12px;border:1px solid var(--cisne-line);border-radius:9px;background:#fbfdfd;color:var(--cisne-ink)}
+.related:hover{border-color:#8bc5c0;background:var(--cisne-accent-soft)}
+.notice{border:1px solid #b9dcd5!important;border-left:4px solid var(--cisne-accent)!important;border-radius:10px!important;box-shadow:0 5px 18px rgba(8,125,131,.08)}
+@media(max-width:900px){.heading,.list-title,.enterprise-page-header{flex-direction:column;padding:18px}.kpi-grid,.metrics-grid,.summary-grid,.enterprise-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi-grid>*:nth-child(2n){border-right:0}.kpi-grid>*:nth-child(-n+2){border-bottom:1px solid var(--cisne-line)}}
+@media(max-width:560px){.main main{padding-left:11px!important;padding-right:11px!important}.filters,.enterprise-filter-bar{align-items:stretch}.search-input{min-width:100%}.kpi-grid,.metrics-grid,.summary-grid,.enterprise-kpi-grid{grid-template-columns:1fr}.kpi-grid>*{border-right:0!important;border-bottom:1px solid var(--cisne-line)}.kpi-grid>*:last-child{border-bottom:0}}
