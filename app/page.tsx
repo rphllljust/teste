@@ -1419,13 +1419,13 @@ function HomeView() {
           }}
           onSearch={() => { setPaletteQuery(""); setPalette(true); }}
         />
-        {!creating && !action && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
+        {!creating && !action && page === "Visão operacional" && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
         <main
           id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
           <EnterpriseStagingAccess />
-          {!creating && !action && page !== "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
+          {!creating && !action && page === "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
@@ -1490,7 +1490,7 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
-          {[
+          {false && [
             "Ordens de serviço",
             "Execução",
             "Medições",
