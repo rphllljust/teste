@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Check, ChevronDown, ChevronUp, Clock3, Command, Compass, Grid2X2, LayoutList, Search, SlidersHorizontal, Star } from 'lucide-react';
+import { ArrowRight, Check, ChevronDown, ChevronUp, Clock3, Compass, Grid2X2, LayoutList, Search, SlidersHorizontal, Star } from 'lucide-react';
 import { EnterpriseButton } from './EnterprisePrimitives';
 import { enterpriseRelatedWorkspaces } from './EnterpriseWorkspaceContext';
 import type { EnterpriseNavigationGroup } from './EnterpriseAppNavigation';
