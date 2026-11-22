@@ -284,6 +284,7 @@ function HomeView() {
     [notice, setNotice] = useState(""),
     [noticeTone, setNoticeTone] = useState<"success" | "error">("success"),
     [sidebar, setSidebar] = useState(false),
+    [sidebarMode, setSidebarMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded'),
     [palette, setPalette] = useState(false),
     [pageNumber, setPageNumber] = useState(1),
     [total, setTotal] = useState(0),
@@ -1374,16 +1375,24 @@ function HomeView() {
         groups={modules}
         activePage={page}
         open={sidebar}
+        mode={sidebarMode}
         ordersCount={loading || Boolean(error) ? null : summary.total}
         onNavigate={navigate}
         onSearch={() => { setPaletteQuery(""); setPalette(true); }}
       />
-      <div className={"main " + (selected && docked ? "with-context" : "")}>
+      <div className={"main sidebar-" + sidebarMode + " " + (selected && docked ? "with-context" : "")}>
         <EnterpriseTopbar
           activePage={page}
           group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'OPERAÇÃO'}
           sidebarOpen={sidebar}
-          onToggleSidebar={() => setSidebar(value => !value)}
+          sidebarMode={sidebarMode}
+          onToggleSidebar={() => {
+            if (window.matchMedia('(max-width: 1023px)').matches) {
+              setSidebar(value => !value);
+              return;
+            }
+            setSidebarMode(value => value === 'expanded' ? 'collapsed' : value === 'collapsed' ? 'hidden' : 'expanded');
+          }}
           onSearch={() => { setPaletteQuery(""); setPalette(true); }}
         />
         {!creating && !action && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
