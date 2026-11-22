@@ -151,3 +151,31 @@ test('Authenticated service order keeps its persisted identity from API through 
  expect(failures.apiFailures).toEqual([]);
  await page.screenshot({path:test.info().outputPath('order-object-authenticated-desktop.png'),fullPage:true});
 });
+
+
+// Runs against the real Railway endpoint, never mocked. This checks the actual
+// Fluent login form, the HttpOnly session cookie and owner-scoped authorization.
+// Keep credentials out of Playwright traces, videos and automatic screenshots.
+test.describe('Real browser session lifecycle', () => {
+ test.use({ trace: 'off', screenshot: 'off', video: 'off' });
+ test('Authenticated real staging UI session lifecycle', async ({ page }) => {
+  await page.goto('/');
+  const gateway=page.getByRole('region',{name:'Autenticação de homologação'});
+  await expect(gateway.getByRole('button',{name:'Encerrar sessão de homologação'})).toBeVisible();
+
+  await gateway.getByRole('button',{name:'Encerrar sessão de homologação'}).click();
+  await expect(gateway.getByLabel('Frase de acesso da homologação')).toBeVisible();
+  const denied=await page.request.get('/api/clients?page=1&pageSize=1');
+  expect(denied.status(),'Unauthenticated browser must not read business records').toBe(403);
+
+  await gateway.getByLabel('Frase de acesso da homologação').fill(passphrase!);
+  await gateway.getByRole('button',{name:'Entrar na homologação'}).click();
+  await expect(gateway.getByRole('button',{name:'Encerrar sessão de homologação'})).toBeVisible();
+  const authorized=await page.request.get('/api/clients?page=1&pageSize=1');
+  expect(authorized.status(),'Browser session must authorize the real API').toBe(200);
+
+  await page.reload();
+  await expect(page.getByRole('region',{name:'Autenticação de homologação'})
+    .getByRole('button',{name:'Encerrar sessão de homologação'})).toBeVisible();
+ });
+});
