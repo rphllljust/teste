@@ -1498,3 +1498,18 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .cisne-module-workspace-content{padding:0!important;background:transparent!important}
 @media(max-width:1200px){.sidebar{width:228px}.main{margin-left:228px}.topbar{padding-inline:18px}}
 @media(max-width:800px){.sidebar{width:254px}.main{margin-left:0}.topbar{height:60px}}
+
+
+/* ERP object-page composition pass — remove dashboard stacking and duplicate journeys */
+.cisne-enterprise-hub{margin:0 0 12px!important;border:1px solid #d9e5e8!important;border-radius:12px!important;background:#fff!important;box-shadow:0 3px 12px rgba(20,53,67,.035)!important;overflow:hidden}
+.cisne-enterprise-hub-banner{min-height:66px;padding:11px 18px!important;align-items:center!important;background:#fff!important}
+.cisne-enterprise-hub-heading-title{font-size:17px!important;font-weight:750!important;letter-spacing:-.02em}
+.cisne-enterprise-hub-heading p{display:none!important}
+.cisne-enterprise-hub-actions{gap:6px!important}
+.cisne-enterprise-hub-actions .cisne-hub-command{min-height:32px!important;padding:6px 9px!important;border-radius:7px!important;font-size:11px!important}
+.cisne-enterprise-hub-actions .cisne-hub-command-primary{box-shadow:none!important}
+.cisne-enterprise-hub-strip,.cisne-enterprise-hub-footer{display:none!important}
+/* The module's business chain is the single process navigator; do not repeat it in the wrapper. */
+.cisne-module-process{display:none!important}
+.cisne-module-workspace-content{padding-top:0!important}
+@media(max-width:800px){.cisne-enterprise-hub-banner{padding:10px 14px!important}.cisne-enterprise-hub-actions .cisne-hub-command span{display:none}.cisne-enterprise-hub-actions .cisne-hub-command{min-width:32px;padding-inline:8px!important}.cisne-enterprise-hub-domain{display:none}}
