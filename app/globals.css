@@ -2265,6 +2265,16 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 
 .service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important}
 
+/* The tablet uses the persistent enterprise sidebar; only phones use the off-canvas drawer. */
+@media(min-width:801px){
+  .topbar .crumb .mobile-toggle{display:none!important}
+  .topbar .crumb .desktop-sidebar-toggle{display:inline-flex!important}
+}
+@media(max-width:800px){
+  .topbar .crumb .mobile-toggle{display:inline-flex!important}
+  .topbar .crumb .desktop-sidebar-toggle{display:none!important}
+}
+
 /* Reconciled #161/#162: reset mobile flex basis so header cannot reserve 420px of vertical space. */
 @media (max-width:800px){
  .cisne-enterprise-hub-banner{flex-direction:column!important;align-items:stretch!important;min-height:0!important}
