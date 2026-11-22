@@ -1347,10 +1347,7 @@ function HomeView() {
             <span>CISNE</span>
             <span className="crumb-divider">/</span>
             <span>
-              {modules.find((g) => g.items.some(([n]) => n === page))?.group ===
-              "OPERAÇÃO"
-                ? "Operação"
-                : "Gestão integrada"}
+              {modules.find((g) => g.items.some(([n]) => n === page))?.group ?? "Gestão empresarial"}
             </span>
             <ChevronRight size={14} />
             <strong>{page}</strong>
