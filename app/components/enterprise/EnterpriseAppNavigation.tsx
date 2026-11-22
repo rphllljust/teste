@@ -35,7 +35,7 @@ export function EnterpriseSidebar({
   }, [activePage, groups]);
   return (
     <aside className={'sidebar sidebar-' + mode + ' ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE" data-sidebar-mode={mode}>
-      <Link className="brand" href="/" aria-label="Cisne início">
+      <Link prefetch={false} className="brand" href="/" aria-label="Cisne início">
         <span className="brand-mark"><Layers size={24} /></span>
         <span>CISNE<small>RONDÔNIA</small></span>
       </Link>
