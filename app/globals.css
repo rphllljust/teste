@@ -1697,3 +1697,8 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 /* Preparação em largura total: o painel contextual lateral foi removido por decisão de UX. */
 .order-preparation .preparation-grid{grid-template-columns:minmax(0,1fr)!important;}
 .order-preparation .preparation-business-context{display:none!important;}
+
+/* Preparação sem coluna residual: o cabeçalho também ocupa a largura total. */
+.order-preparation form>.preparation-object-header{grid-template-columns:minmax(0,1fr) auto!important;}
+.order-preparation form>.preparation-object-header>div:first-child{min-width:0;width:100%!important;}
+.order-preparation .preparation-title,.order-preparation .preparation-facts{max-width:none!important;}
