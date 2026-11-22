@@ -2272,3 +2272,9 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
  .cisne-enterprise-hub-actions{width:100%!important;justify-content:flex-start!important}
  .cisne-enterprise-hub-actions .fui-Button{flex:0 1 auto!important}
 }
+
+
+/* Context inspector open-state layout guard */
+.service-operations-grid.with-context{grid-template-columns:minmax(220px,.72fr) minmax(0,1.95fr) minmax(260px,.82fr)!important;}
+.service-operations-grid.with-context .service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important;min-width:260px!important;min-height:180px!important;}
+@media(max-width:1100px){.service-operations-grid.with-context{grid-template-columns:1fr!important}.service-operations-grid.with-context .service-inspector.is-open{display:block!important;min-width:0!important;width:100%!important;}}
