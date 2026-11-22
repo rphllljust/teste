@@ -1519,7 +1519,7 @@ function HomeView() {
                 await openOrigin(id);
               }}
             />
-          ) : page === "Centro de operações" ? (
+          ) : page === "Centro de operações" || page === "Ordens de serviço" ? (
             <ServiceOperationsWorkspace
               onCreate={newOrder}
               onOpen={(id) => {
