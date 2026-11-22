@@ -786,6 +786,8 @@ function HomeView() {
           Number.isSafeInteger(d.summary.pendingMeasurements));
       if (
         !Array.isArray(d.orders) ||
+        (d.total != null && !Number.isSafeInteger(d.total)) ||
+        (d.summary != null && !Number.isSafeInteger(d.summary.total)) ||
         !rawTotalValid ||
         !rawSummaryValid ||
         !Number.isSafeInteger(normalizedTotal) ||
