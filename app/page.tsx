@@ -1348,6 +1348,21 @@ function HomeView() {
               Contabilidade: 6,
             }[page] ?? -1);
   const moduleDescription: Record<string, string> = {
+    "Visão operacional": "Indicadores e acompanhamento das operações integradas.",
+    "Centro de operações": "Acompanhamento centralizado da execução operacional.",
+    "Ordens de serviço": "Planejamento, situação e execução das ordens de serviço.",
+    Execução: "Acompanhamento das atividades e evidências de campo.",
+    "Field Service Cockpit": "Supervisão operacional das atividades em campo.",
+    "Resource Planning Board": "Planejamento de disponibilidade e alocação de recursos.",
+    "Propostas e PO": "Propostas comerciais e pedidos de compra relacionados.",
+    Contratos: "Acompanhamento de contratos e seus vínculos operacionais.",
+    Profissionais: "Cadastro e acompanhamento de profissionais da operação.",
+    "Visão financeira": "Indicadores e acompanhamento financeiro consolidado.",
+    "Fluxo de caixa": "Entradas, saídas e projeções de fluxo financeiro.",
+    Tesouraria: "Acompanhamento das operações de tesouraria.",
+    "Contas a pagar": "Obrigações e pagamentos com seus respectivos vencimentos.",
+    "Razão contábil": "Consulta de movimentos e saldos contábeis.",
+    Fechamentos: "Acompanhamento dos períodos de fechamento contábil.",
     Medições:
       "Acompanhamento da produção realizada e das medições vinculadas às ordens de serviço.",
     "CRM e Vendas":
@@ -1493,13 +1508,18 @@ function HomeView() {
               onViewportKeyDown={handleChainKey}
               onScrollDirection={scrollChain}
               onStageSelect={(index) => {
-                navigate([
+                const stagePages = [
                   "Ordens de serviço",
-                  "Ordens de serviço",
+                  "Execução",
                   "Medições",
                   "Faturamento",
                   "Financeiro",
-                ][index]);
+                  "Fiscal e tributos",
+                  "Contabilidade",
+                ];
+                const destination = stagePages[index];
+                if (!destination) return;
+                navigate(destination);
                 if (index === 0 || index === 1) {
                   applyView(index === 1 ? "Em execução" : "Todas as ordens");
                 }
