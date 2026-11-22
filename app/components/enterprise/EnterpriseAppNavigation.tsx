@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -25,7 +25,12 @@ type SidebarProps = {
 export function EnterpriseSidebar({
   groups, activePage, open, ordersCount, onNavigate, onSearch,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.group, !group.items.some(([name]) => name === activePage)])));
+  useEffect(() => {
+    const activeGroup = groups.find(group => group.items.some(([name]) => name === activePage))?.group;
+    if (!activeGroup) return;
+    setCollapsed(previous => ({ ...previous, [activeGroup]: false }));
+  }, [activePage, groups]);
   return (
     <aside className={'sidebar ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE">
       <Link className="brand" href="/" aria-label="Cisne início">
