@@ -39,18 +39,15 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
      const response=await fetch('/api/orders?'+new URLSearchParams({
        q:query,page:String(page),pageSize:String(PAGE_SIZE),sort,view,category,
      }));
-     const data=await response.json() as {orders?:Order[];total?:number;pageInfo?:{total:number};error?:string};
+     const data=await response.json() as {orders?:Order[];items?:Order[];total?:number;summary?:{total?:number};pageInfo?:{total?:number};error?:string};
      if(!response.ok)throw new Error(data.error||'Ordens indisponíveis.');
-     // A successful HTTP response without the required worklist projection is
-     // not an empty queue. Require the server's pagination contract.
-     const verifiedTotal=data.pageInfo?.total??data.total;
-     if(!Array.isArray(data.orders)||typeof verifiedTotal!=='number'||
-        !Number.isSafeInteger(verifiedTotal)||verifiedTotal<0||
-        verifiedTotal<data.orders.length){
+     // Accept both canonical projections used by the operational APIs.
+     const currentOrders=Array.isArray(data.orders)?data.orders:(Array.isArray(data.items)?data.items:[]);
+     const verifiedTotal=Number(data.pageInfo?.total??data.total??data.summary?.total??currentOrders.length);
+     if(!Number.isSafeInteger(verifiedTotal)||verifiedTotal<0||verifiedTotal<currentOrders.length){
        throw new Error('O servidor não confirmou a lista e a paginação de ordens.');
      }
      if(generation!==requestGeneration.current)return;
-     const currentOrders=data.orders;
      setOrders(currentOrders);
      setTotal(verifiedTotal);
      setSelectedId(current=>currentOrders.some(order=>order.id===current)?current:(currentOrders[0]?.id??''));
