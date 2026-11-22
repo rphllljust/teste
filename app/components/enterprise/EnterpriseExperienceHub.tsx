@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowRight, Check, ChevronDown, ChevronUp, Clock3, Compass, Grid2X2, LayoutList, Search, SlidersHorizontal, Star } from 'lucide-react';
+import { ArrowRightRegular as ArrowRight, CheckmarkRegular as Check, ChevronDownRegular as ChevronDown, ChevronUpRegular as ChevronUp, ClockRegular as Clock3, AppsRegular as Grid2X2, TableRegular as LayoutList, SearchRegular as Search, SettingsRegular as SlidersHorizontal, StarRegular as Star } from '@fluentui/react-icons';
 import { EnterpriseButton } from './EnterprisePrimitives';
 import { enterpriseRelatedWorkspaces } from './EnterpriseWorkspaceContext';
 import type { EnterpriseNavigationGroup } from './EnterpriseAppNavigation';
@@ -117,63 +117,63 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
       <div className="cisne-enterprise-hub-actions" aria-label="Comandos gerais da área de trabalho">
         <EnterpriseButton type="button" className="cisne-hub-command" appearance="subtle"
           onClick={toggleFavourite} aria-pressed={favourite} aria-label={favourite ? 'Remover ' + activePage + ' dos favoritos' : 'Adicionar ' + activePage + ' aos favoritos'}>
-          <Star size={16} fill={favourite ? 'currentColor' : 'none'} aria-hidden="true" /><span>{favourite ? 'Favorito' : 'Favoritar'}</span>
+          <Star fontSize={16} fill={favourite ? 'currentColor' : 'none'} aria-hidden="true" /><span>{favourite ? 'Favorito' : 'Favoritar'}</span>
         </EnterpriseButton>
         <EnterpriseButton type="button" className="cisne-hub-command" appearance="subtle" onClick={() => setCompact(value => !value)}
           aria-pressed={compact} aria-label={compact ? 'Usar visualização confortável' : 'Usar visualização compacta'}>
-          {compact ? <LayoutList size={16} aria-hidden="true" /> : <SlidersHorizontal size={16} aria-hidden="true" />}
+          {compact ? <LayoutList fontSize={16} aria-hidden="true" /> : <SlidersHorizontal fontSize={16} aria-hidden="true" />}
           <span>{compact ? 'Confortável' : 'Compactar'}</span>
         </EnterpriseButton>
         <EnterpriseButton type="button" className="cisne-hub-command cisne-hub-command-primary" appearance="primary" onClick={onSearch}>
-          <Search size={16} aria-hidden="true" /><span>Pesquisar registros</span><kbd>Ctrl K</kbd>
+          <Search fontSize={16} aria-hidden="true" /><span>Pesquisar registros</span><kbd>Ctrl K</kbd>
         </EnterpriseButton>
       </div>
     </div>
 
     <div className="cisne-enterprise-hub-strip">
-      <div className="cisne-enterprise-hub-strip-heading"><Compass size={15} aria-hidden="true" /><span>Jornadas empresariais</span></div>
+      <div className="cisne-enterprise-hub-strip-heading"><Grid2X2 fontSize={15} aria-hidden="true" /><span>Jornadas empresariais</span></div>
       <div className="cisne-enterprise-hub-journeys" role="group" aria-label="Acesso a jornadas empresariais">
         {journeys.filter(journey => allNames.has(journey.target)).map(journey => <EnterpriseButton
           key={journey.title} type="button" appearance="subtle"
           className={'cisne-enterprise-journey' + (journey.domain === activeGroup?.group ? ' is-domain-active' : '')}
           aria-label={'Abrir jornada ' + journey.title + ': ' + journey.target}
           onClick={() => onNavigate(journey.target)}>
-          <strong>{journey.title}</strong><span>{journey.detail}</span><ArrowRight size={14} aria-hidden="true" />
+          <strong>{journey.title}</strong><span>{journey.detail}</span><ArrowRight fontSize={14} aria-hidden="true" />
         </EnterpriseButton>)}
       </div>
     </div>
 
     <div className="cisne-enterprise-hub-footer">
       <div className="cisne-enterprise-hub-context" role="group" aria-label="Próximos módulos do fluxo">
-        <span className="cisne-enterprise-hub-footer-label"><ArrowRight size={14} aria-hidden="true" /> Continuar o processo</span>
+        <span className="cisne-enterprise-hub-footer-label"><ArrowRight fontSize={14} aria-hidden="true" /> Continuar o processo</span>
         {(related.length ? related : sameGroup).slice(0, 3).map(name => <EnterpriseButton key={name}
           type="button" className="cisne-enterprise-hub-link" appearance="subtle"
-          aria-label={'Continuar para ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight size={13} aria-hidden="true" /></EnterpriseButton>)}
+          aria-label={'Continuar para ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={13} aria-hidden="true" /></EnterpriseButton>)}
       </div>
       <EnterpriseButton type="button" className="cisne-hub-directory-toggle" appearance="subtle"
         aria-controls="cisne-enterprise-directory" aria-expanded={showDirectory} onClick={openDirectory}>
-        <Grid2X2 size={15} aria-hidden="true" /><span>{showDirectory ? 'Fechar catálogo' : 'Todos os módulos'}</span>
-        {showDirectory ? <ChevronUp size={15} aria-hidden="true" /> : <ChevronDown size={15} aria-hidden="true" />}
+        <Grid2X2 fontSize={15} aria-hidden="true" /><span>{showDirectory ? 'Fechar catálogo' : 'Todos os módulos'}</span>
+        {showDirectory ? <ChevronUp fontSize={15} aria-hidden="true" /> : <ChevronDown fontSize={15} aria-hidden="true" />}
       </EnterpriseButton>
     </div>
     {showDirectory && <div id="cisne-enterprise-directory" className="cisne-enterprise-directory">
       <div className="cisne-enterprise-directory-head">
         <div><h3>Catálogo de áreas de trabalho</h3><p>Acesso direto aos módulos existentes. Permissões e dados continuam controlados pelas APIs.</p></div>
         <label className="cisne-enterprise-directory-search">
-          <Search size={17} aria-hidden="true" /><span className="sr-only">Filtrar módulos</span>
+          <Search fontSize={17} aria-hidden="true" /><span className="sr-only">Filtrar módulos</span>
           <input type="search" value={directoryQuery} onChange={event => setDirectoryQuery(event.target.value)}
             aria-label="Filtrar módulos" placeholder="Filtrar os 26 módulos…" />
         </label>
       </div>
       {ready && favourites.length > 0 && <section className="cisne-enterprise-directory-shortcuts" aria-label="Módulos favoritos">
-        <h4><Star size={14} aria-hidden="true" /> Favoritos</h4>
+        <h4><Star fontSize={14} aria-hidden="true" /> Favoritos</h4>
         <div>{favourites.map(name => <EnterpriseButton key={name} type="button" appearance="subtle"
-          aria-label={'Abrir favorito ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight size={12} aria-hidden="true" /></EnterpriseButton>)}</div>
+          aria-label={'Abrir favorito ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></EnterpriseButton>)}</div>
       </section>}
       {ready && recent.length > 0 && <section className="cisne-enterprise-directory-shortcuts" aria-label="Módulos recentes">
-        <h4><Clock3 size={14} aria-hidden="true" /> Recentes</h4>
+        <h4><Clock3 fontSize={14} aria-hidden="true" /> Recentes</h4>
         <div>{recent.slice(0, 5).map(name => <EnterpriseButton key={name} type="button" appearance="subtle"
-          aria-label={'Abrir recente ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight size={12} aria-hidden="true" /></EnterpriseButton>)}</div>
+          aria-label={'Abrir recente ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></EnterpriseButton>)}</div>
       </section>}
       <div className="cisne-enterprise-directory-grid">
         {filteredGroups.map(group => <section key={group.group} className="cisne-enterprise-directory-domain">
@@ -182,7 +182,7 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
             className={name === activePage ? 'is-current' : ''}
             aria-current={name === activePage ? 'page' : undefined}
             aria-label={'Abrir módulo ' + name} onClick={() => { onNavigate(name); setShowDirectory(false); }}>
-            <Icon size={17} aria-hidden="true" /><span>{name}</span>{name === activePage ? <Check size={14} aria-hidden="true" /> : <ArrowRight size={14} aria-hidden="true" />}
+            <Icon fontSize={17} aria-hidden="true" /><span>{name}</span>{name === activePage ? <Check fontSize={14} aria-hidden="true" /> : <ArrowRight fontSize={14} aria-hidden="true" />}
           </EnterpriseButton>)}</div>
         </section>)}
       </div>
