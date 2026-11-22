@@ -6,6 +6,7 @@ import { closeDatabase } from '../../db/raw';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET as listOperation } from '../../app/api/operation/route';
 import { GET as detailOperation } from '../../app/api/operation/[kind]/[id]/route';
+import { POST as executeCommand } from '../../app/api/commands/route';
 
 if (process.env.NODE_ENV !== 'test' || !process.env.DATABASE_URL)
   throw new Error('NO-GO: operation owner test requires isolated PostgreSQL');
@@ -78,6 +79,26 @@ test('operation List Reports and deep links deny ownerless and foreign financial
         }
         const allowed = await detail(actor, kind, own[field]);
         assert.equal(allowed.status, 200, kind + ' deep link remains available to owner');
+      }
+    }
+    // A legacy measurement without owner must never be approved or invoiced via the
+    // generic command endpoint, even when its UUID is known to the authenticated actor.
+    for (const actor of [alice, bob]) {
+      for (const command of ['approve_measurement', 'invoice'] as const) {
+        const payload = {
+          id: fixtures[0].measurement,
+          version: 1,
+          key: randomUUID(),
+          command,
+          ...(command === 'invoice' ? { dueDate: '2026-12-15' } : {}),
+        };
+        const response = await executeCommand(setTestIdentity(
+          new Request('http://localhost/api/commands', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          }), actor));
+        assert.equal(response.status, 404, 'Legacy ownerless measurement must reject ' + command);
       }
     }
   } finally {
