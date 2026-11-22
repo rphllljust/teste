@@ -16,7 +16,7 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(spec,/Browser session must authorize the real API/);
  assert.match(spec,/trace: 'off'/);
  assert.match(spec,/apiFailures/);
- assert.match(workflow,/feat\/cisne-enterprise-workbench-global-20261121/);
+ assert.match(workflow,/feat\/cisne-shell-fiori-redwood-20261122/);
  assert.match(workflow,/\[enterprise-auth\]/);
  assert.match(workflow,/github\.repository == 'rphllljust\/teste'/);
  assert.match(workflow,/git rev-parse HEAD/);
