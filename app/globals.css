@@ -1300,3 +1300,16 @@ html[data-cisne-density="compact"] .enterprise-page-header,html[data-cisne-densi
 @media(max-width:800px){.sidebar{width:254px;display:none}.sidebar.mobile-open{display:flex}.main{margin-left:0}.topbar{min-height:60px}.cisne-enterprise-hub-banner{flex-direction:column;align-items:stretch;padding:18px}.cisne-enterprise-hub-actions{justify-content:flex-start;flex:0 0 auto}.cisne-enterprise-hub-footer{flex-direction:column;align-items:stretch}.cisne-enterprise-hub-context{width:100%}.cisne-enterprise-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-enterprise-directory-head{flex-direction:column;align-items:stretch}.cisne-enterprise-directory-search{max-width:none}}
 @media(max-width:560px){.main main{padding:11px 12px 20px}.cisne-enterprise-hub{border-radius:10px;margin-bottom:15px}.cisne-enterprise-hub-banner{gap:12px;padding:14px}.cisne-enterprise-hub-title-row h2{font-size:23px}.cisne-enterprise-hub-actions .fui-Button{flex:1;justify-content:center;min-height:39px}.cisne-enterprise-hub-actions .cisne-hub-command-primary{flex-basis:100%}.cisne-enterprise-hub-actions kbd{display:none}.cisne-enterprise-hub-strip{padding:10px 12px}.cisne-enterprise-hub-journeys .fui-Button{flex-basis:150px}.cisne-enterprise-hub-footer{padding:10px 12px}.cisne-enterprise-hub-context .fui-Button{min-height:36px}.cisne-enterprise-directory{padding:12px}.cisne-enterprise-directory-grid{grid-template-columns:minmax(0,1fr)}.cisne-enterprise-directory-domain{padding:12px}}
 @media(prefers-reduced-motion:reduce){.cisne-enterprise-hub *, .sidebar .nav-group-items button{transition:none!important;animation:none!important}}
+
+
+/* The owner-scoped business exception inbox is intentionally fetched only after user opens it. */
+.cisne-enterprise-hub-priorities{padding:18px 20px 22px;background:#f7fbfc;border-top:1px solid #dfeaed}
+.cisne-enterprise-hub-priorities-intro{display:flex;align-items:baseline;flex-wrap:wrap;gap:9px;margin-bottom:14px}
+.cisne-enterprise-hub-priorities-intro strong{font-size:13px;color:#163e49}
+.cisne-enterprise-hub-priorities-intro span{font-size:12px;color:#617c86;line-height:1.45}
+.cisne-enterprise-hub-priorities .enterprise-control-tower{margin:0;box-shadow:none;max-width:100%}
+.cisne-enterprise-hub-priorities .enterprise-control-lanes{min-width:0}
+.cisne-enterprise-hub-priorities .enterprise-control-lane{min-width:0}
+.cisne-enterprise-hub-priorities :is(.enterprise-control-heading,.enterprise-control-lane,.enterprise-control-error){border-color:#deeaed}
+.cisne-enterprise-hub-actions .cisne-hub-priorities[aria-expanded="true"]{border-color:#88c3bd;background:#e6f5f2;color:#155d61}
+@media(max-width:800px){.cisne-enterprise-hub-priorities{padding:14px}}
