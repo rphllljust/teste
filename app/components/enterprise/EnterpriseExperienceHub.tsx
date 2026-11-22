@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowRightRegular as ArrowRight, CheckmarkRegular as Check, ChevronDownRegular as ChevronDown, ChevronUpRegular as ChevronUp, ClockRegular as Clock3, AppsRegular as Grid2X2, TableRegular as LayoutList, SearchRegular as Search, SettingsRegular as SlidersHorizontal, StarRegular as Star } from '@fluentui/react-icons';
 import { EnterpriseButton } from './EnterprisePrimitives';
+import { Link as FluentLink } from '@fluentui/react-components';
 import { enterpriseRelatedWorkspaces } from './EnterpriseWorkspaceContext';
 import EnterpriseControlTower, { type ControlTowerLaneId } from '../../EnterpriseControlTower';
 import type { EnterpriseNavigationGroup } from './EnterpriseAppNavigation';
@@ -121,7 +122,7 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
       <div className="cisne-enterprise-hub-heading">
         <div className="cisne-enterprise-hub-eyebrow"><span className="cisne-enterprise-hub-beacon" aria-hidden="true" /> CISNE / ÁREA DE TRABALHO <span className="cisne-enterprise-hub-separator">/</span> {domainLabels[activeGroup?.group ?? ''] ?? 'Gestão integrada'}</div>
         <div className="cisne-enterprise-hub-title-row">
-          <h2>{activePage}</h2>
+          <div className="cisne-enterprise-hub-heading-title">{activePage}</div>
           <span className="cisne-enterprise-hub-domain">{domainLabels[activeGroup?.group ?? ''] ?? 'Processo empresarial'}</span>
         </div>
         <p>{domainDescriptions[activeGroup?.group ?? ''] ?? 'Consulte os módulos e processos autorizados do CISNE.'}</p>
@@ -150,22 +151,22 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
     <div className="cisne-enterprise-hub-strip">
       <div className="cisne-enterprise-hub-strip-heading"><Grid2X2 fontSize={15} aria-hidden="true" /><span>Jornadas empresariais</span></div>
       <div className="cisne-enterprise-hub-journeys" role="group" aria-label="Acesso a jornadas empresariais">
-        {journeys.filter(journey => allNames.has(journey.target)).map(journey => <EnterpriseButton
-          key={journey.title} type="button" appearance="subtle"
+        {journeys.filter(journey => allNames.has(journey.target)).map(journey => <FluentLink
+          key={journey.title} href={'#' + encodeURIComponent(journey.target)}
           className={'cisne-enterprise-journey' + (journey.domain === activeGroup?.group ? ' is-domain-active' : '')}
           aria-label={'Abrir jornada ' + journey.title + ': ' + journey.target}
-          onClick={() => onNavigate(journey.target)}>
+          onClick={(event) => { event.preventDefault(); onNavigate(journey.target); }}>
           <strong>{journey.title}</strong><span>{journey.detail}</span><ArrowRight fontSize={14} aria-hidden="true" />
-        </EnterpriseButton>)}
+        </FluentLink>)}
       </div>
     </div>
 
     <div className="cisne-enterprise-hub-footer">
       <div className="cisne-enterprise-hub-context" role="group" aria-label="Próximos módulos do fluxo">
         <span className="cisne-enterprise-hub-footer-label"><ArrowRight fontSize={14} aria-hidden="true" /> Continuar o processo</span>
-        {(related.length ? related : sameGroup).slice(0, 3).map(name => <EnterpriseButton key={name}
-          type="button" className="cisne-enterprise-hub-link" appearance="subtle"
-          aria-label={'Continuar para ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={13} aria-hidden="true" /></EnterpriseButton>)}
+        {(related.length ? related : sameGroup).slice(0, 3).map(name => <FluentLink key={name}
+          className="cisne-enterprise-hub-link" href={'#' + encodeURIComponent(name)}
+          aria-label={'Continuar para ' + name} onClick={(event) => { event.preventDefault(); onNavigate(name); }}>{name}<ArrowRight fontSize={13} aria-hidden="true" /></FluentLink>)}
       </div>
       <EnterpriseButton type="button" className="cisne-hub-directory-toggle" appearance="subtle"
         aria-controls="cisne-enterprise-directory" aria-expanded={showDirectory} onClick={openDirectory}>
@@ -192,23 +193,26 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
       </div>
       {ready && favourites.length > 0 && <section className="cisne-enterprise-directory-shortcuts" aria-label="Módulos favoritos">
         <h4><Star fontSize={14} aria-hidden="true" /> Favoritos</h4>
-        <div>{favourites.map(name => <EnterpriseButton key={name} type="button" appearance="subtle"
-          aria-label={'Abrir favorito ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></EnterpriseButton>)}</div>
+        <div>{favourites.map(name => <FluentLink key={name} href={'#' + encodeURIComponent(name)}
+          className="cisne-directory-shortcut" aria-label={'Abrir favorito ' + name}
+          onClick={(event) => { event.preventDefault(); onNavigate(name); }}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></FluentLink>)}</div>
       </section>}
       {ready && recent.length > 0 && <section className="cisne-enterprise-directory-shortcuts" aria-label="Módulos recentes">
         <h4><Clock3 fontSize={14} aria-hidden="true" /> Recentes</h4>
-        <div>{recent.slice(0, 5).map(name => <EnterpriseButton key={name} type="button" appearance="subtle"
-          aria-label={'Abrir recente ' + name} onClick={() => onNavigate(name)}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></EnterpriseButton>)}</div>
+        <div>{recent.slice(0, 5).map(name => <FluentLink key={name} href={'#' + encodeURIComponent(name)}
+          className="cisne-directory-shortcut" aria-label={'Abrir recente ' + name}
+          onClick={(event) => { event.preventDefault(); onNavigate(name); }}>{name}<ArrowRight fontSize={12} aria-hidden="true" /></FluentLink>)}</div>
       </section>}
       <div className="cisne-enterprise-directory-grid">
         {filteredGroups.map(group => <section key={group.group} className="cisne-enterprise-directory-domain">
           <h4>{domainLabels[group.group] ?? group.group} <span>{group.items.length}</span></h4>
-          <div>{group.items.map(([name, Icon]) => <EnterpriseButton type="button" appearance="subtle" key={name}
-            className={name === activePage ? 'is-current' : ''}
+          <div>{group.items.map(([name, Icon]) => <FluentLink key={name}
+            href={'#' + encodeURIComponent(name)}
+            className={'cisne-directory-link' + (name === activePage ? ' is-current' : '')}
             aria-current={name === activePage ? 'page' : undefined}
-            aria-label={'Abrir módulo ' + name} onClick={() => { onNavigate(name); setShowDirectory(false); }}>
+            aria-label={'Abrir módulo ' + name} onClick={(event) => { event.preventDefault(); onNavigate(name); setShowDirectory(false); }}>
             <Icon fontSize={17} aria-hidden="true" /><span>{name}</span>{name === activePage ? <Check fontSize={14} aria-hidden="true" /> : <ArrowRight fontSize={14} aria-hidden="true" />}
-          </EnterpriseButton>)}</div>
+          </FluentLink>)}</div>
         </section>)}
       </div>
       {filteredGroups.length === 0 && <p role="status" className="cisne-enterprise-directory-empty">Nenhum módulo corresponde ao filtro.</p>}
