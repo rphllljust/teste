@@ -1,4 +1,5 @@
 'use client';
+import { EnterpriseButton, EnterpriseInput,} from './components/enterprise/EnterprisePrimitives';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { ArrowRight, Check, ClipboardCheck, Package, RefreshCw, ShoppingCart, TriangleAlert, X } from 'lucide-react';
 import { BusinessStatus } from './components/enterprise/EnterprisePrimitives';
@@ -117,33 +118,33 @@ export default function MRPWorkspace({
     <h2>Planejamento de materiais</h2>
     <p>Reposição por estoque mínimo, com aprovação explícita e compras vinculadas ao ERP.</p></div>
    <div className="mrp-actions">
-    <button className="secondary" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={15}/> Atualizar</button>
-    <button className="primary" onClick={() => void runPlanning()} disabled={busy || loading}><ClipboardCheck size={15}/> Executar planejamento</button>
+    <EnterpriseButton type="button" className="secondary" onClick={() => void load()} disabled={busy || loading}><RefreshCw size={15}/> Atualizar</EnterpriseButton>
+    <EnterpriseButton type="button" className="primary" onClick={() => void runPlanning()} disabled={busy || loading}><ClipboardCheck size={15}/> Executar planejamento</EnterpriseButton>
    </div>
   </header>
   <div className="mrp-summary"><strong>{pending}</strong> recomendações aguardando decisão
    {runs[0] && <span>Última rodada: {new Date(runs[0].startedAt).toLocaleString('pt-BR')} · {runs[0].evaluatedMaterials} materiais avaliados</span>}
   </div>
-  {notice && <div className="notice"><Check size={15}/><span>{notice}</span><button aria-label="Fechar aviso" onClick={() => setNotice('')}><X size={14}/></button></div>}
+  {notice && <div className="notice"><Check size={15}/><span>{notice}</span><EnterpriseButton type="button" aria-label="Fechar aviso" onClick={() => setNotice('')}><X size={14}/></EnterpriseButton></div>}
   {error && <div className="form-error" role="alert"><TriangleAlert size={16}/> {error}</div>}
   {loading ? <div className="mrp-empty">Consultando planejamento persistido…</div>
    : !items.length ? <div className="mrp-empty"><Package size={22}/><span>Não há recomendações. Execute o planejamento para avaliar o estoque.</span></div>
    : <div className="mrp-list">
      <div className="mrp-list-head"><span>Material</span><span>Disponível</span><span>Mínimo</span><span>Reposição</span><span>Decisão e ações</span></div>
      {items.map(rec => <div className="mrp-list-row" key={rec.recommendationId}>
-      <div className="mrp-material-name"><button className="text-button" onClick={() => onMaterial(rec.materialId)}>
-       <Package size={16}/><span><strong>{rec.sku}</strong><small>{rec.name}</small></span></button></div>
+      <div className="mrp-material-name"><EnterpriseButton type="button" className="text-button" onClick={() => onMaterial(rec.materialId)}>
+       <Package size={16}/><span><strong>{rec.sku}</strong><small>{rec.name}</small></span></EnterpriseButton></div>
       <span>{quantity(rec.available)} {rec.unit}</span>
       <span>{quantity(rec.minimum)} {rec.unit}</span>
       <strong>{quantity(rec.netRequirement)} {rec.unit}</strong>
       <div className="mrp-row-actions">
        <BusinessStatus status={rec.approvalStatus==='draft'?'draft':rec.approvalStatus==='approved'?'approved':rec.approvalStatus==='converted'?'completed':'cancelled'} label={statusText[rec.approvalStatus]} />
        {rec.approvalStatus === 'draft' && <>
-        <button className="secondary" disabled={busy} onClick={() => void decide(rec, 'approve')}>Aprovar</button>
-        <button className="text-button" disabled={busy} onClick={() => void decide(rec, 'reject')}>Rejeitar</button>
+        <EnterpriseButton type="button" className="secondary" disabled={busy} onClick={() => void decide(rec, 'approve')}>Aprovar</EnterpriseButton>
+        <EnterpriseButton type="button" className="text-button" disabled={busy} onClick={() => void decide(rec, 'reject')}>Rejeitar</EnterpriseButton>
        </>}
-       {rec.approvalStatus === 'approved' && <button className="primary" disabled={busy} onClick={() => void openConversion(rec)}><ShoppingCart size={14}/> Criar pedido</button>}
-       {rec.approvalStatus === 'converted' && rec.purchaseOrderId && <button className="text-button" onClick={() => onPurchaseOrder?.(rec.purchaseOrderId!)}>Abrir compra <ArrowRight size={14}/></button>}
+       {rec.approvalStatus === 'approved' && <EnterpriseButton type="button" className="primary" disabled={busy} onClick={() => void openConversion(rec)}><ShoppingCart size={14}/> Criar pedido</EnterpriseButton>}
+       {rec.approvalStatus === 'converted' && rec.purchaseOrderId && <EnterpriseButton type="button" className="text-button" onClick={() => onPurchaseOrder?.(rec.purchaseOrderId!)}>Abrir compra <ArrowRight size={14}/></EnterpriseButton>}
       </div>
      </div>)}
     </div>}
@@ -157,15 +158,15 @@ export default function MRPWorkspace({
      {suppliers.map(s => <option value={s.id} key={s.id}>{s.legalName}</option>)}
     </select></label>
    <label>Referência do pedido
-    <input name="reference" minLength={3} maxLength={80} required defaultValue={`MRP-${converting.recommendationId.slice(0,8).toUpperCase()}`}/></label>
+    <EnterpriseInput name="reference" minLength={3} maxLength={80} required defaultValue={`MRP-${converting.recommendationId.slice(0,8).toUpperCase()}`}/></label>
    <label>Data prevista de entrega
-    <input name="expectedOn" type="date" required/></label>
+    <EnterpriseInput name="expectedOn" type="date" required/></label>
    <label>Preço unitário (R$)
-    <input name="unitPrice" type="text" inputMode="decimal" placeholder="0,00" required/></label>
+    <EnterpriseInput name="unitPrice" type="text" inputMode="decimal" placeholder="0,00" required/></label>
    {!suppliers.length && <p role="alert">Cadastre um fornecedor ativo no Centro de Compras antes de continuar.</p>}
    <div className="mrp-actions">
-    <button className="secondary" type="button" disabled={busy} onClick={() => setConverting(null)}>Cancelar</button>
-    <button className="primary" type="submit" disabled={busy || !suppliers.length}>Registrar pedido em rascunho</button>
+    <EnterpriseButton className="secondary" type="button" disabled={busy} onClick={() => setConverting(null)}>Cancelar</EnterpriseButton>
+    <EnterpriseButton className="primary" type="submit" disabled={busy || !suppliers.length}>Registrar pedido em rascunho</EnterpriseButton>
    </div>
   </form>}
  </section>;

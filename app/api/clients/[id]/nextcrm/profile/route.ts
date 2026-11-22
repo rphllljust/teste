@@ -38,7 +38,7 @@ const inputSchema = z.object({ key: uuid, changes }).strict();
 
 function bridgeConfig(): NextcrmBridgeConfig {
   return {
-    baseUrl: 'http://nextcrm-web.railway.internal:3000',
+    baseUrl: process.env.CISNE_NEXTCRM_BASE_URL?.trim() || 'http://nextcrm-web.railway.internal:3000',
     secret: process.env.CISNE_NEXTCRM_BRIDGE_SECRET ?? '',
     instanceKey: getNextcrmInstanceKey(),
     timeoutMs: 3000,

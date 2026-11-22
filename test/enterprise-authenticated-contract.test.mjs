@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
+
+test('authenticated E2E excludes every mock-driven suite and remains SHA/secret gated',async()=>{
+ const config=await readFile(new URL('../playwright.config.ts',import.meta.url),'utf8');
+ const spec=await readFile(new URL('./e2e/staging-authenticated.spec.ts',import.meta.url),'utf8');
+ const workflow=await readFile(new URL('../.github/workflows/enterprise-staging-authenticated.yml',import.meta.url),'utf8');
+ assert.match(config,/testMatch: process\.env\.CISNE_AUTHENTICATED_E2E/);
+ assert.match(config,/staging-authenticated\.spec\.ts/);
+ assert.doesNotMatch(spec,/page\.route\(|route\.fulfill\(/);
+ assert.match(spec,/api\/release\/identity/);
+ assert.match(spec,/api\/auth\/staging-login/);
+ assert.match(spec,/Real browser session lifecycle/);
+ assert.match(spec,/Unauthenticated browser must not read business records/);
+ assert.match(spec,/Browser session must authorize the real API/);
+ assert.match(spec,/trace: 'off'/);
+ assert.match(spec,/apiFailures/);
+ assert.match(workflow,/feat\/cisne-shell-fiori-redwood-20261122/);
+ assert.doesNotMatch(workflow,/feat\/cisne-enterprise-workbench-global-20261121/);
+ assert.match(workflow,/\[enterprise-auth\]/);
+ assert.match(workflow,/github\.repository == 'rphllljust\/teste'/);
+ assert.match(workflow,/git rev-parse HEAD/);
+ assert.match(workflow,/cisne-candidate-ref[.]json/);
+ assert.match(workflow,/GH_TOKEN:/);
+ assert.match(workflow,/persist-credentials: false/);
+ assert.match(workflow,/api\/release\/identity/);
+ assert.match(workflow,/Railway runtime SHA differs from tested candidate/);
+ assert.ok(workflow.includes('for attempt in $(seq 1 30)'));
+ assert.match(workflow,/Candidate HEAD moved during Railway rollout/);
+ assert.doesNotMatch(workflow,/pull_request_target/);
+ assert.doesNotMatch(workflow,/enterprise-auth-acceptance/);
+ assert.doesNotMatch(workflow,/test-results\/enterprise\/\*\*\/\*\.png/);
+ assert.match(workflow,/environment: staging/);
+ assert.match(workflow,/CISNE_STAGING_PASSPHRASE/);
+});

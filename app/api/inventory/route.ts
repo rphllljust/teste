@@ -61,12 +61,35 @@ export async function GET(request: Request) {
   }
   const query = (url.searchParams.get('q') ?? '').trim().slice(0, 120);
   const page = Number(url.searchParams.get('page') ?? '1');
-  if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000) throw new ApiError(400, 'VALIDATION_FAILED', 'Página inválida.');
-  const results = await db.batch([
-   db.prepare("SELECT id, sku, name, unit, minimum, COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) AS balance FROM inventory_items WHERE owner_id=? AND (LOWER(sku) LIKE '%' || LOWER(?) || '%' OR LOWER(name) LIKE '%' || LOWER(?) || '%') ORDER BY sku LIMIT 26 OFFSET ?").bind(context.actorId, query, query, (page - 1) * 25),
-   db.prepare('SELECT COUNT(*) AS total, COUNT(*) FILTER (WHERE COALESCE((SELECT SUM(delta) FROM inventory_movements WHERE item_id=inventory_items.id),0) <= minimum) AS low FROM inventory_items WHERE owner_id=?').bind(context.actorId),
+  const lowOnly = url.searchParams.get('lowOnly') ?? '0';
+  if (!Number.isSafeInteger(page) || page < 1 || page > 1_000_000)
+    throw new ApiError(400, 'VALIDATION_FAILED', 'Página inválida.');
+  if (!['0','1'].includes(lowOnly))
+    throw new ApiError(400, 'VALIDATION_FAILED', 'Filtro de intervenção inválido.');
+  const stock = `SELECT i.id,i.sku,i.name,i.unit,i.minimum,
+    COALESCE((SELECT SUM(m.delta) FROM inventory_movements m
+      WHERE m.item_id=i.id AND m.owner_id=i.owner_id),0) AS balance,
+    COALESCE((SELECT SUM(r.quantity-r.consumed_quantity)
+      FROM inventory_reservations r WHERE r.item_id=i.id
+       AND r.owner_id=i.owner_id AND r.status='reserved'),0) AS reserved
+    FROM inventory_items i WHERE i.owner_id=?`;
+  const filtered = `SELECT stock.*,stock.balance-stock.reserved AS available
+    FROM (${stock}) stock WHERE
+      (LOWER(stock.sku) LIKE '%' || LOWER(?) || '%'
+       OR LOWER(stock.name) LIKE '%' || LOWER(?) || '%')
+      AND (?=0 OR (stock.minimum>0 AND stock.balance-stock.reserved<=stock.minimum))`;
+  const params=[context.actorId,query,query,lowOnly==='1'?1:0] as const;
+  const result=await db.snapshot([
+    db.prepare(`SELECT * FROM (${filtered}) listed ORDER BY sku ASC,id ASC LIMIT 26 OFFSET ?`).bind(...params,(page-1)*25),
+    db.prepare(`SELECT COUNT(*) AS matched FROM (${filtered}) listed`).bind(...params),
+    db.prepare(`SELECT COUNT(*) AS total,
+      COUNT(*) FILTER (WHERE minimum>0 AND balance-reserved<=minimum) AS low
+      FROM (${stock}) stock`).bind(context.actorId),
   ]);
-  return respond({ items: results[0].results.slice(0, 25), hasMore: results[0].results.length > 25, summary: results[1].results[0] }, context);
+  return respond({items:result[0].results.slice(0,25),
+    hasMore:result[0].results.length>25,page,
+    matched:Number((result[1].results[0] as {matched:number|string}).matched),
+    summary:result[2].results[0]},context);
  } catch (error) { return failure(error, context); }
 }
 

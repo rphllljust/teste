@@ -16,11 +16,15 @@
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
-    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
-    "db:migrate": "node scripts/migrate-postgres.mjs"
+    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs test/enterprise-components.contract.test.mjs test/enterprise-object-section.test.mjs test/nextcrm-changed-profile-fields.test.mjs test/enterprise-workspace-coverage.test.mjs test/enterprise-shell-architecture.test.mjs test/enterprise-list-report.test.mjs test/enterprise-inventory.test.mjs test/enterprise-domain-grid.test.mjs test/enterprise-resource-detail.test.mjs test/enterprise-authenticated-contract.test.mjs test/enterprise-hourly-rate.test.mjs",
+    "db:migrate": "node scripts/migrate-postgres.mjs",
+    "test:e2e": "playwright test",
+    "audit:workspaces": "node scripts/audit-enterprise-workspaces.mjs --strict"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
+    "@fluentui/react-components": "9.75.2",
+    "@fluentui/react-icons": "2.0.347",
     "@hookform/resolvers": "^5.7.1",
     "@shadcn/react": "^0.3.0",
     "@types/pg": "^8.23.1",
@@ -50,6 +54,7 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
     "@cloudflare/workers-types": "4.20260515.1",
+    "@playwright/test": "^1.65.1",
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",

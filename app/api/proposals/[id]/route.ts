@@ -16,7 +16,7 @@ export async function GET(request:Request,{params}:RouteContext) {
     if(!z.string().uuid().safeParse(id).success)
       throw new ApiError(400,'VALIDATION_FAILED','Identificador de proposta inválido.');
     const db=database();
-    const [proposal,lines,related,revision,history,origin]=await Promise.all([
+    const [proposal,lines,related,revision,contract,history,origin]=await Promise.all([
       db.prepare(`SELECT p.*,c.legal_name AS client_name
         FROM proposals p JOIN clients c ON c.id=p.client_id AND c.owner_id=p.owner_id
         WHERE p.id=? AND p.owner_id=?`)
@@ -30,6 +30,9 @@ export async function GET(request:Request,{params}:RouteContext) {
         WHERE proposal_id=? AND owner_id=?`).bind(id,context.actorId).first<{total:number}>(),
       db.prepare(`SELECT id FROM proposals WHERE predecessor_id=? AND owner_id=?
         ORDER BY created_at DESC,id DESC LIMIT 1`).bind(id,context.actorId).first<{id:string}>(),
+      db.prepare(`SELECT id,reference,status FROM contracts WHERE proposal_id=? AND owner_id=?
+        ORDER BY created_at DESC,id DESC LIMIT 1`).bind(id,context.actorId)
+        .first<{id:string;reference:string;status:string}>(),
       db.prepare(`SELECT command,created_at AS "createdAt" FROM business_commands
         WHERE entity_type='proposal' AND entity_id=? AND actor_id=?
         UNION ALL SELECT action AS command,created_at AS "createdAt" FROM crm_commands
@@ -48,7 +51,7 @@ export async function GET(request:Request,{params}:RouteContext) {
       // own unique-origin and lineage invariants have been implemented.
       availableCommands:result.availableCommands.filter(c=>c.id!=='revision'),
       lines:lines.results,
-      related:{purchaseOrders:{total:related?.total??0},revisionId:revision?.id??null},
+      related:{purchaseOrders:{total:related?.total??0},revisionId:revision?.id??null,contract:contract??null},
       history:history.results,
       origin:origin?{kind:'crmOpportunity',opportunityId:origin.opportunityId}:null,
       warnings:['Criação de revisão e registro de PO permanecem indisponíveis até implementação e homologação específicas.'],

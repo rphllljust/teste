@@ -1,0 +1,143 @@
+name: Enterprise authenticated staging audit
+
+# Staging acceptance is intentionally not a required PR check: it needs a
+# real protected environment, real data and an independently provisioned secret.
+# For the authorized staging branch, opt in with a commit message containing [enterprise-auth].
+on:
+  push:
+    branches: [feat/cisne-shell-fiori-redwood-20261122]
+  workflow_dispatch:
+    inputs:
+      commit_sha:
+        description: 'Exact SHA deployed to Railway staging (40 lowercase hex chars)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  staging:
+    if: >-
+      github.repository == 'rphllljust/teste' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event_name == 'push' &&
+        contains(github.event.head_commit.message, '[enterprise-auth]')))
+    name: Authenticated staging business UI (real data)
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 50
+    concurrency:
+      group: enterprise-authenticated-staging
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.sha }}
+
+      - name: Fail closed on branch, source, or deployment mismatch
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
+        run: |
+          set -euo pipefail
+          readonly allowed_ref='refs/heads/feat/cisne-shell-fiori-redwood-20261122'
+          [[ "$GITHUB_REF" == "$allowed_ref" ]] || { echo '::error::Candidate branch not authorized'; exit 1; }
+          [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo '::error::Invalid candidate SHA'; exit 1; }
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]] || { echo '::error::Checkout differs from candidate SHA'; exit 1; }
+          # Verify the branch tip with the read-only Actions token.
+          # Persisted Git credentials are intentionally disabled by checkout.
+          curl --fail --silent --show-error --max-time 25 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-shell-fiori-redwood-20261122" \
+            --output "$RUNNER_TEMP/cisne-candidate-ref.json"
+          node -e '
+            const fs = require("node:fs");
+            const ref = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (ref.object?.sha !== process.env.EXPECTED_SHA) {
+              console.error("::error::Candidate is no longer the authorized branch HEAD");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/cisne-candidate-ref.json"
+          # Railway may still be rolling out this exact SHA when the push event fires.
+          # Bounded retry waits for attestation, never accepts a different revision.
+          matched=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 15 \
+              "$CISNE_BASE_URL/api/release/identity" \
+              --output "$RUNNER_TEMP/cisne-staging-identity.json" &&
+              node -e '
+                const fs = require("node:fs");
+                const identity = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+                process.exit(identity.environment === "staging" &&
+                  identity.sha === process.env.EXPECTED_SHA ? 0 : 1);
+              ' "$RUNNER_TEMP/cisne-staging-identity.json"; then
+              matched=1
+              break
+            fi
+            if [[ "$attempt" -lt 30 ]]; then sleep 10; fi
+          done
+          [[ "$matched" == 1 ]] || {
+            echo '::error::Railway runtime SHA differs from tested candidate; NO-GO'
+            exit 1
+          }
+          # A branch update during rollout invalidates a prior HEAD attestation.
+          curl --fail --silent --show-error --max-time 25 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-shell-fiori-redwood-20261122" \
+            --output "$RUNNER_TEMP/cisne-candidate-ref.json"
+          node -e '
+            const fs = require("node:fs");
+            const ref = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (ref.object?.sha !== process.env.EXPECTED_SHA) {
+              console.error("::error::Candidate HEAD moved during Railway rollout; NO-GO");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/cisne-candidate-ref.json"
+
+      - name: Fail closed if staging secret is missing
+        shell: bash
+        env:
+          CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          [[ ${#CISNE_STAGING_PASSPHRASE} -ge 24 &&
+             ${#CISNE_STAGING_PASSPHRASE} -le 160 ]] || {
+            echo '::error::Protected staging passphrase not configured; NO-GO'
+            exit 1
+          }
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.13.0
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - name: Real authenticated Playwright, all 26 destinations and 3 viewports
+        env:
+          CISNE_AUTHENTICATED_E2E: '1'
+          CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
+          CISNE_EXPECTED_STAGING_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.sha }}
+          CISNE_STAGING_PASSPHRASE: ${{ secrets.CISNE_STAGING_PASSPHRASE }}
+        run: pnpm test:e2e
+      - name: Source inventory (not business certification)
+        run: |
+          mkdir -p test-results/enterprise
+          node scripts/audit-enterprise-workspaces.mjs --strict > test-results/enterprise/source-audit.json
+      # Business screenshots can contain PII. Never upload them to repository
+      # artifacts or publish traces just because a browser check succeeded.
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: enterprise-source-audit-${{ github.sha }}
+          path: test-results/enterprise/source-audit.json
+          if-no-files-found: error
+          retention-days: 3

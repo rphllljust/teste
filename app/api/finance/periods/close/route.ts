@@ -1,19 +1,57 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
-import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
+import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../../lib/api/http';
 
 const command = z.object({ id: z.string().uuid(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160) }).strict();
+const periodListQuery=z.object({
+ q:z.string().trim().max(160).default(''),
+ from:z.union([z.literal(''),z.string().refine(validDate)]).default(''),
+ to:z.union([z.literal(''),z.string().refine(validDate)]).default(''),
+ sort:z.enum(['periodEnd.desc','periodEnd.asc','closedAt.desc']).default('periodEnd.desc'),
+ page:z.coerce.number().int().min(1).max(100000).default(1),
+}).strict();
 
 export async function GET(request: Request) {
-  let context: RequestContext | undefined;
-  try {
-    context = requestContext(request);
-    const url = new URL(request.url);
-    const page = Math.max(1, Number(url.searchParams.get('page') ?? '1'));
-    const db = database();
-    const result = await db.prepare(`SELECT p.id,p.period_start AS "periodStart",p.period_end AS "periodEnd",p.status,p.closed_at AS "closedAt",COALESCE((SELECT a.metadata::jsonb->>'reference' FROM finance_audit_events a WHERE a.entity_type='finance_period' AND a.entity_id=p.id AND a.action='period_closed' ORDER BY a.occurred_at DESC LIMIT 1),'') AS reference FROM finance_period_closes p WHERE p.actor_id=? ORDER BY p.period_end DESC,p.id DESC LIMIT 26 OFFSET ?`).bind(context.actorId, (page - 1) * 25).all();
-    return respond({ items: result.results.slice(0, 25), pageInfo: { hasMore: result.results.length > 25 } }, context);
-  } catch (error) { return failure(error, context); }
+ let context:RequestContext|undefined;
+ try{
+  context=requestContext(request);
+  const p=new URL(request.url).searchParams;
+  const raw=Object.fromEntries(p);
+  const parsed=periodListQuery.safeParse(raw);
+  if(!parsed.success||parsed.data.from&&parsed.data.to&&parsed.data.from>parsed.data.to)
+    throw new ApiError(400,'VALIDATION_FAILED','Filtros do fechamento financeiro inválidos.');
+  const filter=parsed.data;
+  const clauses=['p.actor_id=?'];
+  const params:unknown[]=[context.actorId];
+  if(filter.from){clauses.push('p.period_end>=?');params.push(filter.from);}
+  if(filter.to){clauses.push('p.period_end<=?');params.push(filter.to);}
+  if(filter.q){clauses.push(`EXISTS(SELECT 1 FROM finance_audit_events a WHERE a.entity_type='finance_period'
+    AND a.entity_id=p.id AND a.action='period_closed'
+    AND coalesce(a.metadata::jsonb->>'reference','') ILIKE ?)`);
+    params.push('%'+filter.q.replace(/[\\%_]/g,'\\$&')+'%');
+  }
+  const order=filter.sort==='periodEnd.asc'?'p.period_end ASC,p.id ASC':
+   filter.sort==='closedAt.desc'?'p.closed_at DESC,p.id DESC':
+   'p.period_end DESC,p.id DESC';
+  const where=clauses.join(' AND ');
+  const db=database();
+  const results=await db.snapshot([
+    db.prepare(`SELECT p.id,p.period_start AS "periodStart",
+      p.period_end AS "periodEnd",p.status,p.closed_at AS "closedAt",
+      coalesce((SELECT a.metadata::jsonb->>'reference'
+       FROM finance_audit_events a WHERE a.entity_type='finance_period'
+       AND a.entity_id=p.id AND a.action='period_closed'
+       ORDER BY a.occurred_at DESC LIMIT 1),'') AS reference
+      FROM finance_period_closes p WHERE ${where}
+      ORDER BY ${order} LIMIT 25 OFFSET ?`).bind(...params,(filter.page-1)*25),
+    db.prepare(`SELECT count(*)::int AS total FROM finance_period_closes p
+      WHERE ${where}`).bind(...params),
+  ]);
+  const total=Number((results[1].results[0] as {total:number|string}|undefined)?.total??0);
+  return respond({items:results[0].results,pageInfo:{
+    page:filter.page,total,hasMore:filter.page*25<total,
+  }},context);
+ }catch(error){return failure(error,context);}
 }
 
 export async function POST(request: Request) {
