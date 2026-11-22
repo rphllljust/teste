@@ -134,3 +134,30 @@ test('unknown service-order relations are not represented as zero before authori
   assert.match(evidence, /onVerified\?\.\(orderId, null\)/);
   assert.match(evidence, /onVerified\?\.\(orderId, \{/);
 });
+
+
+test('global workcenter composes all ERP destinations with persistent usable controls', async () => {
+  const hub = await readFile(new URL('../app/components/enterprise/EnterpriseExperienceHub.tsx', import.meta.url), 'utf8');
+  const css = await readFile(new URL('../app/globals.css', import.meta.url), 'utf8');
+  assert.match(page, /<EnterpriseExperienceHub activePage=\{page\} groups=\{modules\}/);
+  assert.match(hub, /const journeys = \[/);
+  assert.match(hub, /groups\.flatMap\(group => group\.items\.map/);
+  assert.match(hub, /enterpriseRelatedWorkspaces\[activePage\]/);
+  assert.match(hub, /onNavigate\(journey\.target\)/);
+  assert.match(hub, /onNavigate\(name\)/);
+  assert.match(hub, /localStorage\.setItem/);
+  assert.match(hub, /aria-pressed=\{favourite\}/);
+  assert.match(hub, /aria-expanded=\{showDirectory\}/);
+  assert.match(hub, /aria-label="Filtrar módulos"/);
+  assert.match(hub, /data-cisne-density/);
+  assert.match(hub, /from '@fluentui\/react-icons'/);
+  assert.doesNotMatch(hub, /from ['"](?:lucide-react|@mui|@shadcn|antd)['"]/);
+  assert.doesNotMatch(hub, /(?:fetch\(|\/api\/|mock|bypassAuth)/, 'global navigation does not invent server state or bypass authorization');
+  for (const name of ['OPERAÇÃO','PLANEJAMENTO E RECURSOS','RELACIONAMENTO','FINANÇAS','SUPRIMENTOS','FISCAL E CONTABILIDADE']) {
+    assert.ok(hub.includes("'" + name + "':"), 'global workcenter must describe ' + name);
+  }
+  assert.match(css, /\.cisne-enterprise-hub-banner/);
+  assert.match(css, /\.cisne-enterprise-directory-grid/);
+  assert.match(css, /data-cisne-density="compact"/);
+  assert.match(css, /@media\(max-width:560px\)/);
+});
