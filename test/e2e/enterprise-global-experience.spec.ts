@@ -106,3 +106,48 @@ test('owner-scoped control tower links an enterprise exception to the real modul
   await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Centro de operações' })).toBeVisible();
   await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
 });
+
+
+test('mobile workcenter header has content-sized height, not desktop flex-basis whitespace', async ({ page }) => {
+  await page.goto('/');
+  const hub = page.getByRole('region', { name: 'Área de trabalho empresarial' });
+  const banner = hub.locator('.cisne-enterprise-hub-banner');
+  const heading = banner.locator('.cisne-enterprise-hub-heading');
+  const actions = banner.locator('.cisne-enterprise-hub-actions');
+
+  for (const width of [320, 390, 414, 768]) {
+    await page.setViewportSize({ width, height: 900 });
+    await expect(heading).toBeVisible();
+    await expect(actions.getByRole('button', { name: 'Pesquisar registros' })).toBeVisible();
+
+    const geometry = await banner.evaluate(element => {
+      const headingRect = element.querySelector('.cisne-enterprise-hub-heading')!.getBoundingClientRect();
+      const actionRect = element.querySelector('.cisne-enterprise-hub-actions')!.getBoundingClientRect();
+      const bannerRect = element.getBoundingClientRect();
+      return {
+        direction: getComputedStyle(element).flexDirection,
+        headingBasis: getComputedStyle(element.querySelector('.cisne-enterprise-hub-heading')!).flexBasis,
+        gap: actionRect.top - headingRect.bottom,
+        actionBottom: actionRect.bottom,
+        bannerBottom: bannerRect.bottom,
+        actionRight: actionRect.right,
+        bannerRight: bannerRect.right,
+      };
+    });
+    expect(geometry.direction).toBe('column');
+    expect(geometry.headingBasis).toBe('auto');
+    expect(geometry.gap).toBeGreaterThanOrEqual(0);
+    expect(geometry.gap).toBeLessThanOrEqual(28);
+    expect(geometry.actionBottom).toBeLessThanOrEqual(geometry.bannerBottom + 1);
+    expect(geometry.actionRight).toBeLessThanOrEqual(geometry.bannerRight + 1);
+  }
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await hub.getByRole('button', { name: 'Usar visualização compacta' }).click();
+  const compactGap = await banner.evaluate(element => {
+    const headingBottom = element.querySelector('.cisne-enterprise-hub-heading')!.getBoundingClientRect().bottom;
+    const actionsTop = element.querySelector('.cisne-enterprise-hub-actions')!.getBoundingClientRect().top;
+    return actionsTop - headingBottom;
+  });
+  expect(compactGap).toBeLessThanOrEqual(28);
+});
