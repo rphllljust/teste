@@ -7,6 +7,7 @@ import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { GET as listOperation } from '../../app/api/operation/route';
 import { GET as detailOperation } from '../../app/api/operation/[kind]/[id]/route';
 import { POST as executeCommand } from '../../app/api/commands/route';
+import { GET as listExecution, POST as reportExecution } from '../../app/api/orders/[id]/execution/route';
 
 if (process.env.NODE_ENV !== 'test' || !process.env.DATABASE_URL)
   throw new Error('NO-GO: operation owner test requires isolated PostgreSQL');
@@ -53,8 +54,8 @@ test('operation List Reports and deep links deny ownerless and foreign financial
     const now = new Date().toISOString();
     for (const row of fixtures) {
       await pool.query(
-        'INSERT INTO service_orders(id,owner_id,title,client,category,description,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)',
-        [row.order, row.owner, 'CI owner isolation', 'CI', 'Serviços', 'Disposable fixture', now]);
+        'INSERT INTO service_orders(id,owner_id,title,client,category,description,created_at,status) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',
+        [row.order, row.owner, 'CI owner isolation', 'CI', 'Serviços', 'Disposable fixture', now, row.owner === null ? 'executing' : 'draft']);
       await pool.query(
         'INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,$3,$4,$5,$6)',
         [row.measurement, row.order, 'CI measurement', 150000, 'approved', now]);
@@ -81,6 +82,31 @@ test('operation List Reports and deep links deny ownerless and foreign financial
         assert.equal(allowed.status, 200, kind + ' deep link remains available to owner');
       }
     }
+    // An ownerless OS in executing state must not expose or accept Field Service
+    // entries for either authenticated actor, even when its UUID is known.
+    for (const actor of [alice, bob]) {
+      const orderId = fixtures[0].order;
+      const listResponse = await listExecution(
+        request(actor, '/api/orders/' + orderId + '/execution'),
+        { params: Promise.resolve({ id: orderId }) });
+      assert.equal(listResponse.status, 404, 'Ownerless execution history is private');
+      const report = await reportExecution(setTestIdentity(new Request(
+        'http://localhost/api/orders/' + orderId + '/execution', {
+          method: 'POST', headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({
+            command: 'report', key: randomUUID(), version: 1,
+            resourceKind: 'labor', description: 'Unowned CI must be rejected',
+            quantity: '1', unit: 'hora', resourceReference: 'LABOR-CI-01',
+            effectiveDate: '2026-11-22', reference: 'OWNERLESS-CI-01',
+          }),
+        }), actor), { params: Promise.resolve({ id: orderId }) });
+      assert.equal(report.status, 404, 'No actor may post execution to ownerless OS');
+    }
+    const unauthorizedWork = await pool.query(
+      'SELECT COUNT(*)::int AS total FROM execution_entries WHERE order_id=$1',
+      [fixtures[0].order]);
+    assert.equal(unauthorizedWork.rows[0].total, 0, 'Unauthorized execution must not persist');
+
     // A legacy measurement without owner must never be approved or invoiced via the
     // generic command endpoint, even when its UUID is known to the authenticated actor.
     for (const actor of [alice, bob]) {
