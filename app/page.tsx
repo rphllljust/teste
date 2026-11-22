@@ -1425,7 +1425,7 @@ function HomeView() {
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
           <EnterpriseStagingAccess />
-          {!creating && !action && page === "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
+          {!creating && !action && page !== "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
