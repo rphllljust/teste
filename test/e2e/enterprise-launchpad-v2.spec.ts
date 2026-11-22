@@ -12,7 +12,7 @@ test('new CISNE enterprise launchpad is visibly different and routes into all si
   await expect(launchpad.getByRole('heading', { name: 'O negócio inteiro, em uma só visão.' })).toBeVisible();
   await expect(launchpad.getByRole('heading', { name: 'Trabalhe por processo, não por formulário' })).toBeVisible();
   for (const title of ['Operação', 'Relacionamento', 'Planejamento', 'Finanças', 'Suprimentos', 'Governança']) {
-    await expect(launchpad.getByRole('button', { name: new RegExp('^Abrir área ' + title + ' — jornada empresarial })).toBeVisible();
+    await expect(launchpad.getByRole('button', { name: 'Abrir área ' + title + ' — jornada empresarial', exact: true })).toBeVisible();
   }
   const heroBg = await page.locator('.cisne-command-hero').evaluate(node => getComputedStyle(node).backgroundImage);
   expect(heroBg).toContain('gradient');
