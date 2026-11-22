@@ -1528,3 +1528,16 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .heading,.enterprise-page-header{padding:15px 20px!important;margin-bottom:10px!important;min-height:0!important}
 .heading h1,.enterprise-page-header h1{font-size:clamp(24px,2.2vw,31px)!important}
 @media(max-width:800px){.cisne-enterprise-hub-banner{justify-content:flex-start!important}.cisne-enterprise-hub-actions{width:100%}.heading,.enterprise-page-header{padding:14px!important}}
+
+
+/* Object Page header pass — the enterprise header becomes the single module header */
+.cisne-enterprise-hub{margin:0 0 10px!important;border:1px solid #d8e5e8!important;border-radius:12px!important;background:#fff!important;box-shadow:0 5px 18px rgba(20,53,67,.045)!important;overflow:hidden!important}
+.cisne-enterprise-hub-banner{min-height:82px!important;padding:17px 20px!important;align-items:center!important;background:linear-gradient(110deg,#fff 0%,#fff 66%,#eef8f6 100%)!important}
+.cisne-enterprise-hub-heading{display:block!important;min-width:0}
+.cisne-enterprise-hub-heading-title{font-size:25px!important;line-height:1.15!important;font-weight:780!important;letter-spacing:-.04em!important;color:#173645!important}
+.cisne-enterprise-hub-heading p{display:block!important;margin:4px 0 0!important;color:#617985!important;font-size:12px!important}
+.cisne-enterprise-hub-eyebrow{font-size:9px!important;letter-spacing:.11em!important;font-weight:800!important;color:#36727b!important}
+.cisne-enterprise-hub + .heading{display:none!important}
+.cisne-enterprise-hub + .enterprise-page-header{display:none!important}
+.cisne-enterprise-hub-actions .cisne-hub-command{min-height:34px!important;background:#fff!important;border:1px solid #d9e5e8!important}
+@media(max-width:800px){.cisne-enterprise-hub-banner{min-height:76px!important;padding:14px!important}.cisne-enterprise-hub-heading-title{font-size:21px!important}.cisne-enterprise-hub-actions{width:auto!important}.cisne-enterprise-hub-heading p{font-size:11px!important}}
