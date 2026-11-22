@@ -76,7 +76,7 @@ test('chart accounts are private: listing, journal posting and detail never cros
     }))));
   assert.deepEqual(race.map(response=>response.status).sort(),[201,409],
     'Concurrent inserts of the same code within an owner must allow exactly one');
-  const duplicates = await pool.query('SELECT actor_id,code,COUNT(*)::integer AS count FROM chart_accounts WHERE code=ANY($1::text[]) GROUP BY actor_id,code ORDER BY actor_id,code',[sharedCode,raceCode]);
+  const duplicates = await pool.query('SELECT actor_id,code,COUNT(*)::integer AS count FROM chart_accounts WHERE code=ANY($1::text[]) GROUP BY actor_id,code ORDER BY actor_id,code',[[sharedCode,raceCode]]);
   assert.equal(duplicates.rows.filter(row=>row.code===sharedCode).length,2,'Identical chart codes must be permitted for separate owners');
   assert.equal(duplicates.rows.filter(row=>row.code===raceCode).length,1,'Concurrent collision must not create duplicates');
   assert.ok(duplicates.rows.every(row=>row.count===1));
