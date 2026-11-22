@@ -100,20 +100,37 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
     items: [
       ["Visão operacional", LayoutDashboard],
       ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
       ["Ordens de serviço", ClipboardList],
       ["Execução", HardHat],
       ["Medições", SlidersHorizontal],
+    ],
+  },
+  {
+    group: "COMERCIAL E CONTRATOS",
+    items: [
+      ["CRM e Vendas", Users],
       ["Clientes e propostas", Users],
       ["Propostas e PO", FileText],
       ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "RECURSOS E PLANEJAMENTO",
+    items: [
+      ["Resource Planning Board", CalendarDays],
       ["Frota e ativos", Truck],
       ["Profissionais", HardHat],
     ],
   },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
   {
-    group: "GESTÃO INTEGRADA",
+    group: "SUPRIMENTOS",
+    items: [
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "FINANCEIRO",
     items: [
       ["Faturamento", Receipt],
       ["Visão financeira", LayoutDashboard],
@@ -122,12 +139,15 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Tesouraria", Landmark],
       ["Contas a pagar", Receipt],
       ["Caixa e conciliação", Landmark],
+    ],
+  },
+  {
+    group: "FISCAL E CONTABILIDADE",
+    items: [
       ["Fiscal e tributos", FileText],
       ["Contabilidade", BookOpen],
       ["Razão contábil", BookOpen],
       ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
     ],
   },
 ];
@@ -1327,10 +1347,7 @@ function HomeView() {
             <span>CISNE</span>
             <span className="crumb-divider">/</span>
             <span>
-              {modules.find((g) => g.items.some(([n]) => n === page))?.group ===
-              "OPERAÇÃO"
-                ? "Operação"
-                : "Gestão integrada"}
+              {modules.find((g) => g.items.some(([n]) => n === page))?.group ?? "Gestão empresarial"}
             </span>
             <ChevronRight size={14} />
             <strong>{page}</strong>
@@ -1365,6 +1382,8 @@ function HomeView() {
               "Visão financeira",
               "Fluxo de caixa",
               "CRM e Vendas",
+              "Field Service Cockpit",
+              "Resource Planning Board",
             ].includes(page) && (
               <div className="heading">
                 <div>
@@ -1411,16 +1430,7 @@ function HomeView() {
               </button>
             </div>
           )}
-          {[
-            "Visão operacional",
-            "Ordens de serviço",
-            "Execução",
-            "Medições",
-            "Faturamento",
-            "Financeiro",
-            "Fiscal e tributos",
-            "Contabilidade",
-          ].includes(page) && (
+          {page === "Visão operacional" && !creating && !action && (
             <section className="process-strip" aria-label="Cadeia operacional">
               <div className="process-label">
                 <Layers size={17} />

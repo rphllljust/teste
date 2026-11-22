@@ -20,4 +20,5 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test:domain
+      - run: node --test test/enterprise-shell-density.contract.test.mjs
       - run: pnpm build
