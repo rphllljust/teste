@@ -2262,3 +2262,5 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 .cisne-staging-access-copy p{display:none!important}
 .cisne-staging-access>.fui-Button{flex:0 0 auto!important;min-height:32px!important;height:32px!important}
 @media (max-width:767px){.cisne-staging-access{gap:8px!important;padding:6px 10px!important}.cisne-staging-access-copy{gap:6px!important}.cisne-staging-access-kicker{font-size:0!important}.cisne-staging-access-copy strong{font-size:12px!important;overflow:hidden;text-overflow:ellipsis}.cisne-staging-access>.fui-Button{font-size:0!important;width:32px!important;padding:0!important}.cisne-staging-access>.fui-Button::after{content:'×';font-size:18px!important}}
+
+.service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important}
