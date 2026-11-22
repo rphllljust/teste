@@ -2253,3 +2253,12 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
   .cisne-staging-access-copy strong{white-space:normal!important;}
   .cisne-staging-access .secondary,.cisne-staging-access button{width:100%!important;}
 }
+
+/* Compact homologation status: security state stays visible without a permanent tall banner. */
+.cisne-staging-access{min-height:0!important;padding:6px 12px!important;display:flex!important;align-items:center!important;gap:16px!important;border-radius:6px!important}
+.cisne-staging-access-copy{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important;flex:1 1 auto!important}
+.cisne-staging-access-kicker{margin:0!important;white-space:nowrap!important}
+.cisne-staging-access-copy strong{font-size:13px!important;white-space:nowrap!important}
+.cisne-staging-access-copy p{display:none!important}
+.cisne-staging-access>.fui-Button{flex:0 0 auto!important;min-height:32px!important;height:32px!important}
+@media (max-width:767px){.cisne-staging-access{gap:8px!important;padding:6px 10px!important}.cisne-staging-access-copy{gap:6px!important}.cisne-staging-access-kicker{font-size:0!important}.cisne-staging-access-copy strong{font-size:12px!important;overflow:hidden;text-overflow:ellipsis}.cisne-staging-access>.fui-Button{font-size:0!important;width:32px!important;padding:0!important}.cisne-staging-access>.fui-Button::after{content:'×';font-size:18px!important}}
