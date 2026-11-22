@@ -1493,13 +1493,18 @@ function HomeView() {
               onViewportKeyDown={handleChainKey}
               onScrollDirection={scrollChain}
               onStageSelect={(index) => {
-                navigate([
+                const stagePages = [
                   "Ordens de serviço",
-                  "Ordens de serviço",
+                  "Execução",
                   "Medições",
                   "Faturamento",
                   "Financeiro",
-                ][index]);
+                  "Fiscal e tributos",
+                  "Contabilidade",
+                ];
+                const destination = stagePages[index];
+                if (!destination) return;
+                navigate(destination);
                 if (index === 0 || index === 1) {
                   applyView(index === 1 ? "Em execução" : "Todas as ordens");
                 }
