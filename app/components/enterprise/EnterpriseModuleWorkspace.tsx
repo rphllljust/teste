@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { ArrowRight, CheckCircle2, Layers3, ListChecks } from 'lucide-react';
+import { ArrowRight, Layers3, ListChecks } from 'lucide-react';
 import { EnterpriseButton } from './EnterprisePrimitives';
 
 type Props = {
@@ -22,7 +22,6 @@ const domainStages: Record<string, string[]> = {
 
 export function EnterpriseModuleWorkspace({ activePage, group, onNavigate, children }: Props) {
   const stages = domainStages[group] ?? domainStages['OPERAÇÃO'];
-  const related = stages.filter(stage => stage.toLocaleLowerCase('pt-BR') !== activePage.toLocaleLowerCase('pt-BR')).slice(0, 3);
   return <section className="cisne-module-workspace" aria-label={`Workspace empresarial de ${activePage}`}>
     <header className="cisne-module-workspace-header">
       <div className="cisne-module-workspace-title">
@@ -31,7 +30,7 @@ export function EnterpriseModuleWorkspace({ activePage, group, onNavigate, child
         <p>Contexto, processo e próxima ação em uma única área de trabalho.</p>
       </div>
       <div className="cisne-module-workspace-actions">
-        <span className="cisne-workspace-state"><CheckCircle2 size={14} /> Sessão autorizada</span>
+        
         <EnterpriseButton type="button" appearance="subtle" onClick={() => onNavigate('Visão operacional')}>
           Visão geral <ArrowRight size={14} />
         </EnterpriseButton>
@@ -40,9 +39,9 @@ export function EnterpriseModuleWorkspace({ activePage, group, onNavigate, child
     <div className="cisne-module-process">
       <div className="cisne-module-process-label"><ListChecks size={15} /> Jornada do domínio</div>
       <div className="cisne-module-process-steps" role="list" aria-label="Etapas do processo empresarial">
-        {stages.map((stage, index) => <button type="button" role="listitem" key={stage} className={index === 0 ? 'is-current' : ''} onClick={() => related[index - 1] && onNavigate(related[index - 1])}>
+        {stages.map((stage, index) => <div role="listitem" key={stage} className={index === 0 ? 'is-current' : ''}>
           <span>{String(index + 1).padStart(2, '0')}</span><strong>{stage}</strong>{index < stages.length - 1 && <ArrowRight size={13} aria-hidden="true" />}
-        </button>)}
+        </div>)}
       </div>
     </div>
     <div className="cisne-module-workspace-body">
