@@ -19,6 +19,10 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
 const alice = randomUUID(), bob = randomUUID();
 const aliceAccounts = [randomUUID(), randomUUID()];
 const bobAccounts = [randomUUID(), randomUUID()];
+const duplicateAccountId = randomUUID();
+const raceIds = [randomUUID(), randomUUID()];
+const sharedCode = 'CI-SHARED-' + randomUUID().replaceAll('-', '').slice(0, 16);
+const raceCode = 'CI-RACE-' + randomUUID().replaceAll('-', '').slice(0, 16);
 const journalIds = [randomUUID(), randomUUID(), randomUUID()];
 const request = (method: 'GET' | 'POST', path: string, actor: string, data?: unknown) =>
   setTestIdentity(new Request('http://localhost' + path, {
@@ -42,7 +46,7 @@ after(async () => {
   try {
     await pool.query('DELETE FROM journal_lines WHERE entry_id=ANY($1::text[])', [journalIds]);
     await pool.query('DELETE FROM journal_entries WHERE id=ANY($1::text[])', [journalIds]);
-    await pool.query('DELETE FROM chart_accounts WHERE id=ANY($1::text[])', [[...aliceAccounts, ...bobAccounts]]);
+    await pool.query('DELETE FROM chart_accounts WHERE id=ANY($1::text[])', [[...aliceAccounts, ...bobAccounts, duplicateAccountId, ...raceIds]]);
   } finally {
     await closeDatabase();
     await pool.end();
@@ -54,13 +58,28 @@ test('chart accounts are private: listing, journal posting and detail never cros
     for (const id of accounts) {
       const result = await createAccount(request('POST', '/api/accounting/accounts', actor, {
         id,
-        code: 'CI-' + id.replaceAll('-', '').slice(0, 20),
+        code: id === accounts[0] ? sharedCode : 'CI-' + id.replaceAll('-', '').slice(0, 20),
         name: 'Conta sintética isolada',
         type: 'asset',
       }));
       assert.equal(result.status, 201, JSON.stringify(await body(result)));
     }
   }
+
+  const duplicated = await createAccount(request('POST','/api/accounting/accounts',alice,{
+    id:duplicateAccountId,code:sharedCode,name:'Conta duplicada no mesmo tenant',type:'asset',
+  }));
+  assert.equal(duplicated.status,409,'Within one owner, chart account code remains unique');
+  const race = await Promise.all(raceIds.map(id =>
+    createAccount(request('POST','/api/accounting/accounts',bob,{
+      id,code:raceCode,name:'Código em disputa concorrente',type:'asset',
+    }))));
+  assert.deepEqual(race.map(response=>response.status).sort(),[201,409],
+    'Concurrent inserts of the same code within an owner must allow exactly one');
+  const duplicates = await pool.query('SELECT actor_id,code,COUNT(*)::integer AS count FROM chart_accounts WHERE code=ANY($1::text[]) GROUP BY actor_id,code ORDER BY actor_id,code',[[sharedCode,raceCode]]);
+  assert.equal(duplicates.rows.filter(row=>row.code===sharedCode).length,2,'Identical chart codes must be permitted for separate owners');
+  assert.equal(duplicates.rows.filter(row=>row.code===raceCode).length,1,'Concurrent collision must not create duplicates');
+  assert.ok(duplicates.rows.every(row=>row.count===1));
 
   for (const [actor, own, foreign] of [
     [alice, aliceAccounts, bobAccounts],
