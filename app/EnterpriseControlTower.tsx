@@ -47,8 +47,11 @@ export default function EnterpriseControlTower({onLane,onRecord}:{
     if(!controller.signal.aborted){setSnapshot(null);setError(cause instanceof Error?cause.message:'Falha na consulta empresarial.');}
    }finally{if(!controller.signal.aborted)setLoading(false);}
   }
-  void load();
-  return()=>controller.abort();
+  // Schedule the request after React finishes its effect lifecycle. In dev
+  // Strict Mode the first effect is immediately cleaned up; cancel its timer
+  // instead of sending a duplicate owner-scoped PostgreSQL request.
+  const requestTimer=window.setTimeout(()=>{void load();},0);
+  return()=>{window.clearTimeout(requestTimer);controller.abort();};
  },[cutoff,revision]);
  return <section className="enterprise-control-tower" aria-label="Central de exceções empresariais">
   <header className="enterprise-control-heading">
