@@ -1549,6 +1549,7 @@ function HomeView() {
             />
           ) : page === "Centro de operações" || page === "Ordens de serviço" ? (
             <ServiceOperationsWorkspace
+              requestedView={page === 'Ordens de serviço' ? view : undefined}
               onCreate={newOrder}
               onOpen={(id) => {
                 navigate("Ordens de serviço");
