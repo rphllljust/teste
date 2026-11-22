@@ -9,13 +9,15 @@ const upstream=await readFile('integrations/nextcrm-upstream/Dockerfile','utf8')
 const target=await readFile('Dockerfile.nextcrm','utf8');
 const banner="# CISNE NextCRM stage image: generated from upstream Dockerfile at gitlink\n# d3bead9b44efe2cf94d0dfc2948af0f2c9270deb, plus reviewed private bridge.\n# CI verifies byte-level derivation. Source must include initialized submodules.\n# Build with: docker build -f Dockerfile.nextcrm -t nextcrm-candidate .\n";
 const substitutions=[
+  // Railway's Docker build context does not include submodules. Preserve
+  // upstream source by cloning and checking out the reviewed immutable SHA.
   [
-    "COPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./",
-    "COPY integrations/nextcrm-upstream/pnpm-lock.yaml integrations/nextcrm-upstream/pnpm-workspace.yaml integrations/nextcrm-upstream/package.json ./"
+    "RUN corepack enable\n\n# Copy lock files first (changes less frequently) for maximum cache efficiency\nCOPY pnpm-lock.yaml pnpm-workspace.yaml package.json ./\n",
+    "RUN apk add --no-cache git && corepack enable\n# Railway does not materialize Git submodules in the build snapshot. Fetch the\n# pinned public upstream explicitly so this build is reproducible.\nRUN git clone --filter=blob:none https://github.com/pdovhomilja/nextcrm-app.git /tmp/nextcrm-upstream \\\n    && cd /tmp/nextcrm-upstream \\\n    && git checkout d3bead9b44efe2cf94d0dfc2948af0f2c9270deb \\\n    && cp pnpm-lock.yaml pnpm-workspace.yaml package.json /app/\n"
   ],
   [
-    "COPY . .",
-    "COPY integrations/nextcrm-upstream/ .\n# Install the reviewed ERP bridge on top of the pinned upstream worktree.\nCOPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protocol.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\n# Optional AI must not block NextCRM startup or document ingestion.\nCOPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts\nCOPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-document.ts ./inngest/functions/documents/enrich-document.ts\n# Safely report OTP delivery failures and confirm browser session before redirect.\nCOPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts\nCOPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx"
+    "COPY . .\n\n",
+    "COPY --from=deps /tmp/nextcrm-upstream/ .\n# Install the reviewed ERP bridge on top of the pinned upstream worktree.\nCOPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protocol.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-create/route.ts ./app/api/internal/erp-account-create/route.ts\n# Optional AI must not block NextCRM startup or document ingestion.\nCOPY integrations/nextcrm-bridge-overlay/inngest/lib/embedding-utils.ts ./inngest/lib/embedding-utils.ts\nCOPY integrations/nextcrm-bridge-overlay/inngest/functions/documents/enrich-document.ts ./inngest/functions/documents/enrich-document.ts\n# Safely report OTP delivery failures and confirm browser session before redirect.\nCOPY integrations/nextcrm-bridge-overlay/lib/auth.ts ./lib/auth.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth/otp-delivery.ts ./lib/auth/otp-delivery.ts\nCOPY integrations/nextcrm-bridge-overlay/lib/auth-client.ts ./lib/auth-client.ts\nCOPY integrations/nextcrm-bridge-overlay/staging-login/LoginComponent.tsx ./app/[locale]/(auth)/sign-in/components/LoginComponent.tsx\n\n"
   ],
   [
     "COPY --chown=nextjs:nodejs docker-entrypoint.sh ./docker-entrypoint.sh",
@@ -32,10 +34,6 @@ const substitutions=[
   [
     "FROM node:22-alpine AS runner",
     "FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d73bde88481a AS runner"
-  ],
-  [
-    "COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\n# Optional AI",
-    "COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts\nCOPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-account-create/route.ts ./app/api/internal/erp-account-create/route.ts\n# Optional AI"
   ]
 ];
 let expected=upstream;
