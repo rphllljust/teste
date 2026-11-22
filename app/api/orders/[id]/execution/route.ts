@@ -3,7 +3,7 @@ import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
 import { executionInput, quantityScaled } from '../../../../../lib/domain/execution';
 
-const query = z.object({ state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
+const query = z.object({ q: z.string().default(''), state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
 
 function project(row: Record<string, unknown>) {
   return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
