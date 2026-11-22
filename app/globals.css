@@ -2652,3 +2652,11 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
     font-size:0!important;
   }
 }
+
+/* Enterprise shared header: consistent accessible layout at tablet and mobile widths. */
+.enterprise-page-header,.business-object-header,.enterprise-page-header-copy,.business-object-heading{min-width:0}
+.enterprise-page-header h1,.business-object-header h2,.enterprise-breadcrumb{overflow-wrap:anywhere}
+.enterprise-page-actions,.business-object-actions{display:flex;flex-wrap:wrap;align-items:center;gap:8px;min-width:0}
+.enterprise-page-actions button,.business-object-actions button{max-width:100%}
+@media(max-width:760px){.enterprise-page-header,.business-object-header{flex-wrap:wrap;gap:14px}.enterprise-page-actions,.business-object-actions{width:100%;justify-content:flex-start}.enterprise-page-actions button,.business-object-actions button{min-height:40px}}
+@media(max-width:480px){.enterprise-page-actions,.business-object-actions{align-items:stretch}.enterprise-page-actions button,.business-object-actions button{white-space:normal}}
