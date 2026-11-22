@@ -1490,7 +1490,7 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
-          {[
+          {page === "Visão operacional" && [
             "Ordens de serviço",
             "Execução",
             "Medições",
