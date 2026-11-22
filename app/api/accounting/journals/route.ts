@@ -23,9 +23,9 @@ export async function POST(request:Request){
       if(!accountId||!side||!/^[0-9]+(?:,[0-9]{1,4})?$/.test(amountText))
         throw new ApiError(400,'VALIDATION_FAILED','Cada partida deve informar conta, natureza e valor.');
       const amount=Number(amountText.replace(',','.'));
-      if(!Number.isSafeInteger(Math.round(amount*100))||amount<=0)
+      if(!Number.isSafeInteger(Math.round(amount*10000))||amount<=0)
         throw new ApiError(400,'VALIDATION_FAILED','O valor de cada partida deve ser positivo.');
-      return {lineId,accountId,side,scaled:Math.round(amount*100)};
+      return {lineId,accountId,side,scaled:Math.round(amount*10000)};
     });
     const debit=lines.filter(l=>l.side==='debit').reduce((sum,l)=>sum+l.scaled,0);
     const credit=lines.filter(l=>l.side==='credit').reduce((sum,l)=>sum+l.scaled,0);
