@@ -1461,3 +1461,40 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .cisne-module-workspace-process,.cisne-module-process{max-width:100%;overflow-x:auto}
 @media(max-width:1280px){.cisne-module-workspace-header{padding-inline:18px}.cisne-module-workspace-content{padding-inline:14px!important}}
 @media(max-width:700px){.cisne-module-workspace-header{padding:14px}.cisne-module-workspace-content{padding:10px!important}.cisne-module-workspace-title h2{font-size:22px}}
+
+
+/* CISNE shell refinement — Fiori / Fluent / Redwood navigation composition */
+.sidebar{width:252px;background:#f7f9fa;color:#2c4650;border-right:1px solid #d8e3e6;box-shadow:4px 0 18px rgba(20,53,67,.04)}
+.main{margin-left:252px}
+.brand{height:72px;padding:0 18px;gap:10px;color:#173645;border-bottom:1px solid #dfe8ea;background:#fff;font-size:22px;letter-spacing:1.4px}
+.brand-mark{width:38px;height:38px;border-radius:10px;background:#087d83;color:#dff8f0}
+.brand small{font-size:9px;letter-spacing:2.8px;color:#6d858d}
+.company{margin:14px 12px 18px;padding:12px;border:1px solid #dce7e9;border-radius:10px;background:#fff;color:#34515c;box-shadow:0 3px 10px rgba(20,53,67,.035)}
+.company small{color:#76909a;font-size:11px;margin-top:2px}
+.sidebar nav{padding:0 8px}
+.nav-group{padding:0 0 9px;margin-bottom:5px;border-bottom:1px solid #e2eaec}
+.nav-group:last-child{border-bottom:0}
+.nav-group-toggle{min-height:28px!important;padding:4px 10px!important;color:#718891!important;font-size:10px!important;letter-spacing:.11em;font-weight:800!important}
+.nav-group-toggle:hover{background:transparent!important;color:#2b6971!important}
+.nav-group-toggle svg{color:#8da2a8}
+.nav-group-items{padding:2px 0 0}
+.nav-group-items button{min-height:37px;padding:8px 10px!important;margin:2px 0!important;border-radius:8px!important;color:#4c6670!important;font-size:12px!important;font-weight:600!important;gap:10px!important}
+.nav-group-items button svg{color:#78949b}
+.nav-group-items button:hover{background:#eaf4f3!important;color:#145f66!important}
+.nav-group-items button.active{background:#dff4ef!important;color:#145c62!important;box-shadow:inset 3px 0 #079b91!important;font-weight:750!important}
+.nav-group-items button.active svg{color:#087d83}
+.nav-count{background:#e0ecec!important;color:#4f6f77!important;font-weight:700}
+.sidebar-bottom{padding:14px 15px;border-top:1px solid #dfe8ea;background:#fff;color:#7d9299}
+.sidebar-bottom button{color:#4b6872!important;border-radius:8px!important;padding:9px 8px!important}
+.sidebar-bottom button:hover{background:#edf6f5!important}
+.topbar{height:68px;padding:0 26px;background:#fff;border-bottom:1px solid #dfe8ea;box-shadow:0 2px 8px rgba(20,53,67,.025)}
+.global-search{min-height:38px;padding:0 12px;border:1px solid #d9e5e7!important;border-radius:9px!important;background:#f8fbfb!important;color:#294b56!important;font-weight:650}
+.app-mode-pill{min-height:34px;padding:7px 11px!important;border:1px solid #d9e5e7;background:#f8fbfb}
+/* Avoid the repeated page-title stack. The module content owns its object-page header. */
+.cisne-module-workspace{border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;overflow:visible!important}
+.cisne-module-workspace-header{display:none!important}
+.cisne-module-process{margin:0 0 14px;border:1px solid #d9e6e9;border-radius:10px;background:#fff;box-shadow:0 4px 14px rgba(20,53,67,.04)}
+.cisne-module-workspace-body{display:block!important}
+.cisne-module-workspace-content{padding:0!important;background:transparent!important}
+@media(max-width:1200px){.sidebar{width:228px}.main{margin-left:228px}.topbar{padding-inline:18px}}
+@media(max-width:800px){.sidebar{width:254px}.main{margin-left:0}.topbar{height:60px}}
