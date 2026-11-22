@@ -106,3 +106,29 @@ test('owner-scoped control tower links an enterprise exception to the real modul
   await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Centro de operações' })).toBeVisible();
   await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
 });
+
+
+test('mobile workcenter header has no artificial vertical gap between title and commands', async ({ page }) => {
+  await page.goto('/#Vis%C3%A3o%20operacional');
+  for (const width of [320, 390, 560, 768]) {
+    await page.setViewportSize({ width, height: 850 });
+    const geometry = await page.locator('.cisne-enterprise-hub-banner').evaluate(banner => {
+      const heading = banner.querySelector('.cisne-enterprise-hub-heading');
+      const actions = banner.querySelector('.cisne-enterprise-hub-actions');
+      if (!heading || !actions) throw new Error('Enterprise header or commands not mounted');
+      const header = heading.getBoundingClientRect();
+      const buttons = actions.getBoundingClientRect();
+      return {
+        headerHeight: header.height,
+        distanceToCommands: buttons.top - header.bottom,
+        flexBasis: getComputedStyle(heading).flexBasis,
+        flow: getComputedStyle(banner).flexDirection,
+      };
+    });
+    expect(geometry.flow, 'stacked layout at viewport ' + width).toBe('column');
+    expect(geometry.headerHeight, 'title must not expand to 420px on ' + width).toBeLessThan(230);
+    expect(geometry.distanceToCommands, 'commands must follow title on ' + width).toBeGreaterThanOrEqual(0);
+    expect(geometry.distanceToCommands, 'no empty block on ' + width).toBeLessThanOrEqual(28);
+    expect(geometry.flexBasis).toBe('auto');
+  }
+});
