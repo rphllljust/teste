@@ -6,10 +6,10 @@ test('global workcenter is available across operation, CRM and finance with real
   const hub = page.getByRole('region', { name: 'Área de trabalho empresarial' });
   await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Visão operacional' })).toBeVisible();
   await hub.getByRole('link', { name: 'Abrir jornada Vender: Clientes e propostas' }).click();
-  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Clientes e propostas' })).toBeVisible();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Clientes e propostas');
   await expect(page).toHaveURL(/Clientes%20e%20propostas/);
   await hub.getByRole('link', { name: 'Abrir jornada Controlar: Visão financeira' }).click();
-  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Visão financeira' })).toBeVisible();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Visão financeira');
   await expect(page).toHaveURL(/Vis%C3%A3o%20financeira/);
 });
 
@@ -22,7 +22,7 @@ test('catalog searches actual module destinations and never fabricates links', a
   await expect(hub.getByRole('link', { name: 'Abrir módulo Contratos' })).toBeVisible();
   await expect(hub.getByRole('link', { name: 'Abrir módulo Tesouraria' })).toHaveCount(0);
   await hub.getByRole('link', { name: 'Abrir módulo Contratos' }).click();
-  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Contratos' })).toBeVisible();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Contratos');
   await expect(page).toHaveURL(/#Contratos/);
 });
 
@@ -103,6 +103,19 @@ test('owner-scoped control tower links an enterprise exception to the real modul
   await hub.getByRole('button', { name: 'Prioridades reais' }).click();
   await expect(hub.getByRole('heading', { name: 'Ordens com atraso' })).toBeVisible();
   await hub.getByRole('article', { name: 'Ordens com atraso' }).getByRole('button', { name: 'Abrir área' }).click();
-  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Centro de operações' })).toBeVisible();
+  await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Centro de operações');
   await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
+});
+
+test('shell never invents notification counts or presents unavailable profile actions as functional', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Notificações', exact: true }).click();
+  const notifications = page.getByRole('status', { name: 'Notificações' });
+  await expect(notifications).toContainText('ainda não está conectada');
+  await expect(notifications).not.toContainText('Você não tem notificações novas');
+  await page.getByRole('button', { name: 'Abrir perfil e preferências' }).click();
+  await expect(notifications).toHaveCount(0);
+  const profile = page.getByRole('region', { name: 'Perfil e preferências' });
+  await expect(profile).toContainText('ainda não está integrada');
+  await expect(profile.getByRole('menuitem')).toHaveCount(0);
 });

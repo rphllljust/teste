@@ -20,9 +20,11 @@ const normalizedStatus=(status:string)=>{
 };
 
 
-function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onOpen:(id:string)=>void}){
- const [orders,setOrders]=useState<Order[]>([]),[selectedId,setSelectedId]=useState(''),[query,setQuery]=useState(''),[view,setView]=useState('Todas as ordens'),[category,setCategory]=useState('Todas as atividades'),[sort,setSort]=useState('createdAt.desc'),[page,setPage]=useState(1),[total,setTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
+function ServiceOperationsWorkspaceView({onCreate,onOpen,requestedView}:{onCreate:()=>void;onOpen:(id:string)=>void;requestedView?:string}){
+ const [orders,setOrders]=useState<Order[]>([]),[selectedId,setSelectedId]=useState(''),[query,setQuery]=useState(''),[view,setView]=useState(requestedView??'Todas as ordens'),[category,setCategory]=useState('Todas as atividades'),[sort,setSort]=useState('createdAt.desc'),[page,setPage]=useState(1),[total,setTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState('');
  const [showInspector,setShowInspector]=useState(false);
+ // An external task drilldown must reach the actual server-side worklist filter.
+ useEffect(()=>{if(!requestedView)return;const timer=setTimeout(()=>{setView(requestedView);setPage(1);},0);return()=>clearTimeout(timer);},[requestedView]);
  const [verifiedRelation,setVerifiedRelation]=useState<{id:string;counts:ServiceOrderVerifiedRelations}|null>(null);
  const onVerified=useCallback((id:string,counts:ServiceOrderVerifiedRelations|null)=>{
    setVerifiedRelation(counts?{id,counts}:null);
@@ -42,8 +44,10 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
      }));
      const data=await response.json() as {orders?:Order[];items?:Order[];total?:number;summary?:{total?:number};pageInfo?:{total?:number};error?:string};
      if(!response.ok)throw new Error(data.error||'Ordens indisponíveis.');
-     // Accept both canonical projections used by the operational APIs.
-     const currentOrders=Array.isArray(data.orders)?data.orders:(Array.isArray(data.items)?data.items:[]);
+     // The canonical orders endpoint must confirm the order list, even when empty.
+     // A generic 200 payload with only `items` must not masquerade as an empty worklist.
+     if(!Array.isArray(data.orders))throw new Error('O servidor não confirmou a lista e a paginação de ordens.');
+     const currentOrders=data.orders;
      const verifiedTotal=Number(data.pageInfo?.total??data.total??data.summary?.total??currentOrders.length);
      if(!Number.isSafeInteger(verifiedTotal)||verifiedTotal<0||verifiedTotal<currentOrders.length){
        throw new Error('O servidor não confirmou a lista e a paginação de ordens.');
@@ -103,4 +107,4 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
   </div><nav className="service-operations-pagination" aria-label="Paginação do centro de operações"><EnterpriseButton type="button" className="secondary" disabled={loading||!canGoBack} onClick={()=>setPage(current=>Math.max(1,current-1))}>Página anterior</EnterpriseButton><span role="status">Página {page} · {total} ordens no filtro</span><EnterpriseButton type="button" className="secondary" disabled={loading||!canGoForward} onClick={()=>setPage(current=>current+1)}>Próxima página</EnterpriseButton></nav></>}
  </section>;
 }
-export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void}){return <ServiceOperationsWorkspaceView {...props}/>;}
+export default function ServiceOperationsWorkspace(props:{onCreate:()=>void;onOpen:(id:string)=>void;requestedView?:string}){return <ServiceOperationsWorkspaceView {...props}/>;}

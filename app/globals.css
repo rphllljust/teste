@@ -1508,7 +1508,7 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .cisne-enterprise-hub-actions{gap:6px!important}
 .cisne-enterprise-hub-actions .cisne-hub-command{min-height:32px!important;padding:6px 9px!important;border-radius:7px!important;font-size:11px!important}
 .cisne-enterprise-hub-actions .cisne-hub-command-primary{box-shadow:none!important}
-.cisne-enterprise-hub-strip,.cisne-enterprise-hub-footer{display:none!important}
+/* Keep cross-domain journeys and the module catalog accessible on every workspace. */
 /* The module's business chain is the single process navigator; do not repeat it in the wrapper. */
 .cisne-module-process{display:none!important}
 .cisne-module-workspace-content{padding-top:0!important}
@@ -1516,7 +1516,7 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 
 
 /* Final shell hierarchy pass — one page header, one process context */
-.enterprise-workflow-context{display:none!important}
+/* Related cross-module workflows remain visible for authenticated, keyboard-accessible navigation. */
 .cisne-staging-access{min-height:0!important;margin-bottom:10px!important;padding:10px 16px!important;border-radius:9px!important}
 .cisne-staging-access-copy strong{font-size:13px!important}
 .cisne-staging-access-copy p{font-size:11px!important;margin-top:2px!important}
@@ -2237,7 +2237,7 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 .cisne-enterprise-hub-strip,.cisne-enterprise-hub-footer{border-radius:var(--cisne-radius)!important;background:var(--cisne-surface)!important;}
 .cisne-enterprise-hub-command-primary{background:var(--cisne-primary)!important;border-color:var(--cisne-primary)!important;}
 .cisne-enterprise-hub-command-primary:hover{background:var(--cisne-primary-hover)!important;}
-@media(max-width:1023px){
+@media(max-width:800px){
   .sidebar{position:fixed!important;left:0!important;top:0!important;bottom:0!important;z-index:60!important;width:256px!important;transform:translateX(-105%)!important;}
   .sidebar.mobile-open{transform:translateX(0)!important;}
   .main,.main.sidebar-expanded,.main.sidebar-collapsed,.main.sidebar-hidden{margin-left:0!important;}
@@ -2264,6 +2264,31 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 @media (max-width:767px){.cisne-staging-access{gap:8px!important;padding:6px 10px!important}.cisne-staging-access-copy{gap:6px!important}.cisne-staging-access-kicker{font-size:0!important}.cisne-staging-access-copy strong{font-size:12px!important;overflow:hidden;text-overflow:ellipsis}.cisne-staging-access>.fui-Button{font-size:0!important;width:32px!important;padding:0!important}.cisne-staging-access>.fui-Button::after{content:'×';font-size:18px!important}}
 
 .service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important}
+
+/* The tablet uses the persistent enterprise sidebar; only phones use the off-canvas drawer. */
+@media(min-width:801px){
+  .topbar .crumb .mobile-toggle{display:none!important}
+  .topbar .crumb .desktop-sidebar-toggle{display:inline-flex!important}
+}
+@media(max-width:800px){
+  .topbar .crumb .mobile-toggle{display:inline-flex!important}
+  .topbar .crumb .desktop-sidebar-toggle{display:none!important}
+}
+
+/* Tablet shell reflow: preserve sidebar and fit command bar without document overflow.
+   The 834px browser regression measured 861px because topbar actions kept desktop widths. */
+@media (min-width:801px) and (max-width:1100px){
+  .topbar{gap:8px!important;padding-inline:12px!important}
+  .topbar .crumb{min-width:0!important;flex:1 1 auto!important;overflow:hidden}
+  .topbar .top-actions{gap:6px!important;min-width:0!important;flex:0 0 auto!important}
+  .topbar .global-search{width:40px!important;min-width:40px!important;max-width:40px!important;flex:0 0 40px!important;justify-content:center!important;padding:6px!important}
+  .topbar .global-search-label,.topbar .global-search kbd{display:none!important}
+  .topbar .profile-label{display:none!important}
+  .topbar .app-mode-pill{max-width:94px!important;padding-inline:8px!important}
+  .cisne-enterprise-hub-banner{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important}
+  .cisne-enterprise-hub-heading{display:block!important;min-width:0!important;width:100%!important;flex:0 1 auto!important}
+  .cisne-enterprise-hub-actions{min-width:0!important;width:100%!important;flex:0 0 auto!important;justify-content:flex-start!important;flex-wrap:wrap!important}
+}
 
 /* Reconciled #161/#162: reset mobile flex basis so header cannot reserve 420px of vertical space. */
 @media (max-width:800px){

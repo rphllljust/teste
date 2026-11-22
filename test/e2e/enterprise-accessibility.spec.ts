@@ -10,7 +10,7 @@ test('CISNE exposes one main landmark when navigating specialized Field and reso
      .getByRole('button',{name,exact:true}).click();
    await expect(main).toHaveCount(1);
    await expect(main).toBeVisible();
-   await expect(page.getByRole('region',{name:name==='Field Service Cockpit'?'Cockpit de Field Service':'Resource Planning Board'})).toBeVisible();
+   await expect(page.getByRole('region',{name:name==='Field Service Cockpit'?'Cockpit de Field Service':'Resource Planning Board',exact:true})).toBeVisible();
  }
 });
 
