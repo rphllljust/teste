@@ -11,6 +11,10 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.doesNotMatch(spec,/page\.route\(|route\.fulfill\(/);
  assert.match(spec,/api\/release\/identity/);
  assert.match(spec,/api\/auth\/staging-login/);
+ assert.match(spec,/Real browser session lifecycle/);
+ assert.match(spec,/Unauthenticated browser must not read business records/);
+ assert.match(spec,/Browser session must authorize the real API/);
+ assert.match(spec,/trace: 'off'/);
  assert.match(spec,/apiFailures/);
  assert.match(workflow,/feat\/cisne-enterprise-workbench-global-20261121/);
  assert.match(workflow,/\[enterprise-auth\]/);
