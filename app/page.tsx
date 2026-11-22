@@ -419,9 +419,6 @@ function HomeView() {
   // O painel contextual é deliberadamente fechado por padrão.
   // Ele só deve ser aberto por uma ação explícita do usuário.
   useEffect(() => {
-    setDocked(false);
-  }, []);
-  useEffect(() => {
     if (!palette) return;
     const controller = new AbortController();
     const timer = setTimeout(async () => {
