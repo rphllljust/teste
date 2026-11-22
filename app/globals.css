@@ -2660,3 +2660,8 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 .enterprise-page-actions button,.business-object-actions button{max-width:100%}
 @media(max-width:760px){.enterprise-page-header,.business-object-header{flex-wrap:wrap;gap:14px}.enterprise-page-actions,.business-object-actions{width:100%;justify-content:flex-start}.enterprise-page-actions button,.business-object-actions button{min-height:40px}}
 @media(max-width:480px){.enterprise-page-actions,.business-object-actions{align-items:stretch}.enterprise-page-actions button,.business-object-actions button{white-space:normal}}
+
+/* Enterprise global density: avoid reserving an empty context rail across modules. */
+.cisne-module-workspace-body{display:block;min-width:0}
+.cisne-module-workspace-content{padding:0;background:transparent;min-width:0}
+.cisne-module-workspace{min-width:0}
