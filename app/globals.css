@@ -1419,3 +1419,35 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .notice{border:1px solid #b9dcd5!important;border-left:4px solid var(--cisne-accent)!important;border-radius:10px!important;box-shadow:0 5px 18px rgba(8,125,131,.08)}
 @media(max-width:900px){.heading,.list-title,.enterprise-page-header{flex-direction:column;padding:18px}.kpi-grid,.metrics-grid,.summary-grid,.enterprise-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.kpi-grid>*:nth-child(2n){border-right:0}.kpi-grid>*:nth-child(-n+2){border-bottom:1px solid var(--cisne-line)}}
 @media(max-width:560px){.main main{padding-left:11px!important;padding-right:11px!important}.filters,.enterprise-filter-bar{align-items:stretch}.search-input{min-width:100%}.kpi-grid,.metrics-grid,.summary-grid,.enterprise-kpi-grid{grid-template-columns:1fr}.kpi-grid>*{border-right:0!important;border-bottom:1px solid var(--cisne-line)}.kpi-grid>*:last-child{border-bottom:0}}
+
+
+/* Global module workspaces: process-first composition for every CISNE domain. */
+.cisne-module-workspace{width:100%;min-width:0;margin:0 0 18px;padding:0;border:1px solid #d6e4e7;border-radius:16px;background:#f8fbfc;box-shadow:0 10px 30px rgba(19,53,69,.055);overflow:hidden}
+.cisne-module-workspace-header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;padding:20px 24px 17px;border-bottom:1px solid #dce9eb;background:linear-gradient(110deg,#fff 0%,#fff 63%,#edf8f6 100%)}
+.cisne-module-workspace-title{min-width:0}
+.cisne-module-workspace-title .eyebrow{display:flex;align-items:center;gap:6px}
+.cisne-module-workspace-title h2{margin:6px 0 4px;color:#173645;font-size:clamp(22px,2vw,30px);font-weight:780;letter-spacing:-.04em}
+.cisne-module-workspace-title p{margin:0;color:#647c87;font-size:12px;line-height:1.5}
+.cisne-module-workspace-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.cisne-workspace-state{display:inline-flex;align-items:center;gap:5px;min-height:30px;padding:5px 9px;border:1px solid #bfe0d9;border-radius:999px;background:#eef9f5;color:#24726c;font-size:11px;font-weight:750;white-space:nowrap}
+.cisne-module-process{display:flex;align-items:center;gap:17px;padding:12px 18px;border-bottom:1px solid #dce9eb;background:#f4f9fa;overflow:auto}
+.cisne-module-process-label{display:flex;align-items:center;gap:6px;flex:0 0 auto;color:#52717d;font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase}
+.cisne-module-process-steps{display:flex;align-items:center;gap:7px;min-width:max-content}
+.cisne-module-process-steps button{display:inline-flex;align-items:center;gap:6px;min-height:32px;padding:5px 8px;border:1px solid #d3e3e5;border-radius:8px;background:#fff;color:#365460;font:inherit;font-size:11px;cursor:pointer}
+.cisne-module-process-steps button span{display:grid;place-items:center;width:19px;height:19px;border-radius:50%;background:#e8f2f2;color:#28767a;font-size:9px;font-weight:800}
+.cisne-module-process-steps button svg{color:#86a1a7}
+.cisne-module-process-steps button:hover,.cisne-module-process-steps button.is-current{border-color:#8dc9c1;background:#e8f7f3;color:#165e65;box-shadow:inset 3px 0 #11968e}
+.cisne-module-process-steps button:hover span,.cisne-module-process-steps button.is-current span{background:#0e8d87;color:#fff}
+.cisne-module-workspace-body{display:grid;grid-template-columns:minmax(0,1fr) 225px;align-items:start;gap:0;min-width:0}
+.cisne-module-workspace-content{min-width:0;padding:17px 18px 20px;background:#f8fbfc}
+.cisne-module-workspace-content>.cisne-crm,.cisne-module-workspace-content>.worklist,.cisne-module-workspace-content>.enterprise-worklist,.cisne-module-workspace-content>.enterprise-object-page{margin:0!important;max-width:none!important}
+.cisne-module-context{min-width:0;min-height:100%;padding:18px 15px;border-left:1px solid #dce9eb;background:#f1f7f8;color:#526f7b}
+.cisne-module-context h3{margin:7px 0 5px;color:#1e4855;font-size:14px}
+.cisne-module-context p{margin:0 0 13px;font-size:11px;line-height:1.5}
+.cisne-context-card{display:grid;gap:3px;margin-top:8px;padding:10px;border:1px solid #d5e4e6;border-radius:9px;background:#fff}
+.cisne-context-card strong{font-size:11px;color:#285866}
+.cisne-context-card small{font-size:10px;line-height:1.4;color:#718791}
+.cisne-module-workspace .cisne-crm-heading,.cisne-module-workspace .list-title,.cisne-module-workspace .heading{margin:0 0 14px!important;border-radius:11px!important}
+.cisne-module-workspace .cisne-crm-metrics,.cisne-module-workspace .metrics{margin-top:0}
+@media(max-width:1050px){.cisne-module-workspace-body{grid-template-columns:minmax(0,1fr)}.cisne-module-context{display:none}}
+@media(max-width:650px){.cisne-module-workspace-header{flex-direction:column;padding:16px}.cisne-module-workspace-actions{justify-content:flex-start}.cisne-module-process{align-items:flex-start;flex-direction:column;gap:8px;padding:10px 12px}.cisne-module-workspace-content{padding:12px}.cisne-module-workspace{border-radius:11px}}
