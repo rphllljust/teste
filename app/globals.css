@@ -2487,3 +2487,37 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 .service-operations-grid.with-context{grid-template-columns:minmax(220px,.72fr) minmax(0,1.95fr) minmax(260px,.82fr)!important;}
 .service-operations-grid.with-context .service-inspector.is-open{display:block!important;visibility:visible!important;opacity:1!important;min-width:260px!important;min-height:180px!important;}
 @media(max-width:1100px){.service-operations-grid.with-context{grid-template-columns:1fr!important}.service-operations-grid.with-context .service-inspector.is-open{display:block!important;min-width:0!important;width:100%!important;}}
+
+
+/* Reconciled upstream light navigation surface: match the new enterprise
+   launchpad without altering the tested responsive drawer mechanics. */
+.app .sidebar {
+  --cisne-sidebar: #fbfcff;
+  background: #fbfcff !important;
+  color: #233a56 !important;
+  border-right: 1px solid #d8e2ed !important;
+  box-shadow: 4px 0 18px rgba(19,45,70,.07) !important;
+}
+.app .sidebar .brand {
+  color: #182f4c !important;
+  background: linear-gradient(110deg,#eff7ff,#fbfcff) !important;
+  border-bottom: 1px solid #e0e9f2 !important;
+}
+.app .sidebar .company,
+.app .sidebar .nav-group-toggle,
+.app .sidebar .sidebar-bottom {
+  color: #3f5973 !important;
+}
+.app .sidebar .sidebar-bottom {
+  background: #f5f8fc !important;
+  border-top: 1px solid #dce5ee !important;
+}
+.app .sidebar .sidebar-bottom .version {
+  color: #536c83 !important;
+}
+.app .sidebar .nav-group-items button {
+  color: #32465f !important;
+}
+.app .sidebar .nav-group-items button.active {
+  color: #124a88 !important;
+}
