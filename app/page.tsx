@@ -1490,42 +1490,6 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
-          {false && [
-            "Ordens de serviço",
-            "Execução",
-            "Medições",
-            "Faturamento",
-            "Financeiro",
-            "Fiscal e tributos",
-            "Contabilidade",
-          ].includes(page) && (
-            <EnterpriseProcessJourney
-              steps={chain}
-              currentStage={currentStage}
-              edges={chainEdges}
-              viewportRef={chainViewport}
-              onViewportScroll={updateChainEdges}
-              onViewportKeyDown={handleChainKey}
-              onScrollDirection={scrollChain}
-              onStageSelect={(index) => {
-                const stagePages = [
-                  "Ordens de serviço",
-                  "Execução",
-                  "Medições",
-                  "Faturamento",
-                  "Financeiro",
-                  "Fiscal e tributos",
-                  "Contabilidade",
-                ];
-                const destination = stagePages[index];
-                if (!destination) return;
-                navigate(destination);
-                if (index === 0 || index === 1) {
-                  applyView(index === 1 ? "Em execução" : "Todas as ordens");
-                }
-              }}
-            />
-          )}
           <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>
           {action?.command === "invoice" ? (
             <BillingPreparation
