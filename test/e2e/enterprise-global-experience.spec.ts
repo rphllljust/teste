@@ -106,3 +106,16 @@ test('owner-scoped control tower links an enterprise exception to the real modul
   await expect(page.locator('.topbar [aria-current="page"]')).toHaveText('Centro de operações');
   await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
 });
+
+test('shell never invents notification counts or presents unavailable profile actions as functional', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('button', { name: 'Notificações', exact: true }).click();
+  const notifications = page.getByRole('status', { name: 'Notificações' });
+  await expect(notifications).toContainText('ainda não está conectada');
+  await expect(notifications).not.toContainText('Você não tem notificações novas');
+  await page.getByRole('button', { name: 'Abrir perfil e preferências' }).click();
+  await expect(notifications).toHaveCount(0);
+  const profile = page.getByRole('region', { name: 'Perfil e preferências' });
+  await expect(profile).toContainText('ainda não está integrada');
+  await expect(profile.getByRole('menuitem')).toHaveCount(0);
+});
