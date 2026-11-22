@@ -1203,3 +1203,100 @@ input,select,textarea,[role=combobox]{border-radius:7px}.search-input input{min-
 .service-operations .service-object :is(#service-order-process,#service-order-context,#service-order-history):focus-visible{
   outline:2px solid var(--cisne-brand-focus,#149b9e);outline-offset:-2px
 }
+
+
+
+/* CISNE Enterprise Experience 2026: SAP Fiori floorplans, Fluent 2 and Oracle Redwood patterns. */
+:root{--cisne-evo-ink:#183344;--cisne-evo-nav:#122f40;--cisne-evo-accent:#087d83;--cisne-evo-border:#dce7eb;--cisne-evo-shadow:0 8px 28px rgba(14,43,59,.07);--nav:#122f40;--canvas:#f1f5f7;--ink:#183344}
+body{background:#f1f5f7;font-family:"Segoe UI Variable","Segoe UI",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+.sidebar{width:254px;background:linear-gradient(160deg,#102d3e,#193d4b 66%,#112e3e);box-shadow:4px 0 24px rgba(6,28,39,.065)}
+.main{margin-left:254px}
+.sidebar .brand{height:86px;padding:0 19px;border-bottom:1px solid #ffffff19}
+.sidebar .brand-mark{width:46px;height:46px;border-radius:12px;background:linear-gradient(145deg,#218b92,#0c626b);box-shadow:0 7px 20px #0002}
+.sidebar .company{margin:16px 12px 12px;padding:12px;background:#ffffff09;border:1px solid #ffffff22;border-radius:10px}
+.sidebar .nav-group{padding:3px 10px}
+.sidebar .nav-group-toggle{font-size:10px;letter-spacing:.08em;font-weight:750;color:#b4cbd2;min-height:36px}
+.sidebar .nav-group-items button{min-height:38px;border-radius:8px;padding:9px 11px;font-size:12px;color:#d4e5eb}
+.sidebar .nav-group-items button:hover{background:#ffffff15;color:#fff}
+.sidebar .nav-group-items button.active{background:#e4faf6!important;color:#15525b!important;box-shadow:inset 4px 0 #14a39b,0 4px 14px #0002;font-weight:700}
+.sidebar .sidebar-bottom{border-color:#ffffff22}
+.topbar{min-height:70px;height:auto;padding:12px clamp(17px,2.5vw,36px);border-color:#e1e9ec;box-shadow:0 2px 14px rgba(15,44,57,.03)}
+.topbar .crumb strong{font-weight:750;color:#1a3844}
+.topbar .global-search{border:1px solid #dbe6e8;background:#f7fafb;min-height:36px;padding:0 12px;border-radius:8px}
+.topbar .global-search:hover{background:#edf7f7;border-color:#a7ced0}
+.main main{max-width:1920px;padding:18px clamp(15px,2.5vw,36px) 32px}
+.cisne-enterprise-hub{width:100%;min-width:0;margin:0 0 20px;background:#fff;border:1px solid #dbe7ea;border-radius:14px;overflow:hidden;box-shadow:var(--cisne-evo-shadow)}
+.cisne-enterprise-hub-banner{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:21px 24px 19px;background:linear-gradient(108deg,#fff 0%,#fff 65%,#eef8f7 100%);border-bottom:1px solid #e3ebed}
+.cisne-enterprise-hub-heading{min-width:0;flex:1 1 420px}
+.cisne-enterprise-hub-eyebrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap;color:#52707b;font-size:10px;line-height:1.4;font-weight:800;letter-spacing:.1em}
+.cisne-enterprise-hub-beacon{width:7px;height:7px;flex:none;border-radius:50%;background:#149f96;box-shadow:0 0 0 4px #149f9623}
+.cisne-enterprise-hub-separator{color:#a1b4bd}
+.cisne-enterprise-hub-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin:7px 0 5px}
+.cisne-enterprise-hub-title-row h2{margin:0;font-size:clamp(22px,2vw,31px);font-weight:750;letter-spacing:-.035em;line-height:1.2;color:#173544}
+.cisne-enterprise-hub-domain{padding:4px 8px;border:1px solid #d2e4e6;background:#edf6f7;border-radius:6px;color:#24646e;font-size:10px;font-weight:700}
+.cisne-enterprise-hub-heading p{margin:0;font-size:12px;line-height:1.5;color:#617786}
+.cisne-enterprise-hub-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;flex:0 0 auto}
+.cisne-enterprise-hub-actions .fui-Button{border:1px solid #d9e5e8;border-radius:8px;min-height:36px;padding:7px 10px;font-size:12px;font-weight:650;background:#fff;white-space:nowrap}
+.cisne-enterprise-hub-actions .fui-Button:hover{background:#edf7f7}
+.cisne-enterprise-hub-actions .cisne-hub-command-primary{background:#08777d;color:#fff;border-color:#08777d;box-shadow:0 5px 14px #0a6d7426}
+.cisne-enterprise-hub-actions .cisne-hub-command-primary:hover{background:#075f67;color:#fff}
+.cisne-enterprise-hub-actions kbd{color:inherit;background:#ffffff20;border:1px solid #ffffff44;margin-left:4px}
+.cisne-enterprise-hub-strip{display:flex;align-items:center;gap:16px;min-width:0;padding:12px 18px;background:#f8fafb;border-bottom:1px solid #e5edef}
+.cisne-enterprise-hub-strip-heading{display:flex;align-items:center;gap:7px;flex:0 0 150px;color:#536e7a;font-size:11px;font-weight:750}
+.cisne-enterprise-hub-strip-heading svg{color:#09838a}
+.cisne-enterprise-hub-journeys{display:flex;gap:9px;align-items:stretch;flex:1;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;padding:1px 1px 5px;scrollbar-width:thin}
+.cisne-enterprise-hub-journeys .fui-Button{flex:1 0 140px;max-width:260px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;gap:2px;position:relative;min-height:60px;padding:9px 26px 9px 12px;border:1px solid #dbe6e9;background:#fff;border-radius:9px;color:#203a48}
+.cisne-enterprise-hub-journeys .fui-Button strong{font-size:12px;font-weight:800}
+.cisne-enterprise-hub-journeys .fui-Button span{font-size:10px;font-weight:500;color:#657c87}
+.cisne-enterprise-hub-journeys .fui-Button svg{position:absolute;right:9px;top:21px;color:#18818a}
+.cisne-enterprise-hub-journeys .fui-Button:hover{background:#eaf8f5;border-color:#9accc9}
+.cisne-enterprise-hub-journeys .is-domain-active{background:#e7f5f3;border-color:#7bbab8;box-shadow:inset 3px 0 #149a91}
+.cisne-enterprise-hub-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:10px 18px}
+.cisne-enterprise-hub-context{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
+.cisne-enterprise-hub-footer-label{display:inline-flex;align-items:center;gap:6px;margin-right:3px;color:#597380;font-size:11px;font-weight:750;white-space:nowrap}
+.cisne-enterprise-hub-context .fui-Button,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle{display:inline-flex;align-items:center;gap:5px;min-height:31px;padding:5px 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:#1e626b;font-size:11px;font-weight:700}
+.cisne-enterprise-hub-context .fui-Button:hover,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle:hover{background:#edf7f6;border-color:#c6e4e1}
+.cisne-enterprise-hub-footer .cisne-hub-directory-toggle{background:#f5f9fa;border-color:#cfdee2;flex:none}
+.cisne-enterprise-directory{padding:18px 22px 22px;border-top:1px solid #e1ebed;background:#f9fbfc}
+.cisne-enterprise-directory-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
+.cisne-enterprise-directory-head h3{font-size:17px;margin:0 0 3px;letter-spacing:-.02em}
+.cisne-enterprise-directory-head p{margin:0;font-size:12px;color:#657c89}
+.cisne-enterprise-directory-search{display:flex;align-items:center;gap:9px;max-width:300px;width:100%;height:39px;padding:0 11px;border:1px solid #d2dfe4;border-radius:8px;background:white}
+.cisne-enterprise-directory-search:focus-within{outline:2px solid #228b8e;outline-offset:2px}
+.cisne-enterprise-directory-search input{width:100%;min-width:0;height:35px;border:0!important;outline:none!important;box-shadow:none!important;background:transparent!important}
+.cisne-enterprise-directory-search svg{flex:none;color:#62818a}
+.cisne-enterprise-directory-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}
+.cisne-enterprise-directory-domain{min-width:0;padding:14px;border:1px solid #deeaed;border-radius:10px;background:#fff}
+.cisne-enterprise-directory-domain h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 12px;font-size:12px;text-transform:uppercase;color:#4d6b78;letter-spacing:.03em}
+.cisne-enterprise-directory-domain h4 span{font-variant-numeric:tabular-nums;color:#27858a}
+.cisne-enterprise-directory-domain>div{display:grid;gap:3px}
+.cisne-enterprise-directory-domain .fui-Button{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;width:100%;min-height:39px;padding:8px;text-align:left;border-radius:7px;color:#294451}
+.cisne-enterprise-directory-domain .fui-Button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cisne-enterprise-directory-domain .fui-Button svg:last-child{margin-left:auto;flex:none;color:#27858a}
+.cisne-enterprise-directory-domain .fui-Button:hover,.cisne-enterprise-directory-domain .is-current{background:#eaf7f5}
+.cisne-enterprise-directory-shortcuts{margin:0 0 14px}
+.cisne-enterprise-directory-shortcuts h4{display:flex;align-items:center;gap:7px;margin:0 0 7px;color:#526d7a;font-size:11px;text-transform:uppercase}
+.cisne-enterprise-directory-shortcuts>div{display:flex;flex-wrap:wrap;gap:7px}
+.cisne-enterprise-directory-shortcuts .fui-Button{min-height:31px;display:inline-flex;gap:5px;align-items:center;border:1px solid #d9e6e8;background:white;border-radius:7px;padding:5px 9px;font-size:11px}
+.cisne-enterprise-directory-empty{padding:18px;background:#fff;border:1px dashed #cbdde1;border-radius:8px;color:#647986}
+.enterprise-page-header,.business-object-header{border-bottom-color:#dce7ea}
+.enterprise-page-header h1,.business-object-header h2,.heading h1{color:#173645;letter-spacing:-.035em;font-weight:750}
+.enterprise-section,.object-section,.enterprise-card,.worklist,.enterprise-panel,.cisne-workspace .cisne-card,.erp-experience-page .cisne-card{border-color:#dce6e9;border-radius:12px;box-shadow:var(--cisne-evo-shadow)}
+.enterprise-filter-bar,.filters,.service-operations .service-operations-toolbar{background:#fff;border-radius:10px;border-color:#dce6e9}
+.enterprise-data-grid th{background:#f3f7f8;color:#4c6977}
+.enterprise-data-grid tbody tr:hover{background:#edf7f6}
+.enterprise-status{font-weight:750}
+.cisne-enterprise-hub :is(button,a,input):focus-visible{outline:2px solid #078b92;outline-offset:3px}
+html[data-cisne-density="compact"] .main main{padding-top:12px}
+html[data-cisne-density="compact"] .cisne-enterprise-hub-banner{padding:12px 16px}
+html[data-cisne-density="compact"] .cisne-enterprise-hub-strip{padding:7px 12px}
+html[data-cisne-density="compact"] .cisne-enterprise-hub-journeys .fui-Button{min-height:44px;padding-block:5px}
+html[data-cisne-density="compact"] .cisne-enterprise-hub-footer{padding:6px 12px}
+html[data-cisne-density="compact"] .enterprise-data-grid td{padding-block:7px}
+html[data-cisne-density="compact"] .enterprise-data-grid th{padding-block:7px}
+html[data-cisne-density="compact"] .enterprise-section-body,html[data-cisne-density="compact"] .object-section-body{padding:12px}
+html[data-cisne-density="compact"] .enterprise-page-header,html[data-cisne-density="compact"] .business-object-header{padding-block:10px}
+@media(max-width:1200px){.sidebar{width:224px}.main{margin-left:224px}.cisne-enterprise-hub-strip{flex-direction:column;align-items:stretch;gap:6px}.cisne-enterprise-hub-strip-heading{flex-basis:auto}.cisne-enterprise-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:800px){.sidebar{width:254px;display:none}.sidebar.mobile-open{display:flex}.main{margin-left:0}.topbar{min-height:60px}.cisne-enterprise-hub-banner{flex-direction:column;align-items:stretch;padding:18px}.cisne-enterprise-hub-actions{justify-content:flex-start;flex:0 0 auto}.cisne-enterprise-hub-footer{flex-direction:column;align-items:stretch}.cisne-enterprise-hub-context{width:100%}.cisne-enterprise-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-enterprise-directory-head{flex-direction:column;align-items:stretch}.cisne-enterprise-directory-search{max-width:none}}
+@media(max-width:560px){.main main{padding:11px 12px 20px}.cisne-enterprise-hub{border-radius:10px;margin-bottom:15px}.cisne-enterprise-hub-banner{gap:12px;padding:14px}.cisne-enterprise-hub-title-row h2{font-size:23px}.cisne-enterprise-hub-actions .fui-Button{flex:1;justify-content:center;min-height:39px}.cisne-enterprise-hub-actions .cisne-hub-command-primary{flex-basis:100%}.cisne-enterprise-hub-actions kbd{display:none}.cisne-enterprise-hub-strip{padding:10px 12px}.cisne-enterprise-hub-journeys .fui-Button{flex-basis:150px}.cisne-enterprise-hub-footer{padding:10px 12px}.cisne-enterprise-hub-context .fui-Button{min-height:36px}.cisne-enterprise-directory{padding:12px}.cisne-enterprise-directory-grid{grid-template-columns:minmax(0,1fr)}.cisne-enterprise-directory-domain{padding:12px}}
+@media(prefers-reduced-motion:reduce){.cisne-enterprise-hub *, .sidebar .nav-group-items button{transition:none!important;animation:none!important}}
