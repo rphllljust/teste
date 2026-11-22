@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowRightRegular as ArrowRight, CheckmarkRegular as Check, ChevronDownRegular as ChevronDown, ChevronUpRegular as ChevronUp, ClockRegular as Clock3, AppsRegular as Grid2X2, TableRegular as LayoutList, SearchRegular as Search, SettingsRegular as SlidersHorizontal, StarRegular as Star } from '@fluentui/react-icons';
 import { EnterpriseButton } from './EnterprisePrimitives';
 import { enterpriseRelatedWorkspaces } from './EnterpriseWorkspaceContext';
+import EnterpriseControlTower, { type ControlTowerLaneId } from '../../EnterpriseControlTower';
 import type { EnterpriseNavigationGroup } from './EnterpriseAppNavigation';
 
 const FAVOURITES_KEY = 'cisne.enterprise.favourites.v1';
@@ -52,13 +53,16 @@ type Props = {
   groups: EnterpriseNavigationGroup[];
   onNavigate: (name: string) => void;
   onSearch: () => void;
+  onControlTowerLane: (lane: ControlTowerLaneId, asOf: string) => void;
+  onControlTowerRecord: (lane: ControlTowerLaneId, id: string, asOf: string) => void;
 };
-export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSearch }: Props) {
+export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSearch, onControlTowerLane, onControlTowerRecord }: Props) {
   const [ready, setReady] = useState(false);
   const [favourites, setFavourites] = useState<string[]>([]);
   const [recent, setRecent] = useState<string[]>([]);
   const [compact, setCompact] = useState(false);
   const [showDirectory, setShowDirectory] = useState(false);
+  const [showPriorities, setShowPriorities] = useState(false);
   const [directoryQuery, setDirectoryQuery] = useState('');
 
   const allNames = useMemo(() => new Set(groups.flatMap(group => group.items.map(([name]) => name))), [groups]);
@@ -115,6 +119,11 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
         <p>{domainDescriptions[activeGroup?.group ?? ''] ?? 'Consulte os módulos e processos autorizados do CISNE.'}</p>
       </div>
       <div className="cisne-enterprise-hub-actions" aria-label="Comandos gerais da área de trabalho">
+        <EnterpriseButton type="button" className="cisne-hub-command cisne-hub-priorities" appearance="subtle"
+          aria-expanded={showPriorities} aria-controls="cisne-global-priorities"
+          onClick={() => setShowPriorities(previous => !previous)}>
+          <Grid2X2 fontSize={16} aria-hidden="true" /><span>{showPriorities ? 'Ocultar prioridades' : 'Prioridades reais'}</span>
+        </EnterpriseButton>
         <EnterpriseButton type="button" className="cisne-hub-command" appearance="subtle"
           onClick={toggleFavourite} aria-pressed={favourite} aria-label={favourite ? 'Remover ' + activePage + ' dos favoritos' : 'Adicionar ' + activePage + ' aos favoritos'}>
           <Star fontSize={16} fill={favourite ? 'currentColor' : 'none'} aria-hidden="true" /><span>{favourite ? 'Favorito' : 'Favoritar'}</span>
@@ -156,6 +165,14 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
         {showDirectory ? <ChevronUp fontSize={15} aria-hidden="true" /> : <ChevronDown fontSize={15} aria-hidden="true" />}
       </EnterpriseButton>
     </div>
+    {showPriorities && <section id="cisne-global-priorities" className="cisne-enterprise-hub-priorities"
+      aria-label="Prioridades globais com dados autorizados">
+      <div className="cisne-enterprise-hub-priorities-intro">
+        <strong>Fila empresarial transversal</strong>
+        <span>Consultas reais, somente após abertura. Ausência de acesso não significa ausência de pendências.</span>
+      </div>
+      <EnterpriseControlTower onLane={onControlTowerLane} onRecord={onControlTowerRecord} />
+    </section>}
     {showDirectory && <div id="cisne-enterprise-directory" className="cisne-enterprise-directory">
       <div className="cisne-enterprise-directory-head">
         <div><h3>Catálogo de áreas de trabalho</h3><p>Acesso direto aos módulos existentes. Permissões e dados continuam controlados pelas APIs.</p></div>
