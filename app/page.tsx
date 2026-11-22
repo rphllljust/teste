@@ -1410,10 +1410,11 @@ function HomeView() {
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
           <EnterpriseStagingAccess />
-          {!creating && !action && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
+          {!creating && !action && page !== "Visão operacional" && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
+              "Visão operacional",
               "Compras",
               "Estoque e compras",
               "Visão financeira",
@@ -1475,7 +1476,6 @@ function HomeView() {
             </div>
           )}
           {[
-            "Visão operacional",
             "Ordens de serviço",
             "Execução",
             "Medições",
@@ -1572,6 +1572,7 @@ function HomeView() {
               }}
             />
           ) : page === "Visão operacional" ? (
+            <>
             <EnterpriseCommandCenter
               summary={summary}
               dataState={loading ? "loading" : error ? "unavailable" : "ready"}
@@ -1585,6 +1586,8 @@ function HomeView() {
               onControlTowerLane={handleControlLane}
               onControlTowerRecord={handleControlRecord}
             />
+            <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} />
+            </>
           ) : isWork ? (
             <>
               <ServiceOperationsAgenda
