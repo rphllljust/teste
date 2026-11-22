@@ -2521,3 +2521,68 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
 .app .sidebar .nav-group-items button.active {
   color: #124a88 !important;
 }
+
+
+/* Tablet page overflow: contain independent workflow and process scrollers
+   without clipping business fields or sacrificing keyboard navigation.
+   Playwright identified links at x885 and process/action buttons at x936/894
+   on an 834px viewport. */
+@media (min-width:801px) and (max-width:1100px) {
+  .main, .main main, .enterprise-command-center {
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .enterprise-workflow-context {
+    display:grid !important;
+    grid-template-columns:minmax(0,1fr) !important;
+    gap:6px !important;
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+  }
+  .enterprise-workflow-context-actions {
+    display:flex !important;
+    min-width:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overscroll-behavior-x:contain;
+  }
+  .cisne-command-board,
+  .cisne-command-board > .enterprise-panel,
+  .cisne-command-process {
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .cisne-command-board {
+    grid-template-columns:minmax(0,1fr) !important;
+  }
+  .cisne-command-process-steps {
+    display:grid !important;
+    grid-template-columns:repeat(5,minmax(120px,1fr)) !important;
+    min-width:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    overflow-x:auto !important;
+    overscroll-behavior-x:contain;
+  }
+  .cisne-command-bottom {
+    flex-direction:column !important;
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+  .enterprise-operations-access {
+    min-width:0 !important;
+    width:100% !important;
+    max-width:100% !important;
+    flex-wrap:wrap !important;
+  }
+  .enterprise-operations-access > div {
+    min-width:0 !important;
+    flex:1 1 200px !important;
+  }
+  .enterprise-operations-access > .fui-Button {
+    min-width:0 !important;
+    max-width:100% !important;
+  }
+}
