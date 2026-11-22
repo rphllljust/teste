@@ -6,6 +6,7 @@ import { projectCustomerPO } from '../route';
 export const dynamic='force-dynamic';
 type RouteContext={params:Promise<{id:string}>};
 type PORow=Parameters<typeof projectCustomerPO>[0];
+type POLine={description:string;unit:string;quantityScaled:string;unitPriceScaled:string;amountScaled:string};
 
 export async function GET(request:Request,{params}:RouteContext){
   let context:RequestContext|undefined;
@@ -14,7 +15,7 @@ export async function GET(request:Request,{params}:RouteContext){
     const {id}=await params;
     if(!z.string().uuid().safeParse(id).success)
       throw new ApiError(400,'VALIDATION_FAILED','Identificador de pedido inválido.');
-    const [row,contracts,history]=await Promise.all([
+    const [row,contracts,history,lines]=await Promise.all([
       database().prepare(`SELECT po.*,p.title AS proposal_title,p.total AS proposal_total,
         c.legal_name AS client_name
         FROM purchase_orders po
@@ -29,11 +30,18 @@ export async function GET(request:Request,{params}:RouteContext){
         FROM business_commands WHERE entity_type='purchaseOrder'
         AND entity_id=? AND actor_id=? ORDER BY created_at DESC LIMIT 20`)
         .bind(id,context.actorId).all<{command:string;createdAt:string}>(),
+      database().prepare(`SELECT description,unit,quantity::text AS "quantityScaled",
+        unit_price::text AS "unitPriceScaled",amount::text AS "amountScaled"
+        FROM proposal_lines
+        WHERE proposal_id=(SELECT proposal_id FROM purchase_orders WHERE id=? AND owner_id=?)
+        ORDER BY position,id`)
+        .bind(id,context.actorId).all<POLine>(),
     ]);
     if(!row)throw new ApiError(404,'NOT_FOUND','Pedido do cliente não encontrado.');
     const linked=contracts?.n??0;
     return respond({projection:{
       ...projectCustomerPO(row,linked===0),
+      lines:lines.results,
       history:history.results,
       warnings:linked>0?['A PO possui contrato vinculado e não pode ser cancelada.']:[],
     }},context);
