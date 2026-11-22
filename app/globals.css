@@ -2275,6 +2275,21 @@ html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!i
   .topbar .crumb .desktop-sidebar-toggle{display:none!important}
 }
 
+/* Tablet shell reflow: preserve sidebar and fit command bar without document overflow.
+   The 834px browser regression measured 861px because topbar actions kept desktop widths. */
+@media (min-width:801px) and (max-width:1100px){
+  .topbar{gap:8px!important;padding-inline:12px!important}
+  .topbar .crumb{min-width:0!important;flex:1 1 auto!important;overflow:hidden}
+  .topbar .top-actions{gap:6px!important;min-width:0!important;flex:0 0 auto!important}
+  .topbar .global-search{width:40px!important;min-width:40px!important;max-width:40px!important;flex:0 0 40px!important;justify-content:center!important;padding:6px!important}
+  .topbar .global-search-label,.topbar .global-search kbd{display:none!important}
+  .topbar .profile-label{display:none!important}
+  .topbar .app-mode-pill{max-width:94px!important;padding-inline:8px!important}
+  .cisne-enterprise-hub-banner{flex-direction:column!important;align-items:stretch!important;justify-content:flex-start!important;gap:10px!important}
+  .cisne-enterprise-hub-heading{display:block!important;min-width:0!important;width:100%!important;flex:0 1 auto!important}
+  .cisne-enterprise-hub-actions{min-width:0!important;width:100%!important;flex:0 0 auto!important;justify-content:flex-start!important;flex-wrap:wrap!important}
+}
+
 /* Reconciled #161/#162: reset mobile flex basis so header cannot reserve 420px of vertical space. */
 @media (max-width:800px){
  .cisne-enterprise-hub-banner{flex-direction:column!important;align-items:stretch!important;min-height:0!important}
