@@ -683,7 +683,7 @@ test('unauthorized operational metrics are unavailable rather than fabricated ze
   }));
   await page.goto('/');
   await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
-  await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
+  await expect(page.locator('.cisne-command-metric-value')).toHaveText(['—', '—', '—', '—']);
 });
 
 test('service order evidence is requested on demand from the owner-scoped detail endpoint', async ({ page }) => {
@@ -849,7 +849,7 @@ test('malformed successful order projection does not crash the main enterprise s
   await expect(page.getByRole('navigation', { name: 'Módulos empresariais' })).toBeVisible();
   await page.getByRole('button', { name: 'Visão operacional', exact: true }).click();
   await expect(page.locator('.enterprise-data-availability')).toContainText('Indicadores indisponíveis');
-  await expect(page.locator('.enterprise-lanes .enterprise-lane .lane-copy strong')).toHaveText(['—', '—']);
+  await expect(page.locator('.cisne-command-metric-value')).toHaveText(['—', '—', '—', '—']);
   await expect(page.getByRole('button', { name: 'Clientes e propostas' })).toBeVisible();
 });
 
