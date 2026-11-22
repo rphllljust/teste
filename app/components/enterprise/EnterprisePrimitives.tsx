@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode, useId } from 'react';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -8,7 +8,8 @@ export function BusinessStatus({ status, label }: { status: EnterpriseStatus; la
 
 export type EnterprisePageHeaderProps = { eyebrow?: string; title: string; description?: string; actions?: ReactNode; breadcrumb?: string|ReactNode; status?: ReactNode; id?: string };
 export function EnterprisePageHeader({ eyebrow, title, description, actions, breadcrumb, status, id }: EnterprisePageHeaderProps) {
-  const titleId = id ?? `enterprise-page-title-${title.toLowerCase().replace(/[^a-z0-9]+/gi, '-')}`;
+  const generatedId = useId();
+  const titleId = id ?? `enterprise-page-title-${generatedId.replace(/:/g, '')}`;
   return <header className="enterprise-page-header" aria-labelledby={titleId}><div className="enterprise-page-header-copy">{breadcrumb && <nav className="enterprise-breadcrumb" aria-label="Navegação estrutural">{breadcrumb}</nav>}{eyebrow && <span className="eyebrow">{eyebrow}</span>}<div className="enterprise-page-title-row"><h1 id={titleId}>{title}</h1>{status}</div>{description && <p>{description}</p>}</div>{actions && <div className="enterprise-page-actions" aria-label="Ações da página">{actions}</div>}</header>;
 }
 
