@@ -50,9 +50,17 @@ test('workcenter reflows without a horizontal document overflow at desktop, tabl
       width: element.getBoundingClientRect().width,
       viewport: window.innerWidth,
       documentOverflow: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      overflowSources: Array.from(document.querySelectorAll<HTMLElement>('body *'))
+        .filter(node => node.getClientRects().length > 0 &&
+          node.getBoundingClientRect().right > document.documentElement.clientWidth + 2)
+        .slice(0, 12).map(node => ({
+          tag: node.tagName.toLowerCase(), className: typeof node.className === 'string' ? node.className.slice(0, 90) : '',
+          right: Math.round(node.getBoundingClientRect().right),
+          width: Math.round(node.getBoundingClientRect().width),
+        })),
     }));
     expect(layout.width).toBeLessThanOrEqual(layout.viewport + 1);
-    expect(layout.documentOverflow).toBeLessThanOrEqual(2);
+    expect(layout.documentOverflow, JSON.stringify({ viewport: width, sources: layout.overflowSources })).toBeLessThanOrEqual(2);
     await page.screenshot({ path: test.info().outputPath('enterprise-hub-' + width + '.png'), fullPage: false });
   }
 });
