@@ -61,6 +61,16 @@ test('workcenter reflows without a horizontal document overflow at desktop, tabl
     }));
     expect(layout.width).toBeLessThanOrEqual(layout.viewport + 1);
     expect(layout.documentOverflow, JSON.stringify({ viewport: width, sources: layout.overflowSources })).toBeLessThanOrEqual(2);
+    if (width === 390) {
+      const profile = page.getByRole('button', { name: 'Abrir perfil e preferências' });
+      await expect(profile).toBeVisible();
+      const shellSize = await profile.evaluate(button => ({
+        profileWidth: button.getBoundingClientRect().width,
+        actionsRight: button.closest('.top-actions')?.getBoundingClientRect().right ?? Number.POSITIVE_INFINITY,
+      }));
+      expect(shellSize.profileWidth, 'Fluent profile button must remain icon-sized after hydration').toBeLessThanOrEqual(38);
+      expect(shellSize.actionsRight, 'Shell actions must remain within the mobile viewport').toBeLessThanOrEqual(391);
+    }
     await page.screenshot({ path: test.info().outputPath('enterprise-hub-' + width + '.png'), fullPage: false });
   }
 });
