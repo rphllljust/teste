@@ -2177,3 +2177,79 @@ input:hover,select:hover,textarea:hover{border-color:#7f9bab!important;}
   .main.with-context .service-inspector{display:none!important;}
   .service-queue,.service-object{width:100%!important;min-width:0!important;}
 }
+
+
+/* CISNE Enterprise Design System — authoritative shell foundation */
+:root{
+  --cisne-primary:#087f83;
+  --cisne-primary-hover:#06686b;
+  --cisne-sidebar:#102f3a;
+  --cisne-sidebar-hover:#1b4450;
+  --cisne-background:#f5f7f8;
+  --cisne-surface:#fff;
+  --cisne-text:#172b36;
+  --cisne-text-secondary:#5d6b75;
+  --cisne-border:#dce3e7;
+  --cisne-success:#237a57;
+  --cisne-warning:#a66a12;
+  --cisne-error:#c23b3b;
+  --cisne-radius:6px;
+  --cisne-topbar-height:56px;
+  --cisne-sidebar-expanded:256px;
+  --cisne-sidebar-collapsed:64px;
+}
+html,body{background:var(--cisne-background)!important;color:var(--cisne-text)!important;font-family:Inter,"Segoe UI",sans-serif!important;}
+.topbar{height:var(--cisne-topbar-height)!important;min-height:var(--cisne-topbar-height)!important;}
+.sidebar{width:var(--cisne-sidebar-expanded)!important;background:var(--cisne-sidebar)!important;transition:width .18s ease,transform .18s ease!important;}
+.sidebar.sidebar-expanded{width:var(--cisne-sidebar-expanded)!important;}
+.sidebar.sidebar-collapsed{width:var(--cisne-sidebar-collapsed)!important;}
+.sidebar.sidebar-hidden{width:0!important;min-width:0!important;overflow:hidden!important;border:0!important;}
+.sidebar.sidebar-collapsed .brand>span:last-child,
+.sidebar.sidebar-collapsed .company>span,
+.sidebar.sidebar-collapsed .nav-group-toggle>span,
+.sidebar.sidebar-collapsed .nav-group-toggle svg,
+.sidebar.sidebar-collapsed .nav-group-items button>span:not(.nav-count),
+.sidebar.sidebar-collapsed .sidebar-bottom .version,
+.sidebar.sidebar-collapsed .sidebar-bottom button>span,
+.sidebar.sidebar-collapsed .sidebar-bottom kbd{display:none!important;}
+.sidebar.sidebar-collapsed .brand,.sidebar.sidebar-collapsed .company{justify-content:center!important;padding-inline:0!important;}
+.sidebar.sidebar-collapsed .nav-group-toggle,.sidebar.sidebar-collapsed .nav-group-items button{justify-content:center!important;padding-inline:0!important;}
+.sidebar.sidebar-collapsed .nav-group-items button .nav-count{display:none!important;}
+.sidebar.sidebar-collapsed .nav-group{padding-inline:8px!important;}
+.main{margin-left:var(--cisne-sidebar-expanded)!important;transition:margin-left .18s ease!important;background:var(--cisne-background)!important;}
+.main.sidebar-expanded{margin-left:var(--cisne-sidebar-expanded)!important;}
+.main.sidebar-collapsed{margin-left:var(--cisne-sidebar-collapsed)!important;}
+.main.sidebar-hidden{margin-left:0!important;}
+.main main{padding:24px!important;max-width:none!important;width:100%!important;}
+.cisne-staging-access{
+  min-height:44px!important;margin:0 0 16px!important;padding:8px 16px!important;
+  display:flex!important;align-items:center!important;justify-content:space-between!important;gap:16px!important;
+  border:1px solid var(--cisne-border)!important;border-left:3px solid var(--cisne-primary)!important;
+  border-radius:var(--cisne-radius)!important;background:var(--cisne-surface)!important;
+  box-shadow:0 1px 2px rgba(23,43,54,.04)!important;
+}
+.cisne-staging-access-copy{display:flex!important;align-items:center!important;gap:12px!important;min-width:0!important;}
+.cisne-staging-access-copy p{margin:0!important;color:var(--cisne-text-secondary)!important;font-size:12px!important;}
+.cisne-staging-access-copy strong{font-size:13px!important;white-space:nowrap!important;}
+.cisne-staging-access-kicker{font-size:10px!important;letter-spacing:.1em!important;color:var(--cisne-primary)!important;white-space:nowrap!important;}
+.cisne-staging-access .secondary,.cisne-staging-access button{height:36px!important;min-height:36px!important;white-space:nowrap!important;}
+.cisne-enterprise-hub-banner{border-radius:var(--cisne-radius)!important;box-shadow:0 1px 2px rgba(23,43,54,.04)!important;background:var(--cisne-surface)!important;}
+.cisne-enterprise-hub-strip,.cisne-enterprise-hub-footer{border-radius:var(--cisne-radius)!important;background:var(--cisne-surface)!important;}
+.cisne-enterprise-hub-command-primary{background:var(--cisne-primary)!important;border-color:var(--cisne-primary)!important;}
+.cisne-enterprise-hub-command-primary:hover{background:var(--cisne-primary-hover)!important;}
+@media(max-width:1023px){
+  .sidebar{position:fixed!important;left:0!important;top:0!important;bottom:0!important;z-index:60!important;width:256px!important;transform:translateX(-105%)!important;}
+  .sidebar.mobile-open{transform:translateX(0)!important;}
+  .main,.main.sidebar-expanded,.main.sidebar-collapsed,.main.sidebar-hidden{margin-left:0!important;}
+  .main main{padding:16px!important;}
+  .sidebar-scrim{display:block!important;}
+  .cisne-staging-access{align-items:flex-start!important;flex-wrap:wrap!important;}
+  .cisne-staging-access-copy{flex-wrap:wrap!important;row-gap:4px!important;}
+  .cisne-staging-access-copy p{flex-basis:100%!important;}
+}
+@media(max-width:640px){
+  .main main{padding:12px!important;}
+  .cisne-staging-access{padding:10px 12px!important;}
+  .cisne-staging-access-copy strong{white-space:normal!important;}
+  .cisne-staging-access .secondary,.cisne-staging-access button{width:100%!important;}
+}
