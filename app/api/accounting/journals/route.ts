@@ -34,7 +34,7 @@ export async function POST(request:Request){
     const now=new Date().toISOString();
     const result=await database().transaction(async query=>{
       const accounts=await query(
-        'SELECT id FROM chart_accounts WHERE id=ANY($1::text[]) AND active=1 AND (actor_id=$2 OR active=1)',
+        'SELECT id FROM chart_accounts WHERE id=ANY($1::text[]) AND active=1 AND actor_id=$2',
         [uniqueAccounts,context!.actorId],
       );
       if(accounts.rowCount!==uniqueAccounts.length)throw new ApiError(400,'VALIDATION_FAILED','Uma ou mais contas não estão disponíveis.');
