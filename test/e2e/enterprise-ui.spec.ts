@@ -387,6 +387,7 @@ test('Redwood control tower refreshes real API query contracts and opens the fin
   }});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower).toBeVisible();
  const lane=tower.getByRole('article',{name:'Recebíveis vencidos'});
@@ -438,6 +439,7 @@ test('Redwood control tower uses server-valued queues and opens an exact payable
   }}});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower).toBeVisible();
  const payableLane=tower.getByRole('article',{name:'Obrigações vencidas'});
@@ -455,6 +457,7 @@ test('Redwood control tower fails closed when the API is unavailable',async({pag
  await page.route('**/api/enterprise/control-tower*',route=>route.fulfill({status:503,
   json:{error:'O serviço de prioridades está temporariamente indisponível.'}}));
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  const tower=page.getByRole('region',{name:'Central de exceções empresariais'});
  await expect(tower.getByRole('alert')).toContainText('temporariamente indisponível');
  await expect(tower.getByRole('article')).toHaveCount(0);
