@@ -12,7 +12,7 @@ export async function POST(request:Request){
     const effectiveDate=typeof body.effectiveDate==='string'?body.effectiveDate.trim():'';
     const sourceReference=typeof body.sourceReference==='string'?body.sourceReference.trim():'';
     const description=typeof body.description==='string'?body.description.trim():'';
-    if(!id||id.length>80||!/^\\d{4}-\\d{2}-\\d{2}$/.test(effectiveDate)||sourceReference.length<3||sourceReference.length>160||description.length<3||description.length>4000||!Array.isArray(body.lines)||body.lines.length<2||body.lines.length>100)
+    if(!id||id.length>80||!/^\d{4}-\d{2}-\d{2}$/.test(effectiveDate)||sourceReference.length<3||sourceReference.length>160||description.length<3||description.length>4000||!Array.isArray(body.lines)||body.lines.length<2||body.lines.length>100)
       throw new ApiError(400,'VALIDATION_FAILED','Confira os dados do lançamento.');
     const lines=body.lines.map((raw,index)=>{
       const line=raw as {id?:unknown;accountId?:unknown;side?:unknown;amount?:unknown};
