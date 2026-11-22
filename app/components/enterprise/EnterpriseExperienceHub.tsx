@@ -68,6 +68,7 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
 
   const allNames = useMemo(() => new Set(groups.flatMap(group => group.items.map(([name]) => name))), [groups]);
   const activeGroup = groups.find(group => group.items.some(([name]) => name === activePage));
+  const showOverviewHeader = activePage === 'Visão operacional';
   const sameGroup = (activeGroup?.items ?? []).map(([name]) => name).filter(name => name !== activePage).slice(0, 4);
   const related = (enterpriseRelatedWorkspaces[activePage] ?? []).filter(name => allNames.has(name));
   const favourite = favourites.includes(activePage);
@@ -118,6 +119,7 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
   }
 
   return <section className="cisne-enterprise-hub" aria-label="Área de trabalho empresarial">
+    {showOverviewHeader && (
     <div className="cisne-enterprise-hub-banner">
       <div className="cisne-enterprise-hub-heading">
         <div className="cisne-enterprise-hub-eyebrow"><span className="cisne-enterprise-hub-beacon" aria-hidden="true" /> CISNE / ÁREA DE TRABALHO <span className="cisne-enterprise-hub-separator">/</span> {domainLabels[activeGroup?.group ?? ''] ?? 'Gestão integrada'}</div>
@@ -146,7 +148,7 @@ export function EnterpriseExperienceHub({ activePage, groups, onNavigate, onSear
           <Search fontSize={16} aria-hidden="true" /><span>Pesquisar registros</span><kbd>Ctrl K</kbd>
         </EnterpriseButton>
       </div>
-    </div>
+    </div>)}
 
     <div className="cisne-enterprise-hub-strip">
       <div className="cisne-enterprise-hub-strip-heading"><Grid2X2 fontSize={15} aria-hidden="true" /><span>Jornadas empresariais</span></div>

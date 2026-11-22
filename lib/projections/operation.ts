@@ -12,7 +12,7 @@ export function operationQuery(p:OperationQuery,actorId:string){
  const alias=p.kind==='measurements'?'m':p.kind==='invoices'?'i':'r';
  const from=p.kind==='measurements'?'measurements m JOIN service_orders o ON o.id=m.order_id':p.kind==='invoices'?'invoices i JOIN service_orders o ON o.id=i.order_id':'receivables r JOIN invoices i ON i.id=r.invoice_id JOIN service_orders o ON o.id=i.order_id';
  const due=p.kind==='measurements'?'o.due_date':alias+'.due_date';
- const clauses:string[]=['(o.owner_id IS NULL OR o.owner_id=?)'],values:(string|number)[]=[actorId];
+ const clauses:string[]=['o.owner_id=?'],values:(string|number)[]=[actorId];
  if(p.orderId){clauses.push('o.id=?');values.push(p.orderId);}
  if(p.q){clauses.push(caseInsensitiveContains(['o.title','o.client',alias+'.id']));values.push(escapedLike(p.q),escapedLike(p.q),escapedLike(p.q));}
  if(p.status){clauses.push('m.status=?');values.push(p.status);}

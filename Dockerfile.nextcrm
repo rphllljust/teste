@@ -10,10 +10,13 @@ FROM node:22-alpine@sha256:1314fb30ec37592d5845e5a160d522c0e680972aa534549940b8d
 WORKDIR /app
 
 # Enable corepack; pnpm resolves to the packageManager pin in package.json
-RUN corepack enable
-
-# Copy lock files first (changes less frequently) for maximum cache efficiency
-COPY integrations/nextcrm-upstream/pnpm-lock.yaml integrations/nextcrm-upstream/pnpm-workspace.yaml integrations/nextcrm-upstream/package.json ./
+RUN apk add --no-cache git && corepack enable
+# Railway does not materialize Git submodules in the build snapshot. Fetch the
+# pinned public upstream explicitly so this build is reproducible.
+RUN git clone --filter=blob:none https://github.com/pdovhomilja/nextcrm-app.git /tmp/nextcrm-upstream \
+    && cd /tmp/nextcrm-upstream \
+    && git checkout d3bead9b44efe2cf94d0dfc2948af0f2c9270deb \
+    && cp pnpm-lock.yaml pnpm-workspace.yaml package.json /app/
 
 # Install dependencies with frozen lockfile
 RUN pnpm install --frozen-lockfile
@@ -32,7 +35,7 @@ RUN corepack enable
 COPY --from=deps /app/node_modules ./node_modules
 
 # Copy source code
-COPY integrations/nextcrm-upstream/ .
+COPY --from=deps /tmp/nextcrm-upstream/ .
 # Install the reviewed ERP bridge on top of the pinned upstream worktree.
 COPY lib/integrations/nextcrm/bridge-protocol.ts ./lib/erp-bridge/bridge-protocol.ts
 COPY integrations/nextcrm-bridge-overlay/app/api/internal/erp-document-authorization/route.ts ./app/api/internal/erp-document-authorization/route.ts

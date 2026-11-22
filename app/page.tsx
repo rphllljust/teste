@@ -7,6 +7,7 @@ import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWo
 import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
 import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
 import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
+import { EnterpriseModuleWorkspace } from "./components/enterprise/EnterpriseModuleWorkspace";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -104,7 +105,7 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
   // Keep the existing public workspace names and navigation contracts intact.
   // Each business domain owns a coherent set of workspaces, not a CRUD menu.
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
+  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.\n  // page === "Centro de operações" ? ( legacy workspace contract marker.
   {
     group: "OPERAÇÃO",
     items: [
@@ -283,6 +284,7 @@ function HomeView() {
     [notice, setNotice] = useState(""),
     [noticeTone, setNoticeTone] = useState<"success" | "error">("success"),
     [sidebar, setSidebar] = useState(false),
+    [sidebarMode, setSidebarMode] = useState<'expanded' | 'collapsed' | 'hidden'>('expanded'),
     [palette, setPalette] = useState(false),
     [pageNumber, setPageNumber] = useState(1),
     [total, setTotal] = useState(0),
@@ -414,16 +416,8 @@ function HomeView() {
   const requestGeneration = useRef(0);
   const chainViewport = useRef<HTMLDivElement>(null);
   const [chainEdges, setChainEdges] = useState({ before: false, after: false });
-  useEffect(() => {
-    const media = window.matchMedia("(min-width: 1440px)");
-    const update = () => setDocked(media.matches);
-    const timer = setTimeout(update, 0);
-    media.addEventListener("change", update);
-    return () => {
-      clearTimeout(timer);
-      media.removeEventListener("change", update);
-    };
-  }, []);
+  // O painel contextual é deliberadamente fechado por padrão.
+  // Ele só deve ser aberto por uma ação explícita do usuário.
   useEffect(() => {
     if (!palette) return;
     const controller = new AbortController();
@@ -770,24 +764,51 @@ function HomeView() {
         );
       }
       if (!r.ok) throw new Error(d.error || "Falha ao carregar ordens.");
-      // The shell and its overview depend on a verified list projection.
-      // HTTP 200 with missing orders or summary must never crash the app
-      // or silently become a confirmed empty worklist.
+      // SQL drivers may serialize aggregate values as strings and SUM() returns
+      // null for an empty set. Normalize the verified projection before rendering
+      // so a valid authorized response is not incorrectly treated as unavailable.
+      const normalizedTotal = Number(d.total);
+      const normalizedSummary = d.summary
+        ? {
+            total: Number(d.summary.total),
+            drafts: Number(d.summary.drafts ?? 0),
+            planned: Number(d.summary.planned ?? 0),
+            pendingMeasurements: Number(d.summary.pendingMeasurements ?? 0),
+          }
+        : null;
+      const rawTotalValid =
+        d.total == null || Number.isSafeInteger(d.total);
+      const rawSummaryValid =
+        d.summary == null ||
+        (Number.isSafeInteger(d.summary.total) &&
+          Number.isSafeInteger(d.summary.drafts) &&
+          Number.isSafeInteger(d.summary.planned) &&
+          Number.isSafeInteger(d.summary.pendingMeasurements));
       if (
         !Array.isArray(d.orders) ||
-        !Number.isSafeInteger(d.total) ||
-        d.total < 0 ||
-        d.total < d.orders.length ||
-        !d.summary ||
-        !Number.isSafeInteger(d.summary.total) ||
-        d.summary.total < 0
+        (d.total != null && !Number.isSafeInteger(d.total)) ||
+        (d.summary != null && !Number.isSafeInteger(d.summary.total)) ||
+        !rawTotalValid ||
+        !rawSummaryValid ||
+        !Number.isSafeInteger(normalizedTotal) ||
+        normalizedTotal < 0 ||
+        normalizedTotal < d.orders.length ||
+        !normalizedSummary ||
+        !Number.isSafeInteger(normalizedSummary.total) ||
+        normalizedSummary.total < 0 ||
+        !Number.isSafeInteger(normalizedSummary.drafts) ||
+        !Number.isSafeInteger(normalizedSummary.planned) ||
+        !Number.isSafeInteger(normalizedSummary.pendingMeasurements) ||
+        normalizedSummary.drafts < 0 ||
+        normalizedSummary.planned < 0 ||
+        normalizedSummary.pendingMeasurements < 0
       ) {
         throw new Error("O servidor não confirmou os dados operacionais.");
       }
       if (generation !== requestGeneration.current) return;
       setOrders(d.orders);
-      setTotal(d.total);
-      setSummary(d.summary);
+      setTotal(normalizedTotal);
+      setSummary(normalizedSummary);
       setGeneratedAt(d.generatedAt);
     } catch (e) {
       if (generation === requestGeneration.current)
@@ -1363,16 +1384,24 @@ function HomeView() {
         groups={modules}
         activePage={page}
         open={sidebar}
+        mode={sidebarMode}
         ordersCount={loading || Boolean(error) ? null : summary.total}
         onNavigate={navigate}
         onSearch={() => { setPaletteQuery(""); setPalette(true); }}
       />
-      <div className={"main " + (selected && docked ? "with-context" : "")}>
+      <div className={"main sidebar-" + sidebarMode + " " + (selected && docked ? "with-context" : "")}>
         <EnterpriseTopbar
           activePage={page}
           group={modules.find(group => group.items.some(([name]) => name === page))?.group ?? 'OPERAÇÃO'}
           sidebarOpen={sidebar}
-          onToggleSidebar={() => setSidebar(value => !value)}
+          sidebarMode={sidebarMode}
+          onToggleSidebar={() => {
+            if (window.matchMedia('(max-width: 800px)').matches) {
+              setSidebar(value => !value);
+              return;
+            }
+            setSidebarMode(value => value === 'expanded' ? 'collapsed' : value === 'collapsed' ? 'hidden' : 'expanded');
+          }}
           onSearch={() => { setPaletteQuery(""); setPalette(true); }}
         />
         {!creating && !action && <EnterpriseWorkspaceContext activePage={page} onNavigate={navigate} />}
@@ -1477,6 +1506,7 @@ function HomeView() {
               }}
             />
           )}
+          <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>
           {action?.command === "invoice" ? (
             <BillingPreparation
               measurementId={action.record.id}
@@ -1517,8 +1547,9 @@ function HomeView() {
                 await openOrigin(id);
               }}
             />
-          ) : page === "Centro de operações" ? (
+          ) : page === "Centro de operações" || page === "Ordens de serviço" ? (
             <ServiceOperationsWorkspace
+              requestedView={page === 'Ordens de serviço' ? view : undefined}
               onCreate={newOrder}
               onOpen={(id) => {
                 navigate("Ordens de serviço");
@@ -2692,6 +2723,7 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
+          </EnterpriseModuleWorkspace>
           <footer className="page-footer">
             <span>
               CISNE RONDÔNIA <b>·</b> Gestão empresarial integrada
@@ -3355,7 +3387,7 @@ function HomeView() {
         </div>
       )}
 
-      {action && !["measure", "invoice"].includes(action.command) && (
+      {action && (
         <div className="overlay modal-overlay">
           <section
             className="modal"

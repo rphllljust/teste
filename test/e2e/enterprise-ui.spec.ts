@@ -52,13 +52,10 @@ test('resource workspace uses the Fluent DataGrid and real filter state', async 
   expect(searchLabelHidden).toBeTruthy();
   const workspacePillWidth = await page.locator('.app-mode-pill').evaluate(element => element.getBoundingClientRect().width);
   expect(workspacePillWidth).toBeLessThanOrEqual(36);
-  const gridViewport = await page.locator('.enterprise-data-grid').evaluate(element => ({
-    clientWidth: element.clientWidth,
-    scrollWidth: element.scrollWidth,
-    overflowX: getComputedStyle(element).overflowX,
-  }));
-  expect(gridViewport.overflowX).toBe('visible');
-  expect(gridViewport.scrollWidth).toBeLessThanOrEqual(gridViewport.clientWidth + 2);
+  // Validate the document users actually see on mobile, not a hidden desktop grid.
+  const documentOverflow = await page.evaluate(() =>
+    document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(documentOverflow).toBeLessThanOrEqual(2);
   await page.screenshot({ path: test.info().outputPath('resource-grid-mobile.png'), fullPage: true });
 });
 
@@ -267,8 +264,8 @@ test('Redwood priority task opens the real orders queue filtered for completed w
  await expect(pending).toBeVisible();
  await pending.click();
  await expect(page.locator('.topbar')).toContainText('Ordens de serviço');
- await expect(page.getByRole('button',{name:'Concluídas sem medição',exact:true}))
-  .toHaveAttribute('aria-pressed','true');
+ await expect(page.getByRole('combobox',{name:'Visão operacional'}))
+  .toContainText('Concluídas sem medição');
 });
 
 
@@ -349,6 +346,8 @@ test('completed OS without actual measurement does not claim measurement or bill
  await expect(billing).not.toHaveClass(/has-record|done/);
  const linked=object.locator('.object-facts div').filter({hasText:'Registros vinculados'}).locator('strong');
  await expect(linked).toHaveText('—');
+ await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
  expect(detailRequests).toBe(0);
  await object.getByRole('button',{name:'Consultar histórico e vínculos'}).click();
@@ -729,7 +728,9 @@ test('service order evidence is requested on demand from the owner-scoped detail
   expect(detailRequests).toBe(0);
   const relatedFact = object.locator('.object-facts div').filter({ hasText: 'Registros vinculados' });
   await expect(relatedFact.locator('strong')).toHaveText('—');
-  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
   await page.getByRole('button', { name: 'Consultar histórico e vínculos' }).click();
   await expect.poll(() => detailRequests).toBe(1);
   const relations = page.getByRole('region', { name: 'Vínculos confirmados' });
@@ -780,7 +781,9 @@ test('service order evidence denies detail without authorization and never inven
   await expect(evidence.getByRole('alert')).toContainText('Consulta não autorizada.');
   const record = page.getByRole('region', { name: 'Ordem de serviço OS limitada' });
   await expect(record.locator('.object-facts div').filter({ hasText: 'Registros vinculados' }).locator('strong')).toHaveText('—');
-  await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
+  await expect(page.locator('.service-inspector')).toHaveCount(0);
+ await page.getByRole('button',{name:'Inspeção contextual'}).click();
+ await expect(page.locator('.service-inspector')).toContainText('Vínculos não consultados.');
   await expect(evidence.getByRole('region', { name: 'Vínculos confirmados' })).toHaveCount(0);
   await expect(evidence.getByRole('region', { name: 'Linha do tempo autorizada' })).toHaveCount(0);
 });

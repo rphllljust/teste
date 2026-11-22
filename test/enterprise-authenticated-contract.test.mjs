@@ -16,7 +16,8 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(spec,/Browser session must authorize the real API/);
  assert.match(spec,/trace: 'off'/);
  assert.match(spec,/apiFailures/);
- assert.match(workflow,/feat\/cisne-enterprise-workbench-global-20261121/);
+ assert.match(workflow,/feat\/cisne-shell-fiori-redwood-20261122/);
+ assert.doesNotMatch(workflow,/feat\/cisne-enterprise-workbench-global-20261121/);
  assert.match(workflow,/\[enterprise-auth\]/);
  assert.match(workflow,/github\.repository == 'rphllljust\/teste'/);
  assert.match(workflow,/git rev-parse HEAD/);
@@ -25,6 +26,8 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(workflow,/persist-credentials: false/);
  assert.match(workflow,/api\/release\/identity/);
  assert.match(workflow,/Railway runtime SHA differs from tested candidate/);
+ assert.ok(workflow.includes('for attempt in $(seq 1 30)'));
+ assert.match(workflow,/Candidate HEAD moved during Railway rollout/);
  assert.doesNotMatch(workflow,/pull_request_target/);
  assert.doesNotMatch(workflow,/enterprise-auth-acceptance/);
  assert.doesNotMatch(workflow,/test-results\/enterprise\/\*\*\/\*\.png/);
