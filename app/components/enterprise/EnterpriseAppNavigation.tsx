@@ -163,11 +163,11 @@ export function EnterpriseTopbar({
         <div className="shell-action">
           <EnterpriseButton type="button" appearance="subtle" className="icon-button shell-icon-button" aria-label="Notificações" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(value => !value); setProfileOpen(false); }}>
             <Bell size={17} aria-hidden="true" />
-            <span className="notification-dot" aria-hidden="true" />
+            
           </EnterpriseButton>
           {notificationsOpen && <div className="shell-popover" role="status" aria-label="Notificações">
             <strong>Notificações</strong>
-            <p>Você não tem notificações novas.</p>
+            <p>A central global de notificações ainda não está conectada. Consulte as filas de cada módulo para verificar pendências autorizadas.</p>
           </div>}
         </div>
         <div className="shell-action">
@@ -175,10 +175,9 @@ export function EnterpriseTopbar({
             <UserCircle size={18} aria-hidden="true" />
             <span className="profile-label">Perfil</span>
           </EnterpriseButton>
-          {profileOpen && <div className="shell-popover shell-profile-popover" role="menu" aria-label="Perfil e preferências">
+          {profileOpen && <div className="shell-popover shell-profile-popover" role="region" aria-label="Perfil e preferências">
             <strong>Perfil e preferências</strong>
-            <button type="button" role="menuitem">Preferências</button>
-            <button type="button" role="menuitem">Ajuda do CISNE</button>
+            <p>Favoritos e densidade podem ser ajustados na área de trabalho. A administração de perfil ainda não está integrada.</p>
           </div>}
         </div>
         <span className="app-mode-pill"><span aria-hidden="true" />Workspace</span>
