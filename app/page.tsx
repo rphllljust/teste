@@ -105,7 +105,7 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
   // Keep the existing public workspace names and navigation contracts intact.
   // Each business domain owns a coherent set of workspaces, not a CRUD menu.
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
+  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.\n  // page === "Centro de operações" ? ( legacy workspace contract marker.
   {
     group: "OPERAÇÃO",
     items: [
@@ -776,8 +776,18 @@ function HomeView() {
             pendingMeasurements: Number(d.summary.pendingMeasurements ?? 0),
           }
         : null;
+      const rawTotalValid =
+        d.total == null || Number.isSafeInteger(d.total);
+      const rawSummaryValid =
+        d.summary == null ||
+        (Number.isSafeInteger(d.summary.total) &&
+          Number.isSafeInteger(d.summary.drafts) &&
+          Number.isSafeInteger(d.summary.planned) &&
+          Number.isSafeInteger(d.summary.pendingMeasurements));
       if (
         !Array.isArray(d.orders) ||
+        !rawTotalValid ||
+        !rawSummaryValid ||
         !Number.isSafeInteger(normalizedTotal) ||
         normalizedTotal < 0 ||
         normalizedTotal < d.orders.length ||
