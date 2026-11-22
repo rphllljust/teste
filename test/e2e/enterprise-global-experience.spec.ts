@@ -56,3 +56,53 @@ test('workcenter reflows without a horizontal document overflow at desktop, tabl
     await page.screenshot({ path: test.info().outputPath('enterprise-hub-' + width + '.png'), fullPage: false });
   }
 });
+
+
+test('enterprise priorities are loaded on demand and cannot disguise HTTP 403 as an empty business queue', async ({ page }) => {
+  let towerRequests = 0;
+  await page.route('**/api/enterprise/control-tower*', route => {
+    towerRequests++;
+    return route.fulfill({ status: 403, json: { error: 'Acesso empresarial não autorizado.' } });
+  });
+  await page.goto('/');
+  const hub = page.getByRole('region', { name: 'Área de trabalho empresarial' });
+  await expect(hub).toBeVisible();
+  expect(towerRequests).toBe(0);
+  await hub.getByRole('button', { name: 'Prioridades reais' }).click();
+  await expect(hub.getByRole('region', { name: 'Prioridades globais com dados autorizados' })).toBeVisible();
+  await expect(hub.getByRole('alert').getByText('Acesso empresarial não autorizado.')).toBeVisible();
+  expect(towerRequests).toBe(1);
+  await hub.getByRole('button', { name: 'Ocultar prioridades' }).click();
+  await expect(hub.getByRole('region', { name: 'Prioridades globais com dados autorizados' })).toHaveCount(0);
+});
+
+// Synthetic authorization fixture: tests the existing real drilldown wiring, not staging business acceptance.
+test('owner-scoped control tower links an enterprise exception to the real module', async ({ page }) => {
+  const ids = [
+    ['lateOrders', 'Ordens com atraso'],
+    ['unmeasuredOrders', 'Sem medição'],
+    ['overdueReceivables', 'Recebíveis atrasados'],
+    ['overduePayables', 'Pagamentos atrasados'],
+    ['latePurchases', 'Compras atrasadas'],
+    ['stockShortage', 'Materiais abaixo do mínimo'],
+    ['myApprovals', 'Aprovações'],
+  ] as const;
+  await page.route('**/api/enterprise/control-tower*', route => route.fulfill({
+    json: {
+      asOf: '2026-11-21', generatedAt: '2026-11-21T12:00:00Z',
+      authority: 'owner_scoped_persisted_postgresql.v1', sampleLimitPerLane: 10,
+      lanes: ids.map(([id, label], index) => ({
+        id, label, target: 'enterprise', count: index === 0 ? 1 : 0,
+        totalAmountScaled: null, authority: 'owner_scoped_persisted_postgresql.v1',
+        items: [],
+      })),
+    },
+  }));
+  await page.goto('/');
+  const hub = page.getByRole('region', { name: 'Área de trabalho empresarial' });
+  await hub.getByRole('button', { name: 'Prioridades reais' }).click();
+  await expect(hub.getByRole('heading', { name: 'Ordens com atraso' })).toBeVisible();
+  await hub.getByRole('article', { name: 'Ordens com atraso' }).getByRole('button', { name: 'Abrir área' }).click();
+  await expect(hub.getByRole('heading', { name: 'Centro de operações' })).toBeVisible();
+  await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
+});
