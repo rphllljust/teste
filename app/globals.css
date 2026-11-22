@@ -2128,3 +2128,36 @@ input:hover,select:hover,textarea:hover{border-color:#7f9bab!important;}
 .service-inspector,.context-inspector,[data-context-inspector="true"]{display:none!important;}
 .main.with-context .service-inspector,.main.with-context .context-inspector,.main.with-context [data-context-inspector="true"]{display:block!important;}
 .main:not(.with-context) .service-operations-grid{grid-template-columns:minmax(220px,.82fr) minmax(0,2.18fr)!important;}
+
+
+/* Tablet/mobile shell composition */
+.enterprise-page-header{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:24px!important;
+  width:100%!important;
+}
+.enterprise-page-header-copy{min-width:0!important;flex:1 1 auto!important;}
+.enterprise-page-title-row{display:flex!important;align-items:center!important;gap:10px!important;min-width:0!important;}
+.enterprise-page-title-row h1{min-width:0!important;overflow-wrap:anywhere!important;}
+.enterprise-page-actions{display:flex!important;align-items:center!important;justify-content:flex-end!important;gap:8px!important;flex:0 0 auto!important;flex-wrap:wrap!important;}
+@media(max-width:900px){
+  .enterprise-page-header{display:flex!important;flex-direction:column!important;gap:16px!important;padding:20px!important;}
+  .enterprise-page-header-copy{width:100%!important;}
+  .enterprise-page-title-row{width:100%!important;}
+  .enterprise-page-title-row h1{font-size:28px!important;line-height:1.12!important;}
+  .enterprise-page-header-copy>p{max-width:100%!important;line-height:1.45!important;}
+  .enterprise-page-actions{width:100%!important;justify-content:flex-start!important;}
+  .enterprise-page-actions>*{flex:0 0 auto!important;}
+  .enterprise-worklist-header{flex-wrap:wrap!important;gap:12px!important;}
+  .enterprise-worklist-actions{width:100%!important;justify-content:flex-start!important;flex-wrap:wrap!important;}
+  .process-strip,.process-journey,.process-bar{max-width:100%!important;}
+}
+@media(max-width:640px){
+  .main main{padding-inline:10px!important;}
+  .enterprise-page-header{padding:16px!important;}
+  .enterprise-page-actions>*{min-width:0!important;}
+  .enterprise-filter-fields{grid-template-columns:1fr!important;}
+  .enterprise-worklist-filters{grid-template-columns:1fr!important;}
+}
