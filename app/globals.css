@@ -1516,7 +1516,7 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 
 
 /* Final shell hierarchy pass — one page header, one process context */
-.enterprise-workflow-context{display:none!important}
+/* Related cross-module workflows remain visible for authenticated, keyboard-accessible navigation. */
 .cisne-staging-access{min-height:0!important;margin-bottom:10px!important;padding:10px 16px!important;border-radius:9px!important}
 .cisne-staging-access-copy strong{font-size:13px!important}
 .cisne-staging-access-copy p{font-size:11px!important;margin-top:2px!important}
