@@ -100,20 +100,37 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
     items: [
       ["Visão operacional", LayoutDashboard],
       ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
       ["Ordens de serviço", ClipboardList],
       ["Execução", HardHat],
       ["Medições", SlidersHorizontal],
+    ],
+  },
+  {
+    group: "COMERCIAL E CONTRATOS",
+    items: [
+      ["CRM e Vendas", Users],
       ["Clientes e propostas", Users],
       ["Propostas e PO", FileText],
       ["Contratos", FileText],
+    ],
+  },
+  {
+    group: "RECURSOS E PLANEJAMENTO",
+    items: [
+      ["Resource Planning Board", CalendarDays],
       ["Frota e ativos", Truck],
       ["Profissionais", HardHat],
     ],
   },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
   {
-    group: "GESTÃO INTEGRADA",
+    group: "SUPRIMENTOS",
+    items: [
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "FINANCEIRO",
     items: [
       ["Faturamento", Receipt],
       ["Visão financeira", LayoutDashboard],
@@ -122,12 +139,15 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Tesouraria", Landmark],
       ["Contas a pagar", Receipt],
       ["Caixa e conciliação", Landmark],
+    ],
+  },
+  {
+    group: "FISCAL E CONTABILIDADE",
+    items: [
       ["Fiscal e tributos", FileText],
       ["Contabilidade", BookOpen],
       ["Razão contábil", BookOpen],
       ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
     ],
   },
 ];
