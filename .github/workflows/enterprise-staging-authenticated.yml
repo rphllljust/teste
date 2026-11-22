@@ -63,17 +63,42 @@ jobs:
               process.exit(1);
             }
           ' "$RUNNER_TEMP/cisne-candidate-ref.json"
+          # Railway may still be rolling out this exact SHA when the push event fires.
+          # Bounded retry waits for attestation, never accepts a different revision.
+          matched=0
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error --max-time 15 \
+              "$CISNE_BASE_URL/api/release/identity" \
+              --output "$RUNNER_TEMP/cisne-staging-identity.json" &&
+              node -e '
+                const fs = require("node:fs");
+                const identity = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+                process.exit(identity.environment === "staging" &&
+                  identity.sha === process.env.EXPECTED_SHA ? 0 : 1);
+              ' "$RUNNER_TEMP/cisne-staging-identity.json"; then
+              matched=1
+              break
+            fi
+            if [[ "$attempt" -lt 30 ]]; then sleep 10; fi
+          done
+          [[ "$matched" == 1 ]] || {
+            echo '::error::Railway runtime SHA differs from tested candidate; NO-GO'
+            exit 1
+          }
+          # A branch update during rollout invalidates a prior HEAD attestation.
           curl --fail --silent --show-error --max-time 25 \
-            "$CISNE_BASE_URL/api/release/identity" \
-            --output "$RUNNER_TEMP/cisne-staging-identity.json"
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-shell-fiori-redwood-20261122" \
+            --output "$RUNNER_TEMP/cisne-candidate-ref.json"
           node -e '
             const fs = require("node:fs");
-            const identity = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-            if (identity.environment !== "staging" || identity.sha !== process.env.EXPECTED_SHA) {
-              console.error("::error::Railway runtime SHA differs from tested candidate; NO-GO");
+            const ref = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (ref.object?.sha !== process.env.EXPECTED_SHA) {
+              console.error("::error::Candidate HEAD moved during Railway rollout; NO-GO");
               process.exit(1);
             }
-          ' "$RUNNER_TEMP/cisne-staging-identity.json"
+          ' "$RUNNER_TEMP/cisne-candidate-ref.json"
 
       - name: Fail closed if staging secret is missing
         shell: bash
