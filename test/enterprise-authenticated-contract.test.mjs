@@ -12,7 +12,16 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(spec,/api\/release\/identity/);
  assert.match(spec,/api\/auth\/staging-login/);
  assert.match(spec,/apiFailures/);
- assert.match(workflow,/enterprise-auth-acceptance/);
+ assert.match(workflow,/feat\\/cisne-enterprise-workbench-global-20261121/);
+ assert.match(workflow,/\\[enterprise-auth\\]/);
+ assert.match(workflow,/github\\.repository == 'rphllljust\\/teste'/);
+ assert.match(workflow,/git rev-parse HEAD/);
+ assert.match(workflow,/git rev-parse FETCH_HEAD/);
+ assert.match(workflow,/api\\/release\\/identity/);
+ assert.match(workflow,/Railway runtime SHA differs from tested candidate/);
+ assert.doesNotMatch(workflow,/pull_request_target/);
+ assert.doesNotMatch(workflow,/enterprise-auth-acceptance/);
+ assert.doesNotMatch(workflow,/test-results\\/enterprise\\/\\*\\*\\/\\*\\.png/);
  assert.match(workflow,/environment: staging/);
  assert.match(workflow,/CISNE_STAGING_PASSPHRASE/);
 });
