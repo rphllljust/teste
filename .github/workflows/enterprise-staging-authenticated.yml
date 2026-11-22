@@ -40,6 +40,7 @@ jobs:
         shell: bash
         env:
           EXPECTED_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.commit_sha || github.sha }}
+          GH_TOKEN: ${{ github.token }}
           CISNE_BASE_URL: https://cisne-web-staging-staging.up.railway.app
         run: |
           set -euo pipefail
@@ -47,9 +48,21 @@ jobs:
           [[ "$GITHUB_REF" == "$allowed_ref" ]] || { echo '::error::Candidate branch not authorized'; exit 1; }
           [[ "$EXPECTED_SHA" =~ ^[a-f0-9]{40}$ ]] || { echo '::error::Invalid candidate SHA'; exit 1; }
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_SHA" ]] || { echo '::error::Checkout differs from candidate SHA'; exit 1; }
-          # A dispatch may not test a stale commit or an unrelated feature branch.
-          git fetch --no-tags --depth=1 origin feat/cisne-enterprise-workbench-global-20261121
-          [[ "$(git rev-parse FETCH_HEAD)" == "$EXPECTED_SHA" ]] || { echo '::error::Candidate is no longer branch HEAD'; exit 1; }
+          # Verify the branch tip with the read-only Actions token.
+          # Persisted Git credentials are intentionally disabled by checkout.
+          curl --fail --silent --show-error --max-time 25 \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/rphllljust/teste/git/ref/heads/feat/cisne-enterprise-workbench-global-20261121" \
+            --output "$RUNNER_TEMP/cisne-candidate-ref.json"
+          node -e '
+            const fs = require("node:fs");
+            const ref = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+            if (ref.object?.sha !== process.env.EXPECTED_SHA) {
+              console.error("::error::Candidate is no longer the authorized branch HEAD");
+              process.exit(1);
+            }
+          ' "$RUNNER_TEMP/cisne-candidate-ref.json"
           curl --fail --silent --show-error --max-time 25 \
             "$CISNE_BASE_URL/api/release/identity" \
             --output "$RUNNER_TEMP/cisne-staging-identity.json"
