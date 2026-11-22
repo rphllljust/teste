@@ -1396,7 +1396,7 @@ function HomeView() {
           sidebarOpen={sidebar}
           sidebarMode={sidebarMode}
           onToggleSidebar={() => {
-            if (window.matchMedia('(max-width: 1023px)').matches) {
+            if (window.matchMedia('(max-width: 800px)').matches) {
               setSidebar(value => !value);
               return;
             }
