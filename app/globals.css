@@ -1693,3 +1693,7 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 @media(max-width:520px){
  [aria-label="Saldos financeiros autoritativos"]{grid-template-columns:1fr!important}
 }
+
+/* Preparação em largura total: o painel contextual lateral foi removido por decisão de UX. */
+.order-preparation .preparation-grid{grid-template-columns:minmax(0,1fr)!important;}
+.order-preparation .preparation-business-context{display:none!important;}
