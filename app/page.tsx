@@ -3387,7 +3387,7 @@ function HomeView() {
         </div>
       )}
 
-      {action && !["measure", "invoice"].includes(action.command) && (
+      {action && (
         <div className="overlay modal-overlay">
           <section
             className="modal"
