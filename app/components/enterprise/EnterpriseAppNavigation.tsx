@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -30,7 +30,8 @@ export function EnterpriseSidebar({
   useEffect(() => {
     const activeGroup = groups.find(group => group.items.some(([name]) => name === activePage))?.group;
     if (!activeGroup) return;
-    setCollapsed(previous => ({ ...previous, [activeGroup]: false }));
+    const timer = setTimeout(() => setCollapsed(previous => ({ ...previous, [activeGroup]: false })), 0);
+    return () => clearTimeout(timer);
   }, [activePage, groups]);
   return (
     <aside className={'sidebar sidebar-' + mode + ' ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE" data-sidebar-mode={mode}>
