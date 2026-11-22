@@ -415,15 +415,10 @@ function HomeView() {
   const requestGeneration = useRef(0);
   const chainViewport = useRef<HTMLDivElement>(null);
   const [chainEdges, setChainEdges] = useState({ before: false, after: false });
+  // O painel contextual é deliberadamente fechado por padrão.
+  // Ele só deve ser aberto por uma ação explícita do usuário.
   useEffect(() => {
-    const media = window.matchMedia("(min-width: 1440px)");
-    const update = () => setDocked(media.matches);
-    const timer = setTimeout(update, 0);
-    media.addEventListener("change", update);
-    return () => {
-      clearTimeout(timer);
-      media.removeEventListener("change", update);
-    };
+    setDocked(false);
   }, []);
   useEffect(() => {
     if (!palette) return;
