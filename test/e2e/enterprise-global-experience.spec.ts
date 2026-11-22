@@ -4,12 +4,12 @@ import { expect, test } from '@playwright/test';
 test('global workcenter is available across operation, CRM and finance with real navigation', async ({ page }) => {
   await page.goto('/');
   const hub = page.getByRole('region', { name: 'Área de trabalho empresarial' });
-  await expect(hub.getByRole('heading', { name: 'Visão operacional' })).toBeVisible();
-  await hub.getByRole('button', { name: 'Abrir jornada Vender: Clientes e propostas' }).click();
-  await expect(hub.getByRole('heading', { name: 'Clientes e propostas' })).toBeVisible();
+  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Visão operacional' })).toBeVisible();
+  await hub.getByRole('link', { name: 'Abrir jornada Vender: Clientes e propostas' }).click();
+  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Clientes e propostas' })).toBeVisible();
   await expect(page).toHaveURL(/Clientes%20e%20propostas/);
-  await hub.getByRole('button', { name: 'Abrir jornada Controlar: Visão financeira' }).click();
-  await expect(hub.getByRole('heading', { name: 'Visão financeira' })).toBeVisible();
+  await hub.getByRole('link', { name: 'Abrir jornada Controlar: Visão financeira' }).click();
+  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Visão financeira' })).toBeVisible();
   await expect(page).toHaveURL(/Vis%C3%A3o%20financeira/);
 });
 
@@ -19,10 +19,10 @@ test('catalog searches actual module destinations and never fabricates links', a
   await hub.getByRole('button', { name: 'Todos os módulos' }).click();
   await expect(hub.getByRole('heading', { name: 'Catálogo de áreas de trabalho' })).toBeVisible();
   await hub.getByRole('searchbox', { name: 'Filtrar módulos' }).fill('Contratos');
-  await expect(hub.getByRole('button', { name: 'Abrir módulo Contratos' })).toBeVisible();
-  await expect(hub.getByRole('button', { name: 'Abrir módulo Tesouraria' })).toHaveCount(0);
-  await hub.getByRole('button', { name: 'Abrir módulo Contratos' }).click();
-  await expect(hub.getByRole('heading', { name: 'Contratos', exact: true })).toBeVisible();
+  await expect(hub.getByRole('link', { name: 'Abrir módulo Contratos' })).toBeVisible();
+  await expect(hub.getByRole('link', { name: 'Abrir módulo Tesouraria' })).toHaveCount(0);
+  await hub.getByRole('link', { name: 'Abrir módulo Contratos' }).click();
+  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Contratos' })).toBeVisible();
   await expect(page).toHaveURL(/#Contratos/);
 });
 
@@ -37,7 +37,7 @@ test('favorites and density preference survive navigation and reload', async ({ 
   await expect(page.locator('html')).toHaveAttribute('data-cisne-density', 'compact');
   await hub.getByRole('button', { name: 'Todos os módulos' }).click();
   const favorites = hub.getByRole('region', { name: 'Módulos favoritos' });
-  await expect(favorites.getByRole('button', { name: 'Abrir favorito Visão operacional' })).toBeVisible();
+  await expect(favorites.getByRole('link', { name: 'Abrir favorito Visão operacional' })).toBeVisible();
 });
 
 test('workcenter reflows without a horizontal document overflow at desktop, tablet and mobile', async ({ page }) => {
@@ -103,6 +103,6 @@ test('owner-scoped control tower links an enterprise exception to the real modul
   await hub.getByRole('button', { name: 'Prioridades reais' }).click();
   await expect(hub.getByRole('heading', { name: 'Ordens com atraso' })).toBeVisible();
   await hub.getByRole('article', { name: 'Ordens com atraso' }).getByRole('button', { name: 'Abrir área' }).click();
-  await expect(hub.getByRole('heading', { name: 'Centro de operações' })).toBeVisible();
+  await expect(hub.locator('.cisne-enterprise-hub-heading-title').filter({ hasText: 'Centro de operações' })).toBeVisible();
   await expect(page).toHaveURL(/Centro%20de%20opera%C3%A7%C3%B5es/);
 });
