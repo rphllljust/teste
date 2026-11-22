@@ -1478,7 +1478,8 @@ function HomeView() {
               }}
             />
           )}
-          <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>\n          {action?.command === "invoice" ? (
+          <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>
+          {action?.command === "invoice" ? (
             <BillingPreparation
               measurementId={action.record.id}
               onCancel={() => setAction(null)}
@@ -2690,7 +2691,8 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
-          </EnterpriseModuleWorkspace>\n          <footer className="page-footer">
+          </EnterpriseModuleWorkspace>
+          <footer className="page-footer">
             <span>
               CISNE RONDÔNIA <b>·</b> Gestão empresarial integrada
             </span>
