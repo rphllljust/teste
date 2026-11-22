@@ -26,7 +26,7 @@ test('authenticated E2E excludes every mock-driven suite and remains SHA/secret 
  assert.match(workflow,/persist-credentials: false/);
  assert.match(workflow,/api\/release\/identity/);
  assert.match(workflow,/Railway runtime SHA differs from tested candidate/);
- assert.match(workflow,/for attempt in \\$\\(seq 1 30\\)/);
+ assert.ok(workflow.includes('for attempt in $(seq 1 30)'));
  assert.match(workflow,/Candidate HEAD moved during Railway rollout/);
  assert.doesNotMatch(workflow,/pull_request_target/);
  assert.doesNotMatch(workflow,/enterprise-auth-acceptance/);
