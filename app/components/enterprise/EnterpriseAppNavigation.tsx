@@ -26,7 +26,7 @@ type SidebarProps = {
 export function EnterpriseSidebar({
   groups, activePage, open, mode, ordersCount, onNavigate, onSearch,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.group, !group.items.some(([name]) => name === activePage)])));
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.group, false])));
   useEffect(() => {
     const activeGroup = groups.find(group => group.items.some(([name]) => name === activePage))?.group;
     if (!activeGroup) return;
