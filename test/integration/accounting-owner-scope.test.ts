@@ -27,7 +27,7 @@ const request = (method: 'GET' | 'POST', path: string, actor: string, data?: unk
     body: data === undefined ? undefined : JSON.stringify(data),
   }), actor);
 const body = async (r: Response) => r.clone().json() as Promise<Record<string, unknown>>;
-const entries = (owner: string, id: string, accounts: string[]) => ({
+const entries = (id: string, accounts: string[]) => ({
   id,
   effectiveDate: '2026-11-22',
   sourceReference: 'CI-ACCOUNTING-OWNER',
@@ -75,15 +75,15 @@ test('chart accounts are private: listing, journal posting and detail never cros
   }
 
   const accepted = await createJournal(request('POST', '/api/accounting/journals', alice,
-    entries(alice, journalIds[0], aliceAccounts)));
+    entries(journalIds[0], aliceAccounts)));
   assert.equal(accepted.status, 201, JSON.stringify(await body(accepted)));
 
   // IDs and even active foreign account IDs do not grant journal-posting authority.
   const foreign = await createJournal(request('POST', '/api/accounting/journals', bob,
-    entries(bob, journalIds[1], aliceAccounts)));
+    entries(journalIds[1], aliceAccounts)));
   assert.equal(foreign.status, 400, 'Second owner cannot post against the first owner accounts');
   const mixed = await createJournal(request('POST', '/api/accounting/journals', alice,
-    entries(alice, journalIds[2], [aliceAccounts[0], bobAccounts[0]])));
+    entries(journalIds[2], [aliceAccounts[0], bobAccounts[0]])));
   assert.equal(mixed.status, 400, 'Mixed-owner journal lines must be rejected atomically');
 
   const persisted = await pool.query(
