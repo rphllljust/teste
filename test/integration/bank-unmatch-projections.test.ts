@@ -35,13 +35,15 @@ async function unmatchedFromStatements(actor:string) {
   const response=await listStatements(req('GET','/api/bank/statements?accountReference='+accountReference,actor));
   await check(response,200,'bank list');
   const value=await response.json() as {items:Array<{id:string;unmatchedCount:number}>};
-  return value.items.find(item=>item.id===statement)?.unmatchedCount ?? null;
+  const found=value.items.find(item=>item.id===statement);
+  return found ? Number(found.unmatchedCount) : null;
 }
 async function pendingFromTreasury(actor:string) {
   const response=await listTreasury(req('GET','/api/treasury?pendingOnly=1&q='+accountReference,actor));
   await check(response,200,'treasury');
   const value=await response.json() as {items:Array<{statementId:string;unmatchedCount:number}>};
-  return value.items.find(item=>item.statementId===statement)?.unmatchedCount ?? null;
+  const found=value.items.find(item=>item.statementId===statement);
+  return found ? Number(found.unmatchedCount) : null;
 }
 after(async()=>{
   try {
