@@ -1413,16 +1413,7 @@ function HomeView() {
               </button>
             </div>
           )}
-          {[
-            "Visão operacional",
-            "Ordens de serviço",
-            "Execução",
-            "Medições",
-            "Faturamento",
-            "Financeiro",
-            "Fiscal e tributos",
-            "Contabilidade",
-          ].includes(page) && (
+          {page === "Visão operacional" && !creating && !action && (
             <section className="process-strip" aria-label="Cadeia operacional">
               <div className="process-label">
                 <Layers size={17} />
