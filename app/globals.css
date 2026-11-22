@@ -1704,3 +1704,26 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .order-preparation .preparation-title,.order-preparation .preparation-facts{max-width:none!important;}
 
 .order-preparation form>.preparation-object-header>.command-buttons{display:flex!important;flex-direction:row!important;align-items:center!important;justify-content:flex-end!important;gap:10px!important;flex-wrap:nowrap!important;}
+
+/* CISNE Object Page — preparação de OS: Fiori + Fluent + Redwood */
+body:has(.order-preparation) .process-strip{display:none!important;}
+body:has(.order-preparation) .order-preparation{max-width:none!important;margin:0!important;padding:28px 32px 56px!important;background:linear-gradient(180deg,#f5fafb 0%,#eef5f6 100%)!important;}
+.order-preparation form{display:block!important;max-width:1440px;margin:0 auto;}
+.order-preparation form>.preparation-object-header{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center;gap:28px;padding:26px 30px!important;background:#fff!important;border:1px solid #d9e7e8!important;border-radius:18px!important;box-shadow:0 8px 24px rgba(18,58,67,.08)!important;}
+.order-preparation .preparation-title{display:flex!important;align-items:center!important;gap:14px!important;flex-wrap:wrap!important;}
+.order-preparation .preparation-title h1{font-size:clamp(28px,3vw,42px)!important;letter-spacing:-.04em!important;margin:4px 0!important;}
+.order-preparation .preparation-facts{display:flex!important;gap:36px!important;flex-wrap:wrap!important;margin:18px 0 0!important;}
+.order-preparation .preparation-facts div{min-width:150px!important;}
+.order-preparation .preparation-facts dt{font-size:11px!important;text-transform:uppercase!important;letter-spacing:.12em!important;color:#6b8185!important;}
+.order-preparation .preparation-facts dd{margin:5px 0 0!important;font-weight:700!important;color:#183c45!important;}
+.order-preparation form>.preparation-progress{display:flex!important;gap:8px!important;align-items:center!important;margin:18px 0!important;padding:8px!important;background:#eaf3f4!important;border:1px solid #d7e6e7!important;border-radius:14px!important;}
+.order-preparation .preparation-progress>button{flex:1!important;min-height:48px!important;border:1px solid transparent!important;border-radius:10px!important;background:transparent!important;color:#60777b!important;font-weight:700!important;}
+.order-preparation .preparation-progress>button[aria-current="step"]{background:#fff!important;border-color:#1b9b9d!important;color:#116a70!important;box-shadow:0 3px 10px rgba(15,93,99,.1)!important;}
+.order-preparation .preparation-work-surface{background:#fff!important;border:1px solid #d9e7e8!important;border-radius:18px!important;padding:30px!important;box-shadow:0 8px 24px rgba(18,58,67,.06)!important;}
+.order-preparation .preparation-section-title{border-bottom:1px solid #e3eeee!important;padding-bottom:18px!important;margin-bottom:22px!important;}
+.order-preparation .preparation-section-title h2{font-size:26px!important;letter-spacing:-.025em!important;margin:6px 0 0!important;color:#183c45!important;}
+.order-preparation .preparation-candidates{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))!important;gap:10px!important;}
+.order-preparation .preparation-candidates>button{min-height:76px!important;padding:16px!important;border:1px solid #d7e6e7!important;border-radius:12px!important;background:#fbfdfd!important;text-align:left!important;transition:.18s ease!important;}
+.order-preparation .preparation-candidates>button:hover,.order-preparation .preparation-candidates>button[aria-pressed="true"]{border-color:#1b9b9d!important;background:#effafa!important;transform:translateY(-1px)!important;}
+.order-preparation .preparation-list-footer{display:flex!important;justify-content:space-between!important;align-items:center!important;padding-top:18px!important;margin-top:18px!important;border-top:1px solid #e5eeee!important;color:#71868a!important;}
+@media(max-width:800px){body:has(.order-preparation) .order-preparation{padding:16px!important;}.order-preparation form>.preparation-object-header{grid-template-columns:1fr!important;gap:16px!important;}.order-preparation form>.preparation-object-header>.command-buttons{justify-content:flex-start!important;}.order-preparation form>.preparation-progress{overflow-x:auto!important;}.order-preparation .preparation-progress>button{min-width:180px!important;}.order-preparation .preparation-work-surface{padding:20px!important;}}
