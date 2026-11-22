@@ -1513,3 +1513,18 @@ body{background:var(--cisne-canvas);color:var(--cisne-ink)}
 .cisne-module-process{display:none!important}
 .cisne-module-workspace-content{padding-top:0!important}
 @media(max-width:800px){.cisne-enterprise-hub-banner{padding:10px 14px!important}.cisne-enterprise-hub-actions .cisne-hub-command span{display:none}.cisne-enterprise-hub-actions .cisne-hub-command{min-width:32px;padding-inline:8px!important}.cisne-enterprise-hub-domain{display:none}}
+
+
+/* Final shell hierarchy pass — one page header, one process context */
+.enterprise-workflow-context{display:none!important}
+.cisne-staging-access{min-height:0!important;margin-bottom:10px!important;padding:10px 16px!important;border-radius:9px!important}
+.cisne-staging-access-copy strong{font-size:13px!important}
+.cisne-staging-access-copy p{font-size:11px!important;margin-top:2px!important}
+.cisne-staging-access>.fui-Button{min-height:32px!important;padding:6px 10px!important;font-size:11px!important}
+.cisne-enterprise-hub{border:0!important;background:transparent!important;box-shadow:none!important;margin:0 0 8px!important;overflow:visible!important}
+.cisne-enterprise-hub-banner{min-height:38px!important;padding:0!important;justify-content:flex-end!important;background:transparent!important}
+.cisne-enterprise-hub-heading{display:none!important}
+.cisne-enterprise-hub-actions .cisne-hub-command{min-height:31px!important;background:#fff!important;border:1px solid #d9e5e8!important}
+.heading,.enterprise-page-header{padding:15px 20px!important;margin-bottom:10px!important;min-height:0!important}
+.heading h1,.enterprise-page-header h1{font-size:clamp(24px,2.2vw,31px)!important}
+@media(max-width:800px){.cisne-enterprise-hub-banner{justify-content:flex-start!important}.cisne-enterprise-hub-actions{width:100%}.heading,.enterprise-page-header{padding:14px!important}}
