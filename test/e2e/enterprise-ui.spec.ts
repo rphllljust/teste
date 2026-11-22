@@ -563,6 +563,7 @@ test('Redwood approvals inbox presents a real confirmation and submits a version
   return route.fulfill({json:{id,state:'approved',rowVersion:2,replayed:false}});
  });
  await page.goto('/');
+ await page.getByRole('button',{name:'Consultar central de exceções'}).click();
  await page.getByRole('region',{name:'Central de exceções empresariais'})
    .getByRole('button',{name:'Abrir aprovações'}).click();
  const inbox=page.getByRole('region',{name:'Aprovações atribuídas'});
