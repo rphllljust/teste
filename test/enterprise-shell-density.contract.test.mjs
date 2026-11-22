@@ -31,3 +31,8 @@ test('all enterprise destinations are grouped once across six business domains',
   assert.equal(destinations.length, 25);
   assert.equal(new Set(destinations).size, destinations.length, 'Each destination must appear exactly once');
 });
+
+test('breadcrumb resolves the actual business domain instead of a generic label', () => {
+  assert.match(source, /modules\.find\(\(g\) => g\.items\.some\(\(\[n\]\) => n === page\)\)\?\.group \?\? "Gestão empresarial"/);
+  assert.doesNotMatch(source, /\? "Operação"\s*:\s*"Gestão integrada"/);
+});
