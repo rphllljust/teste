@@ -4,6 +4,8 @@ import { EnterpriseButton, EnterpriseSearchField, EnterpriseInput, EnterpriseTex
 import { useState, useEffect, useCallback, useRef } from "react";
 import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/EnterpriseAppNavigation";
 import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
+import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
+import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
 import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
@@ -25,6 +27,7 @@ import CloseCenterWorkspace from "./CloseCenterWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import ProcurementWorkspace from "./ProcurementWorkspace";
 import EnterpriseCommandCenter from "./EnterpriseCommandCenter";
+import type { ControlTowerLaneId } from "./EnterpriseControlTower";
 import CRMWorkspace from "./CRMWorkspace";
 import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
@@ -1284,6 +1287,28 @@ function HomeView() {
     setDueTo(d.filters.dueTo ?? "");
     setLinkedSort(d.filters.sort ?? "dueDate.asc");
   }
+  function handleControlLane(lane: ControlTowerLaneId, asOf: string) {
+    switch (lane) {
+      case 'lateOrders': navigate('Centro de operações'); break;
+      case 'unmeasuredOrders': navigate('Ordens de serviço'); applyView('Concluídas sem medição'); break;
+      case 'overdueReceivables': drillFinance({ viewKey:'receivables.worklist', filters:{ dueTo:asOf, settlementState:'outstanding', sort:'dueDate.asc' } }); break;
+      case 'overduePayables': drillFinance({ viewKey:'payables.worklist', filters:{ dueTo:asOf, state:'outstanding', sort:'dueDate.asc' } }); break;
+      case 'latePurchases': navigate('Compras'); break;
+      case 'stockShortage': navigate('Estoque e compras'); setSupplyView('inventory'); break;
+      case 'myApprovals': navigate('Fechamentos'); break;
+    }
+  }
+  function handleControlRecord(lane: ControlTowerLaneId, id: string) {
+    switch (lane) {
+      case 'lateOrders':
+      case 'unmeasuredOrders': navigate('Ordens de serviço'); void openOrigin(id); break;
+      case 'overdueReceivables': navigate('Financeiro'); void openReceivable(id); break;
+      case 'overduePayables': navigate('Contas a pagar'); setPayableOrigin(id); break;
+      case 'latePurchases': navigate('Compras'); setMrpOrderId(id); break;
+      case 'stockShortage': navigate('Estoque e compras'); setSupplyView('inventory'); setMrpMaterialId(id); break;
+      case 'myApprovals': navigate('Fechamentos'); break;
+    }
+  }
   const isWork = page === "Ordens de serviço" || page === "Visão operacional";
   const currentStage =
     action?.command === "invoice"
@@ -1355,6 +1380,8 @@ function HomeView() {
           id="cisne-workspace-content"
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          <EnterpriseStagingAccess />
+          {!creating && !action && <EnterpriseExperienceHub activePage={page} groups={modules} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} onControlTowerLane={handleControlLane} onControlTowerRecord={handleControlRecord} /> }
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
@@ -1524,27 +1551,8 @@ function HomeView() {
                 navigate("Ordens de serviço");
                 void openOrigin(id);
               }}
-              onControlTowerLane={(lane, asOf) => {
-                switch(lane){
-                  case 'lateOrders': navigate('Centro de operações');break;
-                  case 'unmeasuredOrders': navigate('Ordens de serviço');applyView('Concluídas sem medição');break;
-                  case 'overdueReceivables': drillFinance({viewKey:'receivables.worklist',filters:{dueTo:asOf,settlementState:'outstanding',sort:'dueDate.asc'}});break;
-                  case 'overduePayables': drillFinance({viewKey:'payables.worklist',filters:{dueTo:asOf,state:'outstanding',sort:'dueDate.asc'}});break;
-                  case 'latePurchases': navigate('Compras');break;
-                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');break;
-                  case 'myApprovals': navigate('Fechamentos');break;
-                }
-              }}
-              onControlTowerRecord={(lane,id) => {
-                switch(lane){
-                  case 'lateOrders':
-                  case 'unmeasuredOrders': navigate('Ordens de serviço');void openOrigin(id);break;
-                  case 'overdueReceivables': navigate('Financeiro');void openReceivable(id);break;
-                  case 'overduePayables': navigate('Contas a pagar');setPayableOrigin(id);break;
-                  case 'latePurchases': navigate('Compras');setMrpOrderId(id);break;
-                  case 'stockShortage': navigate('Estoque e compras');setSupplyView('inventory');setMrpMaterialId(id);break;
-                }
-              }}
+              onControlTowerLane={handleControlLane}
+              onControlTowerRecord={handleControlRecord}
             />
           ) : isWork ? (
             <>
