@@ -4,7 +4,7 @@ import { useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  Building2, ChevronDown, ChevronRight, Command, Layers, PanelLeft, Search,
+  Bell, Building2, ChevronDown, ChevronRight, Command, Layers, PanelLeft, Search, UserCircle,
 } from 'lucide-react';
 import { EnterpriseButton } from './EnterprisePrimitives';
 
@@ -100,6 +100,8 @@ type TopbarProps = {
 export function EnterpriseTopbar({
   activePage, group, sidebarOpen, onToggleSidebar, onSearch,
 }: TopbarProps) {
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const groupLabels: Record<string, string> = {
     'OPERAÇÃO': 'Operação',
     'PLANEJAMENTO E RECURSOS': 'Planejamento e recursos',
@@ -139,6 +141,27 @@ export function EnterpriseTopbar({
           <span className="global-search-label">Buscar no Cisne</span>
           <kbd>Ctrl K</kbd>
         </EnterpriseButton>
+        <div className="shell-action">
+          <EnterpriseButton type="button" appearance="subtle" className="icon-button shell-icon-button" aria-label="Notificações" aria-expanded={notificationsOpen} onClick={() => { setNotificationsOpen(value => !value); setProfileOpen(false); }}>
+            <Bell size={17} aria-hidden="true" />
+            <span className="notification-dot" aria-hidden="true" />
+          </EnterpriseButton>
+          {notificationsOpen && <div className="shell-popover" role="status" aria-label="Notificações">
+            <strong>Notificações</strong>
+            <p>Você não tem notificações novas.</p>
+          </div>}
+        </div>
+        <div className="shell-action">
+          <EnterpriseButton type="button" appearance="subtle" className="profile-button" aria-label="Abrir perfil e preferências" aria-expanded={profileOpen} onClick={() => { setProfileOpen(value => !value); setNotificationsOpen(false); }}>
+            <UserCircle size={18} aria-hidden="true" />
+            <span className="profile-label">Perfil</span>
+          </EnterpriseButton>
+          {profileOpen && <div className="shell-popover shell-profile-popover" role="menu" aria-label="Perfil e preferências">
+            <strong>Perfil e preferências</strong>
+            <button type="button" role="menuitem">Preferências</button>
+            <button type="button" role="menuitem">Ajuda do CISNE</button>
+          </div>}
+        </div>
         <span className="app-mode-pill"><span aria-hidden="true" />Workspace</span>
       </div>
     </header>
