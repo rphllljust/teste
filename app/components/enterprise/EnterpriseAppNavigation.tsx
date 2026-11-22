@@ -17,13 +17,14 @@ type SidebarProps = {
   groups: EnterpriseNavigationGroup[];
   activePage: string;
   open: boolean;
+  mode: 'expanded' | 'collapsed' | 'hidden';
   ordersCount: number | null;
   onNavigate: (name: string) => void;
   onSearch: () => void;
 };
 
 export function EnterpriseSidebar({
-  groups, activePage, open, ordersCount, onNavigate, onSearch,
+  groups, activePage, open, mode, ordersCount, onNavigate, onSearch,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => Object.fromEntries(groups.map(group => [group.group, !group.items.some(([name]) => name === activePage)])));
   useEffect(() => {
@@ -32,7 +33,7 @@ export function EnterpriseSidebar({
     setCollapsed(previous => ({ ...previous, [activeGroup]: false }));
   }, [activePage, groups]);
   return (
-    <aside className={'sidebar ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE">
+    <aside className={'sidebar sidebar-' + mode + ' ' + (open ? 'mobile-open' : '')} aria-label="Navegação CISNE" data-sidebar-mode={mode}>
       <Link className="brand" href="/" aria-label="Cisne início">
         <span className="brand-mark"><Layers size={24} /></span>
         <span>CISNE<small>RONDÔNIA</small></span>
@@ -98,12 +99,13 @@ type TopbarProps = {
   activePage: string;
   group: string;
   sidebarOpen: boolean;
+  sidebarMode: 'expanded' | 'collapsed' | 'hidden';
   onToggleSidebar: () => void;
   onSearch: () => void;
 };
 
 export function EnterpriseTopbar({
-  activePage, group, sidebarOpen, onToggleSidebar, onSearch,
+  activePage, group, sidebarOpen, sidebarMode, onToggleSidebar, onSearch,
 }: TopbarProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -124,8 +126,9 @@ export function EnterpriseTopbar({
           type="button"
           appearance="transparent"
           className="mobile-toggle icon-button"
-          aria-label={sidebarOpen ? 'Fechar menu' : 'Abrir menu'}
+          aria-label={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Abrir menu'}
           aria-expanded={sidebarOpen}
+          title={sidebarMode === 'expanded' ? 'Recolher menu' : sidebarMode === 'collapsed' ? 'Ocultar menu' : 'Abrir menu'}
           onClick={onToggleSidebar}
         >
           <PanelLeft size={20} />
