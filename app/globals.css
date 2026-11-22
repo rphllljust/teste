@@ -2122,3 +2122,9 @@ input:hover,select:hover,textarea:hover{border-color:#7f9bab!important;}
   .service-object-body{grid-template-columns:1fr!important;padding:18px!important;}
   .object-next{border-left:0!important;border-top:1px solid var(--cisne-fiori-border)!important;padding:18px 0 0!important;}
 }
+
+
+/* Hard guard: contextual inspector never consumes layout until explicitly opened */
+.service-inspector,.context-inspector,[data-context-inspector="true"]{display:none!important;}
+.main.with-context .service-inspector,.main.with-context .context-inspector,.main.with-context [data-context-inspector="true"]{display:block!important;}
+.main:not(.with-context) .service-operations-grid{grid-template-columns:minmax(220px,.82fr) minmax(0,2.18fr)!important;}
