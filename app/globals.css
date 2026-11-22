@@ -1232,7 +1232,7 @@ body{background:#f1f5f7;font-family:"Segoe UI Variable","Segoe UI",Arial,sans-se
 .cisne-enterprise-hub-beacon{width:7px;height:7px;flex:none;border-radius:50%;background:#149f96;box-shadow:0 0 0 4px #149f9623}
 .cisne-enterprise-hub-separator{color:#a1b4bd}
 .cisne-enterprise-hub-title-row{display:flex;align-items:center;flex-wrap:wrap;gap:11px;margin:7px 0 5px}
-.cisne-enterprise-hub-title-row h2{margin:0;font-size:clamp(22px,2vw,31px);font-weight:750;letter-spacing:-.035em;line-height:1.2;color:#173544}
+.cisne-enterprise-hub-heading-title{margin:0;font-size:clamp(22px,2vw,31px);font-weight:750;letter-spacing:-.035em;line-height:1.2;color:#173544}
 .cisne-enterprise-hub-domain{padding:4px 8px;border:1px solid #d2e4e6;background:#edf6f7;border-radius:6px;color:#24646e;font-size:10px;font-weight:700}
 .cisne-enterprise-hub-heading p{margin:0;font-size:12px;line-height:1.5;color:#617786}
 .cisne-enterprise-hub-actions{display:flex;align-items:center;justify-content:flex-end;gap:7px;flex-wrap:wrap;flex:0 0 auto}
@@ -1245,17 +1245,17 @@ body{background:#f1f5f7;font-family:"Segoe UI Variable","Segoe UI",Arial,sans-se
 .cisne-enterprise-hub-strip-heading{display:flex;align-items:center;gap:7px;flex:0 0 150px;color:#536e7a;font-size:11px;font-weight:750}
 .cisne-enterprise-hub-strip-heading svg{color:#09838a}
 .cisne-enterprise-hub-journeys{display:flex;gap:9px;align-items:stretch;flex:1;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;padding:1px 1px 5px;scrollbar-width:thin}
-.cisne-enterprise-hub-journeys .fui-Button{flex:1 0 140px;max-width:260px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;gap:2px;position:relative;min-height:60px;padding:9px 26px 9px 12px;border:1px solid #dbe6e9;background:#fff;border-radius:9px;color:#203a48}
-.cisne-enterprise-hub-journeys .fui-Button strong{font-size:12px;font-weight:800}
-.cisne-enterprise-hub-journeys .fui-Button span{font-size:10px;font-weight:500;color:#657c87}
-.cisne-enterprise-hub-journeys .fui-Button svg{position:absolute;right:9px;top:21px;color:#18818a}
-.cisne-enterprise-hub-journeys .fui-Button:hover{background:#eaf8f5;border-color:#9accc9}
+.cisne-enterprise-hub-journeys .cisne-enterprise-journey{flex:1 0 140px;max-width:260px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;text-align:left;gap:2px;position:relative;min-height:60px;padding:9px 26px 9px 12px;border:1px solid #dbe6e9;background:#fff;border-radius:9px;color:#203a48}
+.cisne-enterprise-hub-journeys .cisne-enterprise-journey strong{font-size:12px;font-weight:800}
+.cisne-enterprise-hub-journeys .cisne-enterprise-journey span{font-size:10px;font-weight:500;color:#657c87}
+.cisne-enterprise-hub-journeys .cisne-enterprise-journey svg{position:absolute;right:9px;top:21px;color:#18818a}
+.cisne-enterprise-hub-journeys .cisne-enterprise-journey:hover{background:#eaf8f5;border-color:#9accc9}
 .cisne-enterprise-hub-journeys .is-domain-active{background:#e7f5f3;border-color:#7bbab8;box-shadow:inset 3px 0 #149a91}
 .cisne-enterprise-hub-footer{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0;padding:10px 18px}
 .cisne-enterprise-hub-context{display:flex;align-items:center;flex-wrap:wrap;gap:8px;min-width:0}
 .cisne-enterprise-hub-footer-label{display:inline-flex;align-items:center;gap:6px;margin-right:3px;color:#597380;font-size:11px;font-weight:750;white-space:nowrap}
-.cisne-enterprise-hub-context .fui-Button,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle{display:inline-flex;align-items:center;gap:5px;min-height:31px;padding:5px 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:#1e626b;font-size:11px;font-weight:700}
-.cisne-enterprise-hub-context .fui-Button:hover,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle:hover{background:#edf7f6;border-color:#c6e4e1}
+.cisne-enterprise-hub-context .cisne-enterprise-hub-link,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle{display:inline-flex;align-items:center;gap:5px;min-height:31px;padding:5px 8px;border:1px solid transparent;border-radius:7px;background:transparent;color:#1e626b;font-size:11px;font-weight:700}
+.cisne-enterprise-hub-context .cisne-enterprise-hub-link:hover,.cisne-enterprise-hub-footer .cisne-hub-directory-toggle:hover{background:#edf7f6;border-color:#c6e4e1}
 .cisne-enterprise-hub-footer .cisne-hub-directory-toggle{background:#f5f9fa;border-color:#cfdee2;flex:none}
 .cisne-enterprise-directory{padding:18px 22px 22px;border-top:1px solid #e1ebed;background:#f9fbfc}
 .cisne-enterprise-directory-head{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:14px}
@@ -1270,14 +1270,14 @@ body{background:#f1f5f7;font-family:"Segoe UI Variable","Segoe UI",Arial,sans-se
 .cisne-enterprise-directory-domain h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 12px;font-size:12px;text-transform:uppercase;color:#4d6b78;letter-spacing:.03em}
 .cisne-enterprise-directory-domain h4 span{font-variant-numeric:tabular-nums;color:#27858a}
 .cisne-enterprise-directory-domain>div{display:grid;gap:3px}
-.cisne-enterprise-directory-domain .fui-Button{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;width:100%;min-height:39px;padding:8px;text-align:left;border-radius:7px;color:#294451}
-.cisne-enterprise-directory-domain .fui-Button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.cisne-enterprise-directory-domain .fui-Button svg:last-child{margin-left:auto;flex:none;color:#27858a}
-.cisne-enterprise-directory-domain .fui-Button:hover,.cisne-enterprise-directory-domain .is-current{background:#eaf7f5}
+.cisne-enterprise-directory-domain .cisne-directory-link{display:flex;align-items:center;justify-content:flex-start;gap:10px;min-width:0;width:100%;min-height:39px;padding:8px;text-align:left;border-radius:7px;color:#294451}
+.cisne-enterprise-directory-domain .cisne-directory-link span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.cisne-enterprise-directory-domain .cisne-directory-link svg:last-child{margin-left:auto;flex:none;color:#27858a}
+.cisne-enterprise-directory-domain .cisne-directory-link:hover,.cisne-enterprise-directory-domain .is-current{background:#eaf7f5}
 .cisne-enterprise-directory-shortcuts{margin:0 0 14px}
 .cisne-enterprise-directory-shortcuts h4{display:flex;align-items:center;gap:7px;margin:0 0 7px;color:#526d7a;font-size:11px;text-transform:uppercase}
 .cisne-enterprise-directory-shortcuts>div{display:flex;flex-wrap:wrap;gap:7px}
-.cisne-enterprise-directory-shortcuts .fui-Button{min-height:31px;display:inline-flex;gap:5px;align-items:center;border:1px solid #d9e6e8;background:white;border-radius:7px;padding:5px 9px;font-size:11px}
+.cisne-enterprise-directory-shortcuts .cisne-directory-shortcut{min-height:31px;display:inline-flex;gap:5px;align-items:center;border:1px solid #d9e6e8;background:white;border-radius:7px;padding:5px 9px;font-size:11px}
 .cisne-enterprise-directory-empty{padding:18px;background:#fff;border:1px dashed #cbdde1;border-radius:8px;color:#647986}
 .enterprise-page-header,.business-object-header{border-bottom-color:#dce7ea}
 .enterprise-page-header h1,.business-object-header h2,.heading h1{color:#173645;letter-spacing:-.035em;font-weight:750}
@@ -1290,7 +1290,7 @@ body{background:#f1f5f7;font-family:"Segoe UI Variable","Segoe UI",Arial,sans-se
 html[data-cisne-density="compact"] .main main{padding-top:12px}
 html[data-cisne-density="compact"] .cisne-enterprise-hub-banner{padding:12px 16px}
 html[data-cisne-density="compact"] .cisne-enterprise-hub-strip{padding:7px 12px}
-html[data-cisne-density="compact"] .cisne-enterprise-hub-journeys .fui-Button{min-height:44px;padding-block:5px}
+html[data-cisne-density="compact"] .cisne-enterprise-hub-journeys .cisne-enterprise-journey{min-height:44px;padding-block:5px}
 html[data-cisne-density="compact"] .cisne-enterprise-hub-footer{padding:6px 12px}
 html[data-cisne-density="compact"] .enterprise-data-grid td{padding-block:7px}
 html[data-cisne-density="compact"] .enterprise-data-grid th{padding-block:7px}
@@ -1298,7 +1298,7 @@ html[data-cisne-density="compact"] .enterprise-section-body,html[data-cisne-dens
 html[data-cisne-density="compact"] .enterprise-page-header,html[data-cisne-density="compact"] .business-object-header{padding-block:10px}
 @media(max-width:1200px){.sidebar{width:224px}.main{margin-left:224px}.cisne-enterprise-hub-strip{flex-direction:column;align-items:stretch;gap:6px}.cisne-enterprise-hub-strip-heading{flex-basis:auto}.cisne-enterprise-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:800px){.sidebar{width:254px;display:none}.sidebar.mobile-open{display:flex}.main{margin-left:0}.topbar{min-height:60px}.cisne-enterprise-hub-banner{flex-direction:column;align-items:stretch;padding:18px}.cisne-enterprise-hub-actions{justify-content:flex-start;flex:0 0 auto}.cisne-enterprise-hub-footer{flex-direction:column;align-items:stretch}.cisne-enterprise-hub-context{width:100%}.cisne-enterprise-directory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-enterprise-directory-head{flex-direction:column;align-items:stretch}.cisne-enterprise-directory-search{max-width:none}}
-@media(max-width:560px){.main main{padding:11px 12px 20px}.cisne-enterprise-hub{border-radius:10px;margin-bottom:15px}.cisne-enterprise-hub-banner{gap:12px;padding:14px}.cisne-enterprise-hub-title-row h2{font-size:23px}.cisne-enterprise-hub-actions .fui-Button{flex:1;justify-content:center;min-height:39px}.cisne-enterprise-hub-actions .cisne-hub-command-primary{flex-basis:100%}.cisne-enterprise-hub-actions kbd{display:none}.cisne-enterprise-hub-strip{padding:10px 12px}.cisne-enterprise-hub-journeys .fui-Button{flex-basis:150px}.cisne-enterprise-hub-footer{padding:10px 12px}.cisne-enterprise-hub-context .fui-Button{min-height:36px}.cisne-enterprise-directory{padding:12px}.cisne-enterprise-directory-grid{grid-template-columns:minmax(0,1fr)}.cisne-enterprise-directory-domain{padding:12px}}
+@media(max-width:560px){.main main{padding:11px 12px 20px}.cisne-enterprise-hub{border-radius:10px;margin-bottom:15px}.cisne-enterprise-hub-banner{gap:12px;padding:14px}.cisne-enterprise-hub-heading-title{font-size:23px}.cisne-enterprise-hub-actions .fui-Button{flex:1;justify-content:center;min-height:39px}.cisne-enterprise-hub-actions .cisne-hub-command-primary{flex-basis:100%}.cisne-enterprise-hub-actions kbd{display:none}.cisne-enterprise-hub-strip{padding:10px 12px}.cisne-enterprise-hub-journeys .cisne-enterprise-journey{flex-basis:150px}.cisne-enterprise-hub-footer{padding:10px 12px}.cisne-enterprise-hub-context .cisne-enterprise-hub-link{min-height:36px}.cisne-enterprise-directory{padding:12px}.cisne-enterprise-directory-grid{grid-template-columns:minmax(0,1fr)}.cisne-enterprise-directory-domain{padding:12px}}
 @media(prefers-reduced-motion:reduce){.cisne-enterprise-hub *, .sidebar .nav-group-items button{transition:none!important;animation:none!important}}
 
 
@@ -1313,3 +1313,6 @@ html[data-cisne-density="compact"] .enterprise-page-header,html[data-cisne-densi
 .cisne-enterprise-hub-priorities :is(.enterprise-control-heading,.enterprise-control-lane,.enterprise-control-error){border-color:#deeaed}
 .cisne-enterprise-hub-actions .cisne-hub-priorities[aria-expanded="true"]{border-color:#88c3bd;background:#e6f5f2;color:#155d61}
 @media(max-width:800px){.cisne-enterprise-hub-priorities{padding:14px}}
+
+.cisne-enterprise-hub :is(.cisne-enterprise-journey,.cisne-enterprise-hub-link,.cisne-directory-link,.cisne-directory-shortcut){text-decoration:none}
+.cisne-enterprise-hub :is(.cisne-enterprise-journey,.cisne-enterprise-hub-link,.cisne-directory-link,.cisne-directory-shortcut):hover{text-decoration:none}
