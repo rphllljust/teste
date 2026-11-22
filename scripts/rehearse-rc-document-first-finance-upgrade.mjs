@@ -201,7 +201,7 @@ async function run() {
     });
     const canonical=[
       ...preexisting,'0003_finance_audit','0004_cash_transfers','0005_finance_period_closes',
-      '0006_professionals','0007_assets','0008_inventory_ledger','0009_workflow_approvals','0010_resource_allocations','0011_inventory_consumption','0012_field_service_measurements','0013_workflow_business_commands','0014_manual_fiscal_documents','0015_fiscal_bigint_integrity',
+      '0006_professionals','0007_assets','0008_inventory_ledger','0009_workflow_approvals','0010_resource_allocations','0011_inventory_consumption','0012_field_service_measurements','0013_workflow_business_commands','0014_manual_fiscal_documents','0015_fiscal_bigint_integrity','0016_chart_accounts_tenant_unique',
     ];
     await assertPreserved(scoped,canonical);
     await guardImmutableAudit(scoped);
