@@ -6,7 +6,7 @@ import { EnterpriseSidebar, EnterpriseTopbar } from "./components/enterprise/Ent
 import { EnterpriseWorkspaceContext } from "./components/enterprise/EnterpriseWorkspaceContext";
 import { EnterpriseExperienceHub } from "./components/enterprise/EnterpriseExperienceHub";
 import { EnterpriseStagingAccess } from "./components/enterprise/EnterpriseStagingAccess";
-import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";
+import { EnterpriseProcessJourney } from "./components/enterprise/EnterpriseProcessJourney";\nimport { EnterpriseModuleWorkspace } from "./components/enterprise/EnterpriseModuleWorkspace";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -1477,7 +1477,7 @@ function HomeView() {
               }}
             />
           )}
-          {action?.command === "invoice" ? (
+          <EnterpriseModuleWorkspace activePage={page} group={modules.find(g => g.items.some(([n]) => n === page))?.group ?? "OPERAÇÃO"} onNavigate={navigate}>\n          {action?.command === "invoice" ? (
             <BillingPreparation
               measurementId={action.record.id}
               onCancel={() => setAction(null)}
@@ -2689,7 +2689,7 @@ function HomeView() {
               </EnterpriseButton>
             </div>
           )}
-          <footer className="page-footer">
+          </EnterpriseModuleWorkspace>\n          <footer className="page-footer">
             <span>
               CISNE RONDÔNIA <b>·</b> Gestão empresarial integrada
             </span>
