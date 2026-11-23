@@ -28,6 +28,7 @@ import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
+import { EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
 import type { LucideIcon } from "lucide-react";
 import { statusNames, moneyScaled } from "../lib/domain/orders";
 import { executionQuantity } from "../lib/domain/execution";
@@ -1384,7 +1385,20 @@ function HomeView() {
               "Fluxo de caixa",
               "CRM e Vendas",
             ].includes(page) && (
-              <div className="heading">
+              <>
+              <EnterprisePageHeader
+                breadcrumb={`CISNE / ${currentGroup} / ${page}`}
+                eyebrow={`${currentGroup} · CISNE RONDÔNIA`}
+                title={page}
+                description={isWork
+                  ? "Acompanhe as ordens e execute o próximo passo na fila."
+                  : moduleDescription[page]}
+                actions={isWork ? <button className="primary" onClick={newOrder}>
+                  <Plus size={18} />
+                  Nova ordem de serviço
+                </button> : undefined}
+              />
+              <div className="heading-legacy-notice">
                 <div>
                   <div className="eyebrow">
                     {
@@ -1392,25 +1406,14 @@ function HomeView() {
                     }{" "}
                     · CISNE RONDÔNIA
                   </div>
-                  <h1>{page}</h1>
                   {viewNotice && !savingView && (
                     <p role="alert" className="form-error">
                       {viewNotice}
                     </p>
                   )}
-                  <p>
-                    {isWork
-                      ? "Acompanhe as ordens e execute o próximo passo na fila."
-                      : moduleDescription[page]}
-                  </p>
                 </div>
-                {isWork && (
-                  <button className="primary" onClick={newOrder}>
-                    <Plus size={18} />
-                    Nova ordem de serviço
-                  </button>
-                )}
               </div>
+              </>
             )}
           {notice && !creating && !action && !savingView && (
             <div

@@ -15,6 +15,7 @@
     "test:postgres-adapter": "node --test db/raw-sql.test.mjs db/postgres-query.test.mjs",
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test:smoke:staging": "node test/staging-smoke.mjs",
+    "test:regression:enterprise": "node test/enterprise-responsive-http-regression.mjs",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",

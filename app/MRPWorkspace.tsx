@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, ChevronRight, ClipboardCheck, Package, RefreshCw, Search, ShoppingCart, TriangleAlert, X } from 'lucide-react';
-import { BusinessStatus } from './components/enterprise/EnterprisePrimitives';
+import { ArrowRight, Check, ClipboardCheck, Package, RefreshCw, Search, ShoppingCart, TriangleAlert, X } from 'lucide-react';
+import { BusinessStatus, EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 
 type Recommendation = {
  recommendationId: string; runId: string; materialId: string; sku: string; name: string;
@@ -114,7 +114,7 @@ export default function MRPWorkspace({
  const pending = items.filter(item => item.approvalStatus === 'draft').length;
  const visibleItems = items.filter(item => !query || `${item.sku} ${item.name}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
  return <section className="mrp-workspace" aria-label="Planejamento de materiais">
-  <nav className="enterprise-breadcrumb" aria-label="Navegação estrutural"><span>Suprimentos</span><ChevronRight size={13}/><strong>Planejamento de materiais</strong></nav>
+  <EnterprisePageHeader breadcrumb="Suprimentos / Planejamento de materiais" eyebrow="WORKLIST · SUPRIMENTOS" title="Planejamento de materiais" description="Reposição por estoque mínimo, com aprovação explícita e compras vinculadas ao ERP." />
   <header className="mrp-header">
    <div><span className="eyebrow">GESTÃO INTEGRADA · SUPRIMENTOS</span>
     <h2>Planejamento de materiais</h2>
