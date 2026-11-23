@@ -147,7 +147,19 @@ try{
   process.stdout.write('RESTORE_DRILL_SUCCESS: PostgreSQL '+major+' custom-format backup, isolated restore, full CRM-to-OS data, ledger and owner FKs checked\n');
 }finally{
   if(copy)await copy.end();
-  if(created)await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'" WITH (FORCE)');
+  if(created){
+    // Pool.end() closes clients on our side; PostgreSQL may observe that
+    // disconnect slightly later. Never force-kill a still-closing client:
+    // that emits an unhandled 57P01 on pg-pool in the CI runner.
+    for(let attempt=0;attempt<30;attempt++){
+      const active=await src.query(
+        'SELECT 1 FROM pg_stat_activity WHERE datname=$1 LIMIT 1',[restoreDb]);
+      if(active.rows.length===0)break;
+      await new Promise(resolve=>setTimeout(resolve,100));
+    }
+    // Fail closed if connections remain instead of hiding a real leak.
+    await src.query('DROP DATABASE IF EXISTS "'+restoreDb+'"');
+  }
   const client=await src.connect();
   try{
     await client.query('BEGIN');
