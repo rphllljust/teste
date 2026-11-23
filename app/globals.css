@@ -471,7 +471,7 @@ tr:has(td):hover{background:#f5f9f5}
 .service-operations .enterprise-page-header{padding:0 0 20px;margin-bottom:18px}
 
 /* Field Service Cockpit — enterprise overview composition */
-.field-service-cockpit{max-width:1800px}
+.field-service-cockpit{max-width:1800px;padding-top:8px!important}
 .field-service-cockpit .enterprise-page-header{align-items:flex-end;padding:0 0 22px;margin-bottom:18px;border-bottom:1px solid #dfe7e1}
 .field-service-cockpit .enterprise-page-header-copy{min-width:0}
 .field-service-cockpit .enterprise-page-header h1{font-size:30px;color:#203b2c}
