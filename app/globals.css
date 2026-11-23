@@ -599,3 +599,6 @@ tr:has(td):hover{background:#f5f9f5}
 .client-registration-form input,.client-registration-form textarea{display:block;width:100%;padding:10px 12px;background:#fff;border:1px solid #d6e1e4;border-radius:5px;margin-top:6px;font-size:14px;color:var(--ink)}
 .client-registration-form textarea{resize:vertical}
 @media(max-width:560px){.client-registration-form .form-grid{grid-template-columns:1fr}.modal{padding:20px}.drawer{padding:20px}}
+
+/* Contract object page anchors: compact enterprise navigation inside the context panel. */
+.object-anchors{display:flex;gap:6px;overflow:auto;margin:14px 0 18px;padding:4px;background:#f4f8f6;border:1px solid var(--line);position:sticky;top:0;z-index:2}.object-anchors a{white-space:nowrap;padding:7px 10px;color:#41685d;font-size:11px;font-weight:700;text-decoration:none;border-radius:3px}.object-anchors a:hover,.object-anchors a:focus-visible{background:#e4f1eb;color:#176b63;outline:none}.drawer section[id]{scroll-margin-top:60px}.drawer section[id]+section[id]{margin-top:18px;border-top:1px solid var(--line);padding-top:8px}
