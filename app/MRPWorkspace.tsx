@@ -28,6 +28,7 @@ export default function MRPWorkspace({
  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
  const [converting, setConverting] = useState<Recommendation | null>(null);
  const [query, setQuery] = useState('');
+ const [approvalFilter, setApprovalFilter] = useState<'all' | Recommendation['approvalStatus']>('all');
  const [loading, setLoading] = useState(true);
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState('');
@@ -112,7 +113,10 @@ export default function MRPWorkspace({
  }
 
  const pending = items.filter(item => item.approvalStatus === 'draft').length;
- const visibleItems = items.filter(item => !query || `${item.sku} ${item.name}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
+ const visibleItems = items.filter(item => (approvalFilter === 'all' || item.approvalStatus === approvalFilter) && (!query || `${item.sku} ${item.name}`.toLocaleLowerCase().includes(query.toLocaleLowerCase())));
+ const approved = items.filter(item => item.approvalStatus === 'approved').length;
+ const converted = items.filter(item => item.approvalStatus === 'converted').length;
+ const attention = items.filter(item => item.coverageStatus === 'attention').length;
  return <section className="mrp-workspace" aria-label="Planejamento de materiais">
   <EnterprisePageHeader breadcrumb="Suprimentos / Planejamento de materiais" eyebrow="WORKLIST · SUPRIMENTOS" title="Planejamento de materiais" description="Reposição por estoque mínimo, com aprovação explícita e compras vinculadas ao ERP." />
   <header className="mrp-header">
@@ -124,12 +128,12 @@ export default function MRPWorkspace({
     <button className="primary" onClick={() => void runPlanning()} disabled={busy || loading}><ClipboardCheck size={15}/> Executar planejamento</button>
    </div>
   </header>
-  <div className="mrp-summary"><strong>{pending}</strong> recomendações aguardando decisão
+  <div className="mrp-summary"><strong>{pending}</strong> recomendações aguardando decisão <span className="mrp-summary-metric">{attention} materiais em atenção · {approved} aprovadas · {converted} convertidas</span>
    {runs[0] && <span>Última rodada: {new Date(runs[0].startedAt).toLocaleString('pt-BR')} · {runs[0].evaluatedMaterials} materiais avaliados</span>}
   </div>
   {notice && <div className="notice"><Check size={15}/><span>{notice}</span><button aria-label="Fechar aviso" onClick={() => setNotice('')}><X size={14}/></button></div>}
   {error && <div className="form-error" role="alert"><TriangleAlert size={16}/> {error}</div>}
-  {!loading && items.length > 0 && <div className="mrp-filter-bar"><label><Search size={15}/><span className="sr-only">Buscar material</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar material por código ou descrição" /></label><span>{visibleItems.length} de {items.length} recomendações</span></div>}
+  {!loading && items.length > 0 && <div className="mrp-filter-bar"><label><Search size={15}/><span className="sr-only">Buscar material</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar material por código ou descrição" /></label><select aria-label="Filtrar situação da recomendação" value={approvalFilter} onChange={event => setApprovalFilter(event.target.value as typeof approvalFilter)}><option value="all">Todas as decisões</option><option value="draft">Aguardando aprovação</option><option value="approved">Aprovadas</option><option value="rejected">Rejeitadas</option><option value="converted">Pedido criado</option></select><span>{visibleItems.length} de {items.length} recomendações</span></div>}
   {loading ? <div className="mrp-empty">Consultando planejamento persistido…</div>
    : !items.length ? <div className="mrp-empty"><Package size={22}/><span>Não há recomendações. Execute o planejamento para avaliar o estoque.</span></div>
    : <div className="mrp-list">
