@@ -18,6 +18,7 @@ const register=z.object({
 }).strict();
 const filters=z.object({
   q:z.string().trim().max(160).default(''),
+  clientId:z.string().uuid().optional(),
   status:z.enum(['','draft','active','closed','cancelled']).default(''),
   page:z.coerce.number().int().min(1).max(100000).default(1),
   pageSize:z.coerce.number().int().min(1).max(50).default(25),
@@ -39,11 +40,12 @@ export async function GET(request:Request){
     context=requestContext(request);
     const params=new URL(request.url).searchParams;
     const parsed=filters.safeParse({
-      q:params.get('q')??'',status:params.get('status')??'',
+      q:params.get('q')??'',clientId:params.get('clientId')??undefined,status:params.get('status')??'',
       page:params.get('page')??'1',sort:params.get('sort')??'recent',pageSize:params.get('pageSize')??'25',
     });
     if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros de contratos inválidos.');
     const p=parsed.data,where=['ct.owner_id=?'],values:unknown[]=[context.actorId];
+    if(p.clientId){where.push('ct.client_id=?');values.push(p.clientId);}
     if(p.status){where.push('ct.status=?');values.push(p.status);}
     if(p.q){where.push('(ct.reference ILIKE ? OR c.legal_name ILIKE ? OR p.title ILIKE ?)');
       const like='%'+p.q+'%';values.push(like,like,like);}
