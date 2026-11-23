@@ -7,9 +7,6 @@ import "./components/enterprise/enterprise-foundation.css";
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",
   description: "Ordens de serviço e gestão empresarial integrada.",
-  other: {
-    "codex-preview": "development",
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
