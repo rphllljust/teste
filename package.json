@@ -14,6 +14,7 @@
     "test:security": "node --experimental-strip-types --test lib/api/http-auth.test.mjs lib/api/error-diagnostics.test.mjs lib/api/staging-session.test.mjs lib/api/mutation-origin.test.mjs",
     "test:postgres-adapter": "node --test db/raw-sql.test.mjs db/postgres-query.test.mjs",
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
+    "test:smoke:staging": "node test/staging-smoke.mjs",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
