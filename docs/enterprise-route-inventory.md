@@ -1,11 +1,10 @@
-# Inventário de rotas empresariais — CISNE
+# Inventário de entradas empresariais — CISNE
 
-Base: `main@0834d252`  
-Fonte: `app/page.tsx`  
+Base de referência: `main@f74e68f` (após PR #189)  
+Fonte: `app/page.tsx` (navegação por hash)  
 Escopo: cobertura automatizada e documentação; nenhuma rota ou API nova.
 
-O contrato `test/enterprise-route-inventory.contract.test.mjs` verifica que
-cada entrada abaixo permanece representada pelo shell e pelo dispatcher atual.
+O contrato `test/enterprise-route-inventory.contract.test.mjs` verifica as 25 entradas de navegação, sua ordem, os componentes de destino e a consistência com este documento. Ele roda no gate `quality` e na verificação da branch `main`. A verificação é estática e não substitui testes de APIs, autorização, persistência e fluxos ponta a ponta.
 
 | Grupo | Entradas existentes |
 |---|---|
@@ -20,4 +19,5 @@ cada entrada abaixo permanece representada pelo shell e pelo dispatcher atual.
 - Não adicionar entrada sem implementação existente no dispatcher.
 - Não criar rota, endpoint ou mock para satisfazer o contrato.
 - Renomeações devem atualizar o teste e registrar compatibilidade no mesmo PR.
-- Rotas de API são inventariadas separadamente; esta frente cobre entradas do shell.
+- Rotas de API são inventariadas separadamente; esta frente cobre seletores de tela por hash, não rotas HTTP independentes.
+- Mudanças no menu e no dispatcher devem passar em `pnpm test:route-inventory`.
