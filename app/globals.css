@@ -469,6 +469,49 @@ tr:has(td):hover{background:#f5f9f5}
 /* Tier-1 service-order workspace: list report + contextual object page */
 .service-operations{max-width:1480px;margin:0 auto;padding:4px 0 28px}
 .service-operations .enterprise-page-header{padding:0 0 20px;margin-bottom:18px}
+
+/* Field Service Cockpit — enterprise overview composition */
+.field-service-cockpit{max-width:1800px}
+.field-service-cockpit .enterprise-page-header{align-items:flex-end;padding:0 0 22px;margin-bottom:18px;border-bottom:1px solid #dfe7e1}
+.field-service-cockpit .enterprise-page-header-copy{min-width:0}
+.field-service-cockpit .enterprise-page-header h1{font-size:30px;color:#203b2c}
+.field-service-cockpit .enterprise-page-header p{max-width:760px;line-height:1.6}
+.field-service-cockpit .enterprise-filter-bar{display:grid;grid-template-columns:minmax(280px,1.4fr) minmax(180px,.7fr) auto auto;align-items:center;gap:12px;padding:14px 16px;margin-bottom:18px;background:#fff;border:1px solid #dce6df;border-radius:8px;box-shadow:0 2px 8px #213a2805}
+.field-service-cockpit .enterprise-filter-fields{display:contents}
+.field-service-cockpit .enterprise-filter-bar .search-input,.field-service-cockpit .enterprise-filter-bar .select-filter{min-height:40px;width:100%;margin:0}
+.field-service-cockpit .enterprise-filter-bar .enterprise-filter-count{justify-self:end;color:#526a5b;font-weight:600;font-size:13px;white-space:nowrap}
+.field-service-cockpit .enterprise-filter-bar .text-button{white-space:nowrap}
+.field-service-cockpit .enterprise-kpi-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+.field-service-cockpit .enterprise-kpi-card{min-width:0;min-height:118px;padding:16px;text-align:left;background:#fff;border:1px solid #dce6df;border-radius:8px;box-shadow:0 2px 8px #213a2805}
+.field-service-cockpit .enterprise-kpi-card:hover{border-color:#9fbeaa;background:#fbfdfb}
+.field-service-cockpit .enterprise-kpi-label{display:flex;justify-content:space-between;gap:8px;color:#5d7465;font-size:13px}
+.field-service-cockpit .enterprise-kpi-card strong{display:block;margin:10px 0 4px;color:#203b2c;font-size:30px;font-weight:600;line-height:1}
+.field-service-cockpit .enterprise-kpi-card small{color:#718476;font-size:11px;line-height:1.4}
+.field-service-cockpit .enterprise-cockpit-grid{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.5fr);gap:18px;align-items:start}
+.field-service-cockpit .enterprise-analytical-chart,.field-service-cockpit .enterprise-worklist{background:#fff;border:1px solid #dce6df;border-radius:8px;box-shadow:0 2px 8px #213a2805}
+.field-service-cockpit .enterprise-analytical-chart{padding:20px}
+.field-service-cockpit .enterprise-analytical-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.field-service-cockpit .enterprise-analytical-heading h2{font-size:16px;color:#203b2c}
+.field-service-cockpit .enterprise-analytical-heading span{font-size:11px;color:#829286}
+.field-service-cockpit .enterprise-analytical-row{margin:13px 0}
+.field-service-cockpit .enterprise-analytical-row>button,.field-service-cockpit .enterprise-analytical-row>div{display:grid;grid-template-columns:minmax(0,1fr) 88px 34px;align-items:center;gap:10px;width:100%;text-align:left}
+.field-service-cockpit .enterprise-analytical-bar{grid-column:1;grid-row:1;height:8px;border-radius:999px;background:#7fa88d}
+.field-service-cockpit .enterprise-analytical-row span:not(.enterprise-analytical-bar){grid-column:2;grid-row:1;color:#607366;font-size:12px}
+.field-service-cockpit .enterprise-analytical-row strong{grid-column:3;grid-row:1;text-align:right;color:#284936}
+.field-service-cockpit .enterprise-worklist{overflow:hidden}
+.field-service-cockpit .enterprise-worklist-header{display:flex;justify-content:space-between;align-items:center;padding:20px;border-bottom:1px solid #e7eee8}
+.field-service-cockpit .enterprise-worklist-header h2{font-size:16px;color:#203b2c}
+.field-service-cockpit .enterprise-worklist-header span{display:block;margin-top:4px;color:#7a8b7d;font-size:12px}
+.field-service-cockpit .cockpit-order-list{padding:4px 20px}
+.field-service-cockpit .cockpit-order-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;width:100%;padding:15px 0;text-align:left;border-bottom:1px solid #edf2ed}
+.field-service-cockpit .cockpit-order-row:last-child{border-bottom:0}
+.field-service-cockpit .cockpit-order-row:hover{background:#fbfdfb}
+.field-service-cockpit .cockpit-order-row strong{display:block;overflow:hidden;color:#2b4a35;text-overflow:ellipsis;white-space:nowrap}
+.field-service-cockpit .cockpit-order-row small{display:block;margin-top:4px;color:#7b8c80;font-size:11px}
+.field-service-cockpit .cockpit-order-row>span:last-child{text-align:right}
+.field-service-cockpit .enterprise-source-note{display:flex;gap:8px;align-items:flex-start;margin:16px 2px 0;color:#718377;font-size:12px;line-height:1.6}
+@media(max-width:1100px){.field-service-cockpit .enterprise-filter-bar{grid-template-columns:minmax(220px,1fr) minmax(160px,.7fr) auto}.field-service-cockpit .enterprise-filter-bar .enterprise-filter-count{justify-self:start}.field-service-cockpit .enterprise-kpi-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.field-service-cockpit .enterprise-cockpit-grid{grid-template-columns:1fr}}
+@media(max-width:700px){.field-service-cockpit .enterprise-page-header{display:block}.field-service-cockpit .enterprise-page-actions{margin-top:14px}.field-service-cockpit .enterprise-filter-bar{display:flex;align-items:stretch;flex-direction:column}.field-service-cockpit .enterprise-filter-fields{display:flex;flex-direction:column;gap:10px}.field-service-cockpit .enterprise-filter-bar .enterprise-filter-count{align-self:flex-start}.field-service-cockpit .enterprise-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.field-service-cockpit .enterprise-kpi-card{min-height:104px;padding:13px}.field-service-cockpit .enterprise-kpi-card strong{font-size:26px}.field-service-cockpit .cockpit-order-row{grid-template-columns:1fr;gap:7px}.field-service-cockpit .cockpit-order-row>span:last-child{text-align:left}}
 .service-operations-grid{grid-template-columns:minmax(250px,.82fr) minmax(430px,1.8fr) minmax(250px,.86fr);gap:0;border:1px solid var(--line);background:#fff;box-shadow:0 4px 18px #17352d0b}
 .service-queue,.service-object,.service-inspector{border:0!important;border-radius:0!important;box-shadow:none!important}
 .service-queue{border-right:1px solid var(--line)!important;padding:18px}
