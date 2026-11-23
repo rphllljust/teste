@@ -526,10 +526,11 @@ tr:has(td):hover{background:#f5f9f5}
 .cisne-crm-tabs{display:inline-flex;gap:2px;background:#e5eeeb;padding:4px;border-radius:6px}
 .cisne-crm-tabs button{padding:8px 16px;font-size:13px;border-radius:4px;font-weight:600;color:#4c6460}
 .cisne-crm-tabs button.selected{background:#fff;color:#176b63;box-shadow:0 1px 4px #12332e22}
+.cisne-crm-tabs button span{display:inline-flex;min-width:18px;justify-content:center;margin-left:5px;padding:1px 5px;border-radius:10px;background:#d7e8e1;color:#397066;font-size:10px}.cisne-crm-tabs button.selected span{background:#e3f2eb;color:#176b63}.cisne-crm-filter{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:11px;white-space:nowrap}.cisne-crm-filter select{border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 10px;border-radius:4px;font:inherit;font-size:12px}.cisne-crm-filter select:focus-visible{outline:2px solid var(--focus-ring,#2f7d65);outline-offset:1px}.cisne-crm-result-count{margin-left:auto;color:var(--muted);font-size:12px;white-space:nowrap}
 .cisne-crm-search{border:1px solid var(--line);background:#fff;padding:7px 11px;display:flex;align-items:center;gap:9px;min-width:240px;color:#607f79;border-radius:5px}
 .cisne-crm-search input{border:0;outline:0;width:100%;background:transparent;font-size:13px;color:var(--ink)}
 .cisne-crm-table{border:1px solid var(--line);background:#fff;overflow:auto}
-.cisne-crm-table-head,.cisne-crm-row{min-width:650px;display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(75px,.6fr) minmax(90px,.7fr) minmax(150px,.9fr);align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
+.cisne-crm-table-head,.cisne-crm-row{min-width:820px;display:grid;grid-template-columns:minmax(170px,1.5fr) minmax(75px,.6fr) minmax(90px,.7fr) minmax(110px,.7fr) minmax(150px,.9fr);align-items:center;gap:12px;padding:14px 20px;border-bottom:1px solid var(--line)}
 .cisne-crm-table-head{background:#f7faf8;color:#6a837e;font-size:11px;text-transform:uppercase;letter-spacing:.07em;font-weight:700}
 .cisne-crm-row{min-height:70px;font-size:13px}
 .cisne-crm-row:last-child{border-bottom:0}
@@ -570,7 +571,7 @@ tr:has(td):hover{background:#f5f9f5}
 .cisne-crm-modal form>label{display:grid;gap:5px}
 .cisne-crm-modal input,.cisne-crm-modal select{border:1px solid var(--line);padding:9px 11px;background:#fff;color:var(--ink);width:100%;border-radius:4px}
 @media(max-width:1180px){.cisne-crm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.cisne-crm-metrics>div:nth-child(2){border-right:0}.cisne-crm-metrics>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
-@media(max-width:680px){.cisne-crm-heading,.cisne-crm-toolbar,.cisne-crm-footer{align-items:stretch;flex-direction:column}.cisne-crm-heading h2{font-size:25px}.cisne-crm-actions{width:100%}.cisne-crm-actions button{flex:1}.cisne-crm-metrics>div{padding:15px}.cisne-crm-metrics strong{font-size:23px}.cisne-crm-search{width:100%}.cisne-crm-footer>div{flex-wrap:wrap}.cisne-crm-pipeline{grid-template-columns:repeat(5,210px)}}
+@media(max-width:900px){.cisne-crm-toolbar{align-items:stretch;flex-wrap:wrap}.cisne-crm-result-count{margin-left:0}}@media(max-width:680px){.cisne-crm-heading,.cisne-crm-toolbar,.cisne-crm-footer{align-items:stretch;flex-direction:column}.cisne-crm-heading h2{font-size:25px}.cisne-crm-actions{width:100%}.cisne-crm-actions button{flex:1}.cisne-crm-metrics>div{padding:15px}.cisne-crm-metrics strong{font-size:23px}.cisne-crm-search{width:100%}.cisne-crm-footer>div{flex-wrap:wrap}.cisne-crm-pipeline{grid-template-columns:repeat(5,210px)}}
 
 
 /* Staging-only passwordless-user-identity guard: HMAC session after high-entropy credential. */
