@@ -53,6 +53,9 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
   const [needsAuth,setNeedsAuth]=useState(false),[loginBusy,setLoginBusy]=useState(false);
   const [tab,setTab]=useState<'leads'|'opportunities'>('leads');
   const [query,setQuery]=useState('');
+  const [leadStatus,setLeadStatus]=useState<'all'|'new'|'qualified'|'disqualified'>('all');
+  const [opportunityStage,setOpportunityStage]=useState<'all'|Opportunity['stage']>('all');
+  const [sortMode,setSortMode]=useState<'recent'|'value'>('recent');
   const [newLeadOpen,setNewLeadOpen]=useState(false);
   const [qualifyLead,setQualifyLead]=useState<Lead|null>(null);
   const [opportunityLead,setOpportunityLead]=useState<Lead|null>(null);
@@ -195,10 +198,15 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
   }
   const q=query.trim().toLocaleLowerCase('pt-BR');
   const leads=(snapshot?.leads??[]).filter(l=>
-    !q||[l.contactName,l.companyName,l.contactEmail].some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)));
+    (leadStatus==='all'||l.status===leadStatus)&&
+    (!q||[l.contactName,l.companyName,l.contactEmail].some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)))
+  ).sort((a,b)=>sortMode==='recent'?Date.parse(b.createdAt)-Date.parse(a.createdAt):a.companyName.localeCompare(b.companyName,'pt-BR'));
   const opportunities=(snapshot?.opportunities??[]).filter(o=>
-    !q||[o.title,snapshot?.leads.find(l=>l.id===o.leadId)?.companyName]
-      .some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)));
+    (opportunityStage==='all'||o.stage===opportunityStage)&&
+    (!q||[o.title,snapshot?.leads.find(l=>l.id===o.leadId)?.companyName]
+      .some(x=>x?.toLocaleLowerCase('pt-BR').includes(q)))
+  ).sort((a,b)=>sortMode==='value'?Number(b.amountCents)-Number(a.amountCents):Date.parse(b.createdAt)-Date.parse(a.createdAt));
+  const visibleCount=tab==='leads'?leads.length:opportunities.length;
   const active=(snapshot?.opportunities??[]).filter(o=>o.stage!=='won'&&o.stage!=='lost').length;
   return <section className="cisne-crm" aria-label="CRM nativo do CISNE">
     <header className="cisne-crm-heading">
@@ -238,21 +246,34 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
     <div className="cisne-crm-toolbar">
       <div className="cisne-crm-tabs" role="tablist" aria-label="Áreas comerciais">
         <button role="tab" aria-selected={tab==='leads'} className={tab==='leads'?'selected':''}
-          onClick={()=>setTab('leads')}>Leads</button>
+          onClick={()=>setTab('leads')}>Leads <span>{snapshot?.totals.leads??'—'}</span></button>
         <button role="tab" aria-selected={tab==='opportunities'} className={tab==='opportunities'?'selected':''}
-          onClick={()=>setTab('opportunities')}>Oportunidades</button>
+          onClick={()=>setTab('opportunities')}>Oportunidades <span>{snapshot?.totals.opportunities??'—'}</span></button>
       </div>
       <label className="cisne-crm-search"><Search size={16}/><input aria-label="Buscar registros comerciais"
         placeholder="Buscar por nome ou empresa..." value={query} onChange={e=>setQuery(e.target.value)}/></label>
+      <label className="cisne-crm-filter">Estado
+        <select aria-label="Filtrar por estado" value={tab==='leads'?leadStatus:opportunityStage}
+          onChange={e=>tab==='leads'?setLeadStatus(e.target.value as typeof leadStatus):setOpportunityStage(e.target.value as typeof opportunityStage)}>
+          {tab==='leads'?<><option value="all">Todos</option><option value="new">Novo</option><option value="qualified">Qualificado</option><option value="disqualified">Descartado</option></>:<><option value="all">Todas as etapas</option>{stages.map(stage=><option key={stage} value={stage}>{stageLabel[stage]}</option>)}</>}
+        </select>
+      </label>
+      <label className="cisne-crm-filter">Ordenar
+        <select aria-label="Ordenar registros" value={sortMode} onChange={e=>setSortMode(e.target.value as typeof sortMode)}>
+          <option value="recent">Mais recentes</option><option value="value">Maior valor</option>
+        </select>
+      </label>
+      <span className="cisne-crm-result-count">{visibleCount} {tab==='leads'?'leads':'oportunidades'}</span>
     </div>
 
     {loading&&!snapshot?<div className="cisne-crm-state" role="status">Consultando registros comerciais…</div>:
       snapshot&&tab==='leads'?<div className="cisne-crm-table" role="tabpanel" aria-label="Leads comerciais">
-        <div className="cisne-crm-table-head"><span>Contato / empresa</span><span>Origem</span><span>Estado</span><span>Ações</span></div>
+        <div className="cisne-crm-table-head"><span>Contato / empresa</span><span>Origem</span><span>Estado</span><span>Última criação</span><span>Ações</span></div>
         {leads.length?leads.map(l=><div className="cisne-crm-row" key={l.id}>
           <div><strong>{l.contactName}</strong><small>{l.companyName}{l.contactEmail?' · '+l.contactEmail:''}</small></div>
           <span>{sourceLabel[l.source]??l.source}</span>
           <span className={'cisne-crm-status '+l.status}>{l.status==='new'?'Novo':l.status==='qualified'?'Qualificado':'Descartado'}</span>
+          <time dateTime={l.createdAt}>{new Date(l.createdAt).toLocaleDateString('pt-BR')}</time>
           <div className="cisne-crm-row-actions">
             {l.status==='new'&&<button className="secondary" disabled={sending}
               onClick={()=>{resetForms();setQualifyLead(l);}}>Classificar</button>}
