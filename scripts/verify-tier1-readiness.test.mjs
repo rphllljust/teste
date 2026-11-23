@@ -1,0 +1,2 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {execFile} from 'node:child_process';import {promisify} from 'node:util';const run=promisify(execFile);
+test('tier-1 readiness verifier passes in the repository checkout',async()=>{const result=await run(process.execPath,['scripts/verify-tier1-readiness.mjs']);assert.match(result.stdout,/Tier-1 staging readiness: PASS/)});

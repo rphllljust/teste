@@ -26,5 +26,6 @@ jobs:
       - run: pnpm lint
       - run: pnpm build
 
-# Production publication is owned by the Sites platform. This workflow intentionally
-# verifies the source but does not invoke Wrangler with unrelated Cloudflare secrets.
+# Deployment is intentionally outside this verification workflow. Any authorized
+# publication must target Railway project genuine-renewal, environment staging;
+# production remains untouched until separately authorized.

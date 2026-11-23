@@ -14,9 +14,13 @@
     "test:security": "node --experimental-strip-types --test lib/api/http-auth.test.mjs lib/api/error-diagnostics.test.mjs lib/api/staging-session.test.mjs lib/api/mutation-origin.test.mjs",
     "test:postgres-adapter": "node --test db/raw-sql.test.mjs db/postgres-query.test.mjs",
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
-    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain",
+    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:frontend-contract && pnpm test:outbox",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
+    "test:frontend-contract": "node --test test/enterprise-components.contract.test.mjs test/frontend-wave.contract.test.mjs test/accessibility-floorplan.contract.test.mjs test/module-registry.contract.test.mjs",
+    "test:outbox": "node --experimental-strip-types --test lib/infrastructure/outbox.test.mjs lib/infrastructure/outbox-worker.test.mjs",
+    "verify:tier1-readiness": "node scripts/verify-tier1-readiness.mjs",
+    "verify:platform-boundary": "node scripts/verify-platform-boundary.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs"
   },
   "dependencies": {

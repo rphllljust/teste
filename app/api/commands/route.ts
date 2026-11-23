@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { database } from '../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext, validDate } from '../../../lib/api/http';
 import { transitions, parseAmount } from '../../../lib/domain/orders';
+import { enqueueOutboxEvent } from '../../../lib/infrastructure/outbox';
 
 const input = z.object({
   id: z.string().uuid(),
@@ -16,6 +17,10 @@ const input = z.object({
 
 function eventResult(id: string, type: string, rowVersion: number) {
   return { ok: true, id, resource: { type, id, rowVersion }, refreshPolicy: ['serviceOrders.worklist', 'serviceOrder.context', 'operation.workspace', 'finance.receivables'] };
+}
+
+async function publishOrderEvent(query: Parameters<typeof enqueueOutboxEvent>[0], orderId: string, command: string, version: number, actorId: string, correlationId: string, result: Record<string, unknown>, occurredAt: string) {
+  await enqueueOutboxEvent(query, { id: crypto.randomUUID(), aggregateType: 'serviceOrder', aggregateId: orderId, eventType: `serviceOrder.${command}`, aggregateVersion: version, payload: { ...result, actorId, command }, correlationId, occurredAt });
 }
 
 export async function POST(request: Request) {
@@ -55,6 +60,7 @@ export async function POST(request: Request) {
           const now = new Date().toISOString();
           await query('INSERT INTO measurements(id,order_id,description,amount,status,version,created_at) VALUES($1,$2,$3,$4,\'draft\',1,$5)', [measurementId, p.id, p.description, amount, now]);
           await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, p.id, p.command, order.version, now, context!.actorId, requestHash, measurementId, JSON.stringify(eventResult(measurementId, 'measurement', 1)), context!.correlationId]);
+          await publishOrderEvent(query, p.id, p.command, order.version, context!.actorId, context!.correlationId, eventResult(measurementId, 'measurement', 1), now);
           return eventResult(measurementId, 'measurement', 1);
         }
         const transition = transitions[p.command];
@@ -64,6 +70,7 @@ export async function POST(request: Request) {
         await query('UPDATE service_orders SET status=$1,version=$2 WHERE id=$3 AND version=$4', [transition.to, nextVersion, p.id, p.version]);
         const result = eventResult(p.id, 'serviceOrder', nextVersion);
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, p.id, p.command, nextVersion, now, context!.actorId, requestHash, p.id, JSON.stringify(result), context!.correlationId]);
+        await publishOrderEvent(query, p.id, p.command, nextVersion, context!.actorId, context!.correlationId, result, now);
         return result;
       }
 
@@ -77,6 +84,7 @@ export async function POST(request: Request) {
         await query('UPDATE measurements SET status=\'approved\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
         const result = eventResult(p.id, 'measurement', p.version + 1);
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, p.id, JSON.stringify(result), context!.correlationId]);
+        await publishOrderEvent(query, measurement.order_id, p.command, p.version + 1, context!.actorId, context!.correlationId, result, now);
         return result;
       }
       if (measurement.status !== 'approved') throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição aprovada pode gerar cobrança.');
@@ -87,6 +95,7 @@ export async function POST(request: Request) {
       await query('UPDATE measurements SET status=\'billed\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
       const result = { ...eventResult(p.id, 'invoice', p.version + 1), resource: { type: 'invoice', id: invoiceId, receivableId, measurementId: p.id, rowVersion: p.version + 1 } };
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, invoiceId, JSON.stringify(result), context!.correlationId]);
+      await publishOrderEvent(query, measurement.order_id, p.command, p.version + 1, context!.actorId, context!.correlationId, result, now);
       return result;
     });
     return respond(result, context, replayed ? 200 : 201);

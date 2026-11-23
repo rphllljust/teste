@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { database } from '../../../../db/raw';
-import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { ApiError, failure, requestContext, respond } from '../../../../lib/api/http';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
 

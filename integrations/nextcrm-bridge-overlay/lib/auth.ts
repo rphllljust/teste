@@ -69,7 +69,7 @@ export const auth = betterAuth({
 
   plugins: [
     emailOTP({
-      sendVerificationOTP: async ({ email, otp, type }) => {
+      sendVerificationOTP: async ({ email, otp }) => {
         try {
           const resend = await resendHelper();
           const result = await resend.emails.send({

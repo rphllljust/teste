@@ -20,4 +20,8 @@ jobs:
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm test:domain
+      - run: pnpm test:frontend-contract
+      - run: pnpm test:outbox
+      - run: pnpm verify:tier1-readiness
+      - run: pnpm verify:platform-boundary
       - run: pnpm build
