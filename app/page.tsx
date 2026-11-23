@@ -96,7 +96,7 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
   // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
   // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
   {
-    group: "OPERAÇÃO",
+    group: "INÍCIO E OPERAÇÃO",
     items: [
       ["Visão operacional", LayoutDashboard],
       ["Field Service Cockpit", Activity],
@@ -104,16 +104,33 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Ordens de serviço", ClipboardList],
       ["Execução", HardHat],
       ["Medições", SlidersHorizontal],
+    ],
+  },
+  {
+    group: "COMERCIAL E RELACIONAMENTO",
+    items: [
+      ["CRM e Vendas", Users],
       ["Clientes e propostas", Users],
       ["Propostas e PO", FileText],
+    ],
+  },
+  {
+    group: "CONTRATOS E SUPRIMENTOS",
+    items: [
       ["Contratos", FileText],
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "RECURSOS E LOGÍSTICA",
+    items: [
       ["Frota e ativos", Truck],
       ["Profissionais", HardHat],
     ],
   },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
   {
-    group: "GESTÃO INTEGRADA",
+    group: "FINANCEIRO E CONTROLADORIA",
     items: [
       ["Faturamento", Receipt],
       ["Visão financeira", LayoutDashboard],
@@ -126,8 +143,6 @@ const modules: { group: string; items: [string, LucideIcon][] }[] = [
       ["Contabilidade", BookOpen],
       ["Razão contábil", BookOpen],
       ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
     ],
   },
 ];
@@ -377,6 +392,9 @@ function HomeView() {
   const requestGeneration = useRef(0);
   const chainViewport = useRef<HTMLDivElement>(null);
   const [chainEdges, setChainEdges] = useState({ before: false, after: false });
+  const currentGroup =
+    modules.find((group) => group.items.some(([name]) => name === page))?.group ??
+    "INÍCIO E OPERAÇÃO";
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1440px)");
     const update = () => setDocked(media.matches);
@@ -790,8 +808,13 @@ function HomeView() {
   }
   useEffect(() => {
     function route() {
-      const name = decodeURIComponent(window.location.hash.slice(1));
-      if (modules.some((g) => g.items.some(([n]) => n === name))) setPage(name);
+      const raw = window.location.hash.slice(1);
+      const name = raw ? decodeURIComponent(raw) : "Visão operacional";
+      if (modules.some((g) => g.items.some(([n]) => n === name))) {
+        setPage(name);
+      } else if (!raw) {
+        window.history.replaceState(null, "", "#" + encodeURIComponent(name));
+      }
     }
     const timer = setTimeout(route, 0);
     window.addEventListener("hashchange", route);
@@ -1326,12 +1349,7 @@ function HomeView() {
             </button>
             <span>CISNE</span>
             <span className="crumb-divider">/</span>
-            <span>
-              {modules.find((g) => g.items.some(([n]) => n === page))?.group ===
-              "OPERAÇÃO"
-                ? "Operação"
-                : "Gestão integrada"}
-            </span>
+            <span>{currentGroup}</span>
             <ChevronRight size={14} />
             <strong>{page}</strong>
           </div>
@@ -1370,8 +1388,7 @@ function HomeView() {
                 <div>
                   <div className="eyebrow">
                     {
-                      modules.find((g) => g.items.some(([n]) => n === page))
-                        ?.group
+                      currentGroup
                     }{" "}
                     · CISNE RONDÔNIA
                   </div>

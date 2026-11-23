@@ -42,6 +42,7 @@ export default function OrderNextcrmDocuments({orderId}:{orderId:string}){
   },[orderId,expanded,generation]);
 
   async function downloadAttachment(doc:AuthorizedDocument){
+    if(!result?.enabled||!result.items?.some(item=>item.id===doc.id))return;
     if(downloading)return;
     setDownloading(doc.id);
     setError('');

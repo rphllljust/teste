@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, X } from 'lucide-react';
+import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 
 type Lead = {
   id:string; contactName:string; companyName:string; contactEmail:string|null;
@@ -45,7 +46,7 @@ function parseMoney(input:string):number{
   return cents;
 }
 
-export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(proposalId?:string)=>void}){
+function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(proposalId?:string)=>void}){
   const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
   const [loading,setLoading]=useState(true),[sending,setSending]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState<Notice|null>(null);
@@ -370,4 +371,8 @@ export default function CRMWorkspace({onClients,onProposals}:{onClients:()=>void
       </section>
     </div>}
   </section>;
+}
+
+export default function EnterpriseCRMWorkspace(props: Parameters<typeof CRMWorkspace>[0]) {
+ return <><EnterprisePageHeader breadcrumb="Comercial / CRM" eyebrow="CISNE ENTERPRISE · WORKLIST" title="CRM e vendas" description="Leads, oportunidades e propostas conectados aos objetos comerciais." /><CRMWorkspace {...props}/></>;
 }

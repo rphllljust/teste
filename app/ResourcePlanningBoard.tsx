@@ -1,27 +1,334 @@
-'use client';
+"use client";
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { CalendarDays, HardHat, RefreshCw, Search, Truck } from 'lucide-react';
-import { EnterpriseDataGrid, EnterpriseFilterBar, EnterprisePageHeader, EnterpriseWorklist, ErrorState, LoadingState, EmptyState } from './components/enterprise/EnterprisePrimitives';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CalendarDays, HardHat, RefreshCw, Search, Truck } from "lucide-react";
+import {
+  EnterpriseDataGrid,
+  EnterpriseFilterBar,
+  EnterprisePageHeader,
+  EnterpriseWorklist,
+  ErrorState,
+  LoadingState,
+  EmptyState,
+} from "./components/enterprise/EnterprisePrimitives";
 
-type Professional={id:string;name:string;registration:string;specialty:string;department:string;status:string};
-type Asset={id:string;code:string;name:string;kind:string;location:string|null;status:string};
-type Order={id:string;title:string;client:string;category:string;status:string;due_date:string|null};
-type Props={onOpenOrder:(id:string)=>void};
-type ResourceRow={id:string;kind:'professional'|'asset';name:string;reference:string;detail:string;status:string};
+type Professional = {
+  id: string;
+  name: string;
+  registration: string;
+  specialty: string;
+  department: string;
+  status: string;
+};
+type Asset = {
+  id: string;
+  code: string;
+  name: string;
+  kind: string;
+  location: string | null;
+  status: string;
+};
+type Order = {
+  id: string;
+  title: string;
+  client: string;
+  category: string;
+  status: string;
+  due_date: string | null;
+};
+type Props = { onOpenOrder: (id: string) => void };
+type ResourceRow = {
+  id: string;
+  kind: "professional" | "asset";
+  name: string;
+  reference: string;
+  detail: string;
+  status: string;
+};
 
-const stateLabel:Record<string,string>={active:'Disponível',maintenance:'Em manutenção',inactive:'Inativo'};
-const orderLabel:Record<string,string>={draft:'Rascunho',prepared:'Preparada',planned:'Planejada',authorized:'Autorizada',executing:'Em execução',completed:'Concluída',cancelled:'Cancelada'};
+const stateLabel: Record<string, string> = {
+  active: "Disponível",
+  maintenance: "Em manutenção",
+  inactive: "Inativo",
+};
+const orderLabel: Record<string, string> = {
+  draft: "Rascunho",
+  prepared: "Preparada",
+  planned: "Planejada",
+  authorized: "Autorizada",
+  executing: "Em execução",
+  completed: "Concluída",
+  cancelled: "Cancelada",
+};
 
-export default function ResourcePlanningBoard({onOpenOrder}:Props){
- const [professionals,setProfessionals]=useState<Professional[]>([]),[assets,setAssets]=useState<Asset[]>([]),[orders,setOrders]=useState<Order[]>([]),[query,setQuery]=useState(''),[kind,setKind]=useState<'all'|'professional'|'asset'>('all'),[loading,setLoading]=useState(true),[error,setError]=useState('');
- const load=useCallback(async(signal?:AbortSignal)=>{setLoading(true);setError('');try{const [peopleResponse,assetsResponse,ordersResponse]=await Promise.all([fetch('/api/professionals?page=1&pageSize=50',{signal}),fetch('/api/assets?page=1&pageSize=50',{signal}),fetch('/api/orders?page=1&pageSize=50&sort=dueDate.asc&view=Todas%20as%20ordens',{signal})]);const people=await peopleResponse.json() as {items?:Professional[];error?:string};const assetData=await assetsResponse.json() as {items?:Asset[];error?:string};const orderData=await ordersResponse.json() as {orders?:Order[];error?:string};if(!peopleResponse.ok||!assetsResponse.ok||!ordersResponse.ok)throw new Error(people.error||assetData.error||orderData.error||'Não foi possível consultar recursos.');if(!signal?.aborted){setProfessionals(people.items??[]);setAssets(assetData.items??[]);setOrders(orderData.orders??[]);}}catch(cause){if(!signal?.aborted)setError(cause instanceof Error?cause.message:'Não foi possível consultar o planejamento.');}finally{if(!signal?.aborted)setLoading(false);}},[]);
- useEffect(()=>{const controller=new AbortController();const timer=setTimeout(()=>void load(controller.signal),0);return()=>{clearTimeout(timer);controller.abort();};},[load]);
- const resources=useMemo<ResourceRow[]>(()=>[...professionals.map(item=>({id:item.id,kind:'professional' as const,name:item.name,reference:item.registration,detail:`${item.specialty} · ${item.department}`,status:item.status})),...assets.map(item=>({id:item.id,kind:'asset' as const,name:item.name,reference:item.code,detail:`${item.kind}${item.location?` · ${item.location}`:''}`,status:item.status}))].filter(item=>kind==='all'||item.kind===kind).filter(item=>!query||`${item.name} ${item.reference} ${item.detail}`.toLowerCase().includes(query.toLowerCase())),[assets,kind,professionals,query]);
- const plannedOrders=useMemo(()=>orders.filter(order=>!['completed','cancelled'].includes(order.status.toLowerCase())).slice(0,12),[orders]);
- return <main className="erp-experience-page planning-board" aria-label="Resource Planning Board">
-  <EnterprisePageHeader eyebrow="FIELD SERVICE · PLANNING BOARD" title="Planejamento de recursos" description="Visão mestre-detalhe baseada em profissionais, ativos e ordens retornados pelas APIs autorizadas." actions={<button className="secondary" onClick={()=>void load()} disabled={loading}><RefreshCw size={16}/>Atualizar</button>} />
-  <EnterpriseFilterBar label="Filtros de planejamento" resultCount={loading?undefined:resources.length} onReset={()=>{setQuery('');setKind('all');}}><label className="search-input"><Search size={16}/><input aria-label="Buscar recurso" placeholder="Buscar profissional, ativo ou código" value={query} onChange={event=>setQuery(event.target.value)}/></label><label className="select-filter">Recurso<select aria-label="Filtrar tipo de recurso" value={kind} onChange={event=>setKind(event.target.value as typeof kind)}><option value="all">Todos</option><option value="professional">Profissionais</option><option value="asset">Ativos</option></select></label></EnterpriseFilterBar>
-  {error?<ErrorState message={error} onRetry={()=>void load()}/>:loading?<LoadingState label="Consultando profissionais, ativos e ordens…"/>:<div className="planning-layout"><EnterpriseWorklist label="Recursos operacionais" title="Capacidade cadastrada" count={resources.length}><EnterpriseDataGrid rows={resources} columns={[{key:'resource',header:'Recurso',render:row=><span className="planning-resource-cell">{row.kind==='professional'?<HardHat size={15}/>:<Truck size={15}/>}<strong>{row.name}</strong><small>{row.reference}</small></span>},{key:'detail',header:'Especialidade / localização',render:row=>row.detail},{key:'status',header:'Situação',render:row=><span className={'enterprise-status enterprise-status-'+(row.status==='active'?'approved':row.status==='maintenance'?'warning':'blocked')}>{stateLabel[row.status]??row.status}</span>}]} getRowKey={row=>row.id} caption="Recursos operacionais" empty={<EmptyState title="Nenhum recurso encontrado" description="Ajuste a busca ou confirme se há profissionais e ativos no contexto autorizado."/>}/></EnterpriseWorklist><aside className="planning-order-rail"><div className="planning-rail-heading"><CalendarDays size={17}/><div><h2>Ordens planejáveis</h2><p>Links contextuais para a OS real.</p></div></div>{plannedOrders.length?plannedOrders.map(order=><button className="planning-order-card" key={order.id} onClick={()=>onOpenOrder(order.id)}><span><strong>{order.title}</strong><small>{order.client} · {order.category}</small></span><span><em className="enterprise-status enterprise-status-pending">{orderLabel[order.status.toLowerCase()]??order.status}</em><small>{order.due_date?new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(new Date(order.due_date)):'Sem prazo'}</small></span></button>):<EmptyState title="Nenhuma OS planejável" description="A API de ordens não retornou trabalho aberto no contexto atual."/>}<p className="enterprise-source-note">A alocação efetiva e a detecção de conflitos permanecem nos comandos transacionais existentes; esta tela é somente uma visão de experiência.</p></aside></div>}
- </main>;
+export default function ResourcePlanningBoard({ onOpenOrder }: Props) {
+  const [professionals, setProfessionals] = useState<Professional[]>([]),
+    [assets, setAssets] = useState<Asset[]>([]),
+    [orders, setOrders] = useState<Order[]>([]),
+    [query, setQuery] = useState(""),
+    [kind, setKind] = useState<"all" | "professional" | "asset">("all"),
+    [loading, setLoading] = useState(true),
+    [error, setError] = useState("");
+  const load = useCallback(async (signal?: AbortSignal) => {
+    setLoading(true);
+    setError("");
+    try {
+      const [peopleResponse, assetsResponse, ordersResponse] =
+        await Promise.all([
+          fetch("/api/professionals?page=1&pageSize=50", { signal }),
+          fetch("/api/assets?page=1&pageSize=50", { signal }),
+          fetch(
+            "/api/orders?page=1&pageSize=50&sort=dueDate.asc&view=Todas%20as%20ordens",
+            { signal },
+          ),
+        ]);
+      const people = (await peopleResponse.json()) as {
+        items?: Professional[];
+        error?: string;
+      };
+      const assetData = (await assetsResponse.json()) as {
+        items?: Asset[];
+        error?: string;
+      };
+      const orderData = (await ordersResponse.json()) as {
+        orders?: Order[];
+        error?: string;
+      };
+      if (!peopleResponse.ok || !assetsResponse.ok || !ordersResponse.ok)
+        throw new Error(
+          people.error ||
+            assetData.error ||
+            orderData.error ||
+            "Não foi possível consultar recursos.",
+        );
+      if (!signal?.aborted) {
+        setProfessionals(people.items ?? []);
+        setAssets(assetData.items ?? []);
+        setOrders(orderData.orders ?? []);
+      }
+    } catch (cause) {
+      if (!signal?.aborted)
+        setError(
+          cause instanceof Error
+            ? cause.message
+            : "Não foi possível consultar o planejamento.",
+        );
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
+  useEffect(() => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => void load(controller.signal), 0);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [load]);
+  const resources = useMemo<ResourceRow[]>(
+    () =>
+      [
+        ...professionals.map((item) => ({
+          id: item.id,
+          kind: "professional" as const,
+          name: item.name,
+          reference: item.registration,
+          detail: `${item.specialty} · ${item.department}`,
+          status: item.status,
+        })),
+        ...assets.map((item) => ({
+          id: item.id,
+          kind: "asset" as const,
+          name: item.name,
+          reference: item.code,
+          detail: `${item.kind}${item.location ? ` · ${item.location}` : ""}`,
+          status: item.status,
+        })),
+      ]
+        .filter((item) => kind === "all" || item.kind === kind)
+        .filter(
+          (item) =>
+            !query ||
+            `${item.name} ${item.reference} ${item.detail}`
+              .toLowerCase()
+              .includes(query.toLowerCase()),
+        ),
+    [assets, kind, professionals, query],
+  );
+  const plannedOrders = useMemo(
+    () =>
+      orders
+        .filter(
+          (order) =>
+            !["completed", "cancelled"].includes(order.status.toLowerCase()),
+        )
+        .slice(0, 12),
+    [orders],
+  );
+  return (
+    <main
+      className="erp-experience-page planning-board"
+      aria-label="Resource Planning Board"
+    >
+      <EnterprisePageHeader
+        breadcrumb="Recursos e logística / Planejamento"
+        eyebrow="FIELD SERVICE · PLANNING BOARD"
+        title="Planejamento de recursos"
+        description="Visão mestre-detalhe baseada em profissionais, ativos e ordens retornados pelas APIs autorizadas."
+        actions={
+          <button
+            className="secondary"
+            onClick={() => void load()}
+            disabled={loading}
+          >
+            <RefreshCw size={16} />
+            Atualizar
+          </button>
+        }
+      />
+      <EnterpriseFilterBar
+        label="Filtros de planejamento"
+        resultCount={loading ? undefined : resources.length}
+        onReset={() => {
+          setQuery("");
+          setKind("all");
+        }}
+      >
+        <label className="search-input">
+          <Search size={16} />
+          <input
+            aria-label="Buscar recurso"
+            placeholder="Buscar profissional, ativo ou código"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label className="select-filter">
+          Recurso
+          <select
+            aria-label="Filtrar tipo de recurso"
+            value={kind}
+            onChange={(event) => setKind(event.target.value as typeof kind)}
+          >
+            <option value="all">Todos</option>
+            <option value="professional">Profissionais</option>
+            <option value="asset">Ativos</option>
+          </select>
+        </label>
+      </EnterpriseFilterBar>
+      {error ? (
+        <ErrorState message={error} onRetry={() => void load()} />
+      ) : loading ? (
+        <LoadingState label="Consultando profissionais, ativos e ordens…" />
+      ) : (
+        <div className="planning-layout">
+          <EnterpriseWorklist
+            label="Recursos operacionais"
+            title="Capacidade cadastrada"
+            count={resources.length}
+          >
+            <EnterpriseDataGrid
+              rows={resources}
+              columns={[
+                {
+                  key: "resource",
+                  header: "Recurso",
+                  render: (row) => (
+                    <span className="planning-resource-cell">
+                      {row.kind === "professional" ? (
+                        <HardHat size={15} />
+                      ) : (
+                        <Truck size={15} />
+                      )}
+                      <strong>{row.name}</strong>
+                      <small>{row.reference}</small>
+                    </span>
+                  ),
+                },
+                {
+                  key: "detail",
+                  header: "Especialidade / localização",
+                  render: (row) => row.detail,
+                },
+                {
+                  key: "status",
+                  header: "Situação",
+                  render: (row) => (
+                    <span
+                      className={
+                        "enterprise-status enterprise-status-" +
+                        (row.status === "active"
+                          ? "approved"
+                          : row.status === "maintenance"
+                            ? "warning"
+                            : "blocked")
+                      }
+                    >
+                      {stateLabel[row.status] ?? row.status}
+                    </span>
+                  ),
+                },
+              ]}
+              getRowKey={(row) => row.id}
+              caption="Recursos operacionais"
+              empty={
+                <EmptyState
+                  title="Nenhum recurso encontrado"
+                  description="Ajuste a busca ou confirme se há profissionais e ativos no contexto autorizado."
+                />
+              }
+            />
+          </EnterpriseWorklist>
+          <aside className="planning-order-rail">
+            <div className="planning-rail-heading">
+              <CalendarDays size={17} />
+              <div>
+                <h2>Ordens planejáveis</h2>
+                <p>Links contextuais para a OS real.</p>
+              </div>
+            </div>
+            {plannedOrders.length ? (
+              plannedOrders.map((order) => (
+                <button
+                  className="planning-order-card"
+                  key={order.id}
+                  onClick={() => onOpenOrder(order.id)}
+                >
+                  <span>
+                    <strong>{order.title}</strong>
+                    <small>
+                      {order.client} · {order.category}
+                    </small>
+                  </span>
+                  <span>
+                    <em className="enterprise-status enterprise-status-pending">
+                      {orderLabel[order.status.toLowerCase()] ?? order.status}
+                    </em>
+                    <small>
+                      {order.due_date
+                        ? new Intl.DateTimeFormat("pt-BR", {
+                            day: "2-digit",
+                            month: "short",
+                          }).format(new Date(order.due_date))
+                        : "Sem prazo"}
+                    </small>
+                  </span>
+                </button>
+              ))
+            ) : (
+              <EmptyState
+                title="Nenhuma OS planejável"
+                description="A API de ordens não retornou trabalho aberto no contexto atual."
+              />
+            )}
+            <p className="enterprise-source-note">
+              A alocação efetiva e a detecção de conflitos permanecem nos
+              comandos transacionais existentes; esta tela é somente uma visão
+              de experiência.
+            </p>
+          </aside>
+        </div>
+      )}
+    </main>
+  );
 }

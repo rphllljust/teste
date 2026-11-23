@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "generatedFrom": {
+    "entrypoint": "app/page.tsx",
+    "navigationModel": "single-page hash navigation",
+    "canonicalBase": "/"
+  },
+  "routes": [
+    {"route":"/#Visão operacional","domain":"Operações","workspace":"app/page.tsx","api":["/api/orders"],"migration":"migrated-and-tested"},
+    {"route":"/#Field%20Service%20Cockpit","domain":"Operações","workspace":"app/FieldServiceCockpit.tsx","api":["/api/orders"],"migration":"migrated-and-tested"},
+    {"route":"/#Resource%20Planning%20Board","domain":"Recursos e logística","workspace":"app/ResourcePlanningBoard.tsx","api":["/api/assets","/api/orders","/api/professionals"],"migration":"migrated-and-tested"},
+    {"route":"/#Ordens%20de%20serviço","domain":"Operações","workspace":"app/ExecutionWorkspace.tsx","api":["/api/orders","/api/orders/[id]","/api/orders/[id]/execution"],"migration":"migrated-and-tested"},
+    {"route":"/#Execução","domain":"Operações","workspace":"app/ExecutionWorkspace.tsx","api":["/api/orders","/api/orders/[id]/execution"],"migration":"migrated-and-tested"},
+    {"route":"/#Medições","domain":"Gestão econômica","workspace":"app/MeasurementPreparation.tsx","api":["/api/operation/measurements/[id]","/api/orders/[id]/measurements","/api/commands"],"migration":"migrated-and-tested"},
+    {"route":"/#Faturamento","domain":"Gestão econômica","workspace":"app/BillingPreparation.tsx","api":["/api/operation/invoices/[id]","/api/commands"],"migration":"migrated-and-tested"},
+    {"route":"/#Clientes%20e%20propostas","domain":"Comercial","workspace":"app/ClientsWorkspace.tsx","api":["/api/clients","/api/clients/[id]"],"migration":"migrated-and-tested"},
+    {"route":"/#Propostas%20e%20PO","domain":"Comercial","workspace":"app/ProposalsWorkspace.tsx","api":["/api/proposals","/api/clients","/api/purchase-orders"],"migration":"migrated-and-tested"},
+    {"route":"/#Contratos","domain":"Contratos","workspace":"app/ContractsWorkspace.tsx","api":["/api/contracts","/api/contracts/[id]","/api/proposals","/api/purchase-orders"],"migration":"migrated-and-tested"},
+    {"route":"/#Frota%20e%20ativos","domain":"Recursos e logística","workspace":"app/AssetsWorkspace.tsx","api":["/api/assets","/api/assets/[id]"],"migration":"migrated-and-tested"},
+    {"route":"/#Profissionais","domain":"Recursos e logística","workspace":"app/ProfessionalsWorkspace.tsx","api":["/api/professionals","/api/professionals/[id]"],"migration":"migrated-and-tested"},
+    {"route":"/#CRM%20e%20Vendas","domain":"Comercial","workspace":"app/CRMWorkspace.tsx","api":["/api/crm","/api/crm/opportunities/[id]","/api/auth/staging-login"],"migration":"migrated-and-tested"},
+    {"route":"/#Visão%20financeira","domain":"Gestão econômica","workspace":"app/FinanceOverviewWorkspace.tsx","api":["/api/finance/workspace"],"migration":"migrated-and-tested"},
+    {"route":"/#Financeiro","domain":"Gestão econômica","workspace":"app/PayablesWorkspace.tsx","api":["/api/payables","/api/receivables/[id]/settlements","/api/views"],"migration":"migrated-and-tested"},
+    {"route":"/#Fluxo%20de%20caixa","domain":"Gestão econômica","workspace":"app/CashFlowWorkspace.tsx","api":["/api/finance/cash-flow"],"migration":"migrated-and-tested"},
+    {"route":"/#Tesouraria","domain":"Gestão econômica","workspace":"app/TreasuryWorkspace.tsx","api":["/api/treasury"],"migration":"migrated-and-tested"},
+    {"route":"/#Contas%20a%20pagar","domain":"Gestão econômica","workspace":"app/PayablesWorkspace.tsx","api":["/api/payables","/api/payables/[id]/payments"],"migration":"migrated-and-tested"},
+    {"route":"/#Caixa%20e%20conciliação","domain":"Gestão econômica","workspace":"app/BankReconciliationWorkspace.tsx","api":["/api/bank/statements","/api/bank/statements/[id]","/api/bank/commands"],"migration":"migrated-and-tested"},
+    {"route":"/#Fiscal%20e%20tributos","domain":"Gestão econômica","workspace":"app/FiscalWorkspace.tsx","api":["/api/fiscal/documents","/api/fiscal/documents/[id]"],"migration":"migrated-and-tested"},
+    {"route":"/#Contabilidade","domain":"Gestão econômica","workspace":"app/AccountingWorkspace.tsx","api":["/api/accounting/accounts","/api/accounting/journals"],"migration":"migrated-and-tested"},
+    {"route":"/#Razão%20contábil","domain":"Gestão econômica","workspace":"app/LedgerWorkspace.tsx","api":["/api/accounting/accounts","/api/accounting/ledger"],"migration":"migrated-and-tested"},
+    {"route":"/#Fechamentos","domain":"Gestão econômica","workspace":"app/CloseCenterWorkspace.tsx","api":["/api/finance/periods/close"],"migration":"migrated-and-tested"},
+    {"route":"/#Compras","domain":"Suprimentos","workspace":"app/ProcurementWorkspace.tsx","api":["/api/procurement","/api/procurement/[id]","/api/procurement/[id]/commands"],"migration":"migrated-and-tested"},
+    {"route":"/#Estoque%20e%20compras","domain":"Suprimentos","workspace":"app/InventoryWorkspace.tsx","api":["/api/inventory"],"migration":"migrated-and-tested"},
+    {"route":"/#MRP","domain":"Suprimentos","workspace":"app/MRPWorkspace.tsx","api":["/api/mrp","/api/mrp/commands","/api/procurement"],"migration":"migrated-and-tested"},
+    {"route":"/#Preparação%20de%20ordem","domain":"Operações","workspace":"app/OrderPreparation.tsx","api":["/api/orders/preparation","/api/orders/[id]","/api/clients","/api/contracts"],"migration":"migrated-and-tested"},
+    {"route":"/#Documentos%20da%20ordem","domain":"Operações","workspace":"app/OrderNextcrmDocuments.tsx","api":["/api/orders/[id]/documents","/api/orders/[id]/documents/[linkId]/file"],"migration":"migrated-and-tested"},
+    {"route":"/#Agenda%20operacional","domain":"Operações","workspace":"app/ServiceOperationsAgenda.tsx","api":["delegated:/api/orders (app/page.tsx)"],"migration":"migrated-and-tested"},
+    {"route":"/#Operações%20de%20serviço","domain":"Operações","workspace":"app/ServiceOperationsWorkspace.tsx","api":["/api/orders"],"migration":"migrated-and-tested"}
+  ]
+}

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./mrp.css";
+import "./components/enterprise/enterprise-tokens.css";
+import "./components/enterprise/enterprise-foundation.css";
 
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",

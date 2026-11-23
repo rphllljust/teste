@@ -1,27 +1,597 @@
-'use client';
-import { useEffect,useRef,useState,type FormEvent } from 'react';
-import { Activity,AlertTriangle,ArrowDownToLine,ArrowUpFromLine,Check,ChevronRight,Package,Plus,Search,X } from 'lucide-react';
+"use client";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  Activity,
+  AlertTriangle,
+  ArrowDownToLine,
+  ArrowUpFromLine,
+  Check,
+  ChevronRight,
+  Package,
+  Plus,
+  Search,
+  X,
+} from "lucide-react";
 
-import { ActivityTimeline,type TimelineEntry } from './components/enterprise/ActivityTimeline';
-type Item={id:string;sku:string;name:string;unit:string;minimum:number;balance:number};type Inventory={items:Item[];hasMore:boolean;summary:{total:number;low:number}};
-type Detail={item:Item;movements:{id:string;delta:number;reference:string;orderTitle:string|null;createdAt:string}[];orders:{id:string;title:string}[];ledger?:{closingBalance:number;reconciliation:{status:'reconciled'|'exception';delta:number;message:string}}};
-type Action='create'|'in'|'out';
-const fmt=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:3}),date=new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short',timeZone:'America/Porto_Velho'}),units=['un','kg','m','m²','m³','L'];
-function qty(v:number){return fmt.format(v/1000)} async function api<T>(query:URLSearchParams,options?:RequestInit){const r=await fetch('/api/inventory?'+query,options),d=await r.json() as T&{error?:string};if(!r.ok)throw new Error(d.error||'Estoque indisponível.');return d}
-function InventoryWorkspaceView({initialMaterialId}:{initialMaterialId?:string}){
- const[query,setQuery]=useState(''),[list,setList]=useState<Inventory>(),[selected,setSelected]=useState(''),[detail,setDetail]=useState<Detail>(),[refresh,setRefresh]=useState(0),[action,setAction]=useState<Action>(),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');const dialog=useRef<HTMLDialogElement>(null),retry=useRef<{payload:string;id:string}|null>(null);
- useEffect(()=>{if(initialMaterialId)setSelected(initialMaterialId)},[initialMaterialId]);
- useEffect(()=>{const c=new AbortController();const q=selected?new URLSearchParams({item:selected}):new URLSearchParams({q:query==='__low__'?'':query,page:'1'});api<Detail|Inventory>(q,{signal:c.signal}).then(d=>{if(selected)setDetail(d as Detail);else setList(d as Inventory)}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[query,selected,refresh]);
- useEffect(()=>{if(action&&!dialog.current?.open)dialog.current?.showModal();if(!action&&dialog.current?.open)dialog.current.close()},[action]);
- function open(id:string){setSelected(id);setDetail(undefined);setError('')}
- async function submit(e:FormEvent<HTMLFormElement>){e.preventDefault();if(!action||saving)return;const f=Object.fromEntries(new FormData(e.currentTarget));const data=action==='create'?{type:'create',...f}:{type:'move',itemId:selected,direction:action,quantity:f.quantity,reference:f.reference,orderId:f.orderId||null};const payload=JSON.stringify(data);if(retry.current?.payload!==payload)retry.current={payload,id:crypto.randomUUID()};setSaving(true);try{const r=await api<{id:string}>(new URLSearchParams(),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...data,id:retry.current.id})});setAction(undefined);setNotice(action==='create'?'Material cadastrado.':'Movimentação registrada.');if(action==='create')open(r.id);setRefresh(v=>v+1);retry.current=null}catch(x){setError(x instanceof Error?x.message:'Falha ao salvar.')}finally{setSaving(false)}}
- const item=detail?.item,low=item?item.balance<=item.minimum:false,timeline:TimelineEntry[]=detail?.movements.map(m=>({id:m.id,title:m.delta>0?'Entrada de estoque':'Saída de estoque',detail:(m.delta>0?'+':'')+qty(m.delta)+' '+(item?.unit||'')+' · '+m.reference+(m.orderTitle?' · '+m.orderTitle:''),timestamp:date.format(new Date(m.createdAt)),tone:m.delta>0?'positive':'neutral'}))||[];
- return <div className="inventory-command-center">{notice&&<div className="notice"><Check size={15}/>{notice}<button onClick={()=>setNotice('')}><X size={14}/></button></div>}{error&&<div className="inventory-error">{error}<button className="secondary" onClick={()=>{setError('');setRefresh(v=>v+1)}}>Tentar novamente</button></div>}
- <header className="inventory-hero"><div><span className="eyebrow">GESTÃO INTEGRADA · MATERIAIS</span><h1>Centro de controle de estoque</h1><p>Disponibilidade, exceções e movimentações em um único contexto operacional.</p></div><button className="primary" onClick={()=>setAction('create')}><Plus size={16}/> Novo material</button></header>
- <div className="inventory-strip"><button onClick={()=>setQuery('')}><span>Materiais monitorados</span><strong>{list?.summary.total??'—'}</strong><small>catálogo operacional</small></button><button onClick={()=>setQuery('__low__')}><span>Exigem intervenção</span><strong>{list?.summary.low??'—'}</strong><small><AlertTriangle size={12}/> saldo no mínimo ou abaixo</small></button><div><span>Integração</span><strong><Activity size={16}/> Compras → estoque</strong><small>movimentos preservam origem e auditoria</small></div></div>
- <div className="inventory-layout"><aside className="inventory-queue"><div className="queue-heading"><div><span className="eyebrow">FILA OPERACIONAL</span><h2>Materiais</h2></div><span className="queue-count">{list?.summary.total??'—'}</span></div><label className="queue-search"><Search size={15}/><input aria-label="Buscar material" placeholder="Buscar SKU ou material" value={query==='__low__'?'':query} onChange={e=>setQuery(e.target.value)}/></label><div className="inventory-queue-tabs"><button className={query!=='__low__'?'active':''} onClick={()=>setQuery('')}>Todos</button><button className={query==='__low__'?'active':''} onClick={()=>setQuery('__low__')}>Intervenção</button></div><div className="queue-list">{list?.items.filter(x=>query==='__low__'?x.balance<=x.minimum:true).map(row=><button className={'queue-item '+(row.id===selected?'selected':'')} key={row.id} onClick={()=>open(row.id)}><span className="queue-item-top"><strong>{row.sku}</strong><em className={row.balance<=row.minimum?'warning':''}>{row.balance<=row.minimum?'Intervir':'Saudável'}</em></span><span>{row.name}</span><small>Saldo {qty(row.balance)} {row.unit} · mínimo {qty(row.minimum)}</small><ChevronRight size={14}/></button>)}{list&&!list.items.length&&<div className="queue-empty"><Package size={20}/><p>Nenhum material encontrado.</p></div>}</div></aside>
- <main className="inventory-object">{item?<><div className="object-head"><div><span className="eyebrow">MATERIAL · {item.sku}</span><h2>{item.name}</h2><p>Unidade de controle: {item.unit} · disponibilidade calculada pelos movimentos persistidos</p></div><div className="object-actions"><button className="secondary" onClick={()=>setAction('out')} disabled={item.balance<=0}><ArrowUpFromLine size={15}/> Registrar saída</button><button className="primary" onClick={()=>setAction('in')}><ArrowDownToLine size={15}/> Registrar entrada</button></div></div><div className="inventory-health"><div><span>Disponível agora</span><strong>{qty(item.balance)} <small>{item.unit}</small></strong></div><div><span>Estoque mínimo</span><strong>{qty(item.minimum)} <small>{item.unit}</small></strong></div><div><span>Saúde do saldo</span><strong className={low?'danger':'positive'}>{low?'Intervenção':'Saudável'}</strong></div><div className="health-bar"><i style={{width:Math.min(100,item.minimum?Math.max(0,item.balance/item.minimum*50):100)+'%'}}/></div></div><nav className="object-tabs"><button className="active">Visão geral</button><button>Movimentos</button><button>Compras relacionadas</button></nav><section className="inventory-object-section"><div className="section-heading"><div><span className="eyebrow">HISTÓRICO OPERACIONAL</span><h3>Movimentações recentes</h3></div><span>{detail?.movements.length||0} registros</span></div><ActivityTimeline entries={timeline} emptyLabel="Nenhuma movimentação registrada para este material." /></section></>:<div className="object-empty"><Package size={30}/><h2>Selecione um material</h2><p>A fila prioriza itens que exigem intervenção. O objeto selecionado mostra saldo, saúde e histórico real.</p></div>}</main>
- <aside className="inventory-inspector"><section><div className="context-title"><Activity size={16}/><h3>Inspector do material</h3></div>{item?<dl className="inventory-facts"><div><dt>Código</dt><dd>{item.sku}</dd></div><div><dt>Unidade</dt><dd>{item.unit}</dd></div><div><dt>Saldo disponível</dt><dd>{qty(item.balance)} {item.unit}</dd></div><div><dt>Mínimo configurado</dt><dd>{qty(item.minimum)} {item.unit}</dd></div></dl>:<p className="enterprise-muted">Selecione um material para abrir seu contexto.</p>}</section><section><div className="context-title"><ArrowDownToLine size={16}/><h3>Origem e continuidade</h3></div><div className="process-rail"><div className="rail-step done"><span>01</span><div><strong>Pedido de compra</strong><small>Origem preservada quando vinculada</small></div></div><div className="rail-step"><span>02</span><div><strong>Recebimento</strong><small>Entradas registradas no documento</small></div></div><div className="rail-step done"><span>03</span><div><strong>Movimento</strong><small>{detail?.movements.length||0} fatos persistidos</small></div></div></div></section><section className={detail?.ledger?.reconciliation.status==='exception'?'inspector-warning':'inspector-ok'}>{detail?.ledger?.reconciliation.status==='exception'?<><AlertTriangle size={15}/><div><strong>Exceção de reconciliação</strong><p>{detail.ledger.reconciliation.message}</p></div></>:<><Check size={15}/><div><strong>{low?'Requer reposição':'Ledger conciliado'}</strong><p>{low?'O saldo está no mínimo ou abaixo dele.':'Movimentos e saldo persistido estão alinhados.'}</p></div></>}</section></aside></div>
- <dialog ref={dialog} className="inventory-dialog modal" onCancel={e=>{e.preventDefault();if(!saving)setAction(undefined)}}>{action&&<><header><div><span className="eyebrow">TRANSAÇÃO DE ESTOQUE</span><h2>{action==='create'?'Cadastrar material':action==='in'?'Registrar entrada':'Registrar saída'}</h2></div><button className="icon-button" onClick={()=>setAction(undefined)}><X size={16}/></button></header><form onSubmit={submit}>{action==='create'?<><label>Código<input name="sku" required pattern="[A-Za-z0-9._\\-]+"/></label><label>Nome<input name="name" required/></label><div className="form-row"><label>Unidade<select name="unit">{units.map(u=><option key={u}>{u}</option>)}</select></label><label>Estoque mínimo<input name="minimum" defaultValue="0" required/></label></div></>:<><p>Material <strong>{item?.sku} · {item?.name}</strong></p><label>Quantidade<input name="quantity" required inputMode="decimal"/></label><label>Referência<input name="reference" required placeholder="Ex.: NF, ajuste ou OS"/></label>{action==='out'&&<label>OS em execução<select name="orderId"><option value="">Sem vínculo com OS</option>{detail?.orders.map(o=><option key={o.id} value={o.id}>{o.title}</option>)}</select></label>}</>}<footer><button type="button" className="secondary" onClick={()=>setAction(undefined)}>Cancelar</button><button className="primary" disabled={saving}>{saving?'Salvando…':'Confirmar transação'}</button></footer></form></>}</dialog></div>
+import {
+  ActivityTimeline,
+  type TimelineEntry,
+} from "./components/enterprise/ActivityTimeline";
+import {
+  EnterprisePageHeader,
+  BusinessStatus,
+} from "./components/enterprise/EnterprisePrimitives";
+type Item = {
+  id: string;
+  sku: string;
+  name: string;
+  unit: string;
+  minimum: number;
+  balance: number;
+};
+type Inventory = {
+  items: Item[];
+  hasMore: boolean;
+  summary: { total: number; low: number };
+};
+type Detail = {
+  item: Item;
+  movements: {
+    id: string;
+    delta: number;
+    reference: string;
+    orderTitle: string | null;
+    createdAt: string;
+  }[];
+  orders: { id: string; title: string }[];
+  ledger?: {
+    closingBalance: number;
+    reconciliation: {
+      status: "reconciled" | "exception";
+      delta: number;
+      message: string;
+    };
+  };
+};
+type Action = "create" | "in" | "out";
+const fmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 3 }),
+  date = new Intl.DateTimeFormat("pt-BR", {
+    dateStyle: "short",
+    timeStyle: "short",
+    timeZone: "America/Porto_Velho",
+  }),
+  units = ["un", "kg", "m", "m²", "m³", "L"];
+function qty(v: number) {
+  return fmt.format(v / 1000);
 }
-export default function InventoryWorkspace(props:{initialMaterialId?:string}){return <InventoryWorkspaceView {...props}/>;}
+async function api<T>(query: URLSearchParams, options?: RequestInit) {
+  const r = await fetch("/api/inventory?" + query, options),
+    d = (await r.json()) as T & { error?: string };
+  if (!r.ok) throw new Error(d.error || "Estoque indisponível.");
+  return d;
+}
+function InventoryWorkspaceView({
+  initialMaterialId,
+}: {
+  initialMaterialId?: string;
+}) {
+  const [query, setQuery] = useState(""),
+    [list, setList] = useState<Inventory>(),
+    [selected, setSelected] = useState(""),
+    [detail, setDetail] = useState<Detail>(),
+    [refresh, setRefresh] = useState(0),
+    [action, setAction] = useState<Action>(),
+    [saving, setSaving] = useState(false),
+    [error, setError] = useState(""),
+    [notice, setNotice] = useState("");
+  const dialog = useRef<HTMLDialogElement>(null),
+    retry = useRef<{ payload: string; id: string } | null>(null);
+  useEffect(() => {
+    if (initialMaterialId) setSelected(initialMaterialId);
+  }, [initialMaterialId]);
+  useEffect(() => {
+    const c = new AbortController();
+    const q = selected
+      ? new URLSearchParams({ item: selected })
+      : new URLSearchParams({ q: query === "__low__" ? "" : query, page: "1" });
+    api<Detail | Inventory>(q, { signal: c.signal })
+      .then((d) => {
+        if (selected) setDetail(d as Detail);
+        else setList(d as Inventory);
+      })
+      .catch((e) => {
+        if (!c.signal.aborted) setError(e.message);
+      });
+    return () => c.abort();
+  }, [query, selected, refresh]);
+  useEffect(() => {
+    if (action && !dialog.current?.open) dialog.current?.showModal();
+    if (!action && dialog.current?.open) dialog.current.close();
+  }, [action]);
+  function open(id: string) {
+    setSelected(id);
+    setDetail(undefined);
+    setError("");
+  }
+  async function submit(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!action || saving) return;
+    const f = Object.fromEntries(new FormData(e.currentTarget));
+    const data =
+      action === "create"
+        ? { type: "create", ...f }
+        : {
+            type: "move",
+            itemId: selected,
+            direction: action,
+            quantity: f.quantity,
+            reference: f.reference,
+            orderId: f.orderId || null,
+          };
+    const payload = JSON.stringify(data);
+    if (retry.current?.payload !== payload)
+      retry.current = { payload, id: crypto.randomUUID() };
+    setSaving(true);
+    try {
+      const r = await api<{ id: string }>(new URLSearchParams(), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ...data, id: retry.current.id }),
+      });
+      setAction(undefined);
+      setNotice(
+        action === "create"
+          ? "Material cadastrado."
+          : "Movimentação registrada.",
+      );
+      if (action === "create") open(r.id);
+      setRefresh((v) => v + 1);
+      retry.current = null;
+    } catch (x) {
+      setError(x instanceof Error ? x.message : "Falha ao salvar.");
+    } finally {
+      setSaving(false);
+    }
+  }
+  const item = detail?.item,
+    low = item ? item.balance <= item.minimum : false,
+    timeline: TimelineEntry[] =
+      detail?.movements.map((m) => ({
+        id: m.id,
+        title: m.delta > 0 ? "Entrada de estoque" : "Saída de estoque",
+        detail:
+          (m.delta > 0 ? "+" : "") +
+          qty(m.delta) +
+          " " +
+          (item?.unit || "") +
+          " · " +
+          m.reference +
+          (m.orderTitle ? " · " + m.orderTitle : ""),
+        timestamp: date.format(new Date(m.createdAt)),
+        tone: m.delta > 0 ? "positive" : "neutral",
+      })) || [];
+  return (
+    <div className="inventory-command-center">
+      {notice && (
+        <div className="notice">
+          <Check size={15} />
+          {notice}
+          <button onClick={() => setNotice("")}>
+            <X size={14} />
+          </button>
+        </div>
+      )}
+      {error && (
+        <div className="inventory-error">
+          {error}
+          <button
+            className="secondary"
+            onClick={() => {
+              setError("");
+              setRefresh((v) => v + 1);
+            }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      )}
+      <EnterprisePageHeader breadcrumb="Gestão econômica / Estoque" eyebrow="WORKLIST · MATERIAIS" title="Centro de controle de estoque" description="Disponibilidade, exceções e movimentações em um único contexto operacional." actions={<button className="primary" onClick={() => setAction('create')}><Plus size={16} />Novo material</button>} />
+      <header className="inventory-hero">
+        <div>
+          <span className="eyebrow">GESTÃO INTEGRADA · MATERIAIS</span>
+          <h1>Centro de controle de estoque</h1>
+          <p>
+            Disponibilidade, exceções e movimentações em um único contexto
+            operacional.
+          </p>
+        </div>
+        <button className="primary" onClick={() => setAction("create")}>
+          <Plus size={16} /> Novo material
+        </button>
+      </header>
+      <div className="inventory-strip">
+        <button onClick={() => setQuery("")}>
+          <span>Materiais monitorados</span>
+          <strong>{list?.summary.total ?? "—"}</strong>
+          <small>catálogo operacional</small>
+        </button>
+        <button onClick={() => setQuery("__low__")}>
+          <span>Exigem intervenção</span>
+          <strong>{list?.summary.low ?? "—"}</strong>
+          <small>
+            <AlertTriangle size={12} /> saldo no mínimo ou abaixo
+          </small>
+        </button>
+        <div>
+          <span>Integração</span>
+          <strong>
+            <Activity size={16} /> Compras → estoque
+          </strong>
+          <small>movimentos preservam origem e auditoria</small>
+        </div>
+      </div>
+      <div className="inventory-layout">
+        <aside className="inventory-queue">
+          <div className="queue-heading">
+            <div>
+              <span className="eyebrow">FILA OPERACIONAL</span>
+              <h2>Materiais</h2>
+            </div>
+            <span className="queue-count">{list?.summary.total ?? "—"}</span>
+          </div>
+          <label className="queue-search">
+            <Search size={15} />
+            <input
+              aria-label="Buscar material"
+              placeholder="Buscar SKU ou material"
+              value={query === "__low__" ? "" : query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+          </label>
+          <div className="inventory-queue-tabs">
+            <button
+              className={query !== "__low__" ? "active" : ""}
+              onClick={() => setQuery("")}
+            >
+              Todos
+            </button>
+            <button
+              className={query === "__low__" ? "active" : ""}
+              onClick={() => setQuery("__low__")}
+            >
+              Intervenção
+            </button>
+          </div>
+          <div className="queue-list">
+            {list?.items
+              .filter((x) =>
+                query === "__low__" ? x.balance <= x.minimum : true,
+              )
+              .map((row) => (
+                <button
+                  className={
+                    "queue-item " + (row.id === selected ? "selected" : "")
+                  }
+                  key={row.id}
+                  onClick={() => open(row.id)}
+                >
+                  <span className="queue-item-top">
+                    <strong>{row.sku}</strong>
+                    <em className={row.balance <= row.minimum ? "warning" : ""}>
+                      {row.balance <= row.minimum ? "Intervir" : "Saudável"}
+                    </em>
+                  </span>
+                  <span>{row.name}</span>
+                  <small>
+                    Saldo {qty(row.balance)} {row.unit} · mínimo{" "}
+                    {qty(row.minimum)}
+                  </small>
+                  <ChevronRight size={14} />
+                </button>
+              ))}
+            {list && !list.items.length && (
+              <div className="queue-empty">
+                <Package size={20} />
+                <p>Nenhum material encontrado.</p>
+              </div>
+            )}
+          </div>
+        </aside>
+        <main className="inventory-object">
+          {item ? (
+            <>
+              <div className="object-head">
+                <div>
+                  <span className="eyebrow">MATERIAL · {item.sku}</span>
+                  <h2>{item.name}</h2>
+                  <p>
+                    Unidade de controle: {item.unit} · disponibilidade calculada
+                    pelos movimentos persistidos
+                  </p>
+                </div>
+                <div className="object-actions">
+                  <button
+                    className="secondary"
+                    onClick={() => setAction("out")}
+                    disabled={item.balance <= 0}
+                  >
+                    <ArrowUpFromLine size={15} /> Registrar saída
+                  </button>
+                  <button className="primary" onClick={() => setAction("in")}>
+                    <ArrowDownToLine size={15} /> Registrar entrada
+                  </button>
+                </div>
+              </div>
+              <div className="inventory-health">
+                <div>
+                  <span>Disponível agora</span>
+                  <strong>
+                    {qty(item.balance)} <small>{item.unit}</small>
+                  </strong>
+                </div>
+                <div>
+                  <span>Estoque mínimo</span>
+                  <strong>
+                    {qty(item.minimum)} <small>{item.unit}</small>
+                  </strong>
+                </div>
+                <div>
+                  <span>Saúde do saldo</span>
+                  <BusinessStatus status={low ? "warning" : "approved"} label={low ? "Intervenção" : "Saudável"} />
+                </div>
+                <div className="health-bar">
+                  <i
+                    style={{
+                      width:
+                        Math.min(
+                          100,
+                          item.minimum
+                            ? Math.max(0, (item.balance / item.minimum) * 50)
+                            : 100,
+                        ) + "%",
+                    }}
+                  />
+                </div>
+              </div>
+              <nav className="object-tabs">
+                <button className="active">Visão geral</button>
+                <button>Movimentos</button>
+                <button>Compras relacionadas</button>
+              </nav>
+              <section className="inventory-object-section">
+                <div className="section-heading">
+                  <div>
+                    <span className="eyebrow">HISTÓRICO OPERACIONAL</span>
+                    <h3>Movimentações recentes</h3>
+                  </div>
+                  <span>{detail?.movements.length || 0} registros</span>
+                </div>
+                <ActivityTimeline
+                  entries={timeline}
+                  emptyLabel="Nenhuma movimentação registrada para este material."
+                />
+              </section>
+            </>
+          ) : (
+            <div className="object-empty">
+              <Package size={30} />
+              <h2>Selecione um material</h2>
+              <p>
+                A fila prioriza itens que exigem intervenção. O objeto
+                selecionado mostra saldo, saúde e histórico real.
+              </p>
+            </div>
+          )}
+        </main>
+        <aside className="inventory-inspector">
+          <section>
+            <div className="context-title">
+              <Activity size={16} />
+              <h3>Inspector do material</h3>
+            </div>
+            {item ? (
+              <dl className="inventory-facts">
+                <div>
+                  <dt>Código</dt>
+                  <dd>{item.sku}</dd>
+                </div>
+                <div>
+                  <dt>Unidade</dt>
+                  <dd>{item.unit}</dd>
+                </div>
+                <div>
+                  <dt>Saldo disponível</dt>
+                  <dd>
+                    {qty(item.balance)} {item.unit}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Mínimo configurado</dt>
+                  <dd>
+                    {qty(item.minimum)} {item.unit}
+                  </dd>
+                </div>
+              </dl>
+            ) : (
+              <p className="enterprise-muted">
+                Selecione um material para abrir seu contexto.
+              </p>
+            )}
+          </section>
+          <section>
+            <div className="context-title">
+              <ArrowDownToLine size={16} />
+              <h3>Origem e continuidade</h3>
+            </div>
+            <div className="process-rail">
+              <div className="rail-step done">
+                <span>01</span>
+                <div>
+                  <strong>Pedido de compra</strong>
+                  <small>Origem preservada quando vinculada</small>
+                </div>
+              </div>
+              <div className="rail-step">
+                <span>02</span>
+                <div>
+                  <strong>Recebimento</strong>
+                  <small>Entradas registradas no documento</small>
+                </div>
+              </div>
+              <div className="rail-step done">
+                <span>03</span>
+                <div>
+                  <strong>Movimento</strong>
+                  <small>
+                    {detail?.movements.length || 0} fatos persistidos
+                  </small>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section
+            className={
+              detail?.ledger?.reconciliation.status === "exception"
+                ? "inspector-warning"
+                : "inspector-ok"
+            }
+          >
+            {detail?.ledger?.reconciliation.status === "exception" ? (
+              <>
+                <AlertTriangle size={15} />
+                <div>
+                  <strong>Exceção de reconciliação</strong>
+                  <p>{detail.ledger.reconciliation.message}</p>
+                </div>
+              </>
+            ) : (
+              <>
+                <Check size={15} />
+                <div>
+                  <strong>
+                    {low ? "Requer reposição" : "Ledger conciliado"}
+                  </strong>
+                  <p>
+                    {low
+                      ? "O saldo está no mínimo ou abaixo dele."
+                      : "Movimentos e saldo persistido estão alinhados."}
+                  </p>
+                </div>
+              </>
+            )}
+          </section>
+        </aside>
+      </div>
+      <dialog
+        ref={dialog}
+        className="inventory-dialog modal"
+        onCancel={(e) => {
+          e.preventDefault();
+          if (!saving) setAction(undefined);
+        }}
+      >
+        {action && (
+          <>
+            <header>
+              <div>
+                <span className="eyebrow">TRANSAÇÃO DE ESTOQUE</span>
+                <h2>
+                  {action === "create"
+                    ? "Cadastrar material"
+                    : action === "in"
+                      ? "Registrar entrada"
+                      : "Registrar saída"}
+                </h2>
+              </div>
+              <button
+                className="icon-button"
+                onClick={() => setAction(undefined)}
+              >
+                <X size={16} />
+              </button>
+            </header>
+            <form onSubmit={submit}>
+              {action === "create" ? (
+                <>
+                  <label>
+                    Código
+                    <input name="sku" required pattern="[A-Za-z0-9._\\-]+" />
+                  </label>
+                  <label>
+                    Nome
+                    <input name="name" required />
+                  </label>
+                  <div className="form-row">
+                    <label>
+                      Unidade
+                      <select name="unit">
+                        {units.map((u) => (
+                          <option key={u}>{u}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Estoque mínimo
+                      <input name="minimum" defaultValue="0" required />
+                    </label>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p>
+                    Material{" "}
+                    <strong>
+                      {item?.sku} · {item?.name}
+                    </strong>
+                  </p>
+                  <label>
+                    Quantidade
+                    <input name="quantity" required inputMode="decimal" />
+                  </label>
+                  <label>
+                    Referência
+                    <input
+                      name="reference"
+                      required
+                      placeholder="Ex.: NF, ajuste ou OS"
+                    />
+                  </label>
+                  {action === "out" && (
+                    <label>
+                      OS em execução
+                      <select name="orderId">
+                        <option value="">Sem vínculo com OS</option>
+                        {detail?.orders.map((o) => (
+                          <option key={o.id} value={o.id}>
+                            {o.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
+                </>
+              )}
+              <footer>
+                <button
+                  type="button"
+                  className="secondary"
+                  onClick={() => setAction(undefined)}
+                >
+                  Cancelar
+                </button>
+                <button className="primary" disabled={saving}>
+                  {saving ? "Salvando…" : "Confirmar transação"}
+                </button>
+              </footer>
+            </form>
+          </>
+        )}
+      </dialog>
+    </div>
+  );
+}
+export default function InventoryWorkspace(props: {
+  initialMaterialId?: string;
+}) {
+  return <InventoryWorkspaceView {...props} />;
+}

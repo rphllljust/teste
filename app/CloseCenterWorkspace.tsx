@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 
 type Close = { id: string; periodStart: string; periodEnd: string; status: string; closedAt: string; reference: string };
 const date = (value: string) => new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(new Date(`${value}T12:00:00Z`));
@@ -40,7 +41,7 @@ export default function CloseCenterWorkspace() {
     finally { setSaving(false); }
   }
 
-  return <section className="worklist" aria-busy={loading}>
+  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="CONTABILIDADE / FECHAMENTO" title="Fechamento financeiro" description="Períodos, auditoria e bloqueios transacionais persistidos." />
     <div className="list-title"><div><h2>Fechamento financeiro</h2><p>Períodos fechados com auditoria. Baixas, pagamentos, transferências e importações retroativas são bloqueados.</p></div><button className="primary" onClick={() => { setKey(crypto.randomUUID()); setRunning(true); setNotice(''); }}>Fechar período</button></div>
     <div className="linked-info">O fechamento é idempotente, por proprietário e não permite sobreposição de períodos.</div>
     {error ? <div className="empty" role="alert">{error}<button className="secondary" onClick={() => void load()}>Tentar novamente</button></div> : loading ? <div className="empty" role="status">Consultando períodos fechados…</div> : items.length ? <div className="table-wrap"><table><thead><tr><th>Período</th><th>Referência</th><th>Fechado em</th><th>Status</th></tr></thead><tbody>{items.map(item => <tr key={item.id}><td>{date(item.periodStart)} a {date(item.periodEnd)}</td><td>{item.reference || '—'}</td><td>{timestamp(item.closedAt)}</td><td><span className="badge">{item.status === 'closed' ? 'Fechado' : item.status}</span></td></tr>)}</tbody></table></div> : <div className="empty"><h3>Nenhum período fechado</h3><p>Feche o primeiro período depois de conferir os lançamentos e a conciliação.</p></div>}
