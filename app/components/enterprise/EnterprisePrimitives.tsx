@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { Component, useEffect, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -17,7 +17,21 @@ export function BusinessObjectHeader({ type, reference, title, status, statusLab
 export const EnterpriseObjectHeader = BusinessObjectHeader;
 
 export type EnterpriseObjectPageProps = HTMLAttributes<HTMLElement> & { title:string; header:ReactNode; sections?:Array<{id:string;label:string}>; children:ReactNode };
-export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) { return <main className={`enterprise-object-page${className ? ` ${className}` : ''}`} aria-label={title} {...props}>{header}{sections.length > 0 && <nav className="enterprise-object-tabs" aria-label="Seções do objeto">{sections.map(section => <a href={`#${section.id}`} key={section.id}>{section.label}</a>)}</nav>}<div className="enterprise-object-page-content">{children}</div></main>; }
+export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) {
+  const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '');
+  useEffect(() => {
+    if (!sections.length) return;
+    const targets = sections.map(section => document.getElementById(section.id)).filter(Boolean) as HTMLElement[];
+    if (!targets.length) return;
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (visible) setActiveSection(visible.target.id);
+    }, { rootMargin: '-18% 0px -68% 0px', threshold: [0, .25, .5, 1] });
+    targets.forEach(target => observer.observe(target));
+    return () => observer.disconnect();
+  }, [sections]);
+  return <main className={`enterprise-object-page${className ? ` ${className}` : ''}`} aria-label={title} {...props}>{header}{sections.length > 0 && <nav className="enterprise-object-tabs" aria-label="Seções do objeto">{sections.map(section => <a href={`#${section.id}`} key={section.id} aria-current={activeSection === section.id ? 'true' : undefined}>{section.label}</a>)}</nav>}<div className="enterprise-object-page-content">{children}</div></main>;
+}
 
 export function EnterpriseFilterBar({ children, onReset, label='Filtros', resultCount }: { children:ReactNode; onReset?:()=>void; label?:string; resultCount?:number }) { const reset = (event:FormEvent<HTMLFormElement>) => { event.preventDefault(); onReset?.(); }; return <form className="enterprise-filter-bar" aria-label={label} onSubmit={reset}><div className="enterprise-filter-fields">{children}</div>{typeof resultCount === 'number' && <span className="enterprise-filter-count" aria-live="polite">{resultCount} resultado{resultCount === 1 ? '' : 's'}</span>}{onReset && <button type="submit" className="text-button">Limpar filtros</button>}</form>; }
 
