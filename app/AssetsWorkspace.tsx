@@ -352,7 +352,7 @@ export default function AssetsWorkspace() {
             <BusinessStatus status={context.status === "active" ? "approved" : context.status === "maintenance" ? "warning" : "blocked"} label={statusLabel(context.status)} />
             <h2>{context.name}</h2>
             <p className="muted">Código {context.code}</p>
-            <nav className="object-anchors" aria-label="Seções do ativo"><a href="#asset-summary">Resumo</a><a href="#asset-maintenance">Manutenção</a><a href="#asset-history">Histórico</a></nav><nav className="tabs" aria-label="Seções do ativo">
+            <nav className="tabs" aria-label="Seções do ativo">
               {(
                 [
                   ["summary", "Resumo"],
@@ -369,7 +369,7 @@ export default function AssetsWorkspace() {
                 </button>
               ))}
             </nav>
-            {tab === "summary" && (<section id="asset-summary">
+            {tab === "summary" && (
               <dl>
                 <div>
                   <dt>Localização</dt>
@@ -385,7 +385,7 @@ export default function AssetsWorkspace() {
                 </div>
               </dl>
             )}
-            </section>}{tab === "maintenance" && (<section id="asset-maintenance">
+            {tab === "maintenance" && (
               <section className="drawer-section">
                 <h3>Operação de manutenção</h3>
                 <p>
@@ -402,7 +402,7 @@ export default function AssetsWorkspace() {
                 </button>
               </section>
             )}
-            </section>}{tab === "history" && (<section id="asset-history">
+            {tab === "history" && (
               <section className="drawer-section">
                 <h3>Histórico auditável</h3>
                 {context.history.length ? (
