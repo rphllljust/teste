@@ -14,7 +14,7 @@ function ServiceOperationsWorkspaceView({onCreate,onOpen}:{onCreate:()=>void;onO
  const load=useCallback(async()=>{setLoading(true);setError('');try{const r=await fetch('/api/orders?'+new URLSearchParams({q:query,page:'1',pageSize:'50',sort,view,category}));const d=await r.json() as {orders?:Order[];error?:string};if(!r.ok)throw new Error(d.error||'Ordens indisponíveis.');setOrders(d.orders??[]);setSelectedId(current=>current&&d.orders?.some(o=>o.id===current)?current:(d.orders?.[0]?.id??''));}catch(e){setError(e instanceof Error?e.message:'Ordens indisponíveis.');}finally{setLoading(false);}},[query,view,category,sort]);
  useEffect(()=>{const t=setTimeout(()=>void load(),160);return()=>clearTimeout(t);},[load]);
  const selected=useMemo(()=>orders.find(o=>o.id===selectedId)??null,[orders,selectedId]);
- const groups=useMemo(()=>({priority:orders.filter(o=>['IN_PROGRESS','PREPARED'].includes(o.status)),attention:orders.filter(o=>['DRAFT'].includes(o.status)),closed:orders.filter(o=>['COMPLETED','CANCELLED'].includes(o.status))}),[orders]);;
+ const groups=useMemo(()=>({priority:orders.filter(o=>['IN_PROGRESS','PREPARED'].includes(o.status)),attention:orders.filter(o=>['DRAFT','PREPARED'].includes(o.status)),closed:orders.filter(o=>['COMPLETED','CANCELLED'].includes(o.status))}),[orders]);
  const upcoming=useMemo(()=>orders.filter(o=>o.due_date&&!['COMPLETED','CANCELLED'].includes(o.status)).sort((a,b)=>new Date(a.due_date!).getTime()-new Date(b.due_date!).getTime()).slice(0,5),[orders]);
  const formatDueDate=(value:string)=>new Intl.DateTimeFormat('pt-BR',{day:'2-digit',month:'short'}).format(new Date(value));
  return <section className="service-operations" aria-label="Centro de operações de serviços">

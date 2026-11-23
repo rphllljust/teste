@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { ArrowRight, Check, ClipboardCheck, Package, RefreshCw, ShoppingCart, TriangleAlert, X } from 'lucide-react';
+import { ArrowRight, Check, ChevronRight, ClipboardCheck, Package, RefreshCw, Search, ShoppingCart, TriangleAlert, X } from 'lucide-react';
 import { BusinessStatus } from './components/enterprise/EnterprisePrimitives';
 
 type Recommendation = {
@@ -27,6 +27,7 @@ export default function MRPWorkspace({
  const [runs, setRuns] = useState<Run[]>([]);
  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
  const [converting, setConverting] = useState<Recommendation | null>(null);
+ const [query, setQuery] = useState('');
  const [loading, setLoading] = useState(true);
  const [busy, setBusy] = useState(false);
  const [error, setError] = useState('');
@@ -111,7 +112,9 @@ export default function MRPWorkspace({
  }
 
  const pending = items.filter(item => item.approvalStatus === 'draft').length;
+ const visibleItems = items.filter(item => !query || `${item.sku} ${item.name}`.toLocaleLowerCase().includes(query.toLocaleLowerCase()));
  return <section className="mrp-workspace" aria-label="Planejamento de materiais">
+  <nav className="enterprise-breadcrumb" aria-label="Navegação estrutural"><span>Suprimentos</span><ChevronRight size={13}/><strong>Planejamento de materiais</strong></nav>
   <header className="mrp-header">
    <div><span className="eyebrow">GESTÃO INTEGRADA · SUPRIMENTOS</span>
     <h2>Planejamento de materiais</h2>
@@ -126,11 +129,12 @@ export default function MRPWorkspace({
   </div>
   {notice && <div className="notice"><Check size={15}/><span>{notice}</span><button aria-label="Fechar aviso" onClick={() => setNotice('')}><X size={14}/></button></div>}
   {error && <div className="form-error" role="alert"><TriangleAlert size={16}/> {error}</div>}
+  {!loading && items.length > 0 && <div className="mrp-filter-bar"><label><Search size={15}/><span className="sr-only">Buscar material</span><input value={query} onChange={event => setQuery(event.target.value)} placeholder="Buscar material por código ou descrição" /></label><span>{visibleItems.length} de {items.length} recomendações</span></div>}
   {loading ? <div className="mrp-empty">Consultando planejamento persistido…</div>
    : !items.length ? <div className="mrp-empty"><Package size={22}/><span>Não há recomendações. Execute o planejamento para avaliar o estoque.</span></div>
    : <div className="mrp-list">
      <div className="mrp-list-head"><span>Material</span><span>Disponível</span><span>Mínimo</span><span>Reposição</span><span>Decisão e ações</span></div>
-     {items.map(rec => <div className="mrp-list-row" key={rec.recommendationId}>
+     {visibleItems.map(rec => <div className="mrp-list-row" key={rec.recommendationId}>
       <div className="mrp-material-name"><button className="text-button" onClick={() => onMaterial(rec.materialId)}>
        <Package size={16}/><span><strong>{rec.sku}</strong><small>{rec.name}</small></span></button></div>
       <span>{quantity(rec.available)} {rec.unit}</span>
@@ -146,7 +150,8 @@ export default function MRPWorkspace({
        {rec.approvalStatus === 'converted' && rec.purchaseOrderId && <button className="text-button" onClick={() => onPurchaseOrder?.(rec.purchaseOrderId!)}>Abrir compra <ArrowRight size={14}/></button>}
       </div>
      </div>)}
-    </div>}
+     </div>}
+  {!loading && items.length > 0 && !visibleItems.length && <div className="mrp-empty"><Package size={22}/><span>Nenhuma recomendação corresponde ao filtro atual.</span></div>}
   {converting && <form className="mrp-conversion" onSubmit={e => void convert(e)}>
    <div><span className="eyebrow">CONVERSÃO AUTORIZADA · COMPRAS</span>
     <h3>Novo pedido: {converting.sku}</h3>

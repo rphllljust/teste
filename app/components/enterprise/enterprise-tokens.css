@@ -1,0 +1,35 @@
+:root {
+  --cisne-color-canvas: #f7f9fc;
+  --cisne-color-surface: #ffffff;
+  --cisne-color-text: #172334;
+  --cisne-color-text-secondary: #526175;
+  --cisne-color-navigation: #14243a;
+  --cisne-color-primary: #2563eb;
+  --cisne-color-border: #dce3ec;
+  --cisne-color-selected: #eaf2ff;
+  --cisne-color-success: #167347;
+  --cisne-color-warning: #a66305;
+  --cisne-color-danger: #b42318;
+  --cisne-color-info: #2455a4;
+  --cisne-space-1: 4px;
+  --cisne-space-2: 8px;
+  --cisne-space-3: 12px;
+  --cisne-space-4: 16px;
+  --cisne-space-6: 24px;
+  --cisne-space-8: 32px;
+  --cisne-space-12: 48px;
+  --cisne-radius-sm: 4px;
+  --cisne-radius-md: 6px;
+  --cisne-shadow-focus: 0 0 0 3px rgb(37 99 235 / 28%);
+  --cisne-font-family: "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --cisne-control-height: 40px;
+  --cisne-table-row-height: 44px;
+}
+
+.cisne-enterprise {
+  color: var(--cisne-color-text);
+  font-family: var(--cisne-font-family);
+}
+
+.cisne-enterprise *, .cisne-enterprise *::before, .cisne-enterprise *::after { box-sizing: border-box; }
+.cisne-enterprise :focus-visible { outline: 2px solid var(--cisne-color-primary); outline-offset: 2px; box-shadow: var(--cisne-shadow-focus); }
