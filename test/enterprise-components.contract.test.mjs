@@ -3,7 +3,7 @@ import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 const source = await readFile(new URL('../app/components/enterprise/EnterprisePrimitives.tsx', import.meta.url), 'utf8');
-const styles = await readFile(new URL('../app/globals.css', import.meta.url), 'utf8');
+const styles = (await readFile(new URL('../app/globals.css', import.meta.url), 'utf8')) + (await readFile(new URL('../app/enterprise-floorplans.css', import.meta.url), 'utf8'));
 
 test('enterprise primitives expose the governance component contracts', () => {
   for (const name of [

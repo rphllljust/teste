@@ -28,20 +28,15 @@ import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
-import type { LucideIcon } from "lucide-react";
+import EnterpriseWorkspaceBar from "./EnterpriseWorkspaceBar";
+import { EnterpriseErrorBoundary } from "./components/enterprise/EnterprisePrimitives";
+import { enterpriseModuleDescription as moduleDescription, enterpriseModuleGroups as modules, enterpriseSpecializedWorkspaces as specializedWorkspace } from "./module-registry";
 import { statusNames, moneyScaled } from "../lib/domain/orders";
 import { executionQuantity } from "../lib/domain/execution";
 import {
-  Activity,
-  LayoutDashboard,
   ClipboardList,
-  Users,
-  Truck,
-  Wallet,
   Receipt,
-  Landmark,
   BookOpen,
-  Package,
   Search,
   Plus,
   ChevronRight,
@@ -55,7 +50,6 @@ import {
   PanelLeft,
   Command,
   Layers,
-  HardHat,
   CalendarDays,
   Building2,
   Filter,
@@ -92,45 +86,6 @@ type Order = {
   due_date: string | null;
   created_at: string;
 };
-const modules: { group: string; items: [string, LucideIcon][] }[] = [
-  // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
-  {
-    group: "OPERAÇÃO",
-    items: [
-      ["Visão operacional", LayoutDashboard],
-      ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
-      ["Ordens de serviço", ClipboardList],
-      ["Execução", HardHat],
-      ["Medições", SlidersHorizontal],
-      ["Clientes e propostas", Users],
-      ["Propostas e PO", FileText],
-      ["Contratos", FileText],
-      ["Frota e ativos", Truck],
-      ["Profissionais", HardHat],
-    ],
-  },
-  { group: "RELACIONAMENTO", items: [["CRM e Vendas", Users]] },
-  {
-    group: "GESTÃO INTEGRADA",
-    items: [
-      ["Faturamento", Receipt],
-      ["Visão financeira", LayoutDashboard],
-      ["Financeiro", Wallet],
-      ["Fluxo de caixa", Wallet],
-      ["Tesouraria", Landmark],
-      ["Contas a pagar", Receipt],
-      ["Caixa e conciliação", Landmark],
-      ["Fiscal e tributos", FileText],
-      ["Contabilidade", BookOpen],
-      ["Razão contábil", BookOpen],
-      ["Fechamentos", CalendarDays],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
-    ],
-  },
-];
 const chain = [
   "Ordem de serviço",
   "Execução",
@@ -1229,28 +1184,9 @@ function HomeView() {
         <AssetsWorkspace />
       </div>
     );
-  const moduleDescription: Record<string, string> = {
-    Medições:
-      "Acompanhamento da produção realizada e das medições vinculadas às ordens de serviço.",
-    "CRM e Vendas":
-      "Leads e oportunidades comerciais conectados a clientes do ERP.",
-    "Clientes e propostas":
-      "Relacionamento comercial, solicitações, propostas e pedidos de compra.",
-    "Frota e ativos":
-      "Disponibilidade, alocação e histórico dos recursos da operação.",
-    "Pessoas e equipes":
-      "Equipes, responsáveis e vínculos com as ordens de serviço.",
-    Faturamento: "Documentos de cobrança originados em medições aprovadas.",
-    Financeiro: "Títulos a receber com origem, valor registrado e vencimento.",
-    "Caixa e conciliação":
-      "Movimentação bancária, extratos e conciliação por transação.",
-    "Fiscal e tributos": "Documentos fiscais, períodos, obrigações e apuração.",
-    Contabilidade: "Lançamentos, plano de contas, diário e fechamento.",
-    Compras:
-      "Fornecedores, aprovação de pedidos e recebimento integrado ao estoque.",
-    "Estoque e compras":
-      "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
-  };
+  // Domain workspaces own their Object Page/List Report header. Rendering the
+  // shell's generic heading on top of them creates the duplicated bands that
+  // reduce density and obscure the business command area.
   return (
     <div className="app">
       {sidebar && (
@@ -1354,18 +1290,14 @@ function HomeView() {
             </span>
           </div>
         </header>
+        <EnterpriseWorkspaceBar current={page} onNavigate={navigate} onSearch={() => { setPaletteQuery(""); setPalette(true); }} summary={{total:summary.total,pending:summary.pendingMeasurements}} />
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          <EnterpriseErrorBoundary>
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
-            ![
-              "Compras",
-              "Estoque e compras",
-              "Visão financeira",
-              "Fluxo de caixa",
-              "CRM e Vendas",
-            ].includes(page) && (
+            !specializedWorkspace.has(page) && (
               <div className="heading">
                 <div>
                   <div className="eyebrow">
@@ -2720,6 +2652,7 @@ function HomeView() {
             </span>
             <span>Operação com contexto e rastreabilidade</span>
           </footer>
+          </EnterpriseErrorBoundary>
         </main>
       </div>
       {receivableContext && (
