@@ -32,7 +32,7 @@ test('fiscal registration resolves persisted UUIDs and enforces source ownership
       }),
     }), owner);
     const response = await registerDocument(request);
-    return { id, status: response.status, body: await response.json() };
+    return { id, status: response.status, body: await response.json() as { error?: string; code?: string } };
   }
 
   try {
@@ -49,7 +49,7 @@ test('fiscal registration resolves persisted UUIDs and enforces source ownership
 
     const malformed = await register({ orderId: orderId.slice(0, 8) });
     assert.equal(malformed.status, 400);
-    assert.match(malformed.body.error, /Ordem de serviço.*UUID completo/);
+    assert.match(malformed.body.error ?? '', /Ordem de serviço.*UUID completo/);
 
     const invalidLinks: Record<string, string>[] = [{ orderId: foreignOrderId }, { billingId: orderId }];
     for (const links of invalidLinks) {
