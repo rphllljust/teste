@@ -1,6 +1,8 @@
 name: enterprise unused-code baseline
 
 on:
+  pull_request:
+    branches: [main]
   push:
     branches: [audit/unused-code-baseline]
   workflow_dispatch:
