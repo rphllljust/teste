@@ -25,7 +25,7 @@ export async function GET(request:Request){let context:RequestContext|undefined;
 
 export async function POST(request:Request){let context:RequestContext|undefined;let retry:{key:string;hash:string}|undefined;try{
  context=requestContext(request,true);const parsed=create.safeParse(await jsonBody(request));if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Confira os dados do fornecedor ou do pedido.');const data=parsed.data,hash=await fingerprint({actor:context.actorId,scope:'procurement.create',data});retry={key:data.id,hash};const prior=await procurementReplay(data.id,hash,context.actorId);if(prior)return respond(prior,context,201);
- const db=database(),now=new Date().toISOString(),actorId=context.actorId,result={ok:true,resource:{type:data.type==='supplier'?'supplier':'supplierPurchaseOrder',id:data.id,rowVersion:1}};
+ const db=database(),now=new Date().toISOString(),result={ok:true,resource:{type:data.type==='supplier'?'supplier':'supplierPurchaseOrder',id:data.id,rowVersion:1}};
  if(data.type==='supplier')await db.batch([db.prepare('INSERT INTO suppliers(id,owner_id,legal_name,document,email,created_at,updated_at,request_hash) VALUES(?,?,?,?,?,?,?,?)').bind(data.id,context.actorId,data.legalName,data.document,data.email,now,now,hash),procurementReceipt(context,{key:data.id,type:'supplier',id:data.id,command:'register',hash,result,now})]);
  else{const source=data.lines??[{id:data.id,itemId:data.itemId!,quantity:data.quantity!,unitPrice:data.unitPrice!,discount:0,tax:0}];
   await createPurchaseOrder(context,{id:data.id,supplierId:data.supplierId,reference:data.reference,expectedOn:data.expectedOn,freight:data.freight,additionalCosts:data.additionalCosts,lines:source},hash);

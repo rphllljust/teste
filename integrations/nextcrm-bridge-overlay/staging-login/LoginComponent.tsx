@@ -37,7 +37,7 @@ export function LoginComponent() {
         provider: "google",
         callbackURL: "/",
       });
-    } catch (error) {
+    } catch {
       toast.error("Something went wrong with Google sign-in.");
     } finally {
       setIsLoading(false);
@@ -61,7 +61,7 @@ export function LoginComponent() {
       }
       setStep("otp");
       toast.success("Verification code sent to your email.");
-    } catch (error) {
+    } catch {
       toast.error("Failed to send verification code.");
     } finally {
       setIsLoading(false);
@@ -93,7 +93,7 @@ export function LoginComponent() {
       }
       toast.success("Login successful.");
       window.location.href = new URL("/", window.location.origin).href;
-    } catch (error) {
+    } catch {
       toast.error("Verification failed.");
     } finally {
       setIsLoading(false);

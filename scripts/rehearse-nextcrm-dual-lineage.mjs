@@ -1,9 +1,7 @@
 import { readFile } from 'node:fs/promises';
-import { resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
-import { fileURLToPath } from 'node:url';
 import { Pool } from 'pg';
-import { NEXTCRM_BRIDGE_TABLES, assertNextcrmMigrationPreflight } from './nextcrm-migration-preflight.mjs';
+import { assertNextcrmMigrationPreflight } from './nextcrm-migration-preflight.mjs';
 
 /**
  * Two legacy histories, one expected resulting catalog.
