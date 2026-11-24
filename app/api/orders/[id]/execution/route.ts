@@ -1,9 +1,17 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
-import { executionInput, quantityScaled } from '../../../../../lib/domain/execution';
+import { executionInput, quantityScaled, resourceKinds } from '../../../../../lib/domain/execution';
+import { escapedLike } from '../../../../../lib/api/query';
+import { caseInsensitiveContains } from '../../../../../lib/api/postgres-query.mjs';
 
-const query = z.object({ state: z.enum(['active', 'corrected']).default('active'), page: z.coerce.number().int().min(1).default(1), pageSize: z.coerce.number().int().min(1).max(50).default(50) }).strict();
+const query = z.object({
+  q: z.string().trim().max(160).default(''),
+  resourceKind: z.enum(resourceKinds).optional(),
+  state: z.enum(['active', 'corrected']).default('active'),
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(50).default(50),
+}).strict();
 
 function project(row: Record<string, unknown>) {
   return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
@@ -17,18 +25,36 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!z.string().uuid().safeParse(id).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Ordem inválida.');
     const parsed = query.safeParse(Object.fromEntries(new URL(request.url).searchParams));
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Consulta de execução inválida.');
-    const offset = (parsed.data.page - 1) * parsed.data.pageSize;
+    const { page, pageSize, state, q, resourceKind } = parsed.data;
+    const offset = (page - 1) * pageSize;
+    const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?)';
+    const stateFilter = state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL';
+    const conditions = [stateFilter];
+    const values = [id, context.actorId];
+    if (q) {
+      conditions.push(caseInsensitiveContains(['e.description', 'e.reference', 'e.resource_reference']));
+      const pattern = escapedLike(q);
+      values.push(pattern, pattern, pattern);
+    }
+    if (resourceKind) {
+      conditions.push('e.resource_kind=?');
+      values.push(resourceKind);
+    }
+    const filtered = from + ' AND ' + conditions.join(' AND ');
     const db = database();
     const rows = await db.batch([
       db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
-      db.prepare(`SELECT e.* FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(id, context.actorId, parsed.data.pageSize, offset),
-      db.prepare(`SELECT count(*)::int total FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?) AND ${parsed.data.state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL'}`).bind(id, context.actorId),
+      db.prepare(`SELECT e.* ${filtered} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, pageSize, offset),
+      db.prepare(`SELECT count(*)::int total ${filtered}`).bind(...values),
+      ...(q || resourceKind ? [db.prepare(`SELECT count(*)::int total ${from} AND ${stateFilter}`).bind(id, context.actorId)] : []),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
     const items = (rows[1].results as Record<string, unknown>[]).map(project);
     const total = Number((rows[2].results[0] as { total: number }).total);
-    return respond({ order: { id: String(order.id), title: String(order.title), client: String(order.client), status: String(order.status), version: Number(order.version), availableCommands: [] }, items, pageInfo: { page: parsed.data.page, limit: parsed.data.pageSize, offset, total, sourceTotal: total, hasMore: parsed.data.page * parsed.data.pageSize < total }, availableCommands: String(order.status) === 'executing' ? [{ id: 'report', label: 'Registrar execução', expectedVersion: Number(order.version) }] : [], warnings: [] }, context);
+    const sourceCount = rows[3]?.results[0] as { total: number } | undefined;
+    const sourceTotal = sourceCount ? Number(sourceCount.total) : total;
+    return respond({ order: { id: String(order.id), title: String(order.title), client: String(order.client), status: String(order.status), version: Number(order.version), availableCommands: [] }, items, pageInfo: { page, limit: pageSize, offset, total, sourceTotal, hasMore: page * pageSize < total }, availableCommands: String(order.status) === 'executing' ? [{ id: 'report', label: 'Registrar execução', expectedVersion: Number(order.version) }] : [], warnings: [] }, context);
   } catch (error) { return failure(error, context); }
 }
 
