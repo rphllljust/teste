@@ -4,6 +4,7 @@ import test from 'node:test';
 
 const source = await readFile(new URL('../app/components/enterprise/EnterprisePrimitives.tsx', import.meta.url), 'utf8');
 const styles = await readFile(new URL('../app/globals.css', import.meta.url), 'utf8');
+const shell = await readFile(new URL('../app/page.tsx', import.meta.url), 'utf8');
 
 test('enterprise primitives expose the governance component contracts', () => {
   for (const name of [
@@ -36,4 +37,9 @@ test('enterprise layout contracts include narrow-screen behavior', () => {
   assert.match(styles, /@media\(max-width:700px\)/);
   assert.match(styles, /\.enterprise-filter-fields\{align-items:stretch;flex-direction:column\}/);
   assert.match(styles, /\.enterprise-kpi-card:focus-visible/);
+});
+
+test('operational shell does not render the retired duplicate heading', () => {
+  assert.doesNotMatch(shell, /heading-legacy-notice/);
+  assert.match(shell, /<EnterprisePageHeader[\s\S]*?\{viewNotice && !savingView/);
 });

@@ -1415,21 +1415,11 @@ function HomeView() {
                   Nova ordem de serviço
                 </button> : undefined}
               />
-              <div className="heading-legacy-notice">
-                <div>
-                  <div className="eyebrow">
-                    {
-                      currentGroup
-                    }{" "}
-                    · CISNE RONDÔNIA
-                  </div>
-                  {viewNotice && !savingView && (
-                    <p role="alert" className="form-error">
-                      {viewNotice}
-                    </p>
-                  )}
-                </div>
-              </div>
+              {viewNotice && !savingView && (
+                <p role="alert" className="form-error">
+                  {viewNotice}
+                </p>
+              )}
               </>
             )}
           {notice && !creating && !action && !savingView && (
