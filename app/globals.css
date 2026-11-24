@@ -844,3 +844,17 @@ tr:has(td):hover{background:#f5f9f5}
   .sidebar{width:236px}
   .main{margin-left:236px!important}
 }
+
+
+/* Canonical enterprise data states */
+.enterprise-data-state{display:grid;gap:8px;justify-items:center;text-align:center;min-height:180px;align-content:center;padding:28px;border:1px solid var(--line,#d9e2dc);border-radius:8px;background:var(--surface,#fff);color:var(--ink,#17352d)}
+.enterprise-data-state-label{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted,#63756d);font-weight:700}
+.enterprise-data-state h3{margin:0;font-size:1.05rem}
+.enterprise-data-state p{margin:0;max-width:52ch;color:var(--muted,#63756d)}
+.enterprise-data-state-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.enterprise-data-state-error{border-color:#e7b8b8;background:#fff9f9}
+.enterprise-data-state-blocked{border-color:#e2c98b;background:#fffdf5}
+.enterprise-data-state-manual{border-color:#b9c9e6;background:#f8fbff}
+.enterprise-data-state-not_configured{border-color:#c8d3ce;background:#fafcfb}
+.enterprise-data-state-unavailable{border-color:#c8d3ce;background:#fafcfb}
+@media (max-width:700px){.enterprise-data-state{min-height:140px;padding:20px 16px}}
