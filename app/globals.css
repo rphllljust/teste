@@ -855,3 +855,17 @@ tr:has(td):hover{background:#f5f9f5}
 .enterprise-data-state-manual{border-left-color:#4a7c9a;background:#f7fbfd}.enterprise-data-state-manual .enterprise-data-state-label{color:#35647f}
 .enterprise-data-state-not_configured{border-left-color:#826aa8;background:#faf8fd}.enterprise-data-state-not_configured .enterprise-data-state-label{color:#694f91}
 .enterprise-data-state-unavailable{border-left-color:#657d86;background:#f7fafb}.enterprise-data-state-unavailable .enterprise-data-state-label{color:#4c646d}
+
+
+/* Responsive shell correction: mobile must not inherit the desktop sidebar geometry. */
+@media (max-width: 800px) {
+  .sidebar { display: none !important; width: min(86vw, 320px); }
+  .sidebar.mobile-open { display: flex !important; }
+  .main { margin-left: 0 !important; width: 100%; min-width: 0; }
+  .topbar { width: 100%; }
+  .main main { width: 100%; max-width: none; overflow-x: hidden; }
+}
+@media (min-width: 801px) {
+  .sidebar { display: flex !important; }
+  .main { margin-left: 236px !important; width: auto; }
+}
