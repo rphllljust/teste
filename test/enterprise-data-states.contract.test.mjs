@@ -9,7 +9,7 @@ const css = fs.readFileSync("app/globals.css", "utf8");
 
 test("canonical enterprise data states expose the required business distinctions", () => {
   for (const kind of ["error", "blocked", "manual", "not_configured", "unavailable"]) {
-    assert.match(primitive, new RegExp(`'\${kind}'`));
+    assert.match(primitive, new RegExp("'" + kind + "'"));
     assert.match(css, new RegExp(`enterprise-data-state-${kind}`));
   }
 });
