@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   EnterprisePageHeader,
   BusinessStatus,
+  EnterpriseDataState,
 } from "./components/enterprise/EnterprisePrimitives";
 type Asset = {
   id: string;
@@ -223,16 +224,9 @@ export default function AssetsWorkspace() {
       </div>
  
      {loading ? (
-        <div className="empty" role="status">
-          Consultando ativos…
-        </div>
+        <EnterpriseDataState kind="unavailable" title="Consultando ativos" description="Os ativos persistidos estão sendo consultados." />
       ) : error ? (
-        <div className="empty" role="alert">
-          <p>{error}</p>
-          <button className="secondary" onClick={() => void load()}>
-            Tentar novamente
-          </button>
-        </div>
+        <EnterpriseDataState kind="error" title="Ativos indisponíveis" description={error} onRetry={() => void load()} />
       ) : items.length ? (
         <div className="table-wrap">
           <table>
@@ -271,17 +265,7 @@ export default function AssetsWorkspace() {
           </table>
         </div>
       ) : (
-        <div className="empty">
-          <h3>Nenhum ativo cadastrado</h3>
-          <p>
-            Cadastre veículos, equipamentos e demais recursos antes de alocá-los
-            a uma OS.
-          </p>
-          <button className="primary" onClick={() => setForm(true)}>
-            <Plus size={16} />
-            Cadastrar ativo
-          </button>
-        </div>
+        <EnterpriseDataState kind="not_configured" title="Nenhum ativo cadastrado" description="Cadastre veículos, equipamentos e demais recursos antes de alocá-los a uma OS." action={<button className="primary" onClick={() => setForm(true)}><Plus size={16} /> Cadastrar ativo</button>} />
       )}
       <footer className="table-footer">
         <span>
