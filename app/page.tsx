@@ -770,7 +770,8 @@ function HomeView() {
     setBusinessOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
-    const route = findModuleRoute(name);\n    if (!route) return;\n    window.history.pushState(null, "", routeHash(route));
+    const route = findModuleRoute(name);
+    if (!route) return;\n    window.history.pushState(null, "", routeHash(route));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
