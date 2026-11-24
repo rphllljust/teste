@@ -822,3 +822,9 @@ tr:has(td):hover{background:#f5f9f5}
     width:100%;
   }
 }
+
+/* Keep the enterprise shell visible on tablet/desktop viewport calculations. */
+@media (min-width:801px){
+  .sidebar{display:flex!important}
+  .main{margin-left:236px!important}
+}
