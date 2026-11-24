@@ -844,3 +844,12 @@ tr:has(td):hover{background:#f5f9f5}
   .sidebar{width:236px}
   .main{margin-left:236px!important}
 }
+
+
+.enterprise-data-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:220px;padding:32px 24px;text-align:center;background:#fff;border:1px solid var(--line);border-radius:6px}
+.enterprise-data-state-label{font-size:10px;letter-spacing:1.2px;font-weight:700;color:var(--muted)}
+.enterprise-data-state h3{margin:8px 0 6px;font-size:16px}
+.enterprise-data-state p{max-width:480px;margin:0 0 16px;color:var(--muted);font-size:13px}
+.enterprise-data-state-error{border-color:#efd4cf;background:#fff9f7}
+.enterprise-data-state-blocked,.enterprise-data-state-not-configured{border-color:#ecdcb5;background:#fffaf0}
+.enterprise-data-state-manual{border-color:#cbdfe7;background:#f7fbfd}
