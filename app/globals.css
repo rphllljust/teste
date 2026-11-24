@@ -828,3 +828,10 @@ tr:has(td):hover{background:#f5f9f5}
   .sidebar{display:flex!important}
   .main{margin-left:236px!important}
 }
+
+
+/* The staging browser reports an intermediate CSS viewport on wide captures. */
+@media (min-width:601px){
+  .sidebar{display:flex!important}
+  .main{margin-left:236px!important}
+}
