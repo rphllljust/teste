@@ -16,14 +16,15 @@
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test:smoke:staging": "node test/staging-smoke.mjs",
     "test:regression:enterprise": "node test/enterprise-responsive-http-regression.mjs",
-    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:route-inventory && pnpm test:enterprise-contracts && pnpm test:enterprise-quality-contracts",
+    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:route-inventory && pnpm test:enterprise-contracts && pnpm test:enterprise-quality-contracts && pnpm test:typed-catalog",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs",
     "test:route-inventory": "node --test test/enterprise-route-inventory.contract.test.mjs",
     "test:enterprise-contracts": "node --test test/procurement-fiscal.fail-closed.contract.test.mjs test/enterprise-transactional-journeys.synthetic.test.mjs",
     "test:enterprise-states": "node --test test/enterprise-data-state.contract.test.mjs",
-    "test:enterprise-quality-contracts": "node --test test/enterprise-accessibility-isolation.contract.test.mjs"
+    "test:enterprise-quality-contracts": "node --test test/enterprise-accessibility-isolation.contract.test.mjs",
+    "test:typed-catalog": "node --test test/enterprise-typed-catalog.contract.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
