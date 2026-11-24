@@ -52,6 +52,23 @@ export function EnterpriseAnalyticalChart({ title, data, onSelect, valueLabel='v
 export function ObjectSection({ title, eyebrow, children, actions, id }:{title:string;eyebrow?:string;children:ReactNode;actions?:ReactNode;id?:string}) { return <section className="enterprise-object-section" id={id} aria-labelledby={id ? `${id}-title` : undefined}><header className="enterprise-object-section-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h3 id={id ? `${id}-title` : undefined}>{title}</h3></div>{actions && <div className="enterprise-object-section-actions">{actions}</div>}</header>{children}</section>; }
 export function EmptyState({ title, description, action, children }:{title:string;description?:string;action?:ReactNode;children?:ReactNode}) { return <div className="enterprise-empty-state" role="status"><h3>{title}</h3>{description && <p>{description}</p>}{children}{action}</div>; }
 export function LoadingState({ label='Carregando dados…' }:{label?:string}) { return <div className="enterprise-loading-state" role="status" aria-live="polite" aria-busy="true">{label}</div>; }
+export type EnterpriseDataStateKind = 'error'|'blocked'|'manual'|'not_configured'|'unavailable';
+const enterpriseDataStateLabels: Record<EnterpriseDataStateKind, string> = {
+  error: 'Erro de carregamento',
+  blocked: 'Operação bloqueada',
+  manual: 'Processo manual',
+  not_configured: 'Não configurado',
+  unavailable: 'Indisponível',
+};
+export function EnterpriseDataState({ kind, title, description, action, onRetry }: { kind: EnterpriseDataStateKind; title?: string; description: string; action?: ReactNode; onRetry?: () => void }) {
+  return <section className={`enterprise-data-state enterprise-data-state-${kind}`} role={kind === 'error' ? 'alert' : 'status'} aria-live="polite">
+    <span className="enterprise-data-state-label">{enterpriseDataStateLabels[kind]}</span>
+    <h3>{title ?? enterpriseDataStateLabels[kind]}</h3>
+    <p>{description}</p>
+    <div className="enterprise-data-state-actions">{action}{onRetry && <button type="button" className="secondary" onClick={onRetry}>Tentar novamente</button>}</div>
+  </section>;
+}
+
 export function ErrorState({ message, onRetry }:{message:string;onRetry?:()=>void}) { return <div className="enterprise-error-state" role="alert"><strong>Não foi possível concluir</strong><p>{message}</p>{onRetry && <button type="button" className="secondary" onClick={onRetry}>Tentar novamente</button>}</div>; }
 
 type ErrorBoundaryProps = { children:ReactNode; fallback?:ReactNode; onError?:(error:Error, info:ErrorInfo)=>void };
