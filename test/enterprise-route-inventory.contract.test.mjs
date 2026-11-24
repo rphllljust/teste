@@ -2,9 +2,77 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 
-const [pageSource, documentSource] = await Promise.all([
+const [pageSource, documentSource, catalogSource] = await Promise.all([
   readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   readFile(new URL("../docs/enterprise-route-inventory.md", import.meta.url), "utf8"),
+  readFile(new URL("../lib/navigation/catalog.ts", import.meta.url), "utf8"),
+]);
+
+// Navigation-contract coverage, not an end-to-end test of backend or business workflows.
+const expectedGroups = [
+  {
+    name: "INÍCIO E OPERAÇÃO",
+    doc: "Início e operação",
+    entries: ["Visão operacional", "Field Service Cockpit", "Resource Planning Board", "Ordens de serviço", "Execução", "Medições"],
+  },
+  {
+    name: "COMERCIAL E RELACIONAMENTO",
+    doc: "Comercial e relacionamento",
+    entries: ["CRM e Vendas", "Clientes e propostas", "Propostas e PO"],
+  },
+  {
+    name: "CONTRATOS E SUPRIMENTOS",
+    doc: "Contratos e suprimentos",
+    entries: ["Contratos", "Compras", "Estoque e compras"],
+  },
+  {
+    name: "RECURSOS E LOGÍSTICA",
+    doc: "Recursos e logística",
+    entries: ["Frota e ativos", "Profissionais"],
+  },
+  {
+    name: "FINANCEIRO E CONTROLADORIA",
+    doc: "Financeiro e controladoria",
+    entries: ["Faturamento", "Visão financeira", "Financeiro", "Fluxo de caixa", "Tesouraria", "Contas a pagar", "Caixa e conciliação", "Fiscal e tributos", "Contabilidade", "Razão contábil", "Fechamentos"],
+  },
+];
+
+const directTargets = new Map([
+  ["Visão operacional", "EnterpriseCommandCenter"],
+  ["Field Service Cockpit", "FieldServiceCockpit"],
+  ["Resource Planning Board", "ResourcePlanningBoard"],
+  ["Execução", "ExecutionWorkspace"],
+  ["CRM e Vendas", "CRMWorkspace"],
+  ["Clientes e propostas", "ClientsWorkspace"],
+  ["Propostas e PO", "ProposalsWorkspace"],
+  ["Contratos", "ContractsWorkspace"],
+  ["Compras", "ProcurementWorkspace"],
+  ["Estoque e compras", "section"],
+  ["Visão financeira", "FinanceOverviewWorkspace"],
+  ["Fluxo de caixa", "CashFlowWorkspace"],
+  ["Tesouraria", "TreasuryWorkspace"],
+  ["Contas a pagar", "PayablesWorkspace"],
+  ["Caixa e conciliação", "BankReconciliationWorkspace"],
+  ["Fiscal e tributos", "FiscalWorkspace"],
+  ["Contabilidade", "AccountingWorkspace"],
+  ["Razão contábil", "LedgerWorkspace"],
+  ["Fechamentos", "CloseCenterWorkspace"],
+]);
+
+function shellGroups() {
+  const groups = [...catalogSource.matchAll(/\{id:"[^"]+",label:"([^"]+)",items:\[([^\]]+)\]\}/g)];
+  return groups.map((match) => ({
+    name: match[1],
+    entries: [...match[2].matchAll(/item\("[^"]+","([^"]+)","[^"]+"\)/g)].map((entry) => entry[1]),
+  }));
+}port assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+
+const [pageSource, documentSource, catalogSource] = await Promise.all([
+  readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
+  readFile(new URL("../docs/enterprise-route-inventory.md", import.meta.url), "utf8"),
+  readFile(new URL("../lib/navigation/catalog.ts", import.meta.url), "utf8"),
 ]);
 
 // Navigation-contract coverage, not an end-to-end test of backend or business workflows.
