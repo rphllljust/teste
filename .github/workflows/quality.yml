@@ -21,4 +21,5 @@ jobs:
       - run: pnpm lint
       - run: pnpm test:domain
       - run: pnpm test:route-inventory
+      - run: pnpm test:enterprise-contracts
       - run: pnpm build
