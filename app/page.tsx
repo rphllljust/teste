@@ -69,6 +69,7 @@ import type {
   ViewDefinition,
 } from "../lib/contracts";
 import type { FinancialDefinition } from "../lib/api/view-definitions";
+import { findModuleRoute } from "../lib/navigation/module-catalog";
 type Order = {
   availableCommands: AvailableCommand[];
   client_id?: string | null;
@@ -94,8 +95,6 @@ type Order = {
   created_at: string;
 };
 const modules: { group: string; items: [string, LucideIcon][] }[] = [
-  // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
   {
     group: "INÍCIO E OPERAÇÃO",
     items: [
@@ -791,6 +790,8 @@ function HomeView() {
     setLinkedLoading(["Medições", "Faturamento", "Financeiro"].includes(name));
     setBusinessOrder(orderId);
     setLinkedNumber(1);
+    const route = findModuleRoute(name);
+    if (!route) return;
     setPage(name);
     window.history.pushState(null, "", "#" + encodeURIComponent(name));
     setSelected(null);
@@ -811,7 +812,7 @@ function HomeView() {
     function route() {
       const raw = window.location.hash.slice(1);
       const name = raw ? decodeURIComponent(raw) : "Visão operacional";
-      if (modules.some((g) => g.items.some(([n]) => n === name))) {
+      if (modules.some((g) => g.items.some(([n]) => n === name)) && findModuleRoute(name)) {
         setPage(name);
       } else if (!raw) {
         window.history.replaceState(null, "", "#" + encodeURIComponent(name));
