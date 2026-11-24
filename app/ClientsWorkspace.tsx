@@ -36,9 +36,8 @@ function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder:(client:Client
    const n=await nextcrmResponse.json() as NextcrmContext&{error?:string};
    if(!nextcrmResponse.ok)throw new Error(n.error||'Contexto NextCRM indisponível.');
    setNextcrm(n);
-  }catch(e){
-   const message=e instanceof Error?e.message:'Integração NextCRM indisponível.';
-   setNextcrmError(message);
+  }catch{
+   setNextcrmError('A integração NextCRM está indisponível no momento.');
    setNextcrm({mapped:false,state:'unavailable',message:'O cadastro ERP continua operacional; ações dependentes do NextCRM ficam indisponíveis até a integração ser restaurada.'});
   }finally{setNextcrmLoading(false);}
  }
