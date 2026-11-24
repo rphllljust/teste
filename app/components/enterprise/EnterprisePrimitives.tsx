@@ -52,7 +52,34 @@ export function EnterpriseAnalyticalChart({ title, data, onSelect, valueLabel='v
 export function ObjectSection({ title, eyebrow, children, actions, id }:{title:string;eyebrow?:string;children:ReactNode;actions?:ReactNode;id?:string}) { return <section className="enterprise-object-section" id={id} aria-labelledby={id ? `${id}-title` : undefined}><header className="enterprise-object-section-header"><div>{eyebrow && <span className="eyebrow">{eyebrow}</span>}<h3 id={id ? `${id}-title` : undefined}>{title}</h3></div>{actions && <div className="enterprise-object-section-actions">{actions}</div>}</header>{children}</section>; }
 export function EmptyState({ title, description, action, children }:{title:string;description?:string;action?:ReactNode;children?:ReactNode}) { return <div className="enterprise-empty-state" role="status"><h3>{title}</h3>{description && <p>{description}</p>}{children}{action}</div>; }
 export function LoadingState({ label='Carregando dados…' }:{label?:string}) { return <div className="enterprise-loading-state" role="status" aria-live="polite" aria-busy="true">{label}</div>; }
-export function ErrorState({ message, onRetry }:{message:string;onRetry?:()=>void}) { return <div className="enterprise-error-state" role="alert"><strong>Não foi possível concluir</strong><p>{message}</p>{onRetry && <button type="button" className="secondary" onClick={onRetry}>Tentar novamente</button>}</div>; }
+export type EnterpriseDataStateKind = 'error'|'blocked'|'manual'|'not_configured'|'unavailable';
+const enterpriseDataStateLabels: Record<EnterpriseDataStateKind, string> = {
+  error: 'Erro ao carregar',
+  blocked: 'Bloqueado por dependência',
+  manual: 'Processo manual',
+  not_configured: 'Não configurado',
+  unavailable: 'Indisponível',
+};
+export function classifyEnterpriseDataState(message: string): EnterpriseDataStateKind {
+  const value = message.toLowerCase();
+  if (/não configurad|nao configurad|ofbiz|sefaz|prefeitura|credencial|dependência|dependencia/.test(value)) return 'not_configured';
+  if (/bloquead|não homologável|nao homologavel|não suportad|nao suportad|permissão|permissao|403/.test(value)) return 'blocked';
+  if (/manual|não transmitid|nao transmitid|aguardando transmissão|aguardando transmissao/.test(value)) return 'manual';
+  if (/indisponív|indisponiv|timeout|temporariamente|503|sem resposta/.test(value)) return 'unavailable';
+  return 'error';
+}
+export function EnterpriseDataState({ kind, title, message, action }: { kind: EnterpriseDataStateKind; title?: string; message: string; action?: ReactNode }) {
+  return <section className={`enterprise-data-state enterprise-data-state-${kind}`} data-state-kind={kind} role={kind === 'error' ? 'alert' : 'status'} aria-live="polite">
+    <span className="enterprise-data-state-label">{enterpriseDataStateLabels[kind]}</span>
+    <strong>{title ?? enterpriseDataStateLabels[kind]}</strong>
+    <p>{message}</p>
+    {action}
+  </section>;
+}
+export function ErrorState({ message, onRetry, kind }:{message:string;onRetry?:()=>void;kind?:EnterpriseDataStateKind}) {
+  const resolvedKind = kind ?? classifyEnterpriseDataState(message);
+  return <EnterpriseDataState kind={resolvedKind} message={message} action={onRetry && <button type="button" className="secondary" onClick={onRetry}>Tentar novamente</button>} />;
+}
 
 type ErrorBoundaryProps = { children:ReactNode; fallback?:ReactNode; onError?:(error:Error, info:ErrorInfo)=>void };
 type ErrorBoundaryState = { error:Error|null };
