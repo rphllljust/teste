@@ -147,7 +147,6 @@ export default function ProfessionalsWorkspace() {
   }
   return (
     <section className="worklist business-workspace" aria-label="Profissionais">
-    <EnterprisePageHeader breadcrumb="Recursos e logística / Profissionais" eyebrow="LIST REPORT · RECURSOS HUMANOS OPERACIONAIS" title="Profissionais" description="Pessoas autorizadas para alocação e apontamentos de execução no contexto empresarial atual." actions={<><button className="secondary" onClick={() => void load()} disabled={loading}><RefreshCw size={16} />Atualizar</button><button className="primary" onClick={() => setForm(true)}><Plus size={16} />Cadastrar profissional</button></>} />
     <header className="list-title">
         <div>
           <span className="eyebrow">RECURSOS · CADASTRO MESTRE</span>
