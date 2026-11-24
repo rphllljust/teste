@@ -3,6 +3,39 @@ import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type
 import { database } from '../../../../db/raw';
 
 export const dynamic='force-dynamic';
+
+const pageSize = 25;
+
+export async function GET(request: Request) {
+  let context: RequestContext | undefined;
+  try {
+    context = requestContext(request);
+    const rawPage = new URL(request.url).searchParams.get('page') ?? '1';
+    const page = Number(rawPage);
+    if (!/^\d+$/.test(rawPage) || page < 1 || !Number.isSafeInteger(page * pageSize)) {
+      throw new ApiError(400, 'VALIDATION_FAILED', 'Página de lançamentos inválida.');
+    }
+
+    const db = database();
+    const [rows, count] = await Promise.all([
+      db.prepare(`SELECT j.id, j.effective_date AS "effectiveDate",
+        j.source_reference AS "sourceReference", j.description, j.status,
+        CAST(COALESCE((SELECT SUM(l.debit) FROM journal_lines l WHERE l.entry_id = j.id), 0) AS TEXT) AS "debitScaled",
+        CAST(COALESCE((SELECT SUM(l.credit) FROM journal_lines l WHERE l.entry_id = j.id), 0) AS TEXT) AS "creditScaled",
+        j.reversal_of AS "reversalOf"
+        FROM journal_entries j WHERE j.actor_id = ?
+        ORDER BY j.effective_date DESC, j.id DESC LIMIT ? OFFSET ?`)
+        .bind(context.actorId, pageSize, (page - 1) * pageSize).all(),
+      db.prepare('SELECT COUNT(*)::int AS total FROM journal_entries WHERE actor_id = ?')
+        .bind(context.actorId).first<{ total: number }>(),
+    ]);
+    const total = count?.total ?? 0;
+    return respond({ items: rows.results, pageInfo: { page, total, hasMore: page * pageSize < total } }, context);
+  } catch (error) {
+    return failure(error, context);
+  }
+}
+
 const amount=z.string().regex(/^\d+$/).refine(value=>BigInt(value)>0,'O valor deve ser positivo.');
 const command=z.object({id:z.string().uuid(),effectiveDate:z.string().regex(/^\d{4}-\d{2}-\d{2}$/),sourceReference:z.string().trim().min(1).max(160),description:z.string().trim().min(1).max(500),lines:z.array(z.object({id:z.string().uuid(),accountId:z.string().uuid(),debit:amount,credit:amount}).strict()).min(2)}).strict();
 
