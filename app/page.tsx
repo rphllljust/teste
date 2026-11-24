@@ -1285,7 +1285,7 @@ function HomeView() {
         />
       )}
       <aside className={"sidebar " + (sidebar ? "mobile-open" : "")}>
-        <Link className="brand" href="/" aria-label="Cisne início">
+        <Link prefetch={false} className="brand" href="/" aria-label="Cisne início">
           <span className="brand-mark">
             <Layers size={24} />
           </span>
