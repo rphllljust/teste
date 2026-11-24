@@ -31,6 +31,7 @@ import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import { EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
 import type { LucideIcon } from "lucide-react";
 import { moduleGroups, isModuleLabel, moduleHash, type ModuleNavItem } from "../lib/navigation/catalog";
+import { objectHash, parseObjectHash } from "../lib/navigation/object-routes";
 
 import { statusNames, moneyScaled } from "../lib/domain/orders";
 import { executionQuantity } from "../lib/domain/execution";
@@ -745,7 +746,7 @@ function HomeView() {
     setBusinessOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
-    window.history.pushState(null, "", "#" + encodeURIComponent(name));
+    window.history.pushState(null, "", objectHash(name, orderId || undefined));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
@@ -762,12 +763,13 @@ function HomeView() {
   }
   useEffect(() => {
     function route() {
-      const raw = window.location.hash.slice(1);
-      const name = raw ? decodeURIComponent(raw) : "Visão operacional";
+      const parsed = parseObjectHash(window.location.hash);
+      const name = parsed.module;
       if (modules.some((g) => g.items.some(([n]) => n === name))) {
         setPage(name);
-      } else if (!raw) {
-        window.history.replaceState(null, "", "#" + encodeURIComponent(name));
+        if (parsed.objectId && name === "Ordens de serviço") void openOrigin(parsed.objectId);
+      } else if (!window.location.hash) {
+        window.history.replaceState(null, "", objectHash(name));
       }
     }
     const timer = setTimeout(route, 0);
