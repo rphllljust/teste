@@ -23,6 +23,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:domain
       - run: pnpm test:route-inventory
+      - run: pnpm test:enterprise-contracts
       - run: pnpm exec tsc --noEmit
       - run: pnpm lint
       - run: pnpm build
