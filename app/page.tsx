@@ -69,7 +69,7 @@ import type {
   ViewDefinition,
 } from "../lib/contracts";
 import type { FinancialDefinition } from "../lib/api/view-definitions";
-import { findModuleRoute, moduleCatalog, moduleRoutes, routeHash } from "../lib/navigation/module-catalog";
+import { findModuleRoute } from "../lib/navigation/module-catalog";
 type Order = {
   availableCommands: AvailableCommand[];
   client_id?: string | null;
@@ -94,37 +94,58 @@ type Order = {
   due_date: string | null;
   created_at: string;
 };
-const moduleIcons: Record<string, LucideIcon> = {
-  "Visão operacional": LayoutDashboard,
-  "Field Service Cockpit": Activity,
-  "Resource Planning Board": CalendarDays,
-  "Ordens de serviço": ClipboardList,
-  "Execução": HardHat,
-  "Medições": SlidersHorizontal,
-  "CRM e Vendas": Users,
-  "Clientes e propostas": Users,
-  "Propostas e PO": FileText,
-  "Contratos": FileText,
-  "Compras": Package,
-  "Estoque e compras": Package,
-  "Frota e ativos": Truck,
-  "Profissionais": HardHat,
-  "Faturamento": Receipt,
-  "Visão financeira": LayoutDashboard,
-  "Financeiro": Wallet,
-  "Fluxo de caixa": Wallet,
-  "Tesouraria": Landmark,
-  "Contas a pagar": Receipt,
-  "Caixa e conciliação": Landmark,
-  "Fiscal e tributos": FileText,
-  "Contabilidade": BookOpen,
-  "Razão contábil": BookOpen,
-  "Fechamentos": CalendarDays,
-};
-const modules = moduleCatalog.map((group) => ({
-  group: group.label,
-  items: group.routes.map((route) => [route.label, moduleIcons[route.label]] as [string, LucideIcon]),
-}));
+const modules: { group: string; items: [string, LucideIcon][] }[] = [
+  {
+    group: "INÍCIO E OPERAÇÃO",
+    items: [
+      ["Visão operacional", LayoutDashboard],
+      ["Field Service Cockpit", Activity],
+      ["Resource Planning Board", CalendarDays],
+      ["Ordens de serviço", ClipboardList],
+      ["Execução", HardHat],
+      ["Medições", SlidersHorizontal],
+    ],
+  },
+  {
+    group: "COMERCIAL E RELACIONAMENTO",
+    items: [
+      ["CRM e Vendas", Users],
+      ["Clientes e propostas", Users],
+      ["Propostas e PO", FileText],
+    ],
+  },
+  {
+    group: "CONTRATOS E SUPRIMENTOS",
+    items: [
+      ["Contratos", FileText],
+      ["Compras", Package],
+      ["Estoque e compras", Package],
+    ],
+  },
+  {
+    group: "RECURSOS E LOGÍSTICA",
+    items: [
+      ["Frota e ativos", Truck],
+      ["Profissionais", HardHat],
+    ],
+  },
+  {
+    group: "FINANCEIRO E CONTROLADORIA",
+    items: [
+      ["Faturamento", Receipt],
+      ["Visão financeira", LayoutDashboard],
+      ["Financeiro", Wallet],
+      ["Fluxo de caixa", Wallet],
+      ["Tesouraria", Landmark],
+      ["Contas a pagar", Receipt],
+      ["Caixa e conciliação", Landmark],
+      ["Fiscal e tributos", FileText],
+      ["Contabilidade", BookOpen],
+      ["Razão contábil", BookOpen],
+      ["Fechamentos", CalendarDays],
+    ],
+  },
+];
 const chain = [
   "Ordem de serviço",
   "Execução",
@@ -769,10 +790,10 @@ function HomeView() {
     setLinkedLoading(["Medições", "Faturamento", "Financeiro"].includes(name));
     setBusinessOrder(orderId);
     setLinkedNumber(1);
-    setPage(name);
     const route = findModuleRoute(name);
     if (!route) return;
-    window.history.pushState(null, "", routeHash(route));
+    setPage(name);
+    window.history.pushState(null, "", "#" + encodeURIComponent(name));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
@@ -791,7 +812,7 @@ function HomeView() {
     function route() {
       const raw = window.location.hash.slice(1);
       const name = raw ? decodeURIComponent(raw) : "Visão operacional";
-      if (findModuleRoute(name)) {
+      if (modules.some((g) => g.items.some(([n]) => n === name)) && findModuleRoute(name)) {
         setPage(name);
       } else if (!raw) {
         window.history.replaceState(null, "", "#" + encodeURIComponent(name));
