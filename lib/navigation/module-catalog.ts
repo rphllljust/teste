@@ -11,7 +11,7 @@ export type ModuleGroup = {
   routes: readonly ModuleRoute[];
 };
 
-export const moduleCatalog = [
+export const moduleCatalog: readonly ModuleGroup[] = [
   {
     id: "operations",
     label: "INÍCIO E OPERAÇÃO",
@@ -67,9 +67,9 @@ export const moduleCatalog = [
       { id: "closing", label: "Fechamentos", group: "finance-control" },
     ],
   },
-] as const satisfies readonly ModuleGroup[];
+];
 
-export const moduleRoutes = moduleCatalog.flatMap((group) => group.routes);
+export const moduleRoutes: readonly ModuleRoute[] = moduleCatalog.flatMap((group) => group.routes);
 
 export function findModuleRoute(value: string | null | undefined): ModuleRoute | undefined {
   if (!value) return moduleRoutes.find((route) => route.id === "operational-overview");
