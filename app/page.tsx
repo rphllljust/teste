@@ -763,12 +763,13 @@ function HomeView() {
   }
   useEffect(() => {
     function route() {
-      const raw = window.location.hash.slice(1);
-      const name = raw ? decodeURIComponent(raw) : "Visão operacional";
+      const parsed = parseObjectHash(window.location.hash);
+      const name = parsed.module;
       if (modules.some((g) => g.items.some(([n]) => n === name))) {
         setPage(name);
-      } else if (!raw) {
-        window.history.replaceState(null, "", "#" + encodeURIComponent(name));
+        if (parsed.objectId && name === "Ordens de serviço") void openOrigin(parsed.objectId);
+      } else if (!window.location.hash) {
+        window.history.replaceState(null, "", objectHash(name));
       }
     }
     const timer = setTimeout(route, 0);
