@@ -419,6 +419,33 @@ tr:has(td):hover{background:#f5f9f5}
 @media(max-width:1100px){.preparation-grid{grid-template-columns:minmax(0,1fr) 260px;gap:18px}.preparation-facts{gap:18px}}
 @media(max-width:800px){.preparation-object-header{position:static;display:block;padding:8px 0 14px}.preparation-object-header>.command-buttons{margin-top:14px;justify-content:flex-end}.preparation-title h1{font-size:22px}.preparation-progress{top:0;gap:0;overflow-x:auto}.preparation-progress button{font-size:12px;white-space:nowrap;padding:10px 8px}.preparation-progress button>svg{display:none}.preparation-grid{grid-template-columns:1fr;padding-top:14px}.preparation-business-context{position:static;order:-1;display:grid;grid-template-columns:1fr 1fr;gap:0 16px}.preparation-business-context>.eyebrow,.preparation-business-context>h3,.preparation-business-context>dl{grid-column:1/-1}.preparation-business-chain{display:none}.preparation-relations{margin-top:0;grid-column:1/-1}.preparation-relations h3{display:none}.preparation-relations>button{display:inline-flex;width:49%;padding:7px 0}.preparation-work-surface{padding:16px}.preparation-selected{align-items:flex-start}.preparation-fields{gap:12px}.preparation-candidates>button{padding:9px 8px;min-height:52px}.preparation-facts dd{font-size:12px}}
 @media(max-width:460px){.preparation-fields{grid-template-columns:1fr}.preparation-business-context dl{display:none}.preparation-relations>button{font-size:11px}.preparation-progress button>span{display:none}.preparation-selected{display:block}.preparation-selected>.secondary{margin-top:8px}}
+
+/* CISNE Enterprise navigation — institutional green and Tier 1 states */
+.sidebar{background:#14251f;border-right:1px solid #2d4639;color:#c9d5ce}
+.brand{padding-inline:24px;color:#f5f8f6;letter-spacing:2.6px}
+.brand-mark{background:#182b24;border-color:#8f8868;color:#c7b887;box-shadow:inset 0 0 0 1px #21382d}
+.brand-mark svg{stroke-width:1.55}
+.brand small{color:#aebcb4;letter-spacing:3.5px}
+.company{border-color:#3b5145;background:#182a23;color:#edf3ef;box-shadow:0 4px 14px #07140f22}
+.company>svg{color:#c2b47e}
+.company small{color:#a6b5ac}
+.sidebar nav{scrollbar-color:#526b5c transparent}
+.sidebar nav::-webkit-scrollbar-thumb{background:#526b5c}
+.nav-group{padding-inline:10px}
+.nav-group p{color:#9cac9f;letter-spacing:1.45px;margin-inline:14px}
+.nav-group button{min-height:42px;padding:9px 13px;border-radius:7px;color:#c7d2cb;gap:12px;transition:background .16s ease,color .16s ease,transform .16s ease}
+.nav-group button>svg{width:19px;height:19px;color:#9eb2a5;stroke-width:1.7;transition:color .16s ease}
+.nav-group button:hover{background:#20372c;color:#edf4ef;transform:translateX(1px)}
+.nav-group button:hover>svg{color:#c5d3a5}
+.nav-group button.active{background:#274735;color:#f5faf6;box-shadow:inset 3px 0 #c5b77f,0 4px 12px #07140f1c;font-weight:650}
+.nav-group button.active>svg{color:#c8d7ae}
+.nav-count{background:#385543;color:#dce8d6;border:1px solid #4d6955}
+.sidebar-bottom{border-top-color:#30473b;padding-inline:18px}
+.sidebar-bottom .version{color:#aebdb4}
+.sidebar-bottom button{color:#cbd8d0;border-radius:7px;padding:8px 9px}
+.sidebar-bottom button:hover{background:#20372c}
+.sidebar-bottom kbd{border-color:#607365;color:#c5d1ca}
+@media(max-width:800px){.sidebar{width:300px;box-shadow:18px 0 60px #07140f55}.brand{padding-inline:25px}.nav-group button{min-height:46px;font-size:15px}.nav-group p{font-size:11px}}
 .order-relation-context{margin:12px 0;padding:12px;border:1px solid var(--line);background:#f8faf8;border-radius:var(--radius);font-size:12px}.order-relation-context header{display:flex;align-items:center;justify-content:space-between;gap:12px}.order-relation-context h4{font-size:14px;margin:10px 0 5px}.order-relation-context p{line-height:1.55}.order-relation-context .related{background:#fff}
 .measurement-preparation{border-top:1px solid var(--line)}.measurement-evidence{display:flex;align-items:center;gap:12px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}.measurement-evidence input{width:16px;height:16px;flex:none}.measurement-evidence small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
 .billing-preparation{border-top:1px solid var(--line)}
