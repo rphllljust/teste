@@ -19,7 +19,7 @@ function ProcurementWorkspaceView({initialOrderId}:{initialOrderId?:string}){
  useEffect(()=>{if(initialOrderId)setSelectedId(initialOrderId)},[initialOrderId]);
  useEffect(()=>{setActiveTab('overview')},[selectedId]);
  useEffect(()=>{fetch('/api/erp/ofbiz?resource=health').then(r=>{setOfbiz(r.ok?'connected':'unavailable')}).catch(()=>setOfbiz('unavailable'))},[]);
- useEffect(()=>{const c=new AbortController();api<Data>('/api/procurement?'+new URLSearchParams({q:query,page:'1',...(status?{status}:{})}),{signal:c.signal}).then(d=>{setData(d);if(!selectedId&&d.items[0])setSelectedId(d.items[0].id);}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[query,status,refresh]);
+ useEffect(()=>{const c=new AbortController();api<Data>('/api/procurement?'+new URLSearchParams({q:query,page:'1',...(status?{status}:{})}),{signal:c.signal}).then(d=>{setData(d);if(!selectedId&&d.items[0])setSelectedId(d.items[0].id);}).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[query,status,refresh,selectedId]);
  useEffect(()=>{if(!selectedId)return;const c=new AbortController();api<Detail>('/api/procurement/'+selectedId,{signal:c.signal}).then(setDetail).catch(e=>{if(!c.signal.aborted)setError(e.message)});return()=>c.abort()},[selectedId,refresh]);
  useEffect(()=>{if(action&&!dialog.current?.open)dialog.current?.showModal();if(!action&&dialog.current?.open)dialog.current.close()},[action]);
  function open(a:Action){retry.current=null;setError('');if(a.type==='order')setLines([fresh()]);setAction(a)}
