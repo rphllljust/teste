@@ -761,3 +761,64 @@ tr:has(td):hover{background:#f5f9f5}
     max-width:none;
   }
 }
+
+/* Assets list report: restore the enterprise object workspace frame. */
+.assets-workspace{
+  width:100%;
+  max-width:1560px;
+  margin:0 auto;
+  min-width:0;
+}
+.assets-workspace > .enterprise-page-header{
+  margin-bottom:18px;
+}
+.assets-workspace > .filters{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
+  padding:14px 18px;
+  margin:0 0 16px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+.assets-workspace > .filters .search-input{
+  flex:1 1 360px;
+  max-width:480px;
+  min-width:240px;
+}
+.assets-workspace > .filters .select-filter{
+  min-height:40px;
+  min-width:150px;
+  background:#fff;
+}
+.assets-workspace > .empty{
+  min-height:280px;
+  margin:0;
+  padding:44px 24px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+.assets-workspace > .table-wrap{
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+.assets-workspace > .table-footer{
+  margin-top:12px;
+  padding:14px 18px;
+  background:#fff;
+  border:1px solid var(--line);
+  border-radius:6px;
+}
+@media(max-width:700px){
+  .assets-workspace > .filters{align-items:stretch}
+  .assets-workspace > .filters .search-input,
+  .assets-workspace > .filters .select-filter{
+    flex-basis:100%;
+    max-width:none;
+    width:100%;
+  }
+}
