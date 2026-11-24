@@ -835,3 +835,12 @@ tr:has(td):hover{background:#f5f9f5}
   .sidebar{display:flex!important}
   .main{margin-left:236px!important}
 }
+
+
+/* CISNE shell invariant: the application sidebar must remain present in the authenticated workspace. */
+.sidebar{display:flex!important}
+.main{margin-left:236px!important}
+@media(max-width:600px){
+  .sidebar{width:236px}
+  .main{margin-left:236px!important}
+}
