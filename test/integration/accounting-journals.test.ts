@@ -20,7 +20,7 @@ after(async () => { await closeDatabase(); await pool.end(); });
 test('GET rejects anonymous and malformed requests with JSON', async () => {
   const unauthorized = await GET(new Request(url));
   assert.equal(unauthorized.status, 401);
-  assert.match(unauthorized.headers.get('content-type') ?? '', /^application\/json\\b/);
+  assert.equal(unauthorized.headers.get('content-type'), 'application/json');
   assert.equal((await unauthorized.json() as ErrorBody).code, 'AUTHENTICATION_REQUIRED');
 
   const invalid = await GET(request(randomUUID(), '?page=abc'));
@@ -50,7 +50,7 @@ test('GET paginates persisted journals for the current actor and returns scaled 
 
     const first = await GET(request(actor));
     assert.equal(first.status, 200);
-    assert.match(first.headers.get('content-type') ?? '', /^application\/json\\b/);
+    assert.equal(unauthorized.headers.get('content-type'), 'application/json');
     const pageOne = await first.json() as JournalBody;
     assert.deepEqual(pageOne.pageInfo, { page: 1, total: 26, hasMore: true });
     assert.equal(pageOne.items.length, 25);
