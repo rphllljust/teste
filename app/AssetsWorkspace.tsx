@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Plus, RefreshCw, Search, X } from "lucide-react";
+import { EnterpriseDataState } from "./components/enterprise/EnterpriseDataState";
 import {
   EnterprisePageHeader,
   BusinessStatus,
@@ -227,12 +228,7 @@ export default function AssetsWorkspace() {
           Consultando ativos…
         </div>
       ) : error ? (
-        <div className="empty" role="alert">
-          <p>{error}</p>
-          <button className="secondary" onClick={() => void load()}>
-            Tentar novamente
-          </button>
-        </div>
+        <EnterpriseDataState kind="error" title="Não foi possível consultar os ativos" description={error} action={<button className="secondary" onClick={() => void load()}>Tentar novamente</button>} />
       ) : items.length ? (
         <div className="table-wrap">
           <table>
