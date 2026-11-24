@@ -50,7 +50,7 @@ test('GET paginates persisted journals for the current actor and returns scaled 
 
     const first = await GET(request(actor));
     assert.equal(first.status, 200);
-    assert.equal(unauthorized.headers.get('content-type'), 'application/json');
+    assert.equal(first.headers.get('content-type'), 'application/json');
     const pageOne = await first.json() as JournalBody;
     assert.deepEqual(pageOne.pageInfo, { page: 1, total: 26, hasMore: true });
     assert.equal(pageOne.items.length, 25);
