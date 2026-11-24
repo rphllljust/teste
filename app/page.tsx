@@ -31,6 +31,7 @@ import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import { EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
 import type { LucideIcon } from "lucide-react";
 import { moduleGroups, isModuleLabel, moduleHash, type ModuleNavItem } from "../lib/navigation/catalog";
+import { objectHash, parseObjectHash } from "../lib/navigation/object-routes";
 
 import { statusNames, moneyScaled } from "../lib/domain/orders";
 import { executionQuantity } from "../lib/domain/execution";
@@ -745,7 +746,7 @@ function HomeView() {
     setBusinessOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
-    window.history.pushState(null, "", "#" + encodeURIComponent(name));
+    window.history.pushState(null, "", objectHash(name, orderId || undefined));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
