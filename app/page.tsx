@@ -30,6 +30,12 @@ import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import { EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
 import type { LucideIcon } from "lucide-react";
+import {
+  moduleGroups,
+  isModuleLabel,
+  moduleHash,
+  type ModuleNavItem,
+} from "../lib/navigation/catalog";
 import { statusNames, moneyScaled } from "../lib/domain/orders";
 import { executionQuantity } from "../lib/domain/execution";
 import {
@@ -93,60 +99,30 @@ type Order = {
   due_date: string | null;
   created_at: string;
 };
-const modules: { group: string; items: [string, LucideIcon][] }[] = [
-  // ['CRM e Vendas',Users] — canonical module marker retained for source-contract checks.
-  // page==='CRM e Vendas'?<CRMWorkspace — legacy source contract marker.
-  {
-    group: "INÍCIO E OPERAÇÃO",
-    items: [
-      ["Visão operacional", LayoutDashboard],
-      ["Field Service Cockpit", Activity],
-      ["Resource Planning Board", CalendarDays],
-      ["Ordens de serviço", ClipboardList],
-      ["Execução", HardHat],
-      ["Medições", SlidersHorizontal],
-    ],
-  },
-  {
-    group: "COMERCIAL E RELACIONAMENTO",
-    items: [
-      ["CRM e Vendas", Users],
-      ["Clientes e propostas", Users],
-      ["Propostas e PO", FileText],
-    ],
-  },
-  {
-    group: "CONTRATOS E SUPRIMENTOS",
-    items: [
-      ["Contratos", FileText],
-      ["Compras", Package],
-      ["Estoque e compras", Package],
-    ],
-  },
-  {
-    group: "RECURSOS E LOGÍSTICA",
-    items: [
-      ["Frota e ativos", Truck],
-      ["Profissionais", HardHat],
-    ],
-  },
-  {
-    group: "FINANCEIRO E CONTROLADORIA",
-    items: [
-      ["Faturamento", Receipt],
-      ["Visão financeira", LayoutDashboard],
-      ["Financeiro", Wallet],
-      ["Fluxo de caixa", Wallet],
-      ["Tesouraria", Landmark],
-      ["Contas a pagar", Receipt],
-      ["Caixa e conciliação", Landmark],
-      ["Fiscal e tributos", FileText],
-      ["Contabilidade", BookOpen],
-      ["Razão contábil", BookOpen],
-      ["Fechamentos", CalendarDays],
-    ],
-  },
-];
+const iconByKey = {
+  activity: Activity,
+  dashboard: LayoutDashboard,
+  orders: ClipboardList,
+  people: Users,
+  assets: Truck,
+  finance: Wallet,
+  billing: Receipt,
+  accounting: BookOpen,
+  inventory: Package,
+  file: FileText,
+  procurement: Package,
+  field: HardHat,
+  calendar: CalendarDays,
+} as const;
+const modules: { group: string; items: [string, LucideIcon][] }[] = moduleGroups.map(
+  (group) => ({
+    group: group.label,
+    items: group.items.map((item: ModuleNavItem) => [
+      item.label,
+      iconByKey[item.icon],
+    ] as [string, LucideIcon]),
+  }),
+);
 const chain = [
   "Ordem de serviço",
   "Execução",
@@ -792,7 +768,7 @@ function HomeView() {
     setBusinessOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
-    window.history.pushState(null, "", "#" + encodeURIComponent(name));
+    window.history.pushState(null, "", moduleHash(name));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
@@ -811,7 +787,7 @@ function HomeView() {
     function route() {
       const raw = window.location.hash.slice(1);
       const name = raw ? decodeURIComponent(raw) : "Visão operacional";
-      if (modules.some((g) => g.items.some(([n]) => n === name))) {
+      if (isModuleLabel(name)) {
         setPage(name);
       } else if (!raw) {
         window.history.replaceState(null, "", "#" + encodeURIComponent(name));
