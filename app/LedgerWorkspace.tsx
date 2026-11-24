@@ -4,12 +4,16 @@ import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 type Account={id:string;code:string;name:string;type:string};
 type Row={id:string;journalId:string;effectiveDate:string;sourceReference:string;description:string;debitScaled:string;creditScaled:string;reversalOf:string|null};
+async function readAccountingJson<T>(response:Response):Promise<T>{
+ const body=await response.text();
+ try{return JSON.parse(body) as T;}catch{throw new Error(response.status===404?'Contrato da API contábil indisponível no ambiente.':'Resposta inválida da API contábil.');}
+}
 type Data={account:Account;items:Row[];pageInfo:{total:number;hasMore:boolean};totals:{openingScaled:string;debitScaled:string;creditScaled:string;closingScaled:string};emptyState:string|null;warnings:string[];generatedAt:string};
 type Entry={identity:{title:string};facts:{effectiveDate:string;sourceReference:string;description:string};lines:{id:string;code:string;name:string;debitScaled:string;creditScaled:string}[]};
 const signed=(v:string)=>v.startsWith('-')?'−'+moneyScaled(v.slice(1)):moneyScaled(v);
 export default function LedgerWorkspace(){
  const [accounts,setAccounts]=useState<Account[]>([]),[accountId,setAccountId]=useState(''),[from,setFrom]=useState(''),[to,setTo]=useState(''),[page,setPage]=useState(1),[data,setData]=useState<Data|null>(null),[loading,setLoading]=useState(false),[error,setError]=useState(''),[detail,setDetail]=useState<Entry|null>(null),[detailError,setDetailError]=useState(''),[detailLoading,setDetailLoading]=useState(false);
- useEffect(()=>{const c=new AbortController();fetch('/api/accounting/accounts',{signal:c.signal}).then(async r=>{const d=await r.json() as {items:Account[];error?:string};if(!r.ok)throw new Error(d.error);if(!c.signal.aborted)setAccounts(d.items);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[]);
+ useEffect(()=>{const c=new AbortController();fetch('/api/accounting/accounts',{signal:c.signal}).then(async r=>{const d=await readAccountingJson<{items:Account[];error?:string}>(r);if(!r.ok)throw new Error(d.error);if(!c.signal.aborted)setAccounts(d.items);}).catch(e=>{if(!c.signal.aborted)setError(e.message);});return()=>c.abort();},[]);
  useEffect(()=>{if(!accountId)return;const c=new AbortController();const timer=setTimeout(async()=>{setLoading(true);setError('');try{const r=await fetch('/api/accounting/ledger?'+new URLSearchParams({accountId,page:String(page),...(from?{from}:{}),...(to?{to}:{})}),{signal:c.signal});const d=await r.json() as Data&{error?:string};if(!r.ok)throw new Error(d.error);if(!c.signal.aborted)setData(d);}catch(e){if(!c.signal.aborted)setError(e instanceof Error?e.message:'Razão indisponível.');}finally{if(!c.signal.aborted)setLoading(false);}},0);return()=>{clearTimeout(timer);c.abort();};},[accountId,from,to,page]);
  function change(fn:()=>void){setLoading(true);setPage(1);setData(null);fn();}
  async function open(id:string){setDetail(null);setDetailError('');setDetailLoading(true);try{const r=await fetch('/api/accounting/journals/'+encodeURIComponent(id));const d=await r.json() as {entry:Entry['facts']&{id:string};lines:Entry['lines'];error?:string};if(!r.ok)throw new Error(d.error);setDetail({identity:{title:'Lançamento · '+d.entry.id.slice(0,8).toUpperCase()},facts:d.entry,lines:d.lines});}catch(e){setDetailError(e instanceof Error?e.message:'Origem indisponível.');}finally{setDetailLoading(false);}}
