@@ -6,7 +6,7 @@ import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {POST as createOrder} from '../../app/api/orders/route';
 import {POST as orderCommand} from '../../app/api/commands/route';
-import {POST as reportExecution} from '../../app/api/orders/[id]/execution/route';
+import {GET as listExecution,POST as reportExecution} from '../../app/api/orders/[id]/execution/route';
 import {GET as listMeasurements,POST as createMeasurement} from '../../app/api/orders/[id]/measurements/route';
 import {POST as submitMeasurement} from '../../app/api/orders/[id]/measurements/[measurementId]/commands/route';
 
@@ -25,8 +25,18 @@ test('execution is auditable and measurement creation/submission is execution-li
  assert.equal((await createOrder(req('/api/orders',{id:orderId,title:'CI measured service order',category:'Serviços',description:'Field Service measurement invariant',dueDate:null,clientId,clientVersion:1}))).status,201);
  assert.equal((await orderCommand(req('/api/commands',{id:orderId,version:1,key:randomUUID(),command:'authorize'}))).status,201);
  assert.equal((await orderCommand(req('/api/commands',{id:orderId,version:2,key:randomUUID(),command:'start'}))).status,201);
+ const listReports=(search:string)=>listExecution(setTestIdentity(new Request(`http://localhost/api/orders/${orderId}/execution?${search}`),actor),orderParams);
+ const initialList=await listReports('q=&page=1&pageSize=25');
+ assert.equal(initialList.status,200);
+ assert.deepEqual((await json(initialList)).availableCommands,[{id:'report',label:'Registrar execução',expectedVersion:3}]);
  const executionKey=randomUUID();const execution=await reportExecution(req(`/api/orders/${orderId}/execution`,{command:'report',key:executionKey,version:3,resourceKind:'labor',description:'Execução concluída em campo',quantity:'2,5',unit:'hora',resourceReference:'PROF-CI-01',effectiveDate:'2026-11-20',reference:'APONT-CI-001'}),orderParams);
  assert.equal(execution.status,201,JSON.stringify(await json(execution.clone())));const executionBody=await json(execution) as unknown as {resource:{id:string}};assert.ok(executionBody.resource.id);
+ const matching=await listReports('q=prof-ci-01&resourceKind=labor&pageSize=25');
+ assert.equal(matching.status,200);
+ assert.deepEqual(((await json(matching)).items as {id:string}[]).map(item=>item.id),[executionBody.resource.id]);
+ const excluded=await listReports('q=apont-ci-001&resourceKind=fuel&pageSize=25');
+ assert.equal(excluded.status,200);
+ assert.deepEqual((await json(excluded)).pageInfo,{page:1,limit:25,offset:0,total:0,sourceTotal:1,hasMore:false});
  assert.equal((await orderCommand(req('/api/commands',{id:orderId,version:3,key:randomUUID(),command:'complete'}))).status,201);
  const measurementKey=randomUUID();const payload={key:measurementKey,executionId:executionBody.resource.id,description:'Medição da execução CI',amount:'250,00'};
  const created=await createMeasurement(req(`/api/orders/${orderId}/measurements`,payload),orderParams);assert.equal(created.status,201,JSON.stringify(await json(created.clone())));const createdBody=await json(created) as unknown as {resource:{id:string;executionId:string;rowVersion:number}};assert.equal(createdBody.resource.executionId,executionBody.resource.id);
