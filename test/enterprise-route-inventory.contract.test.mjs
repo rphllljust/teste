@@ -106,8 +106,8 @@ test("work orders and linked finance entries use implemented worklists", () => {
 });
 
 test("resource entries dispatch to their workspaces and every menu label has a dispatch path", () => {
-  assert.match(pageSource, /if \(page === "Profissionais"\)\s*return \(\s*<div className="app">\s*<ProfessionalsWorkspace\s*\/>/);
-  assert.match(pageSource, /if \(page === "Frota e ativos"\)\s*return \(\s*<div className="app">\s*<AssetsWorkspace\s*\/>/);
+  assert.match(pageSource, /page === "Profissionais" \? \(\s*<ProfessionalsWorkspace\s*\/>/);
+  assert.match(pageSource, /page === "Frota e ativos" \? \(\s*<AssetsWorkspace\s*\/>/);
   const dispatched = [...directTargets.keys(), "Ordens de serviço", "Medições", "Faturamento", "Financeiro", "Profissionais", "Frota e ativos"];
   assert.deepEqual(new Set(dispatched), new Set(expectedGroups.flatMap(({ entries }) => entries)));
 });
