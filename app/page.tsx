@@ -1241,18 +1241,6 @@ function HomeView() {
               "Fiscal e tributos": 5,
               Contabilidade: 6,
             }[page] ?? -1);
-  if (page === "Profissionais")
-    return (
-      <div className="app">
-        <ProfessionalsWorkspace />
-      </div>
-    );
-  if (page === "Frota e ativos")
-    return (
-      <div className="app">
-        <AssetsWorkspace />
-      </div>
-    );
   const moduleDescription: Record<string, string> = {
     Medições:
       "Acompanhamento da produção realizada e das medições vinculadas às ordens de serviço.",
@@ -1584,6 +1572,10 @@ function HomeView() {
                 await openOrigin(id);
               }}
             />
+          ) : page === "Profissionais" ? (
+            <ProfessionalsWorkspace />
+          ) : page === "Frota e ativos" ? (
+            <AssetsWorkspace />
           ) : page === "Field Service Cockpit" ? (
             <FieldServiceCockpit
               onNavigate={navigate}
