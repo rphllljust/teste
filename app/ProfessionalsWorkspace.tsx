@@ -4,6 +4,7 @@ import { Plus, RefreshCw, Search, X } from "lucide-react";
 import {
   EnterprisePageHeader,
   BusinessStatus,
+  EnterpriseDataState,
 } from "./components/enterprise/EnterprisePrimitives";
 type Professional = {
   id: string;
@@ -193,16 +194,9 @@ export default function ProfessionalsWorkspace() {
         </select>
       </div>
       {loading ? (
-        <div className="empty" role="status">
-          Consultando profissionais…
-        </div>
+        <EnterpriseDataState kind="unavailable" title="Consultando profissionais" description="Os profissionais persistidos estão sendo consultados." />
       ) : error ? (
-        <div className="empty" role="alert">
-          <p>{error}</p>
-          <button className="secondary" onClick={() => void load()}>
-            Tentar novamente
-          </button>
-        </div>
+        <EnterpriseDataState kind="error" title="Profissionais indisponíveis" description={error} onRetry={() => void load()} />
       ) : items.length ? (
         <div className="table-wrap">
           <table>
@@ -243,14 +237,7 @@ export default function ProfessionalsWorkspace() {
           </table>
         </div>
       ) : (
-        <div className="empty">
-          <h3>Nenhum profissional cadastrado</h3>
-          <p>Cadastre a primeira pessoa autorizada para execução.</p>
-          <button className="primary" onClick={() => setForm(true)}>
-            <Plus size={16} />
-            Cadastrar profissional
-          </button>
-        </div>
+        <EnterpriseDataState kind="not_configured" title="Nenhum profissional cadastrado" description="Cadastre a primeira pessoa autorizada para execução." action={<button className="primary" onClick={() => setForm(true)}><Plus size={16} /> Cadastrar profissional</button>} />
       )}
       <footer className="table-footer">
         <span>{items.length} profissionais na consulta</span>
