@@ -771,7 +771,8 @@ function HomeView() {
     setLinkedNumber(1);
     setPage(name);
     const route = findModuleRoute(name);
-    if (!route) return;\n    window.history.pushState(null, "", routeHash(route));
+    if (!route) return;
+    window.history.pushState(null, "", routeHash(route));
     setSelected(null);
     setReceivableContext(null);
     setLinkedInfo(null);
