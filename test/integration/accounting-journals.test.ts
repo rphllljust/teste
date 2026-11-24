@@ -12,18 +12,20 @@ if (!process.env.DATABASE_URL) throw new Error('DATABASE_URL is required for acc
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const url = 'http://localhost/api/accounting/journals';
 const request = (actor: string, search = '') => setTestIdentity(new Request(url + search), actor);
+type ErrorBody = { code: string };
+type JournalBody = { items: Array<{ id: string; effectiveDate: string; sourceReference: string; description: string; status: string; debitScaled: string; creditScaled: string; reversalOf: string|null }>; pageInfo: { page: number; total: number; hasMore: boolean } };
 
 after(async () => { await closeDatabase(); await pool.end(); });
 
 test('GET rejects anonymous and malformed requests with JSON', async () => {
   const unauthorized = await GET(new Request(url));
   assert.equal(unauthorized.status, 401);
-  assert.match(unauthorized.headers.get('content-type') ?? '', /^application\/json\b/);
-  assert.equal((await unauthorized.json()).code, 'AUTHENTICATION_REQUIRED');
+  assert.match(unauthorized.headers.get('content-type') ?? '', /^application\/json\\b/);
+  assert.equal((await unauthorized.json() as ErrorBody).code, 'AUTHENTICATION_REQUIRED');
 
   const invalid = await GET(request(randomUUID(), '?page=abc'));
   assert.equal(invalid.status, 400);
-  assert.equal((await invalid.json()).code, 'VALIDATION_FAILED');
+  assert.equal((await invalid.json() as ErrorBody).code, 'VALIDATION_FAILED');
 });
 
 test('GET paginates persisted journals for the current actor and returns scaled totals', async () => {
@@ -48,8 +50,8 @@ test('GET paginates persisted journals for the current actor and returns scaled 
 
     const first = await GET(request(actor));
     assert.equal(first.status, 200);
-    assert.match(first.headers.get('content-type') ?? '', /^application\/json\b/);
-    const pageOne = await first.json();
+    assert.match(first.headers.get('content-type') ?? '', /^application\/json\\b/);
+    const pageOne = await first.json() as JournalBody;
     assert.deepEqual(pageOne.pageInfo, { page: 1, total: 26, hasMore: true });
     assert.equal(pageOne.items.length, 25);
     assert.deepEqual(pageOne.items[0], {
@@ -59,14 +61,14 @@ test('GET paginates persisted journals for the current actor and returns scaled 
 
     const second = await GET(request(actor, '?page=2'));
     assert.equal(second.status, 200);
-    const pageTwo = await second.json();
+    const pageTwo = await second.json() as JournalBody;
     assert.deepEqual(pageTwo.pageInfo, { page: 2, total: 26, hasMore: false });
     assert.equal(pageTwo.items.length, 1);
-    assert.ok(!pageOne.items.some((item: { id: string }) => item.id === pageTwo.items[0].id));
+    assert.ok(!pageOne.items.some(item => item.id === pageTwo.items[0].id));
 
     const isolated = await GET(request(otherActor));
     assert.equal(isolated.status, 200);
-    const empty = await isolated.json();
+    const empty = await isolated.json() as JournalBody;
     assert.deepEqual(empty.items, []);
     assert.deepEqual(empty.pageInfo, { page: 1, total: 0, hasMore: false });
   } finally {
