@@ -41,7 +41,7 @@ export async function getPeriodCloseReadiness(query: Query, actorId: string, per
   // adoption gaps, not retroactively made blocking. However a persisted
   // accounting source link MUST reconcile exactly or the close fails.
   const cashValid =
-    "l.kind=s.kind AND l.amount=s.amount AND l.effective_date=s.effective_date "+
+    "l.actor_id=o.owner_id AND l.kind=s.kind AND l.amount=s.amount AND l.effective_date=s.effective_date "+
     "AND j.status='posted' AND j.effective_date=s.effective_date "+
     'AND (SELECT COALESCE(SUM(debit),0) FROM journal_lines WHERE entry_id=j.id)=s.amount '+
     'AND (SELECT COALESCE(SUM(credit),0) FROM journal_lines WHERE entry_id=j.id)=s.amount '+
@@ -58,7 +58,7 @@ export async function getPeriodCloseReadiness(query: Query, actorId: string, per
     'JOIN receivables r ON r.id=s.receivable_id '+
     'JOIN invoices i ON i.id=r.invoice_id '+
     'JOIN service_orders o ON o.id=i.order_id '+
-    'LEFT JOIN accounting_settlement_links l ON l.settlement_id=s.id AND l.actor_id=o.owner_id '+
+    'LEFT JOIN accounting_settlement_links l ON l.settlement_id=s.id '+
     'LEFT JOIN journal_entries j ON j.id=l.journal_id AND j.actor_id=o.owner_id '+
     'WHERE o.owner_id=$1 AND s.effective_date>=$2 AND s.effective_date<=$3',
     [actorId,periodStart,periodEnd],
