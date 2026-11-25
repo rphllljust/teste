@@ -37,7 +37,13 @@ const req=(actor:string,path:string,body?:unknown)=>
   headers:{'content-type':'application/json'},
   ...(body===undefined?{}:{body:JSON.stringify(body)}),
  }),actor);
-const json=async(r:Response)=>(await r.clone().json()) as Record<string,any>;
+type ResponsePayload={
+ code:string;
+ accounting:{status:string;journalId:string;ruleVersion:number};
+ resource:{accounting:{status:string;journalId:string;ruleVersion:number}};
+ totals:{debitScaled:string;creditScaled:string};
+};
+const json=async(r:Response)=>(await r.clone().json()) as ResponsePayload;
 async function status(response:Response,expected:number,step:string){
  assert.equal(response.status,expected,step+' '+JSON.stringify(await json(response)));
  return json(response);
