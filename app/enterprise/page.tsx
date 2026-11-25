@@ -55,36 +55,36 @@ export default function EnterpriseStructurePage(){
  useEffect(()=>{void loadDetail(tenantId);},[tenantId,loadDetail]);
 
  async function createTenant(event:React.FormEvent<HTMLFormElement>){
-  event.preventDefault();setSaving(true);setError('');setNotice('');
+  event.preventDefault();const formElement=event.currentTarget;setSaving(true);setError('');setNotice('');
   const form=new FormData(event.currentTarget);
   try{
    const result=await post<Tenant>(tenantUrl,{id:newId(),commandKey:newId(),
     slug:String(form.get('slug')??'').trim(),name:String(form.get('name')??'').trim()});
-   await loadTenants();setTenantId(result.id);event.currentTarget.reset();
+   await loadTenants();setTenantId(result.id);formElement.reset();
    setNotice('Organização registrada com trilha de auditoria.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha no cadastro de organização.');}
   finally{setSaving(false);}
  }
  async function createCompany(event:React.FormEvent<HTMLFormElement>){
-  event.preventDefault();if(!tenantId)return;
+  event.preventDefault();const formElement=event.currentTarget;if(!tenantId)return;
   setSaving(true);setError('');setNotice('');
   const form=new FormData(event.currentTarget);
   try{
    await post(tenantUrl+'/'+tenantId+'/legal-entities',{id:newId(),commandKey:newId(),
     code:String(form.get('code')??'').trim().toUpperCase(),
     name:String(form.get('name')??'').trim(),...(form.get('taxId')?{taxId:String(form.get('taxId'))}:{})});
-   await loadDetail(tenantId);event.currentTarget.reset();setNotice('Empresa jurídica registrada.');
+   await loadDetail(tenantId);formElement.reset();setNotice('Empresa jurídica registrada.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao registrar empresa jurídica.');}
   finally{setSaving(false);}
  }
  async function provision(event:React.FormEvent<HTMLFormElement>){
-  event.preventDefault();if(!tenantId)return;
+  event.preventDefault();const formElement=event.currentTarget;if(!tenantId)return;
   setSaving(true);setError('');setNotice('');
   const form=new FormData(event.currentTarget);
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'provision',
     actorId:String(form.get('actorId')??'').trim(),role:String(form.get('role')??'operator')});
-   await loadDetail(tenantId);event.currentTarget.reset();
+   await loadDetail(tenantId);formElement.reset();
    setNotice('Vínculo provisionado. A identidade deverá autenticar-se com seu próprio acesso.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao provisionar membro.');}
   finally{setSaving(false);}
