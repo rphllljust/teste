@@ -25,10 +25,12 @@ export async function GET(request:Request){
     'COUNT(*) FILTER (WHERE NOT ('+verified+'))::int AS "withoutVerifiedPostingCount", '+
     'COALESCE(SUM(i.amount) FILTER (WHERE NOT ('+verified+')),0)::text AS "withoutVerifiedPostingAmountScaled", '+
     'COUNT(*) FILTER (WHERE '+verified+')::int AS "verifiedPostingCount", '+
+    "COUNT(*) FILTER (WHERE "+verified+" AND l.posting_mode='automatic_invoice')::int AS \"automaticPostingCount\", "+
+    "COUNT(*) FILTER (WHERE "+verified+" AND l.posting_mode='manual_verified')::int AS \"manualVerifiedCount\", "+
     'COUNT(*) FILTER (WHERE r.id IS NULL)::int AS "missingReceivableCount" '+
     sources,
    ).bind(ctx.actorId).first<{
-    invoiceCount:number;invoiceAmountScaled:string;verifiedPostingCount:number;
+    invoiceCount:number;invoiceAmountScaled:string;verifiedPostingCount:number;automaticPostingCount:number;manualVerifiedCount:number;
     withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number;
    }>(),
    database().prepare(
@@ -37,7 +39,7 @@ export async function GET(request:Request){
    database().prepare(
     'SELECT i.id AS "invoiceId",i.order_id AS "orderId",i.measurement_id AS "measurementId",'+
     'i.amount::text AS "amountScaled",i.due_date AS "dueDate",r.id AS "receivableId", '+
-    'l.id AS "linkId",j.id AS "journalId",('+verified+') AS "verifiedPosting", '+
+    'l.id AS "linkId",j.id AS "journalId",l.posting_mode AS "postingMode",('+verified+') AS "verifiedPosting", '+
     '(rev.id IS NOT NULL) AS "journalReversed" '+
     sources+' ORDER BY i.created_at DESC,i.id DESC LIMIT 20',
    ).bind(ctx.actorId).all(),
@@ -45,13 +47,15 @@ export async function GET(request:Request){
   return respond({
    generatedAt:new Date().toISOString(),
    accountingLinkage:{
-    status:'MANUAL_VERIFICATION_AVAILABLE',
-    reason:'Vínculos manuais persistidos são verificados por propriedade, montante, diário publicado e ausência de estorno. Não há contabilização automática de faturas.',
+    status:'CONFIGURABLE_AUTO_POSTING',
+    reason:'Contabilização automática somente para novas faturas com regra explícita ativa; vínculos manuais preservados. Publicação e estornos são verificados.',
    },
    summary:{
     invoiceCount:summary?.invoiceCount??0,
     invoiceAmountScaled:summary?.invoiceAmountScaled??'0',
     verifiedPostingCount:summary?.verifiedPostingCount??0,
+    automaticPostingCount:summary?.automaticPostingCount??0,
+    manualVerifiedCount:summary?.manualVerifiedCount??0,
     withoutVerifiedPostingCount:summary?.withoutVerifiedPostingCount??0,
     withoutVerifiedPostingAmountScaled:summary?.withoutVerifiedPostingAmountScaled??'0',
     missingReceivableCount:summary?.missingReceivableCount??0,

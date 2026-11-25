@@ -320,7 +320,25 @@ export const accountingInvoiceLinks=pgTable('accounting_invoice_links',{
  invoiceId:text('invoice_id').notNull().unique().references(()=>invoices.id),
  journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
  amount:integer('amount').notNull(),
+ postingMode:text('posting_mode').notNull().default('manual_verified'),
+ ruleVersion:integer('rule_version'),
  requestHash:text('request_hash').notNull(),
  correlationId:text('correlation_id').notNull(),
  createdAt:text('created_at').notNull(),
 },t=>[index('accounting_invoice_link_owner_idx').on(t.actorId,t.invoiceId)]);
+
+/** No implicit ledger rules. The owner explicitly selects A/R and revenue accounts. */
+export const accountingPostingRules=pgTable('accounting_posting_rules',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ sourceType:text('source_type').notNull(),
+ debitAccountId:text('debit_account_id').notNull().references(()=>chartAccounts.id),
+ creditAccountId:text('credit_account_id').notNull().references(()=>chartAccounts.id),
+ active:integer('active').notNull().default(0),
+ rowVersion:integer('row_version').notNull().default(1),
+ createdAt:text('created_at').notNull(),
+ updatedAt:text('updated_at').notNull(),
+},t=>[
+ uniqueIndex('accounting_posting_rule_actor_source_uq').on(t.actorId,t.sourceType),
+ index('accounting_posting_rules_actor_active_idx').on(t.actorId,t.active),
+]);
