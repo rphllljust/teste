@@ -1266,6 +1266,7 @@ function HomeView() {
           ))}
         </nav>
         <div className="sidebar-bottom">
+          <Link prefetch={false} href="/enterprise" className="enterprise-structure-link" style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px"}}><Building2 size={17}/> Gestão de empresas</Link>
           <span className="version">
             <span />
             Cisne · Plataforma empresarial
