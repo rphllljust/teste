@@ -16,14 +16,23 @@ const expectedGroups = [
   ["FINANCEIRO E CONTROLADORIA", ["Faturamento", "Visão financeira", "Financeiro", "Fluxo de caixa", "Tesouraria", "Contas a pagar", "Caixa e conciliação", "Fiscal e tributos", "Contabilidade", "Razão contábil", "Fechamentos"]],
 ];
 
-test("typed catalog contains all enterprise entries without duplicates", () => {
+test("typed catalog contains the exact enterprise entries, groups and order without duplicates", () => {
   assert.match(catalogSource, /export type ModuleNavItem/);
   assert.match(catalogSource, /export const moduleGroups/);
-  for (const [group, entries] of expectedGroups) {
-    assert.ok(catalogSource.includes('label: "' + group + '"'));
-    for (const entry of entries) assert.ok(catalogSource.includes('label: "' + entry + '"'));
+  const groups = [...catalogSource.matchAll(/\\{\\s*id:\\s*"([^"]+)",\\s*label:\\s*"([^"]+)",\\s*items:\\s*\\[([\\s\\S]*?)\\]\\s*\\}/g)];
+  assert.equal(groups.length, expectedGroups.length, "Unexpected group count in typed navigation");
+  const ids = [];
+  for (const [index, [, groupId, groupLabel, source]] of groups.entries()) {
+    const [expectedLabel, expectedEntries] = expectedGroups[index];
+    assert.ok(groupId, "Every group must have an id");
+    assert.equal(groupLabel, expectedLabel);
+    const entries = [...source.matchAll(/item\\("([^"]+)",\\s*"([^"]+)",\\s*"([^"]+)"\\)/g)];
+    assert.deepEqual(entries.map((entry) => entry[2]), expectedEntries, `Navigation entries differ in ${groupLabel}`);
+    ids.push(...entries.map((entry) => entry[1]));
   }
-  assert.match(catalogSource, /export const moduleItems = moduleGroups\.flatMap/);
+  assert.equal(ids.length, 25);
+  assert.equal(new Set(ids).size, ids.length, "Module ids must be unique");
+  assert.match(catalogSource, /export const moduleItems = moduleGroups\\.flatMap/);
 });
 
 test("catalog exposes deep-link helpers", () => {
@@ -40,6 +49,6 @@ test("page consumes the typed catalog and keeps hash navigation", () => {
 });
 
 test("documentation is synchronized with the shell inventory", () => {
-  const rows = documentSource.split("\\n").filter((line) => line.startsWith("| ") && !line.startsWith("| Grupo"));
+  const rows = documentSource.split("\n").filter((line) => line.startsWith("| ") && !line.startsWith("| Grupo"));
   assert.equal(rows.length, expectedGroups.length);
 });
