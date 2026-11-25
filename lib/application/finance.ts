@@ -218,6 +218,13 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
     // A later-dated reversal cannot silently reopen the source period.
     const closedOrigin=await query("SELECT 1 FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$2 LIMIT 1",[context.actorId,String(row.effective_date)]);
     if(closedOrigin.rows.length)throw new ApiError(409,'ACCOUNTING_CLOSED_ORIGIN','Não é possível estornar pagamento originado em competência encerrada.');
+    const activeBankMatch=await query(
+      "SELECT 1 FROM bank_reconciliation_events e WHERE e.payment_id=$1 AND e.actor_id=$2 AND e.kind='match' "+
+      "AND NOT EXISTS (SELECT 1 FROM bank_reconciliation_events u WHERE u.reverses_id=e.id) LIMIT 1",
+      [input.paymentId,context.actorId],
+    );
+    if(activeBankMatch.rows.length)throw new ApiError(409,'BANK_RECONCILIATION_ACTIVE',
+      'Desfaça a conciliação bancária antes de estornar o pagamento.');
     const alreadyReversed = await query('SELECT 1 FROM payable_payments WHERE reverses_id=$1', [input.paymentId]);
     if (alreadyReversed.rows.length) throw new ApiError(409, 'PAYMENT_ALREADY_REVERSED', 'Este pagamento já foi estornado.');
     await query(`INSERT INTO payable_payments
