@@ -7,7 +7,7 @@ type Row={id:string;documentType:string;number:string;issuedOn:string;clientName
 type Event={id:string;action:string;actorId:string;metadata:string;createdAt:string;correlationId:string};
 type Detail=Row&{direction:string;period:string;series?:string;accessKey?:string;cfop?:string;nature?:string;municipality?:string;taxRegime?:string;taxBaseScaled:string;issRateScaled:string;issAmountScaled:string;icmsRateScaled:string;icmsAmountScaled:string;ipiAmountScaled:string;pisAmountScaled:string;cofinsAmountScaled:string;withheldAmountScaled:string;sourceReference?:string;notes?:string;attachmentReference?:string;createdAt:string;updatedAt:string;events:Event[]};
 type Payload={items:Row[];pageInfo:{hasMore:boolean};error?:string;notice?:string};
-type OriginOption={id:string;label?:string;reference?:string;amount?:string;due_date?:string};
+type OriginOption={id:string;label?:string;reference?:string;source_reference?:string;amount?:string;due_date?:string};
 type OriginOptions={orders:OriginOption[];contracts:OriginOption[];invoices:OriginOption[];receivables:OriginOption[];payables:OriginOption[]};
 
 export default function FiscalWorkspace(){
