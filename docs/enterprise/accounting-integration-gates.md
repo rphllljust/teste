@@ -1,6 +1,6 @@
 # Accounting integration gates — verified manual invoice links (stage 1)
 
-**Source linkage is not the same as automatic accounting posting.** A journal created manually can now be linked to a specific invoice only after a transaction validates the same authenticated actor's ownership of both, a posted original journal with no reversal, two-sided balanced totals exactly matching the invoice, an open financial period and idempotency. The link is append-only and audited.
+**Source linkage is not the same as automatic accounting posting.** A journal created manually can now be linked to a specific invoice only after a transaction validates the same authenticated actor's ownership of both, a posted original journal with no reversal, two-sided balanced totals exactly matching the invoice, active debtor asset accounts for debits and revenue accounts for credits, an open financial period and idempotency. The link is append-only and audited.
 
 | Business path | Automatic posting | Persisted origin link | Guard |
 |---|---:|---|---|
