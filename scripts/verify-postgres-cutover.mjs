@@ -31,7 +31,8 @@ let client;
 let discrepancies = 0;
 let totalRows = 0;
 // Explicitly reviewed additive columns beyond the immutable 36-table D1 baseline.
-const additiveColumns = new Map([['measurements', ['execution_entry_id', 'submitted_at', 'submitted_by']]]);
+// Allowlisted additive fields from versioned measurement migrations 0011 and 0016; all legacy baseline columns remain mandatory.
+const additiveColumns = new Map([['measurements', ['cancelled_at', 'cancelled_by', 'cancellation_reason', 'execution_entry_id', 'submitted_at', 'submitted_by']]]);
 
 function canonical(row, cols) {
   if (cols.some(c => Buffer.isBuffer(row[c]))) throw new Error('BLOB requires separate review');
