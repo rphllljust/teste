@@ -83,8 +83,8 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
  ]);
  const expectedAmount=(await pool.query('SELECT total FROM supplier_purchase_orders WHERE id=$1',
   [orderId])).rows[0].total as number;
- assert.equal(expectedAmount,470000); // 37.00 + 8.00 + 2.00 freight + 1.00 costs
- const input=command(invoiceId,'47.00');
+ assert.equal(expectedAmount,480000); // 37.00 + 8.00 + 2.00 freight + 1.00 costs = 48.00
+ const input=command(invoiceId,'48.00');
  const premature=await supplierMatch(actor,orderId,input);
  assert.equal(premature.status,409);
  assert.equal((await expect(premature,409,'before received')).code,'THREE_WAY_ORDER_NOT_READY');
@@ -93,11 +93,11 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
  assert.equal((await expect(partial,409,'partial delivery')).code,'THREE_WAY_ORDER_NOT_READY');
  await receiveOrder(orderId,3,[{lineId:lineA,accepted:'2',rejected:'0'},{lineId:lineB,accepted:'1',rejected:'0'}]);
 
- const badSupplier=await supplierMatch(actor,orderId,command(randomUUID(),'47.00','NF-CI-ERR',outsider));
+ const badSupplier=await supplierMatch(actor,orderId,command(randomUUID(),'48.00','NF-CI-ERR',outsider));
  assert.equal((await expect(badSupplier,409,'supplier mismatch')).code,'SUPPLIER_MISMATCH');
- const badAmount=await supplierMatch(actor,orderId,command(randomUUID(),'46.99','NF-CI-AMOUNT'));
+ const badAmount=await supplierMatch(actor,orderId,command(randomUUID(),'47.99','NF-CI-AMOUNT'));
  assert.equal((await expect(badAmount,409,'monetary mismatch')).code,'THREE_WAY_AMOUNT_MISMATCH');
- const crossTenant=await supplierMatch(outsider,orderId,command(randomUUID(),'47.00'));
+ const crossTenant=await supplierMatch(outsider,orderId,command(randomUUID(),'48.00'));
  assert.equal((await expect(crossTenant,404,'tenant isolation')).code,'NOT_FOUND');
  const nullBefore=await supplierInvoiceDetails(req(actor,path(orderId)),{params:Promise.resolve({id:orderId})});
  assert.equal((await expect(nullBefore,200,'unmatched invoice')).invoice,null);
@@ -115,7 +115,7 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
  assert.ok(postedJournal);
  const replay=await expect(submitted.find(r=>r.status===200)!,200,'idempotent replay');
  assert.equal(replay.resource?.accounting.journalId,postedJournal);
- const retry=await supplierMatch(actor,orderId,command(randomUUID(),'47.00','NF-CI-OTHER'));
+ const retry=await supplierMatch(actor,orderId,command(randomUUID(),'48.00','NF-CI-OTHER'));
  assert.equal((await expect(retry,409,'same PO duplicate')).code,'SUPPLIER_INVOICE_DUPLICATE');
  const mismatchKey=await supplierMatch(actor,orderId,{...input,documentNumber:'NF-CI-DIFFERENT'});
  assert.equal((await expect(mismatchKey,409,'reused command key')).code,'IDEMPOTENCY_CONFLICT');
