@@ -10,6 +10,7 @@ import {POST as approve} from '../../app/api/procurement/[id]/commands/route';
 import {POST as receive} from '../../app/api/procurement/[id]/receipts/route';
 import {GET as supplierInvoiceDetails,POST as matchInvoice} from '../../app/api/procurement/[id]/supplier-invoice/route';
 import {POST as account} from '../../app/api/accounting/accounts/route';
+import {GET as payableDetail} from '../../app/api/payables/[id]/route';
 import {POST as policy} from '../../app/api/accounting/posting-rules/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
@@ -138,6 +139,11 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
    [accountPayable,{debit:0,credit:expectedAmount}]]));
  const detail=await supplierInvoiceDetails(req(actor,path(orderId)),{params:Promise.resolve({id:orderId})});
  assert.equal((await expect(detail,200,'linked invoice')).invoice?.payableId,invoiceId);
+ const apView=await payableDetail(req(actor,'/api/payables/'+invoiceId),{params:Promise.resolve({id:invoiceId})});
+ assert.equal(apView.status,200);
+ const apProjection=await apView.json() as {projection:{source:{procurement:{orderId:string;orderReference:string;documentNumber:string}}}};
+ assert.equal(apProjection.projection.source.procurement.orderId,orderId);
+ assert.equal(apProjection.projection.source.procurement.documentNumber,input.documentNumber);
  await assert.rejects(pool.query('DELETE FROM procurement_supplier_invoices WHERE id=$1',[invoiceId]),
   /CISNE_SUPPLIER_INVOICE_IMMUTABLE/);
  console.log(JSON.stringify({event:'CISNE_PURCHASE_THREE_WAY_CI',status:'MATCHED_AND_ACCRUED',
