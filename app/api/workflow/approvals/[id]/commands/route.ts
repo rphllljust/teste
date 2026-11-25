@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { database } from '../../../../../../db/raw';
-import { lockFinancePeriodScope } from '../../../../../../lib/application/finance';
+import { assertPeriodReadyToClose, lockFinancePeriodScope } from '../../../../../../lib/application/finance';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../../../lib/api/http';
 
 const command = z.object({ key: z.string().uuid(), version: z.number().int().positive(), command: z.enum(['approve', 'reject']), reason: z.string().trim().min(3).max(500).optional() }).strict();
@@ -49,6 +49,7 @@ export async function POST(request: Request, route: { params: Promise<{ id: stri
         );
         if (overlap.rows.length)
           throw new ApiError(409,'FINANCE_PERIOD_OVERLAP','Já existe fechamento sobreposto.');
+        const closeGate = await assertPeriodReadyToClose(query,approval.ownerId,payload.data.periodStart,payload.data.periodEnd);
         await query(
           "INSERT INTO finance_period_closes(id,period_start,period_end,status,actor_id,request_hash,correlation_id,closed_at) VALUES($1,$2,$3,'closed',$4,$5,$6,$7)",
           [approval.entityId,payload.data.periodStart,payload.data.periodEnd,approval.ownerId,requestHash,context!.correlationId,now],
@@ -59,7 +60,7 @@ export async function POST(request: Request, route: { params: Promise<{ id: stri
             JSON.stringify({
               periodStart:payload.data.periodStart,periodEnd:payload.data.periodEnd,
               reference:payload.data.reference,requestedBy:approval.requestedBy,approvedBy:context!.actorId,
-              approvalRequestId:id,
+              approvalRequestId:id,closeGate,
             }),now],
         );
       } else if (nextState === 'approved' && approval.entityType === 'service_order') {

@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { database } from '../../../../../db/raw';
-import { lockFinancePeriodScope } from '../../../../../lib/application/finance';
+import { assertPeriodReadyToClose, lockFinancePeriodScope } from '../../../../../lib/application/finance';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../../lib/api/http';
 
 const command = z.object({ id: z.string().uuid(), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), reference: z.string().trim().min(1).max(160) }).strict();
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       );
       if (overlap.rows.length)
         throw new ApiError(409, 'FINANCE_PERIOD_OVERLAP', 'O período informado se sobrepõe a um período já fechado.');
+      const closeGate = await assertPeriodReadyToClose(query,context!.actorId,data.periodStart,data.periodEnd);
       const now = new Date().toISOString();
       await query(
         "INSERT INTO finance_period_closes(id,period_start,period_end,status,actor_id,request_hash,correlation_id,closed_at) VALUES($1,$2,$3,'closed',$4,$5,$6,$7)",
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       await query(
         "INSERT INTO finance_audit_events(id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES($1,'finance_period',$2,'period_closed',$3,$4,$5,$6,$7)",
         [crypto.randomUUID(),data.id,context!.actorId,requestHash,context!.correlationId,
-          JSON.stringify({periodStart:data.periodStart,periodEnd:data.periodEnd,reference:data.reference}),now],
+          JSON.stringify({periodStart:data.periodStart,periodEnd:data.periodEnd,reference:data.reference,closeGate}),now],
       );
       return { id:data.id, periodStart:data.periodStart, periodEnd:data.periodEnd, status:'closed', replayed:false };
     });

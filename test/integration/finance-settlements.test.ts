@@ -25,10 +25,13 @@ const json = async (response: Response) => response.clone().json() as Promise<Re
 
 before(async () => {
   const now = new Date().toISOString();
+  // December-issued invoice is outside the November close under test.
+  // Closing a month with an unposted invoice issued inside it must fail closed.
+  const invoiceIssuedAt = '2026-12-01T09:00:00Z';
   await pool.query('INSERT INTO service_orders(id,owner_id,title,client,category,description,created_at) VALUES($1,$2,$3,$4,$5,$6,$7)', [orderId, actor, 'Finance integration order', 'Finance CI', 'Serviços', 'Finance CI', now]);
   await pool.query('INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,$3,$4,$5,$6)', [measurementId, orderId, 'Finance CI measurement', 10000, 'approved', now]);
-  await pool.query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)', [invoiceId, measurementId, orderId, 10000, '2026-12-01', now]);
-  await pool.query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)', [receivableId, invoiceId, 10000, '2026-12-01', now]);
+  await pool.query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)', [invoiceId, measurementId, orderId, 10000, '2026-12-01', invoiceIssuedAt]);
+  await pool.query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)', [receivableId, invoiceId, 10000, '2026-12-01', invoiceIssuedAt]);
 });
 
 after(async () => {
