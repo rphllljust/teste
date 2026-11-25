@@ -156,6 +156,7 @@ jobs:
             '0014_manual_fiscal_documents', '0015_fiscal_bigint_integrity',
             '0016_field_service_measurement_lifecycle',
             '0017_enterprise_tenancy_foundation',
+            '0018_accounting_invoice_links',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;

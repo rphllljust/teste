@@ -311,3 +311,16 @@ export const enterprisePermissionEvents = pgTable('enterprise_permission_events'
   correlationId:text('correlation_id').notNull(),
   createdAt:text('created_at').notNull(),
 },t=>[index('enterprise_permission_events_tenant_created_idx').on(t.tenantId,t.createdAt,t.id)]);
+
+
+/** Audited manual verification links; not automatic accounting posting. */
+export const accountingInvoiceLinks=pgTable('accounting_invoice_links',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ invoiceId:text('invoice_id').notNull().unique().references(()=>invoices.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ amount:integer('amount').notNull(),
+ requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[index('accounting_invoice_link_owner_idx').on(t.actorId,t.invoiceId)]);

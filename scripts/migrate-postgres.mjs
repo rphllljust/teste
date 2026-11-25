@@ -26,6 +26,7 @@ const migrations = [
   { id: '0015_fiscal_bigint_integrity', file: '../drizzle-pg/0015_fiscal_bigint_integrity.sql' },
   { id: '0016_field_service_measurement_lifecycle', file: '../drizzle-pg/0016_field_service_measurement_lifecycle.sql' },
   { id: '0017_enterprise_tenancy_foundation', file: '../drizzle-pg/0017_enterprise_tenancy_foundation.sql' },
+  { id: '0018_accounting_invoice_links', file: '../drizzle-pg/0018_accounting_invoice_links.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
