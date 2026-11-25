@@ -78,7 +78,7 @@ test('finance approval is server-authoritative, segregated, versioned, audited a
   );
   assert.equal(closingAudit.rows.length, 1);
   assert.equal(closingAudit.rows[0].actor_id, approver);
-  assert.equal(closingAudit.rows[0].metadata.approvalRequestId, approvalId);
+  assert.equal(JSON.parse(String(closingAudit.rows[0].metadata)).approvalRequestId, approvalId);
 
   const decisionReplay = await decideApproval(req(`/api/workflow/approvals/${approvalId}/commands`, 'POST', approver, { key: decisionKey, version: 1, command: 'approve' }), params);
   assert.equal(decisionReplay.status, 200);
