@@ -4,8 +4,10 @@ import { lockFinancePeriodScope } from '../../../../lib/application/finance';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
 
 export const dynamic = 'force-dynamic';
-const sourceType = 'invoice_billing';
+const defaultSourceType = 'invoice_billing';
+const sourceTypes = z.enum(['invoice_billing','receivable_receipt']);
 const command = z.object({
+  sourceType: sourceTypes.optional(),
   commandKey: z.string().uuid(),
   expectedVersion: z.number().int().nonnegative(),
   debitAccountId: z.string().uuid(),
@@ -19,11 +21,13 @@ export async function GET(request: Request) {
   let context: RequestContext | undefined;
   try {
     context = requestContext(request);
+    const selection = sourceTypes.safeParse(new URL(request.url).searchParams.get('sourceType') ?? defaultSourceType);
+    if (!selection.success) throw new ApiError(400,'VALIDATION_FAILED','Tipo de regra contábil inválido.');
     const rule = await database().prepare(
       'SELECT id,source_type AS "sourceType",debit_account_id AS "debitAccountId",'+
       'credit_account_id AS "creditAccountId",active,row_version AS "rowVersion" '+
       'FROM accounting_posting_rules WHERE actor_id=? AND source_type=?'
-    ).bind(context.actorId, sourceType).first();
+    ).bind(context.actorId, selection.data).first();
     return respond({ rule: rule ?? null, policy: 'explicit_opt_in' }, context);
   } catch(error) { return failure(error, context); }
 }
@@ -35,6 +39,7 @@ export async function POST(request: Request) {
     const parsed = command.safeParse(await jsonBody(request));
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Configuração contábil inválida.');
     const data = parsed.data;
+    const sourceType = data.sourceType ?? defaultSourceType;
     const hash = await fingerprint({ actor:context.actorId, scope:'accounting.posting.rule', sourceType, data });
     const result = await database().transaction(async query => {
       await lockFinancePeriodScope(query, context!.actorId);
@@ -60,9 +65,10 @@ export async function POST(request: Request) {
         [context!.actorId, [data.debitAccountId,data.creditAccountId]],
       );
       const types = new Map(accounts.rows.map(row => [String(row.id), String(row.type)]));
-      if (types.get(data.debitAccountId) !== 'asset' || types.get(data.creditAccountId) !== 'revenue')
+      if (types.get(data.debitAccountId) !== 'asset' ||
+          types.get(data.creditAccountId) !== (sourceType === 'invoice_billing' ? 'revenue' : 'asset'))
         throw new ApiError(409, 'ACCOUNTING_CLASSIFICATION_MISMATCH',
-          'A regra exige ativo a receber e receita, com contas próprias e ativas.');
+          'A regra exige débito em ativo e crédito em receita (fatura) ou ativo (recebimento), com contas próprias e ativas.');
       const now = new Date().toISOString();
       const id = old.rows.length ? String(old.rows[0].id) : crypto.randomUUID();
       if (old.rows.length) {
