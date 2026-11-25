@@ -16,7 +16,7 @@
     "test:integration": "NODE_ENV=test node --import tsx --test test/integration/*.test.ts",
     "test:smoke:staging": "node test/staging-smoke.mjs",
     "test:regression:enterprise": "node test/enterprise-responsive-http-regression.mjs",
-    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:route-inventory && pnpm test:enterprise-contracts && pnpm test:enterprise-quality-contracts && pnpm test:typed-catalog && pnpm test:governed-actions && pnpm test:object-routes",
+    "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:route-inventory && pnpm test:enterprise-contracts && pnpm test:enterprise-quality-contracts && pnpm test:typed-catalog && pnpm test:governed-actions && pnpm test:object-routes && pnpm test:measurement-lifecycle",
     "db:generate": "drizzle-kit generate",
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs",
@@ -26,7 +26,8 @@
     "test:enterprise-quality-contracts": "node --test test/enterprise-accessibility-isolation.contract.test.mjs",
     "test:typed-catalog": "node --test test/enterprise-typed-catalog.contract.test.mjs",
     "test:governed-actions": "node --experimental-strip-types --test test/enterprise-governed-actions.contract.test.mjs",
-    "test:object-routes": "node --experimental-strip-types --test test/enterprise-object-routes.contract.test.mjs"
+    "test:object-routes": "node --experimental-strip-types --test test/enterprise-object-routes.contract.test.mjs",
+    "test:measurement-lifecycle": "node --test test/measurement-lifecycle.contract.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
