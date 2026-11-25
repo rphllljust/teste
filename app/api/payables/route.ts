@@ -2,6 +2,8 @@ import { z } from 'zod';
 import { database } from '../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../lib/api/http';
 import { payableList, payableQuery, payableBalance, paidExpression } from '../../../lib/projections/payables';
+import { assertFinancePeriodOpen, lockFinancePeriodScope } from '../../../lib/application/finance';
+import { postPayableAccrualIfConfigured, savedPayableAccrual } from '../../../lib/application/payable-posting';
 
 const money = z.string().trim().regex(/^\d{1,12}(?:[,.]\d{1,4})?$/).transform(value => { const [whole, fraction = ''] = value.split(/[,.]/); return Number(whole) * 10000 + Number(fraction.padEnd(4, '0')); }).refine(value => value > 0 && value <= 1_000_000_000_000);
 const createCommand = z.object({ id: z.string().uuid(), supplier: z.string().trim().min(2).max(160), sourceReference: z.string().trim().min(3).max(160), description: z.string().trim().min(3).max(4000), amount: money, dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).strict();
@@ -28,17 +30,41 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  let context: RequestContext | undefined;
-  try {
-    context = requestContext(request, true);
-    const parsed = createCommand.safeParse(await jsonBody(request));
-    if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Verifique fornecedor, origem, valor e vencimento.');
-    const data = parsed.data;
-    const hash = await fingerprint({ actor: context.actorId, data });
-    const db = database();
-    const prior = await db.prepare('SELECT actor_id,request_hash FROM payables WHERE id=?').bind(data.id).first<{ actor_id: string; request_hash: string }>();
-    if (prior) { if (prior.actor_id !== context.actorId || prior.request_hash !== hash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de obrigação já utilizado.'); return respond({ id: data.id, replayed: true }, context); }
-    await db.prepare('INSERT INTO payables(id,supplier,source_reference,description,amount,due_date,created_at,actor_id,request_hash,correlation_id) VALUES(?,?,?,?,?,?,?,?,?,?)').bind(data.id, data.supplier, data.sourceReference, data.description, data.amount, data.dueDate, new Date().toISOString(), context.actorId, hash, context.correlationId).run();
-    return respond({ id: data.id }, context, 201);
-  } catch (error) { return failure(error, context); }
+ let context: RequestContext | undefined;
+ try {
+  context=requestContext(request,true);
+  const parsed=createCommand.safeParse(await jsonBody(request));
+  if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Verifique fornecedor, origem, valor e vencimento.');
+  const data=parsed.data;
+  // PostgreSQL journal lines and payables use signed int32 scaled money.
+  if(!Number.isSafeInteger(data.amount)||data.amount>2147483647)
+   throw new ApiError(400,'VALIDATION_FAILED','Valor excede a capacidade da escrituração contábil.');
+  const hash=await fingerprint({actor:context.actorId,data});
+  const result=await database().transaction(async query=>{
+   // All AP writes, policy changes and period closes serialize per owner.
+   await lockFinancePeriodScope(query,context!.actorId);
+   const prior=await query('SELECT actor_id,request_hash FROM payables WHERE id=$1',[data.id]);
+   if(prior.rows.length){
+    const row=prior.rows[0];
+    if(row.actor_id!==context!.actorId||row.request_hash!==hash)
+     throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Identificador de obrigação já utilizado.');
+    const accounting=await savedPayableAccrual(query,data.id,context!.actorId);
+    return {id:data.id,replayed:true,accounting};
+   }
+   const now=new Date().toISOString(),effectiveDate=now.slice(0,10);
+   await assertFinancePeriodOpen(query,context!.actorId,effectiveDate);
+   const inserted=await query(
+    'INSERT INTO payables(id,supplier,source_reference,description,amount,due_date,created_at,actor_id,request_hash,correlation_id) '+
+    'VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) ON CONFLICT(id) DO NOTHING RETURNING id',
+    [data.id,data.supplier,data.sourceReference,data.description,data.amount,
+     data.dueDate,now,context!.actorId,hash,context!.correlationId],
+   );
+   if(!inserted.rows.length)throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Identificador de obrigação já utilizado.');
+   const accounting=await postPayableAccrualIfConfigured(query,context!,{
+    payableId:data.id,amount:data.amount,effectiveDate,requestHash:hash,
+   });
+   return {id:data.id,replayed:false,accounting};
+  });
+  return respond(result,context,result.replayed?200:201);
+ }catch(error){return failure(error,context);}
 }

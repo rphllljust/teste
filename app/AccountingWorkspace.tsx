@@ -4,6 +4,7 @@ import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 type Account={id:string;code:string;name:string;type:string;active:number};
 type PostingRule={id:string;sourceType:string;debitAccountId:string;creditAccountId:string;active:number;rowVersion:number};
+type PayablePolicyType='payable_accrual'|'payable_payment';
 type ReceiptReconciliation={summary:{eventCount:number;postedEvents:number;unpostedEvents:number;reversals:number;netSettlementAmountScaled:string;netLedgerAmountScaled:string}};
 type Reconciliation={accountingLinkage:{status:string;reason:string};summary:{invoiceCount:number;verifiedPostingCount:number;withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number;standaloneJournalCount:number;automaticPostingCount:number;manualVerifiedCount:number};items:Array<{invoiceId:string;amountScaled:string;verifiedPosting:boolean;journalId:string|null}>};
 type Entry={id:string;effectiveDate:string;sourceReference:string;description:string;status:string;debitScaled:string;creditScaled:string;reversalOf?:string|null;reversalId?:string|null};
@@ -18,6 +19,9 @@ export default function AccountingWorkspace(){
  const [postingRule,setPostingRule]=useState<PostingRule|null>(null),[ruleLoading,setRuleLoading]=useState(true),[ruleError,setRuleError]=useState('');
  const [cashRule,setCashRule]=useState<PostingRule|null>(null),[cashRuleLoading,setCashRuleLoading]=useState(true),[cashRuleError,setCashRuleError]=useState('');
  const [cashRecon,setCashRecon]=useState<ReceiptReconciliation|null>(null),[cashReconError,setCashReconError]=useState('');
+ const [payablePolicies,setPayablePolicies]=useState<Record<PayablePolicyType,PostingRule|null>>({payable_accrual:null,payable_payment:null});
+ const [payablePolicyLoading,setPayablePolicyLoading]=useState(true);
+ const [payablePolicyErrors,setPayablePolicyErrors]=useState<Record<PayablePolicyType,string>>({payable_accrual:'',payable_payment:''});
  const [reconciliation,setReconciliation]=useState<Reconciliation|null>(null),[reconciliationError,setReconciliationError]=useState(''),[linking,setLinking]=useState<{key:string;id:string;journalId:string}|null>(null);
  const [accounts,setAccounts]=useState<Account[]>([]),[entries,setEntries]=useState<Entry[]>([]),[page,setPage]=useState(1),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[creatingAccount,setCreatingAccount]=useState(false),[creatingEntry,setCreatingEntry]=useState(false),[saving,setSaving]=useState(false),[accountKey,setAccountKey]=useState(''),[entryKey,setEntryKey]=useState(''),[lines,setLines]=useState<Row[]>([]),[detail,setDetail]=useState<{entry:Entry;lines:JournalLine[]}|null>(null),[reversing,setReversing]=useState<{key:string;originalId:string}|null>(null);
  const load=useCallback(async()=>{setLoading(true);setError('');try{const [ar,jr]=await Promise.all([fetch('/api/accounting/accounts'),fetch('/api/accounting/journals?page='+page)]);const a=await readAccountingJson<{items:Account[];error?:string}>(ar),j=await readAccountingJson<{items:Entry[];pageInfo:{hasMore:boolean};error?:string}>(jr);if(!ar.ok||!jr.ok)throw new Error(a.error??j.error);setAccounts(a.items);setEntries(j.items);setHasMore(j.pageInfo.hasMore);}catch(e){setError(e instanceof Error?e.message:'Contabilidade indisponível.');}finally{setLoading(false);}},[page]);
@@ -61,6 +65,50 @@ export default function AccountingWorkspace(){
   }).finally(()=>{if(!controller.signal.aborted)setCashRuleLoading(false);});
   return()=>controller.abort();
  },[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  const types:PayablePolicyType[]=['payable_accrual','payable_payment'];
+  Promise.all(types.map(async type=>{
+   const response=await fetch('/api/accounting/posting-rules?sourceType='+type,{signal:controller.signal});
+   const data=await readAccountingJson<{rule:PostingRule|null;error?:string}>(response);
+   if(!response.ok)throw new Error(data.error??'Regra de obrigações indisponível.');
+   return [type,data.rule] as const;
+  })).then(values=>{
+   if(!controller.signal.aborted)setPayablePolicies(Object.fromEntries(values) as Record<PayablePolicyType,PostingRule|null>);
+  }).catch(error=>{
+   if(!controller.signal.aborted){
+    const message=error instanceof Error?error.message:'Não foi possível carregar as políticas do passivo.';
+    setPayablePolicyErrors({payable_accrual:message,payable_payment:message});
+   }
+  }).finally(()=>{if(!controller.signal.aborted)setPayablePolicyLoading(false);});
+  return()=>controller.abort();
+ },[]);
+ async function savePayablePolicy(type:PayablePolicyType,e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();setSaving(true);setNotice('');
+  setPayablePolicyErrors(prev=>({...prev,[type]:''}));
+  const form=new FormData(e.currentTarget);
+  try{
+   const response=await fetch('/api/accounting/posting-rules',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+     sourceType:type,commandKey:crypto.randomUUID(),
+     expectedVersion:payablePolicies[type]?.rowVersion??0,
+     debitAccountId:form.get('debitAccountId'),creditAccountId:form.get('creditAccountId'),
+     active:form.get('active')==='on',
+    }),
+   });
+   const data=await readAccountingJson<PostingRule&{error?:string}>(response);
+   if(!response.ok)throw new Error(data.error??'Não foi possível atualizar a política do passivo.');
+   setPayablePolicies(prev=>({...prev,[type]:{...data,active:data.active?1:0}}));
+   setNotice(data.active
+    ? type==='payable_accrual'
+      ? 'Novas obrigações terão diário de reconhecimento de passivo com vínculo imutável.'
+      : 'Novos pagamentos serão debitados no passivo e creditados no banco após conferência da origem.'
+    : 'Política desativada. Registros existentes não são modificados.');
+  }catch(error){
+   setPayablePolicyErrors(prev=>({...prev,[type]:error instanceof Error?error.message:'Falha na configuração.'}));
+  }finally{setSaving(false);}
+ }
  async function saveCashPostingRule(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();setSaving(true);setCashRuleError('');setNotice('');
   const form=new FormData(e.currentTarget);
@@ -125,7 +173,7 @@ export default function AccountingWorkspace(){
  async function reverseEntry(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!reversing)return;setSaving(true);setNotice('');const f=new FormData(e.currentTarget);try{const r=await fetch('/api/accounting/journals/'+encodeURIComponent(reversing.originalId)+'/reverse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commandKey:reversing.key,effectiveDate:f.get('effectiveDate'),sourceReference:f.get('sourceReference'),description:f.get('description')})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);setReversing(null);setDetail(null);await load();try{const r=await fetch('/api/accounting/reconciliation');if(r.ok)setReconciliation(await r.json() as Reconciliation);}catch{/* journal reversal remains posted */}setNotice('Estorno postado como lançamento inverso.');}catch(e){setNotice(e instanceof Error?e.message:'Falha no estorno.');}finally{setSaving(false);}}
  const updateLine=(id:string,key:keyof Row,value:string)=>setLines(prev=>prev.map(l=>l.id===id?{...l,[key]:value}:l));
  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Diário contábil</h2><p>Plano de contas e partidas dobradas com origem documentada e histórico imutável.</p></div><div className="worklist-tools"><button className="secondary" onClick={()=>{setAccountKey(crypto.randomUUID());setCreatingAccount(true);setNotice('');}}>Nova conta</button><button className="primary" disabled={accounts.filter(a=>a.active).length<2} onClick={()=>{setEntryKey(crypto.randomUUID());setLines([{id:crypto.randomUUID(),accountId:'',side:'debit',amount:''},{id:crypto.randomUUID(),accountId:'',side:'credit',amount:''}]);setCreatingEntry(true);setNotice('');}}>Novo lançamento</button></div></div>
- <div className="linked-info">{accounts.length} contas registradas. A contabilização automática só ocorre para novas faturas quando a regra abaixo estiver ativa e válida; pagamentos e tributos não são contabilizados automaticamente.</div>
+ <div className="linked-info">{accounts.length} contas registradas. Faturamento, recebimentos, reconhecimento de obrigações e pagamentos têm políticas independentes por empresa. Somente transações posteriores à ativação geram partidas; tributos exigem integração própria.</div>
  <section className="linked-info" aria-label="Regra de contabilização automática de faturas">
   <strong>Reconhecimento automático de receita</strong>
   <p>Configuração explícita por proprietário. Ao faturar uma medição aprovada, o ERP registra débito em ativo a receber e crédito em receita na mesma transação da fatura. Nenhuma regra ou conta é presumida.</p>
@@ -174,6 +222,37 @@ export default function AccountingWorkspace(){
     <button className="secondary" type="submit" disabled={saving||accounts.filter(a=>a.active===1&&a.type==='asset').length<2}>Salvar política de recebimentos</button>
   </form>}
   {cashRecon?<p role="status">Eventos de baixa: {cashRecon.summary.eventCount}. Contabilizados: {cashRecon.summary.postedEvents}. Sem diário persistido: {cashRecon.summary.unpostedEvents}. Estornos: {cashRecon.summary.reversals}. Saldo financeiro líquido: {moneyScaled(cashRecon.summary.netSettlementAmountScaled)}. Saldo líquido com lançamento de origem: {moneyScaled(cashRecon.summary.netLedgerAmountScaled)}.</p>:cashReconError?<p role="alert">{cashReconError}</p>:<p role="status">Conferindo integridade de recebimentos…</p>}
+ </section>
+ <section className="linked-info" aria-label="Políticas de reconhecimento e pagamento de fornecedores">
+  <strong>Obrigações a pagar · escrituração do passivo</strong>
+  <p>Políticas opcionais e independentes por empresa. O reconhecimento de uma nova obrigação gera débito em despesa ou ativo e crédito em fornecedores. O pagamento exige débito no mesmo passivo reconhecido e crédito em caixa/banco, com vínculo de origem imutável. Sem configuração não há contabilização retroativa.</p>
+  {payablePolicyLoading?<p role="status">Consultando políticas de fornecedores…</p>:
+   (['payable_accrual','payable_payment'] as const).map(type=>{
+    const rule=payablePolicies[type];
+    const debitAccounts=accounts.filter(a=>a.active===1&&(type==='payable_accrual'?(a.type==='expense'||a.type==='asset'):a.type==='liability'));
+    const creditAccounts=accounts.filter(a=>a.active===1&&(type==='payable_accrual'?a.type==='liability':a.type==='asset'));
+    return <form key={type+'-'+(rule?.rowVersion??0)} onSubmit={e=>void savePayablePolicy(type,e)}>
+     <h3>{type==='payable_accrual'?'Reconhecimento da obrigação':'Liquidação de fornecedores'}</h3>
+     <div className="form-row">
+      <label>{type==='payable_accrual'?'Débito · despesa ou ativo':'Débito · fornecedores a pagar'}
+       <select name="debitAccountId" defaultValue={rule?.debitAccountId??''} required>
+        <option value="" disabled>Selecione a conta</option>
+        {debitAccounts.map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+       </select>
+      </label>
+      <label>{type==='payable_accrual'?'Crédito · fornecedores a pagar':'Crédito · caixa ou banco'}
+       <select name="creditAccountId" defaultValue={rule?.creditAccountId??''} required>
+        <option value="" disabled>Selecione a conta</option>
+        {creditAccounts.map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+       </select>
+      </label>
+     </div>
+     <label><input type="checkbox" name="active" defaultChecked={rule?.active===1}/> Habilitar somente para novos {type==='payable_accrual'?'títulos a pagar':'pagamentos'}</label>
+     <p>Estado: {rule?.active===1?'Ativa':'Inativa'} · Versão {rule?.rowVersion??0}. Pagamentos vinculados a competência fechada e pagamentos já conciliados possuem bloqueios de estorno.</p>
+     {payablePolicyErrors[type]&&<p role="alert">{payablePolicyErrors[type]}</p>}
+     <button type="submit" className="secondary" disabled={saving||!debitAccounts.length||!creditAccounts.length}>Salvar política de {type==='payable_accrual'?'obrigações':'pagamentos'}</button>
+    </form>;
+   })}
  </section>
  <section className="linked-info" aria-label="Conciliação contábil de faturamento">
    <strong>Conciliação de origem</strong>

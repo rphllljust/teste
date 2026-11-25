@@ -1,6 +1,7 @@
 import { database } from '../../db/raw';
 import { ApiError, type RequestContext } from '../api/http';
 import { postReceiptIfConfigured,reverseReceiptPostingIfAny,savedReceiptPosting } from './receivable-posting';
+import { postPayablePaymentIfConfigured,reversePayablePaymentPostingIfAny,savedPayablePaymentPosting } from './payable-posting';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
@@ -177,7 +178,8 @@ export async function registerPayablePayment(context: RequestContext, input: { p
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.actor_id !== context.actorId || row.request_hash !== input.requestHash || row.payable_id !== input.payableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-      return { ok: true, replayed: true, resource: { type: 'payablePayment', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
+      const accounting=await savedPayablePaymentPosting(query,input.commandKey,context.actorId);
+      return { ok: true, replayed: true, resource: { type: 'payablePayment', id: row.id, payableId: row.payable_id, amount: String(row.amount), accounting } };
     }
     const payable = await query(`SELECT p.id, p.amount,
       COALESCE((SELECT SUM(CASE WHEN x.kind='payment' THEN x.amount ELSE -x.amount END)
@@ -192,8 +194,10 @@ export async function registerPayablePayment(context: RequestContext, input: { p
       VALUES ($1,$2,'payment',$3,$4,$5,$6,$7,$8,$9)`,
       [input.commandKey, input.payableId, input.amount, input.effectiveDate, input.reference,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    const accounting=await postPayablePaymentIfConfigured(query,context,{payableId:input.payableId,
+      paymentId:input.commandKey,amount:input.amount,effectiveDate:input.effectiveDate,requestHash:input.requestHash});
     await audit(query, context, 'payable', input.payableId, 'payment_registered', input.requestHash, { paymentId: input.commandKey, amount: input.amount, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+    return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount),accounting } };
   });
 }
 
@@ -205,11 +209,22 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.actor_id !== context.actorId || row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-      return { ok: true, replayed: true, resource: { type: 'payableReversal', id: row.id, payableId: row.payable_id, amount: String(row.amount) } };
+      const accounting=await savedPayablePaymentPosting(query,input.commandKey,context.actorId);
+      return { ok: true, replayed: true, resource: { type: 'payableReversal', id: row.id, payableId: row.payable_id, amount: String(row.amount),accounting } };
     }
-    const original = await query("SELECT pp.id, pp.payable_id, pp.amount FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id WHERE pp.id=$1 AND pp.kind='payment' AND p.actor_id=$2 FOR UPDATE OF pp, p", [input.paymentId, context.actorId]);
+    const original = await query("SELECT pp.id, pp.payable_id, pp.amount, pp.effective_date FROM payable_payments pp JOIN payables p ON p.id=pp.payable_id WHERE pp.id=$1 AND pp.kind='payment' AND p.actor_id=$2 FOR UPDATE OF pp, p", [input.paymentId, context.actorId]);
     if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Pagamento não encontrado.');
     const row = original.rows[0];
+    // A later-dated reversal cannot silently reopen the source period.
+    const closedOrigin=await query("SELECT 1 FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$2 LIMIT 1",[context.actorId,String(row.effective_date)]);
+    if(closedOrigin.rows.length)throw new ApiError(409,'ACCOUNTING_CLOSED_ORIGIN','Não é possível estornar pagamento originado em competência encerrada.');
+    const activeBankMatch=await query(
+      "SELECT 1 FROM bank_reconciliation_events e WHERE e.payment_id=$1 AND e.actor_id=$2 AND e.kind='match' "+
+      "AND NOT EXISTS (SELECT 1 FROM bank_reconciliation_events u WHERE u.reverses_id=e.id) LIMIT 1",
+      [input.paymentId,context.actorId],
+    );
+    if(activeBankMatch.rows.length)throw new ApiError(409,'BANK_RECONCILIATION_ACTIVE',
+      'Desfaça a conciliação bancária antes de estornar o pagamento.');
     const alreadyReversed = await query('SELECT 1 FROM payable_payments WHERE reverses_id=$1', [input.paymentId]);
     if (alreadyReversed.rows.length) throw new ApiError(409, 'PAYMENT_ALREADY_REVERSED', 'Este pagamento já foi estornado.');
     await query(`INSERT INTO payable_payments
@@ -217,8 +232,11 @@ export async function reversePayablePayment(context: RequestContext, input: { pa
       VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
       [input.commandKey, row.payable_id, row.amount, input.effectiveDate, input.reference, input.paymentId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    const accounting=await reversePayablePaymentPostingIfAny(query,context,{payableId:String(row.payable_id),
+      originalPaymentId:input.paymentId,reversalPaymentId:input.commandKey,amount:Number(row.amount),
+      effectiveDate:input.effectiveDate,requestHash:input.requestHash});
     await audit(query, context, 'payable', row.payable_id as string, 'payment_reversed', input.requestHash, { paymentId: input.paymentId, reversalId: input.commandKey, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount) } };
+    return { ok: true, replayed: false, resource: { type: 'payableReversal', id: input.commandKey, payableId: row.payable_id, amount: String(row.amount),accounting } };
   });
 }
 

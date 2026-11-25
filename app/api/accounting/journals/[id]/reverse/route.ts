@@ -20,6 +20,9 @@ const settlementLinked=await q(
 );
 if(settlementLinked.rows.length)throw new ApiError(409,'ACCOUNTING_SOURCE_REVERSAL_REQUIRED',
   'Estornos de diário de recebimento devem ser executados pela baixa de origem.');
+const payableLinked=await q('SELECT 1 FROM accounting_payable_links WHERE journal_id=$1 UNION ALL SELECT 1 FROM accounting_payable_payment_links WHERE journal_id=$1 LIMIT 1',[journalId]);
+if(payableLinked.rows.length)throw new ApiError(409,'ACCOUNTING_SOURCE_REVERSAL_REQUIRED',
+  'Diários de obrigação e pagamento exigem estorno pela origem financeira; reconhecimento do passivo não admite estorno direto.');
 const cashDependencies=await q(
   'SELECT 1 FROM accounting_invoice_links l '+
   'JOIN receivables r ON r.invoice_id=l.invoice_id '+
