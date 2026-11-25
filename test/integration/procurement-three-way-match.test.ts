@@ -66,7 +66,7 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
  }
  await expect(await procure(req(actor,'/api/procurement',{
   type:'supplier',id:supplierId,legalName:'Fornecedor fictício integral CI',
-  document:'CI-DOC-'+supplierId,email:'',
+  document:'CI-'+supplierId,email:'',
  })),201,'supplier');
  for(const [id,type] of [[accountExpense,'expense'],[accountPayable,'liability']]){
   await expect(await account(req(actor,'/api/accounting/accounts',{
