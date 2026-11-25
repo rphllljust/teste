@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, bigint, foreignKey, check, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
 export const orders = pgTable('service_orders', {
  contractId:text('contract_id'),clientId:text('client_id'),ownerId:text('owner_id'),id: text('id').primaryKey(), title: text('title').notNull(), client: text('client').notNull(),
  category: text('category').notNull(), description: text('description').notNull(),
@@ -267,3 +267,47 @@ export const crmOpportunityProposals=pgTable('crm_opportunity_proposals',{
  foreignKey({columns:[t.ownerId,t.proposalId],foreignColumns:[proposals.ownerId,proposals.id],name:'crm_opportunity_proposals_owner_proposal_fk'}),
  index('crm_opportunity_proposals_owner_proposal').on(t.ownerId,t.proposalId),
 ]);
+
+
+// Additive enterprise foundation. Existing owner-scoped records are not rewritten.
+export const enterpriseTenants = pgTable('enterprise_tenants', {
+  id:text('id').primaryKey(),
+  slug:text('slug').notNull().unique(),
+  name:text('name').notNull(),
+  status:text('status').notNull().default('active'),
+  createdBy:text('created_by').notNull(),
+  createdAt:text('created_at').notNull(),
+  rowVersion:integer('row_version').notNull().default(1),
+});
+export const enterpriseMemberships = pgTable('enterprise_tenant_memberships', {
+  tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
+  actorId:text('actor_id').notNull(),
+  role:text('role').notNull(),
+  status:text('status').notNull().default('active'),
+  createdAt:text('created_at').notNull(),
+},t=>[
+  primaryKey({columns:[t.tenantId,t.actorId]}),
+  index('enterprise_member_actor_idx').on(t.actorId,t.tenantId),
+]);
+export const enterpriseLegalEntities = pgTable('enterprise_legal_entities', {
+  id:text('id').primaryKey(),
+  tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
+  code:text('code').notNull(),
+  name:text('name').notNull(),
+  taxId:text('tax_id'),
+  status:text('status').notNull().default('active'),
+  createdBy:text('created_by').notNull(),
+  createdAt:text('created_at').notNull(),
+},t=>[
+  uniqueIndex('enterprise_entity_tenant_code_uq').on(t.tenantId,t.code),
+  uniqueIndex('enterprise_entity_tenant_id_uq').on(t.tenantId,t.id),
+]);
+export const enterprisePermissionEvents = pgTable('enterprise_permission_events', {
+  id:text('id').primaryKey(),
+  tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
+  actorId:text('actor_id').notNull(),
+  action:text('action').notNull(),
+  resourceId:text('resource_id').notNull(),
+  correlationId:text('correlation_id').notNull(),
+  createdAt:text('created_at').notNull(),
+},t=>[index('enterprise_permission_events_tenant_created_idx').on(t.tenantId,t.createdAt,t.id)]);
