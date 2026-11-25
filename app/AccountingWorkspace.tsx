@@ -4,6 +4,7 @@ import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 type Account={id:string;code:string;name:string;type:string;active:number};
 type PostingRule={id:string;sourceType:string;debitAccountId:string;creditAccountId:string;active:number;rowVersion:number};
+type ReceiptReconciliation={summary:{eventCount:number;postedEvents:number;unpostedEvents:number;reversals:number;netSettlementAmountScaled:string;netLedgerAmountScaled:string}};
 type Reconciliation={accountingLinkage:{status:string;reason:string};summary:{invoiceCount:number;verifiedPostingCount:number;withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number;standaloneJournalCount:number;automaticPostingCount:number;manualVerifiedCount:number};items:Array<{invoiceId:string;amountScaled:string;verifiedPosting:boolean;journalId:string|null}>};
 type Entry={id:string;effectiveDate:string;sourceReference:string;description:string;status:string;debitScaled:string;creditScaled:string;reversalOf?:string|null;reversalId?:string|null};
 type JournalLine={id:string;code:string;name:string;debitScaled:string;creditScaled:string};
@@ -15,6 +16,8 @@ async function readAccountingJson<T>(response:Response):Promise<T>{
 }
 export default function AccountingWorkspace(){
  const [postingRule,setPostingRule]=useState<PostingRule|null>(null),[ruleLoading,setRuleLoading]=useState(true),[ruleError,setRuleError]=useState('');
+ const [cashRule,setCashRule]=useState<PostingRule|null>(null),[cashRuleLoading,setCashRuleLoading]=useState(true),[cashRuleError,setCashRuleError]=useState('');
+ const [cashRecon,setCashRecon]=useState<ReceiptReconciliation|null>(null),[cashReconError,setCashReconError]=useState('');
  const [reconciliation,setReconciliation]=useState<Reconciliation|null>(null),[reconciliationError,setReconciliationError]=useState(''),[linking,setLinking]=useState<{key:string;id:string;journalId:string}|null>(null);
  const [accounts,setAccounts]=useState<Account[]>([]),[entries,setEntries]=useState<Entry[]>([]),[page,setPage]=useState(1),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[creatingAccount,setCreatingAccount]=useState(false),[creatingEntry,setCreatingEntry]=useState(false),[saving,setSaving]=useState(false),[accountKey,setAccountKey]=useState(''),[entryKey,setEntryKey]=useState(''),[lines,setLines]=useState<Row[]>([]),[detail,setDetail]=useState<{entry:Entry;lines:JournalLine[]}|null>(null),[reversing,setReversing]=useState<{key:string;originalId:string}|null>(null);
  const load=useCallback(async()=>{setLoading(true);setError('');try{const [ar,jr]=await Promise.all([fetch('/api/accounting/accounts'),fetch('/api/accounting/journals?page='+page)]);const a=await readAccountingJson<{items:Account[];error?:string}>(ar),j=await readAccountingJson<{items:Entry[];pageInfo:{hasMore:boolean};error?:string}>(jr);if(!ar.ok||!jr.ok)throw new Error(a.error??j.error);setAccounts(a.items);setEntries(j.items);setHasMore(j.pageInfo.hasMore);}catch(e){setError(e instanceof Error?e.message:'Contabilidade indisponível.');}finally{setLoading(false);}},[page]);
@@ -39,6 +42,46 @@ export default function AccountingWorkspace(){
   }).finally(()=>{if(!controller.signal.aborted)setRuleLoading(false);});
   return()=>controller.abort();
  },[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  Promise.all([
+    fetch('/api/accounting/posting-rules?sourceType=receivable_receipt',{signal:controller.signal}),
+    fetch('/api/accounting/receipt-reconciliation',{signal:controller.signal}),
+  ]).then(async([ruleResponse,reconciliationResponse])=>{
+    const data=await readAccountingJson<{rule:PostingRule|null;error?:string}>(ruleResponse);
+    const report=await readAccountingJson<ReceiptReconciliation&{error?:string}>(reconciliationResponse);
+    if(!ruleResponse.ok)throw new Error(data.error??'Regra de recebimento indisponível.');
+    if(!reconciliationResponse.ok)throw new Error(report.error??'Conciliação de recebimentos indisponível.');
+    if(!controller.signal.aborted){setCashRule(data.rule);setCashRecon(report);}
+  }).catch(error=>{
+    if(!controller.signal.aborted){
+      const message=error instanceof Error?error.message:'Falha ao carregar recebimentos.';
+      setCashRuleError(message);setCashReconError(message);
+    }
+  }).finally(()=>{if(!controller.signal.aborted)setCashRuleLoading(false);});
+  return()=>controller.abort();
+ },[]);
+ async function saveCashPostingRule(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();setSaving(true);setCashRuleError('');setNotice('');
+  const form=new FormData(e.currentTarget);
+  try{
+    const response=await fetch('/api/accounting/posting-rules',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        sourceType:'receivable_receipt',commandKey:crypto.randomUUID(),
+        expectedVersion:cashRule?.rowVersion??0,
+        debitAccountId:form.get('debitAccountId'),
+        creditAccountId:form.get('creditAccountId'),
+        active:form.get('active')==='on',
+      }),
+    });
+    const result=await readAccountingJson<PostingRule&{error?:string}>(response);
+    if(!response.ok)throw new Error(result.error??'Falha ao atualizar política de recebimentos.');
+    setCashRule({...result,active:result.active?1:0});
+    setNotice(result.active?'Recebimentos novos serão contabilizados quando houver fatura reconhecida no razão.':'Contabilização automática das próximas baixas desabilitada.');
+  }catch(error){setCashRuleError(error instanceof Error?error.message:'Falha na política de recebimentos.');}
+  finally{setSaving(false);}
+ }
  async function savePostingRule(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();setSaving(true);setRuleError('');setNotice('');
   const form=new FormData(e.currentTarget);
@@ -102,10 +145,35 @@ export default function AccountingWorkspace(){
       </label>
     </div>
     <label><input type="checkbox" name="active" defaultChecked={postingRule?.active===1}/> Habilitar publicação contábil automática nos próximos faturamentos</label>
-    <p>Estado: {postingRule?.active===1?'Ativa':'Inativa'} · Versão {postingRule?.rowVersion??0}. O histórico anterior não é contabilizado retroativamente. Regras de impostos, custos e recebimentos ainda precisam de integração específica.</p>
+    <p>Estado: {postingRule?.active===1?'Ativa':'Inativa'} · Versão {postingRule?.rowVersion??0}. O histórico anterior não é contabilizado retroativamente. Regras de impostos e custos ainda precisam de integração específica. Recebimentos têm regra independente abaixo.</p>
     {ruleError&&<p role="alert">{ruleError}</p>}
     <button className="secondary" disabled={saving||!accounts.some(a=>a.active===1&&a.type==='asset')||!accounts.some(a=>a.active===1&&a.type==='revenue')} type="submit">Salvar política contábil</button>
   </form>}
+ </section>
+ <section className="linked-info" aria-label="Regra de contabilização automática de recebimentos">
+  <strong>Liquidação de clientes · caixa e bancos</strong>
+  <p>Regra independente e opcional para novas baixas: débito na conta escolhida de caixa/banco e crédito na conta de clientes a receber. Ambas devem ser contas ativas de ativo. A conta creditada deve coincidir com o débito de reconhecimento da fatura; caso contrário, o ERP recusa a baixa quando a regra está ativa.</p>
+  {cashRuleLoading?<p role="status">Consultando política de recebimentos…</p>:<form onSubmit={saveCashPostingRule} key={cashRule?.rowVersion??0}>
+    <div className="form-row">
+      <label>Conta de débito · caixa ou banco
+        <select name="debitAccountId" defaultValue={cashRule?.debitAccountId??''} required>
+          <option value="" disabled>Escolha uma conta patrimonial de caixa/banco</option>
+          {accounts.filter(a=>a.active===1&&a.type==='asset').map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+        </select>
+      </label>
+      <label>Conta de crédito · clientes a receber
+        <select name="creditAccountId" defaultValue={cashRule?.creditAccountId??''} required>
+          <option value="" disabled>Escolha a conta usada no reconhecimento da receita</option>
+          {accounts.filter(a=>a.active===1&&a.type==='asset').map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+        </select>
+      </label>
+    </div>
+    <label><input type="checkbox" name="active" defaultChecked={cashRule?.active===1}/> Habilitar lançamentos automáticos e estornos vinculados para novas baixas</label>
+    <p>Estado: {cashRule?.active===1?'Ativa':'Inativa'} · Versão {cashRule?.rowVersion??0}. O diário de recebimento é gerado na própria transação da baixa. Históricos não são lançados retroativamente.</p>
+    {cashRuleError&&<p role="alert">{cashRuleError}</p>}
+    <button className="secondary" type="submit" disabled={saving||accounts.filter(a=>a.active===1&&a.type==='asset').length<2}>Salvar política de recebimentos</button>
+  </form>}
+  {cashRecon?<p role="status">Eventos de baixa: {cashRecon.summary.eventCount}. Contabilizados: {cashRecon.summary.postedEvents}. Sem diário persistido: {cashRecon.summary.unpostedEvents}. Estornos: {cashRecon.summary.reversals}. Saldo financeiro líquido: {moneyScaled(cashRecon.summary.netSettlementAmountScaled)}. Saldo líquido com lançamento de origem: {moneyScaled(cashRecon.summary.netLedgerAmountScaled)}.</p>:cashReconError?<p role="alert">{cashReconError}</p>:<p role="status">Conferindo integridade de recebimentos…</p>}
  </section>
  <section className="linked-info" aria-label="Conciliação contábil de faturamento">
    <strong>Conciliação de origem</strong>
