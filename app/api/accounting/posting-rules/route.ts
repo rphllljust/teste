@@ -5,7 +5,7 @@ import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type
 
 export const dynamic = 'force-dynamic';
 const defaultSourceType = 'invoice_billing';
-const sourceTypes = z.enum(['invoice_billing','receivable_receipt']);
+const sourceTypes = z.enum(['invoice_billing','receivable_receipt','payable_accrual','payable_payment']);
 const command = z.object({
   sourceType: sourceTypes.optional(),
   commandKey: z.string().uuid(),
@@ -65,10 +65,14 @@ export async function POST(request: Request) {
         [context!.actorId, [data.debitAccountId,data.creditAccountId]],
       );
       const types = new Map(accounts.rows.map(row => [String(row.id), String(row.type)]));
-      if (types.get(data.debitAccountId) !== 'asset' ||
-          types.get(data.creditAccountId) !== (sourceType === 'invoice_billing' ? 'revenue' : 'asset'))
+      const debit=types.get(data.debitAccountId),credit=types.get(data.creditAccountId);
+      const valid=sourceType==='invoice_billing' ? debit==='asset'&&credit==='revenue'
+        : sourceType==='receivable_receipt' ? debit==='asset'&&credit==='asset'
+        : sourceType==='payable_accrual' ? (debit==='expense'||debit==='asset')&&credit==='liability'
+        : debit==='liability'&&credit==='asset';
+      if (!valid)
         throw new ApiError(409, 'ACCOUNTING_CLASSIFICATION_MISMATCH',
-          'A regra exige débito em ativo e crédito em receita (fatura) ou ativo (recebimento), com contas próprias e ativas.');
+          'A regra exige contas próprias e ativas: faturamento ativo/receita, recebimento ativo/ativo, obrigação despesa ou ativo/passivo, pagamento passivo/ativo.');
       const now = new Date().toISOString();
       const id = old.rows.length ? String(old.rows[0].id) : crypto.randomUUID();
       if (old.rows.length) {
