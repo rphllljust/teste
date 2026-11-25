@@ -3,7 +3,8 @@ import {useCallback,useEffect,useState} from 'react';
 import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 type Account={id:string;code:string;name:string;type:string;active:number};
-type Reconciliation={accountingLinkage:{status:string;reason:string};summary:{invoiceCount:number;verifiedPostingCount:number;withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number;standaloneJournalCount:number};items:Array<{invoiceId:string;amountScaled:string;verifiedPosting:boolean;journalId:string|null}>};
+type PostingRule={id:string;sourceType:string;debitAccountId:string;creditAccountId:string;active:number;rowVersion:number};
+type Reconciliation={accountingLinkage:{status:string;reason:string};summary:{invoiceCount:number;verifiedPostingCount:number;withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number;standaloneJournalCount:number;automaticPostingCount:number;manualVerifiedCount:number};items:Array<{invoiceId:string;amountScaled:string;verifiedPosting:boolean;journalId:string|null}>};
 type Entry={id:string;effectiveDate:string;sourceReference:string;description:string;status:string;debitScaled:string;creditScaled:string;reversalOf?:string|null;reversalId?:string|null};
 type JournalLine={id:string;code:string;name:string;debitScaled:string;creditScaled:string};
 type Row={id:string;accountId:string;side:'debit'|'credit';amount:string};
@@ -13,6 +14,7 @@ async function readAccountingJson<T>(response:Response):Promise<T>{
  try{return JSON.parse(body) as T;}catch{throw new Error(response.status===404?'Contrato da API contábil indisponível no ambiente.':'Resposta inválida da API contábil.');}
 }
 export default function AccountingWorkspace(){
+ const [postingRule,setPostingRule]=useState<PostingRule|null>(null),[ruleLoading,setRuleLoading]=useState(true),[ruleError,setRuleError]=useState('');
  const [reconciliation,setReconciliation]=useState<Reconciliation|null>(null),[reconciliationError,setReconciliationError]=useState(''),[linking,setLinking]=useState<{key:string;id:string;journalId:string}|null>(null);
  const [accounts,setAccounts]=useState<Account[]>([]),[entries,setEntries]=useState<Entry[]>([]),[page,setPage]=useState(1),[hasMore,setHasMore]=useState(false),[loading,setLoading]=useState(true),[error,setError]=useState(''),[notice,setNotice]=useState(''),[creatingAccount,setCreatingAccount]=useState(false),[creatingEntry,setCreatingEntry]=useState(false),[saving,setSaving]=useState(false),[accountKey,setAccountKey]=useState(''),[entryKey,setEntryKey]=useState(''),[lines,setLines]=useState<Row[]>([]),[detail,setDetail]=useState<{entry:Entry;lines:JournalLine[]}|null>(null),[reversing,setReversing]=useState<{key:string;originalId:string}|null>(null);
  const load=useCallback(async()=>{setLoading(true);setError('');try{const [ar,jr]=await Promise.all([fetch('/api/accounting/accounts'),fetch('/api/accounting/journals?page='+page)]);const a=await readAccountingJson<{items:Account[];error?:string}>(ar),j=await readAccountingJson<{items:Entry[];pageInfo:{hasMore:boolean};error?:string}>(jr);if(!ar.ok||!jr.ok)throw new Error(a.error??j.error);setAccounts(a.items);setEntries(j.items);setHasMore(j.pageInfo.hasMore);}catch(e){setError(e instanceof Error?e.message:'Contabilidade indisponível.');}finally{setLoading(false);}},[page]);
@@ -26,6 +28,36 @@ export default function AccountingWorkspace(){
    }).catch(error=>{if(!controller.signal.aborted)setReconciliationError(error instanceof Error?error.message:'Conciliação não disponível.');});
    return()=>controller.abort();
  },[]);
+ useEffect(()=>{
+  const controller=new AbortController();
+  fetch('/api/accounting/posting-rules',{signal:controller.signal}).then(async response=>{
+    const body=await readAccountingJson<{rule:PostingRule|null;error?:string}>(response);
+    if(!response.ok)throw new Error(body.error??'Configuração contábil indisponível.');
+    if(!controller.signal.aborted)setPostingRule(body.rule);
+  }).catch(error=>{
+    if(!controller.signal.aborted)setRuleError(error instanceof Error?error.message:'Falha na configuração contábil.');
+  }).finally(()=>{if(!controller.signal.aborted)setRuleLoading(false);});
+  return()=>controller.abort();
+ },[]);
+ async function savePostingRule(e:React.FormEvent<HTMLFormElement>){
+  e.preventDefault();setSaving(true);setRuleError('');setNotice('');
+  const form=new FormData(e.currentTarget);
+  try{
+    const response=await fetch('/api/accounting/posting-rules',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        commandKey:crypto.randomUUID(),expectedVersion:postingRule?.rowVersion??0,
+        debitAccountId:form.get('debitAccountId'),creditAccountId:form.get('creditAccountId'),
+        active:form.get('active')==='on',
+      }),
+    });
+    const result=await readAccountingJson<PostingRule&{error?:string}>(response);
+    if(!response.ok)throw new Error(result.error??'Não foi possível salvar a regra.');
+    setPostingRule({...result,active:result.active?1:0});
+    setNotice(result.active?'Contabilização automática habilitada para novos faturamentos.':'Contabilização automática desabilitada para novos faturamentos.');
+  }catch(error){setRuleError(error instanceof Error?error.message:'Não foi possível configurar contabilização.');}
+  finally{setSaving(false);}
+ }
  async function saveLink(e:React.FormEvent<HTMLFormElement>){
   e.preventDefault();if(!linking)return;setSaving(true);setNotice('');
   const form=new FormData(e.currentTarget);
@@ -50,10 +82,34 @@ export default function AccountingWorkspace(){
  async function reverseEntry(e:React.FormEvent<HTMLFormElement>){e.preventDefault();if(!reversing)return;setSaving(true);setNotice('');const f=new FormData(e.currentTarget);try{const r=await fetch('/api/accounting/journals/'+encodeURIComponent(reversing.originalId)+'/reverse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({commandKey:reversing.key,effectiveDate:f.get('effectiveDate'),sourceReference:f.get('sourceReference'),description:f.get('description')})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);setReversing(null);setDetail(null);await load();try{const r=await fetch('/api/accounting/reconciliation');if(r.ok)setReconciliation(await r.json() as Reconciliation);}catch{/* journal reversal remains posted */}setNotice('Estorno postado como lançamento inverso.');}catch(e){setNotice(e instanceof Error?e.message:'Falha no estorno.');}finally{setSaving(false);}}
  const updateLine=(id:string,key:keyof Row,value:string)=>setLines(prev=>prev.map(l=>l.id===id?{...l,[key]:value}:l));
  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Diário contábil</h2><p>Plano de contas e partidas dobradas com origem documentada e histórico imutável.</p></div><div className="worklist-tools"><button className="secondary" onClick={()=>{setAccountKey(crypto.randomUUID());setCreatingAccount(true);setNotice('');}}>Nova conta</button><button className="primary" disabled={accounts.filter(a=>a.active).length<2} onClick={()=>{setEntryKey(crypto.randomUUID());setLines([{id:crypto.randomUUID(),accountId:'',side:'debit',amount:''},{id:crypto.randomUUID(),accountId:'',side:'credit',amount:''}]);setCreatingEntry(true);setNotice('');}}>Novo lançamento</button></div></div>
- <div className="linked-info">{accounts.length} contas registradas. Lançamentos manuais não baixam automaticamente títulos, pagamentos ou tributos.</div>
+ <div className="linked-info">{accounts.length} contas registradas. A contabilização automática só ocorre para novas faturas quando a regra abaixo estiver ativa e válida; pagamentos e tributos não são contabilizados automaticamente.</div>
+ <section className="linked-info" aria-label="Regra de contabilização automática de faturas">
+  <strong>Reconhecimento automático de receita</strong>
+  <p>Configuração explícita por proprietário. Ao faturar uma medição aprovada, o ERP registra débito em ativo a receber e crédito em receita na mesma transação da fatura. Nenhuma regra ou conta é presumida.</p>
+  {ruleLoading?<p role="status">Consultando regra contábil…</p>:<form onSubmit={savePostingRule} key={postingRule?.rowVersion??0}>
+    <div className="form-row">
+      <label>Conta de débito · ativo a receber
+        <select name="debitAccountId" defaultValue={postingRule?.debitAccountId??''} required>
+          <option value="" disabled>Selecione a conta</option>
+          {accounts.filter(a=>a.active===1&&a.type==='asset').map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+        </select>
+      </label>
+      <label>Conta de crédito · receita
+        <select name="creditAccountId" defaultValue={postingRule?.creditAccountId??''} required>
+          <option value="" disabled>Selecione a conta</option>
+          {accounts.filter(a=>a.active===1&&a.type==='revenue').map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}
+        </select>
+      </label>
+    </div>
+    <label><input type="checkbox" name="active" defaultChecked={postingRule?.active===1}/> Habilitar publicação contábil automática nos próximos faturamentos</label>
+    <p>Estado: {postingRule?.active===1?'Ativa':'Inativa'} · Versão {postingRule?.rowVersion??0}. O histórico anterior não é contabilizado retroativamente. Regras de impostos, custos e recebimentos ainda precisam de integração específica.</p>
+    {ruleError&&<p role="alert">{ruleError}</p>}
+    <button className="secondary" disabled={saving||!accounts.some(a=>a.active===1&&a.type==='asset')||!accounts.some(a=>a.active===1&&a.type==='revenue')} type="submit">Salvar política contábil</button>
+  </form>}
+ </section>
  <section className="linked-info" aria-label="Conciliação contábil de faturamento">
    <strong>Conciliação de origem</strong>
-   {reconciliation?<p>{reconciliation.summary.verifiedPostingCount} fatura(s) com vínculo manual verificado; {reconciliation.summary.withoutVerifiedPostingCount} ainda sem vínculo válido, total de {moneyScaled(reconciliation.summary.withoutVerifiedPostingAmountScaled)}. {reconciliation.summary.missingReceivableCount} sem título a receber. Nenhum vínculo cria contabilização automática; estornos voltam a aparecer como pendência.</p>:reconciliationError?<p role="alert">Conciliação indisponível: {reconciliationError}</p>:<p role="status">Conferindo vínculos de faturamento…</p>}
+   {reconciliation?<p>{reconciliation.summary.automaticPostingCount} fatura(s) contabilizada(s) automaticamente; {reconciliation.summary.manualVerifiedCount} vinculada(s) manualmente. Total de {reconciliation.summary.verifiedPostingCount} fatura(s) com vínculo válido; {reconciliation.summary.withoutVerifiedPostingCount} ainda sem vínculo válido, total de {moneyScaled(reconciliation.summary.withoutVerifiedPostingAmountScaled)}. {reconciliation.summary.missingReceivableCount} sem título a receber. Regras ativas geram partidas somente em novos faturamentos; estornos voltam a aparecer como pendência.</p>:reconciliationError?<p role="alert">Conciliação indisponível: {reconciliationError}</p>:<p role="status">Conferindo vínculos de faturamento…</p>}
  </section>
  {error?<div className="empty" role="alert">{error}<button onClick={()=>void load()} className="secondary">Tentar novamente</button></div>:loading?<div className="empty" role="status">Consultando diário…</div>:entries.length?<div className="table-wrap"><table><thead><tr><th>Data / origem</th><th>Descrição</th><th>Débitos</th><th>Créditos</th><th>Situação</th></tr></thead><tbody>{entries.map(e=><tr key={e.id}><td><button className="row-link" onClick={()=>void open(e.id)}>{date(e.effectiveDate)}</button><small>{e.sourceReference}</small></td><td>{e.description}</td><td className="amount">{moneyScaled(e.debitScaled)}</td><td className="amount">{moneyScaled(e.creditScaled)}</td><td><span className="badge">Postado</span></td></tr>)}</tbody></table></div>:<div className="empty"><h3>Nenhum lançamento postado</h3><p>Cadastre pelo menos duas contas e informe uma origem para lançar partidas equilibradas.</p></div>}
  <footer className="table-footer"><span>Página {page}</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(v=>v-1)}>Anterior</button><button disabled={!hasMore} onClick={()=>setPage(v=>v+1)}>Próxima</button></div></footer>
