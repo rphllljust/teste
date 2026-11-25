@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { database } from '../../../../db/raw';
-import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../lib/api/http';
 
 const common = { id: z.string().uuid(), entityId: z.string().uuid(), expectedVersion: z.number().int().positive(), approverId: z.string().uuid() };
 const submit = z.discriminatedUnion('entityType', [
@@ -14,7 +14,7 @@ export async function POST(request: Request) {
   try {
     context = requestContext(request, true);
     const parsed = submit.safeParse(await jsonBody(request));
-    if (!parsed.success || (parsed.data.entityType === 'finance_period_close' && parsed.data.payload.periodStart > parsed.data.payload.periodEnd)) throw new ApiError(400, 'VALIDATION_FAILED', 'A solicitação de aprovação financeira é inválida.');
+    if (!parsed.success || (parsed.data.entityType === 'finance_period_close' && (parsed.data.expectedVersion !== 1 || !validDate(parsed.data.payload.periodStart) || !validDate(parsed.data.payload.periodEnd) || parsed.data.payload.periodStart > parsed.data.payload.periodEnd))) throw new ApiError(400, 'VALIDATION_FAILED', 'A solicitação de aprovação financeira é inválida.');
     const data = parsed.data;
     if (data.approverId === context.actorId) throw new ApiError(409, 'SEGREGATION_OF_DUTIES', 'O solicitante não pode aprovar a própria operação.');
     const requestHash = await fingerprint({ actor: context.actorId, data });
