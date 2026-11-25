@@ -63,7 +63,7 @@ test('Field Service start command enforces owner authorization, optimistic versi
 
     const replay = await orderCommand(req('/api/commands', start, owner, correlationHeaders));
     assert.equal(replay.status, 200);
-    assert.deepEqual(await json(replay), await json(started));
+    assert.deepEqual(await json(replay), startedBody);
 
     const stale = await orderCommand(req('/api/commands', {
       id: orderId, version: 2, key: randomUUID(), command: 'complete',
