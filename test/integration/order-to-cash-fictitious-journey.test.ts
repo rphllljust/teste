@@ -54,6 +54,7 @@ const contractId = randomUUID();
 const orderId = randomUUID();
 const debitAccountId = randomUUID();
 const revenueAccountId = randomUUID();
+const bankAccountId = randomUUID();
 const statementId = randomUUID();
 const bankLineId = randomUUID();
 const settlementKey = randomUUID();
@@ -192,10 +193,14 @@ async () => {
     id: revenueAccountId, code: 'REV-FAKE', name: 'Receitas - Teste CI',
     type: 'revenue', active: true,
   })), '07b Conta de receita fictícia cadastrada', 201);
+  await record(await registerAccount(req(owner, '/api/accounting/accounts', {
+    id: bankAccountId, code: 'BANK-FAKE', name: 'Banco fictício - Teste CI',
+    type: 'asset', active: true,
+  })), '07c Conta bancária fictícia cadastrada', 201);
   await record(await configureRule(req(owner, '/api/accounting/posting-rules', {
-    commandKey: randomUUID(), expectedVersion: 0,
+    sourceType: 'invoice_billing', commandKey: randomUUID(), expectedVersion: 0,
     debitAccountId, creditAccountId: revenueAccountId, active: true,
-  })), '07c Regra contábil ativada no usuário fictício', 201);
+  })), '07d Regra de reconhecimento de faturamento ativada', 201);
   const billingKey = randomUUID();
   const billing = await record<{ resource: {
     invoiceId: string; receivableId: string; amount: string;
@@ -209,7 +214,11 @@ async () => {
     measurementId: measurement.resource.id, dueDate: '2099-01-01', commandKey: billingKey,
   }))).status, 200);
 
-  // 8. No actual bank transfer: this is only a persisted receivable settlement.
+  // 8. Activate explicit cash/A/R posting rule; no real payment takes place.
+  await record(await configureRule(req(owner, '/api/accounting/posting-rules', {
+    sourceType: 'receivable_receipt', commandKey: randomUUID(), expectedVersion: 0,
+    debitAccountId: bankAccountId, creditAccountId: debitAccountId, active: true,
+  })), '07e Regra de baixa contábil ativada', 201);
   assert.equal((await settleReceivable(req(outsider,
     '/api/finance/receivables/settlements', {
       receivableId: billing.resource.receivableId, amount: String(scaledAmount),
@@ -218,6 +227,7 @@ async () => {
     }))).status, 404);
   const receipt = await record<{ resource: {
     id: string; balance: string; amount: string;
+    accounting: { status: string; journalId: string };
   }}>(await settleReceivable(req(owner,
     '/api/finance/receivables/settlements', {
       receivableId: billing.resource.receivableId, amount: String(scaledAmount),
@@ -226,6 +236,16 @@ async () => {
     })), '08 Título recebido e saldo zerado', 201);
   assert.equal(receipt.resource.balance, '0');
   assert.equal(receipt.resource.id, settlementKey);
+  assert.equal(receipt.resource.accounting.status, 'auto_posted');
+  assert.ok(receipt.resource.accounting.journalId);
+  const replayReceipt = await record<{ resource: { accounting: { journalId: string } } }>(
+    await settleReceivable(req(owner, '/api/finance/receivables/settlements', {
+      receivableId: billing.resource.receivableId, amount: String(scaledAmount),
+      effectiveDate: today, reference: 'RECEBIMENTO-FICTICIO-CI',
+      commandKey: settlementKey,
+    })), '08a Baixa idempotente sem diário duplicado', 200,
+  );
+  assert.equal(replayReceipt.resource.accounting.journalId, receipt.resource.accounting.journalId);
 
   // 9. Manually imported *fabricated* bank statement, not a banking connector.
   await record(await registerStatement(req(owner, '/api/bank/statements', {
@@ -252,7 +272,7 @@ async () => {
   assert.equal((await bankDetails(req(outsider,
     '/api/bank/statements/' + statementId), paths(statementId))).status, 404);
 
-  // 11. Actual account ledger: original invoice revenue recognized as journal.
+  // 11. Both source journals must appear in the real owner-scoped ledgers.
   const assetLedger = await record<{ items: Array<{ journalId: string }>;
     totals: { debitScaled: string; creditScaled: string } }>(
     await ledger(req(owner, '/api/accounting/ledger?accountId=' + debitAccountId)),
@@ -263,27 +283,36 @@ async () => {
     await ledger(req(owner, '/api/accounting/ledger?accountId=' + revenueAccountId)),
     '11a Razão contábil de receita', 200,
   );
-  assert.equal(assetLedger.items[0].journalId, billing.resource.accounting.journalId);
+  assert.ok(assetLedger.items.some(item => item.journalId === billing.resource.accounting.journalId));
+  assert.ok(assetLedger.items.some(item => item.journalId === receipt.resource.accounting.journalId));
   assert.equal(assetLedger.totals.debitScaled, String(scaledAmount));
+  assert.equal(assetLedger.totals.creditScaled, String(scaledAmount));
   assert.equal(revenueLedger.totals.creditScaled, String(scaledAmount));
+  const bankLedger = await record<{ items: Array<{ journalId: string }>;
+    totals: { debitScaled: string; creditScaled: string } }>(
+    await ledger(req(owner, '/api/accounting/ledger?accountId=' + bankAccountId)),
+    '11b Razão bancário debitado pela baixa fictícia', 200,
+  );
+  assert.ok(bankLedger.items.some(item => item.journalId === receipt.resource.accounting.journalId));
+  assert.equal(bankLedger.totals.debitScaled, String(scaledAmount));
+  assert.equal(bankLedger.totals.creditScaled, '0');
   const existingJournals = await db.query(
     'SELECT COUNT(*)::int AS count FROM journal_entries WHERE actor_id=$1', [owner]);
-  assert.equal(existingJournals.rows[0].count, 1);
-  // CRITICAL GAP: settlement + bank matching have no second GL journal yet.
-  // Do not confuse a zero AR operational balance with posted cash/AR ledger.
-  console.log('ORDER_TO_CASH GAP: receipt was settled and bank-matched, but '
-    + 'no bank/cash versus A/R settlement journal was posted (journalCount=1).');
+  assert.equal(existingJournals.rows[0].count, 2,
+    'Faturamento e baixa geram diários distintos, sem duplicação no replay');
 
-  // 12. Closing verifies invoiced revenue journal; current ERP does not yet
-  // require bank matched/cash GL recognition for an accounting close.
+  // 12. Verify both journals and cash reconciliation before period close.
   const previewPath = '/api/finance/periods/preflight?periodStart='
     + firstDay + '&periodEnd=' + lastDay;
-  const preview = await record<{ canClose: boolean; blockingInvoices: number }>(
+  const preview = await record<{ canClose: boolean; blockingInvoices: number;
+    invalidCashLinks: number; unpostedCashEvents: number }>(
     await closePreflight(req(owner, previewPath)),
     '12 Pré-fechamento com reconhecimento contábil verificado', 200,
   );
   assert.equal(preview.canClose, true);
   assert.equal(preview.blockingInvoices, 0);
+  assert.equal(preview.invalidCashLinks, 0);
+  assert.equal(preview.unpostedCashEvents, 0);
   await record(await closePeriod(req(owner, '/api/finance/periods/close', {
     id: closeId, periodStart: firstDay, periodEnd: lastDay,
     reference: 'FECHAMENTO-TESTE-FICTICIO-CI',
@@ -294,7 +323,7 @@ async () => {
     'SELECT c.id AS client_id, p.id AS proposal_id, ct.id AS contract_id, ' +
     'o.id AS order_id, ex.id AS execution_id, m.id AS measurement_id, ' +
     'i.id AS invoice_id, r.id AS receivable_id, st.id AS settlement_id, ' +
-    'b.id AS statement_id, jl.id AS journal_id, fc.id AS close_id, ' +
+    'b.id AS statement_id, jl.id AS journal_id, sj.id AS receipt_journal_id, fc.id AS close_id, ' +
     'i.amount AS amount, st.amount AS received_amount, l.amount AS linked_amount ' +
     'FROM clients c ' +
     'JOIN proposals p ON p.client_id=c.id AND p.owner_id=c.owner_id ' +
@@ -310,6 +339,8 @@ async () => {
     'JOIN bank_statements b ON b.id=bl.statement_id AND b.actor_id=o.owner_id ' +
     'JOIN accounting_invoice_links l ON l.invoice_id=i.id ' +
     'JOIN journal_entries jl ON jl.id=l.journal_id AND jl.actor_id=o.owner_id ' +
+    "JOIN accounting_settlement_links sl ON sl.settlement_id=st.id AND sl.actor_id=o.owner_id AND sl.kind='receipt' " +
+    "JOIN journal_entries sj ON sj.id=sl.journal_id AND sj.actor_id=o.owner_id AND sj.status='posted' " +
     "JOIN finance_period_closes fc ON fc.actor_id=o.owner_id AND fc.status='closed' " +
     'AND jl.effective_date BETWEEN fc.period_start AND fc.period_end ' +
     'WHERE c.id=$1 AND o.owner_id=$2', [clientId, owner],
@@ -322,7 +353,8 @@ async () => {
     execution: linked.execution_id, measurement: linked.measurement_id,
     invoice: linked.invoice_id, receivable: linked.receivable_id,
     settlement: linked.settlement_id, bank: linked.statement_id,
-    journal: linked.journal_id, periodClose: linked.close_id,
+    journal: linked.journal_id, receiptJournal: linked.receipt_journal_id,
+    periodClose: linked.close_id,
     invoiceAmount: Number(linked.amount),
     settledAmount: Number(linked.received_amount),
     journalAmount: Number(linked.linked_amount),
@@ -332,18 +364,19 @@ async () => {
     measurement: measurement.resource.id, invoice: billing.resource.invoiceId,
     receivable: billing.resource.receivableId, settlement: settlementKey,
     bank: statementId, journal: billing.resource.accounting.journalId,
+    receiptJournal: receipt.resource.accounting.journalId,
     periodClose: closeId,
     invoiceAmount: scaledAmount, settledAmount: scaledAmount,
     journalAmount: scaledAmount,
   });
   console.log(JSON.stringify({
     event: 'CISNE_ORDER_TO_CASH_FICTITIOUS_CI',
-    state: 'CHAIN_LINKS_VERIFIED_WITH_CASH_LEDGER_GAP',
+    state: 'CHAIN_LINKS_VERIFIED_WITH_CASH_LEDGER',
     realCustomerRecordsCreated: 0, realBankOperations: 0,
     fictionalAmountScaled: String(scaledAmount),
     linkedStages: 12,
     bankMatches: bank.summary.matched,
     journalCount: existingJournals.rows[0].count,
-    caveat: 'No automatic cash/A/R posting after receipt; not a complete accounting close.',
+    caveat: 'Synthetic bank matching and explicit accounting rules only; no real transfer or fiscal transmission.',
   }));
 });
