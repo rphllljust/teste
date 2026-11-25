@@ -844,3 +844,28 @@ tr:has(td):hover{background:#f5f9f5}
   .sidebar{width:236px}
   .main{margin-left:236px!important}
 }
+
+/* Enterprise data-state contract: distinguish real API conditions without inventing capability. */
+.enterprise-data-state{display:grid;gap:6px;padding:18px 20px;border:1px solid var(--line);border-left:3px solid #8799a0;border-radius:6px;background:#fff}
+.enterprise-data-state strong{font-size:15px;color:var(--ink)}
+.enterprise-data-state p{margin:0;color:var(--muted);font-size:13px;line-height:1.55}
+.enterprise-data-state-label{font-size:10px;font-weight:700;letter-spacing:.9px;text-transform:uppercase;color:#6f858d}
+.enterprise-data-state-error{border-left-color:#b54a42;background:#fffafa}.enterprise-data-state-error .enterprise-data-state-label{color:#a13d36}
+.enterprise-data-state-blocked{border-left-color:#b4772b;background:#fffaf2}.enterprise-data-state-blocked .enterprise-data-state-label{color:#99611c}
+.enterprise-data-state-manual{border-left-color:#4a7c9a;background:#f7fbfd}.enterprise-data-state-manual .enterprise-data-state-label{color:#35647f}
+.enterprise-data-state-not_configured{border-left-color:#826aa8;background:#faf8fd}.enterprise-data-state-not_configured .enterprise-data-state-label{color:#694f91}
+.enterprise-data-state-unavailable{border-left-color:#657d86;background:#f7fafb}.enterprise-data-state-unavailable .enterprise-data-state-label{color:#4c646d}
+
+
+/* Responsive shell correction: mobile must not inherit the desktop sidebar geometry. */
+@media (max-width: 800px) {
+  .sidebar { display: none !important; width: min(86vw, 320px); }
+  .sidebar.mobile-open { display: flex !important; }
+  .main { margin-left: 0 !important; width: 100%; min-width: 0; }
+  .topbar { width: 100%; }
+  .main main { width: 100%; max-width: none; overflow-x: hidden; }
+}
+@media (min-width: 801px) {
+  .sidebar { display: flex !important; }
+  .main { margin-left: 236px !important; width: auto; }
+}

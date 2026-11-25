@@ -188,7 +188,6 @@ export default function AssetsWorkspace() {
       className="worklist business-workspace assets-workspace"
       aria-label="Frota e ativos"
     >
-    <EnterprisePageHeader breadcrumb="Recursos e logística / Frota e ativos" eyebrow="LIST REPORT · RECURSOS" title="Frota e ativos" description="Cadastro, disponibilidade, localização e custo operacional dos recursos utilizados pelo Field Service." actions={<><button className="secondary" disabled={loading} onClick={() => void load()}><RefreshCw size={16} />Atualizar</button><button className="primary" onClick={() => setForm(true)}><Plus size={16} />Cadastrar ativo</button></>} />
       <div className="filters">
         <label className="search-input">
           <Search size={16} />
