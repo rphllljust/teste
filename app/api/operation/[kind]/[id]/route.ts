@@ -33,6 +33,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
     const history = kind.data === 'receivables' ? rows.slice(1) : [];
     const historyRows = (history[0]?.results ?? []) as Array<Record<string, unknown>>;
     const historyTotal = Number((history[1]?.results[0] as { total?: number } | undefined)?.total ?? 0);
+    const evidenceResult = await db.prepare(`SELECT e.id,e.reference,e.description,CAST(e.quantity AS TEXT) AS quantity_scaled,e.unit FROM execution_entries e WHERE e.order_id=? AND e.actor_id=? ORDER BY e.effective_date ASC,e.id ASC`).bind(String(row.order_id), context.actorId).all();
+    const evidence = evidenceResult.results as Array<Record<string, unknown>>;
     const projection = {
       identity: { id, title: String(row.order_title ?? id), subtitle: String(row.client ?? 'Cliente não informado'), entityKey: kind.data === 'measurements' ? 'measurements' : kind.data === 'invoices' ? 'invoices' : 'receivables' },
       state: { code: String(row.status ?? 'registered'), label: String(row.status ?? 'Registrado'), rowVersion: Number(row.version ?? 1) },
@@ -40,8 +42,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ kind
       relations: { orderId: String(row.order_id), orderTitle: String(row.order_title ?? ''), measurementId: kind.data === 'measurements' ? id : String(row.measurement_id ?? ''), measurementDescription: String(row.description ?? ''), invoiceId: kind.data === 'receivables' ? String(row.invoice_id ?? '') : kind.data === 'invoices' ? id : null, receivableId: kind.data === 'receivables' ? id : null },
       settlements: kind.data === 'receivables' ? historyRows : [],
       settlementsPageInfo: kind.data === 'receivables' ? historyPageInfo(historyPage, historyTotal) : undefined,
-      evidence: [],
-      evidencePageInfo: { total: 0 },
+      evidence: evidence.map(item => ({ id: String(item.id), reference: String(item.reference ?? item.id), description: String(item.description ?? ''), quantityScaled: String(item.quantity_scaled ?? '0'), unit: String(item.unit ?? '') })),
+      evidencePageInfo: { total: evidence.length },
       availableCommands: kind.data === 'measurements'
         ? measurementCommands({ status: String(row.status ?? ''), version: Number(row.version ?? 1) })
         : kind.data === 'receivables' && BigInt(principal) > BigInt(settled) ? [{ id: 'record_receipt', label: 'Registrar recebimento', primary: true }] : [],
