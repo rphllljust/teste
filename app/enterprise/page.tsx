@@ -38,7 +38,7 @@ export default function EnterpriseStructurePage(){
   }catch(cause){setError(cause instanceof Error?cause.message:'Não foi possível consultar empresas.');}
   finally{setLoading(false);}
  },[]);
- useEffect(()=>{void loadTenants();},[loadTenants]);
+ useEffect(()=>{const timer=setTimeout(()=>void loadTenants(),0);return()=>clearTimeout(timer);},[loadTenants]);
  const loadDetail=useCallback(async(id:string)=>{
   if(!id){setCompanies([]);setMembers([]);return;}
   setLoadingDetail(true);
@@ -52,7 +52,7 @@ export default function EnterpriseStructurePage(){
   }catch(cause){setError(cause instanceof Error?cause.message:'Não foi possível consultar as unidades e permissões.');}
   finally{setLoadingDetail(false);}
  },[]);
- useEffect(()=>{void loadDetail(tenantId);},[tenantId,loadDetail]);
+ useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId),0);return()=>clearTimeout(timer);},[tenantId,loadDetail]);
 
  async function createTenant(event:React.FormEvent<HTMLFormElement>){
   event.preventDefault();const formElement=event.currentTarget;setSaving(true);setError('');setNotice('');
