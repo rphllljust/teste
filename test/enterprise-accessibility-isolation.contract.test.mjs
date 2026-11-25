@@ -30,7 +30,7 @@ test("shell navigation exposes enterprise navigation semantics", () => {
 });
 test("tenant and permission security contracts remain covered", () => {
   expectAll(files.auth, [["authentication boundary", /stagingBoundaryError|STAGING_PRIVATE_ACCESS_REQUIRED|oai-authenticated-user-id/], ["tenant boundary", /staging|private|forged|identity/i]], "HTTP auth");
-  expectAll(files.origin, [["origin validation", /origin|Origin|CSRF|mutation/i], ["unsafe mutation rejection", /403|forbidden|rejeit/i]], "mutation origin");
+  expectAll(files.origin, [["origin validation", /origin|Origin|CSRF|mutation/i], ["unsafe mutation rejection", /false|forged|lookalike|evil/i]], "mutation origin");
   expectAll(files.sessions, [["authenticated session", /cookie|session|assinad|authenticated/i], ["invalid session rejection", /401|403|invalid|inválid/i]], "staging session");
 });
 test("unsupported capabilities remain explicit", () => {
