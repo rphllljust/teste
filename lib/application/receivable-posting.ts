@@ -58,8 +58,8 @@ export async function postReceiptIfConfigured(query:Query,context:RequestContext
   'WHERE r.id=$1 AND o.owner_id=$2 '+
   "AND j.status='posted' AND j.reversal_of IS NULL "+
   'AND NOT EXISTS (SELECT 1 FROM journal_entries rev WHERE rev.reversal_of=j.id) '+
-  'AND EXISTS (SELECT 1 FROM journal_lines debit WHERE debit.entry_id=j.id '+
-  'AND debit.account_id=$3 AND debit.debit>0)',
+  'AND (SELECT COALESCE(SUM(debit.debit),0) FROM journal_lines debit WHERE debit.entry_id=j.id '+
+  'AND debit.account_id=$3)=i.amount',
   [input.receivableId,context.actorId,rule.creditId],
  );
  if(!source.rows.length)
