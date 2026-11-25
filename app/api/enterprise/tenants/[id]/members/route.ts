@@ -10,7 +10,7 @@ const command=z.discriminatedUnion('action',[
     role:z.enum(['admin','accountant','operator','auditor'])}).strict(),
   z.object({commandKey:z.string().uuid(),action:z.literal('deactivate'),actorId:target}).strict(),
 ]);
-type Query=(statement:string,bindings?:unknown[])=>Promise<{rows:Array<Record<string,unknown>>;rowCount:number}>;
+type Query=(statement:string,bindings?:unknown[])=>Promise<{rows:Array<Record<string,unknown>>}>;
 
 /** The actor is always authenticated by requestContext, never from submitted roles/headers. */
 async function authorize(query:Query,tenantId:string,actorId:string,write:boolean){
