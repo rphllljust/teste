@@ -1,5 +1,6 @@
 import { database } from '../../db/raw';
 import { ApiError, type RequestContext } from '../api/http';
+import { postReceiptIfConfigured,reverseReceiptPostingIfAny,savedReceiptPosting } from './receivable-posting';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
@@ -71,7 +72,8 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
   if (prior.rows.length) {
     const row = prior.rows[0];
     if (row.actor_id !== context.actorId || row.request_hash !== input.requestHash || row.receivable_id !== input.receivableId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-    return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference } };
+    const accounting=await savedReceiptPosting(query,input.commandKey,context.actorId);
+    return { ok: true, replayed: true, resource: { type: 'receivableSettlement', id: row.id, receivableId: row.receivable_id, amount: String(row.amount), effectiveDate: row.effective_date, reference: row.reference, accounting } };
   }
 
   const receivable = await query(`SELECT r.id, r.amount,
@@ -91,9 +93,11 @@ export async function registerReceivableSettlementWithQuery(query: Query, contex
     VALUES ($1,$2,'receipt',$3,$4,$5,$6,$7,$8,$9)`,
     [input.commandKey, input.receivableId, input.amount, input.effectiveDate, input.reference,
       new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+  const accounting=await postReceiptIfConfigured(query,context,{settlementId:input.commandKey,
+    receivableId:input.receivableId,amount:input.amount,effectiveDate:input.effectiveDate,requestHash:input.requestHash});
   await audit(query, context, 'receivable', input.receivableId, 'receipt_registered', input.requestHash, { settlementId: input.commandKey, amount: input.amount, reference: input.reference });
 
-  return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount) } };
+  return { ok: true, replayed: false, resource: { type: 'receivableSettlement', id: input.commandKey, receivableId: input.receivableId, amount: String(input.amount), balance: String(balance - input.amount), accounting } };
 }
 
 export async function reverseReceivableSettlement(context: RequestContext, input: { settlementId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
@@ -104,7 +108,8 @@ export async function reverseReceivableSettlement(context: RequestContext, input
     if (prior.rows.length) {
       const row = prior.rows[0];
       if (row.actor_id !== context.actorId || row.request_hash !== input.requestHash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave utilizada em outra operação.');
-      return { ok: true, replayed: true, resource: { type: 'receivableReversal', id: row.id, receivableId: row.receivable_id, amount: String(row.amount) } };
+      const accounting=await savedReceiptPosting(query,input.commandKey,context.actorId);
+      return { ok: true, replayed: true, resource: { type: 'receivableReversal', id: row.id, receivableId: row.receivable_id, amount: String(row.amount),accounting } };
     }
     const original = await query(`SELECT s.id, s.receivable_id, s.amount, r.id AS title_id
       FROM receivable_settlements s
@@ -121,8 +126,11 @@ export async function reverseReceivableSettlement(context: RequestContext, input
       VALUES ($1,$2,'reversal',$3,$4,$5,$6,$7,$8,$9,$10)`,
       [input.commandKey, row.receivable_id, row.amount, input.effectiveDate, input.reference, input.settlementId,
         new Date().toISOString(), context.actorId, input.requestHash, context.correlationId]);
+    const accounting=await reverseReceiptPostingIfAny(query,context,{originalSettlementId:input.settlementId,
+      reversalSettlementId:input.commandKey,receivableId:String(row.receivable_id),amount:Number(row.amount),
+      effectiveDate:input.effectiveDate,requestHash:input.requestHash});
     await audit(query, context, 'receivable', row.receivable_id as string, 'receipt_reversed', input.requestHash, { settlementId: input.settlementId, reversalId: input.commandKey, reference: input.reference });
-    return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount) } };
+    return { ok: true, replayed: false, resource: { type: 'receivableReversal', id: input.commandKey, receivableId: row.receivable_id, amount: String(row.amount),accounting } };
   });
 }
 

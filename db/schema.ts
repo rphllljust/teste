@@ -341,4 +341,25 @@ export const accountingPostingRules=pgTable('accounting_posting_rules',{
 },t=>[
  uniqueIndex('accounting_posting_rule_actor_source_uq').on(t.actorId,t.sourceType),
  index('accounting_posting_rules_actor_active_idx').on(t.actorId,t.active),
+ check('accounting_posting_rules_source_type_check',sql`${t.sourceType} IN ('invoice_billing','receivable_receipt')`),
+]);
+
+/** Append-only source facts for automated cash receipt and reversal entries. */
+export const accountingSettlementLinks=pgTable('accounting_settlement_links',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ settlementId:text('settlement_id').notNull().unique().references(()=>receivableSettlements.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ kind:text('kind').notNull(),
+ amount:integer('amount').notNull(),
+ effectiveDate:text('effective_date').notNull(),
+ ruleVersion:integer('rule_version').notNull(),
+ requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ check('accounting_settlement_links_kind_check',sql`${t.kind} IN ('receipt','reversal')`),
+ check('accounting_settlement_links_amount_check',sql`${t.amount}>0`),
+ check('accounting_settlement_links_version_check',sql`${t.ruleVersion}>0`),
+ index('accounting_settlement_links_owner_date_idx').on(t.actorId,t.effectiveDate,t.settlementId),
 ]);

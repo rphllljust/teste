@@ -15,4 +15,19 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
 );
 if(closedOrigin.rows.length)throw new ApiError(409,'ACCOUNTING_CLOSED_ORIGIN',
   'Um lançamento vinculado a fatura de período fechado exige correção contábil autorizada; estorno direto bloqueado.');
+const settlementLinked=await q(
+  'SELECT 1 FROM accounting_settlement_links WHERE journal_id=$1 LIMIT 1',[journalId],
+);
+if(settlementLinked.rows.length)throw new ApiError(409,'ACCOUNTING_SOURCE_REVERSAL_REQUIRED',
+  'Estornos de diário de recebimento devem ser executados pela baixa de origem.');
+const cashDependencies=await q(
+  'SELECT 1 FROM accounting_invoice_links l '+
+  'JOIN receivables r ON r.invoice_id=l.invoice_id '+
+  "JOIN receivable_settlements s ON s.receivable_id=r.id AND s.kind='receipt' "+
+  'LEFT JOIN receivable_settlements reversed ON reversed.reverses_id=s.id '+
+  'WHERE l.journal_id=$1 AND reversed.id IS NULL LIMIT 1',
+  [journalId],
+);
+if(cashDependencies.rows.length)throw new ApiError(409,'ACCOUNTING_SETTLEMENT_DEPENDENCY',
+  'Estorne primeiro os recebimentos vinculados antes de estornar o reconhecimento da fatura.');
 const existing=await q('SELECT id FROM journal_entries WHERE reversal_of=$1',[journalId]);if(existing.rows.length)throw new ApiError(409,'ALREADY_REVERSED','O lançamento já possui estorno.');const lines=await q('SELECT id,account_id,debit,credit FROM journal_lines WHERE entry_id=$1 ORDER BY id',[journalId]);const reversalId=crypto.randomUUID();await q('INSERT INTO journal_entries(id,effective_date,source_reference,description,status,expected_count,created_at,actor_id,request_hash,correlation_id,reversal_of) VALUES($1,$2,$3,$4,\'posted\',$5,$6,$7,$8,$9,$10)',[reversalId,data.effectiveDate,data.sourceReference,data.description,lines.rowCount,new Date().toISOString(),context!.actorId,hash,context!.correlationId,journalId]);for(const line of lines.rows as Array<{id:string;account_id:string;debit:string;credit:string}>)await q('INSERT INTO journal_lines(id,entry_id,account_id,debit,credit) VALUES($1,$2,$3,$4,$5)',[crypto.randomUUID(),reversalId,line.account_id,line.credit,line.debit]);const receipt={ok:true,resource:{type:'accounting-journal-reversal',id:reversalId,reversalOf:journalId,status:'posted'},refreshPolicy:['accounting.journals','accounting.ledger']};await q('INSERT INTO business_commands(id,actor_id,entity_type,entity_id,command,request_hash,result,correlation_id,created_at) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)',[data.commandKey,context!.actorId,'accountingJournalReverse',journalId,'reverse',hash,JSON.stringify(receipt),context!.correlationId,new Date().toISOString()]);return receipt;});return respond(result,context,result.replayed?200:201);}catch(error){return failure(error,context);}}
