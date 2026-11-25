@@ -385,3 +385,33 @@ export const accountingPayablePaymentLinks=pgTable('accounting_payable_payment_l
 },t=>[check('accounting_payable_payment_links_kind_check',sql`${t.kind} IN ('payment','reversal')`),
  check('accounting_payable_payment_links_amount_check',sql`${t.amount}>0`),
  index('accounting_payable_payment_links_owner_date_idx').on(t.actorId,t.effectiveDate,t.paymentId)]);
+
+/** Immutable three-way matching facts. Source amounts are scaled integer ten-thousandths. */
+export const procurementSupplierInvoices=pgTable('procurement_supplier_invoices',{
+ id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),
+ orderId:text('order_id').notNull().unique().references(()=>supplierPurchaseOrders.id),
+ supplierId:text('supplier_id').notNull().references(()=>suppliers.id),
+ payableId:text('payable_id').notNull().unique().references(()=>payables.id),
+ documentNumber:text('document_number').notNull(),
+ issueDate:text('issue_date').notNull(),dueDate:text('due_date').notNull(),
+ amount:integer('amount').notNull(),currency:text('currency').notNull().default('BRL'),
+ status:text('status').notNull().default('matched'),requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull(),
+},t=>[
+ uniqueIndex('procurement_supplier_invoice_owner_supplier_doc_unique').on(t.ownerId,t.supplierId,t.documentNumber),
+ index('procurement_supplier_invoices_owner_created_idx').on(t.ownerId,t.createdAt,t.id),
+ check('procurement_supplier_invoice_amount',sql`${t.amount}>0`),
+]);
+export const procurementSupplierInvoiceLines=pgTable('procurement_supplier_invoice_lines',{
+ id:text('id').primaryKey(),
+ supplierInvoiceId:text('supplier_invoice_id').notNull().references(()=>procurementSupplierInvoices.id),
+ orderLineId:text('order_line_id').notNull().references(()=>supplierPurchaseOrderLines.id),
+ acceptedQuantity:integer('accepted_quantity').notNull(),unitPrice:integer('unit_price').notNull(),
+ subtotal:integer('subtotal').notNull(),
+},t=>[uniqueIndex('procurement_supplier_invoice_line_once').on(t.supplierInvoiceId,t.orderLineId)]);
+export const procurementSupplierInvoiceReceipts=pgTable('procurement_supplier_invoice_receipts',{
+ id:text('id').primaryKey(),
+ supplierInvoiceId:text('supplier_invoice_id').notNull().references(()=>procurementSupplierInvoices.id),
+ receiptLineId:text('receipt_line_id').notNull().unique().references(()=>procurementReceiptLines.id),
+ acceptedQuantity:integer('accepted_quantity').notNull(),
+},t=>[index('procurement_supplier_invoice_receipts_invoice_idx').on(t.supplierInvoiceId,t.receiptLineId)]);
