@@ -29,6 +29,8 @@ const params = { params: Promise.resolve({ id: approvalId }) };
 const json = async (response: Response) => response.clone().json() as Promise<Record<string, unknown>>;
 
 after(async () => {
+  await pool.query('DELETE FROM finance_audit_events WHERE entity_type=$1 AND entity_id=$2', ['finance_period',entityId]);
+  await pool.query('DELETE FROM finance_period_closes WHERE id=$1', [entityId]);
   await pool.query('DELETE FROM workflow_approval_events WHERE request_id=$1', [approvalId]);
   await pool.query('DELETE FROM workflow_approval_requests WHERE id=$1', [approvalId]);
   await closeDatabase();
@@ -64,6 +66,19 @@ test('finance approval is server-authoritative, segregated, versioned, audited a
   const approved = await decideApproval(req(`/api/workflow/approvals/${approvalId}/commands`, 'POST', approver, { key: decisionKey, version: 1, command: 'approve' }), params);
   assert.equal(approved.status, 200, JSON.stringify(await json(approved.clone())));
   assert.deepEqual((await json(approved)).state, 'approved');
+  const applied = await pool.query(
+    'SELECT actor_id,period_start,period_end,status FROM finance_period_closes WHERE id=$1', [entityId],
+  );
+  assert.deepEqual(applied.rows, [{
+    actor_id: requester, period_start: '2026-11-01', period_end: '2026-11-30', status: 'closed',
+  }]);
+  const closingAudit = await pool.query(
+    "SELECT actor_id,metadata FROM finance_audit_events WHERE entity_type='finance_period' AND entity_id=$1",
+    [entityId],
+  );
+  assert.equal(closingAudit.rows.length, 1);
+  assert.equal(closingAudit.rows[0].actor_id, approver);
+  assert.equal(closingAudit.rows[0].metadata.approvalRequestId, approvalId);
 
   const decisionReplay = await decideApproval(req(`/api/workflow/approvals/${approvalId}/commands`, 'POST', approver, { key: decisionKey, version: 1, command: 'approve' }), params);
   assert.equal(decisionReplay.status, 200);
