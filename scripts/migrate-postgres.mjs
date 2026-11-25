@@ -29,6 +29,7 @@ const migrations = [
   { id: '0018_accounting_invoice_links', file: '../drizzle-pg/0018_accounting_invoice_links.sql' },
   { id: '0019_native_invoice_posting_rules', file: '../drizzle-pg/0019_native_invoice_posting_rules.sql' },
   { id: '0020_receivable_cash_ledger', file: '../drizzle-pg/0020_receivable_cash_ledger.sql' },
+  { id: '0021_chart_accounts_tenant_unique', file: '../drizzle-pg/0021_chart_accounts_tenant_unique.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
