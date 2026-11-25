@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { database } from '../../../../../../db/raw';
-import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../../../lib/api/http';
+import { lockFinancePeriodScope } from '../../../../../../lib/application/finance';
+import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, validDate, type RequestContext } from '../../../../../../lib/api/http';
 
 const command = z.object({ key: z.string().uuid(), version: z.number().int().positive(), command: z.enum(['approve', 'reject']), reason: z.string().trim().min(3).max(500).optional() }).strict();
 
@@ -21,8 +22,8 @@ export async function POST(request: Request, route: { params: Promise<{ id: stri
       return respond({ id, state: prior.toState, rowVersion: prior.version, replayed: true }, context);
     }
     const result = await db.transaction(async query => {
-      const selected = await query(`SELECT requested_by AS "requestedBy",owner_id AS "ownerId",approver_id AS "approverId",state,row_version AS "rowVersion",expected_version AS "expectedVersion",entity_type AS "entityType",entity_id AS "entityId",command FROM workflow_approval_requests WHERE id=$1 FOR UPDATE`, [id]);
-      const approval = selected.rows[0] as { requestedBy: string; ownerId: string; approverId: string; state: string; rowVersion: number; expectedVersion: number; entityType: string; entityId: string; command: string } | undefined;
+      const selected = await query(`SELECT requested_by AS "requestedBy",owner_id AS "ownerId",approver_id AS "approverId",state,row_version AS "rowVersion",expected_version AS "expectedVersion",entity_type AS "entityType",entity_id AS "entityId",command,payload FROM workflow_approval_requests WHERE id=$1 FOR UPDATE`, [id]);
+      const approval = selected.rows[0] as { requestedBy: string; ownerId: string; approverId: string; state: string; rowVersion: number; expectedVersion: number; entityType: string; entityId: string; command: string; payload: string } | undefined;
       if (!approval) throw new ApiError(404, 'APPROVAL_NOT_FOUND', 'Solicitação de aprovação não encontrada.');
       if (approval.approverId !== context!.actorId) throw new ApiError(403, 'APPROVER_NOT_AUTHORIZED', 'Usuário não autorizado para decidir esta solicitação.');
       if (approval.requestedBy === context!.actorId) throw new ApiError(409, 'SEGREGATION_OF_DUTIES', 'O solicitante não pode aprovar a própria operação.');
@@ -30,7 +31,38 @@ export async function POST(request: Request, route: { params: Promise<{ id: stri
       if (approval.rowVersion !== input.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A solicitação foi alterada; recarregue antes de decidir.');
       const nextState = input.command === 'approve' ? 'approved' : 'rejected';
       const now = new Date().toISOString();
-      if (nextState === 'approved' && approval.entityType === 'service_order') {
+      if (nextState === 'approved' && approval.entityType === 'finance_period_close') {
+        if (approval.command !== 'close' || approval.expectedVersion !== 1)
+          throw new ApiError(409, 'INVALID_STATE', 'A aprovação financeira não tem contrato de fechamento válido.');
+        const payload = z.object({
+          periodStart:z.string(),periodEnd:z.string(),reference:z.string().trim().min(1).max(160),
+        }).strict().safeParse(JSON.parse(approval.payload));
+        if (!payload.success || !validDate(payload.data.periodStart) || !validDate(payload.data.periodEnd) ||
+            payload.data.periodStart > payload.data.periodEnd)
+          throw new ApiError(409, 'INVALID_STATE', 'Período aprovado inválido.');
+        await lockFinancePeriodScope(query, approval.ownerId);
+        const priorClose = await query('SELECT id FROM finance_period_closes WHERE id=$1 FOR UPDATE', [approval.entityId]);
+        if (priorClose.rows.length) throw new ApiError(409, 'FINANCE_PERIOD_ALREADY_CLOSED', 'Identificador de período já utilizado.');
+        const overlap = await query(
+          "SELECT id FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$3 LIMIT 1",
+          [approval.ownerId,payload.data.periodEnd,payload.data.periodStart],
+        );
+        if (overlap.rows.length)
+          throw new ApiError(409,'FINANCE_PERIOD_OVERLAP','Já existe fechamento sobreposto.');
+        await query(
+          "INSERT INTO finance_period_closes(id,period_start,period_end,status,actor_id,request_hash,correlation_id,closed_at) VALUES($1,$2,$3,'closed',$4,$5,$6,$7)",
+          [approval.entityId,payload.data.periodStart,payload.data.periodEnd,approval.ownerId,requestHash,context!.correlationId,now],
+        );
+        await query(
+          "INSERT INTO finance_audit_events(id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES($1,'finance_period',$2,'period_closed',$3,$4,$5,$6,$7)",
+          [crypto.randomUUID(),approval.entityId,context!.actorId,requestHash,context!.correlationId,
+            JSON.stringify({
+              periodStart:payload.data.periodStart,periodEnd:payload.data.periodEnd,
+              reference:payload.data.reference,requestedBy:approval.requestedBy,approvedBy:context!.actorId,
+              approvalRequestId:id,
+            }),now],
+        );
+      } else if (nextState === 'approved' && approval.entityType === 'service_order') {
         const target = await query('SELECT status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [approval.entityId, approval.ownerId]);
         const row = target.rows[0] as { status: string; version: number } | undefined;
         if (!row) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada no contexto da aprovação.');
