@@ -32,6 +32,12 @@ export async function POST(request:Request){
       throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave de comando já utilizada.');
     return {...JSON.parse(String(row.result)),replayed:true};
    }
+   // Lock the actor's financial period before locking individual invoices/journals.
+   // All accounting postings and reversals acquire this advisory lock first.
+   const date=await query('SELECT effective_date FROM journal_entries WHERE id=$1 AND actor_id=$2',
+     [data.journalId,ctx!.actorId]);
+   if(!date.rows.length)throw new ApiError(404,'NOT_FOUND','Diário contábil não encontrado no contexto autorizado.');
+   await assertFinancePeriodOpen(query,ctx!.actorId,String(date.rows[0].effective_date));
    const invoice=await query(
     'SELECT i.id,i.amount,o.owner_id FROM invoices i '+
     'JOIN service_orders o ON o.id=i.order_id WHERE i.id=$1 AND o.owner_id=$2 FOR UPDATE OF i',
@@ -46,7 +52,6 @@ export async function POST(request:Request){
    const entry=journal.rows[0];
    if(entry.status!=='posted'||entry.reversal_of)
     throw new ApiError(409,'INVALID_JOURNAL_STATE','Somente lançamentos originais e publicados podem ser vinculados.');
-   await assertFinancePeriodOpen(query,ctx!.actorId,String(entry.effective_date));
    const reversal=await query('SELECT id FROM journal_entries WHERE reversal_of=$1 LIMIT 1',[data.journalId]);
    if(reversal.rows.length)throw new ApiError(409,'ALREADY_REVERSED','O lançamento já foi estornado.');
    const totals=await query(
