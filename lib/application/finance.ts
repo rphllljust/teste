@@ -37,15 +37,49 @@ export async function getPeriodCloseReadiness(query: Query, actorId: string, per
     'AND (SELECT COALESCE(SUM(jl.credit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount)',
     [actorId,periodStart,periodEnd],
   );
-  const row = result.rows[0];
-  return { blockingInvoices: Number(row?.blockingInvoices ?? 0),
-    blockingAmountScaled: String(row?.blockingAmountScaled ?? '0') };
+  // Existing legacy cash events without a source journal are reported as
+  // adoption gaps, not retroactively made blocking. However a persisted
+  // accounting source link MUST reconcile exactly or the close fails.
+  const cashValid =
+    "l.actor_id=o.owner_id AND s.actor_id=o.owner_id AND l.kind=s.kind AND l.amount=s.amount AND l.effective_date=s.effective_date "+
+    "AND j.status='posted' AND j.effective_date=s.effective_date "+
+    'AND (SELECT COALESCE(SUM(debit),0) FROM journal_lines WHERE entry_id=j.id)=s.amount '+
+    'AND (SELECT COALESCE(SUM(credit),0) FROM journal_lines WHERE entry_id=j.id)=s.amount '+
+    "AND ((s.kind='receipt' AND j.reversal_of IS NULL) OR "+
+    "(s.kind='reversal' AND COALESCE(j.reversal_of=(SELECT orig.journal_id "+
+    "FROM accounting_settlement_links orig WHERE orig.settlement_id=s.reverses_id "+
+    "AND orig.actor_id=o.owner_id),FALSE)))";
+  const invalidLink='l.id IS NOT NULL AND NOT COALESCE(('+cashValid+'),FALSE)';
+  const cash=await query(
+    'SELECT COUNT(*) FILTER (WHERE l.id IS NULL)::int AS "unpostedCashEvents", '+
+    'COALESCE(SUM(s.amount) FILTER (WHERE l.id IS NULL),0)::text AS "unpostedCashAmountScaled", '+
+    'COUNT(*) FILTER (WHERE '+invalidLink+')::int AS "invalidCashLinks" '+
+    'FROM receivable_settlements s '+
+    'JOIN receivables r ON r.id=s.receivable_id '+
+    'JOIN invoices i ON i.id=r.invoice_id '+
+    'JOIN service_orders o ON o.id=i.order_id '+
+    'LEFT JOIN accounting_settlement_links l ON l.settlement_id=s.id '+
+    'LEFT JOIN journal_entries j ON j.id=l.journal_id AND j.actor_id=o.owner_id '+
+    'WHERE o.owner_id=$1 AND s.effective_date>=$2 AND s.effective_date<=$3',
+    [actorId,periodStart,periodEnd],
+  );
+  const row=result.rows[0],cashRow=cash.rows[0];
+  return {
+    blockingInvoices:Number(row?.blockingInvoices??0),
+    blockingAmountScaled:String(row?.blockingAmountScaled??'0'),
+    invalidCashLinks:Number(cashRow?.invalidCashLinks??0),
+    unpostedCashEvents:Number(cashRow?.unpostedCashEvents??0),
+    unpostedCashAmountScaled:String(cashRow?.unpostedCashAmountScaled??'0'),
+  };
 }
 export async function assertPeriodReadyToClose(query: Query, actorId: string, periodStart: string, periodEnd: string) {
   const readiness = await getPeriodCloseReadiness(query, actorId, periodStart, periodEnd);
   if (readiness.blockingInvoices > 0)
     throw new ApiError(409, 'FINANCE_CLOSE_BLOCKED',
       'O fechamento exige que todas as faturas do período possuam contabilização publicada, conciliada e não estornada.');
+  if(readiness.invalidCashLinks>0)
+    throw new ApiError(409,'FINANCE_CASH_LEDGER_INTEGRITY',
+      'Fechamento bloqueado: há baixas financeiras com vínculo contábil persistido inconsistente.');
   return readiness;
 }
 

@@ -23,9 +23,9 @@ export async function GET(request:Request){
       dates.data.periodStart,dates.data.periodEnd));
     return respond({
       periodStart:dates.data.periodStart,periodEnd:dates.data.periodEnd,
-      ...result,canClose:result.blockingInvoices===0,
+      ...result,canClose:result.blockingInvoices===0&&result.invalidCashLinks===0,
       advisoryOnly:true,
-      policy:'A decisão final revalida os bloqueios dentro do lock transacional antes de fechar.',
+      policy:'A decisão revalida faturas e diários de baixas sob lock; eventos legados sem diário são informados como aviso de adoção.',
     },context);
   }catch(error){return failure(error,context);}
 }
