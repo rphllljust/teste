@@ -16,7 +16,7 @@ export async function GET(){
    "to_regclass('public.enterprise_tenants') IS NOT NULL AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0017_enterprise_tenancy_foundation')) AS ready",
-  ).first<{ready:boolean}>();
+  ).bind().first<{ready:boolean}>();
   if(result?.ready===true)return Response.json({ready:true},{status:200,headers});
  }catch{
   // Fail closed: do not expose SQL error strings, hostnames or credentials.
