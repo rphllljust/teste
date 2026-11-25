@@ -68,7 +68,7 @@ test('reconciliation does not invent accounting links and isolates invoice owner
   assert.equal(a.status,200);
   const body=await a.json() as {summary:{invoiceCount:number;withoutVerifiedPostingCount:number;withoutVerifiedPostingAmountScaled:string;missingReceivableCount:number};accountingLinkage:{status:string};items:Array<{invoiceId:string;receivableId:string|null}>};
   assert.equal(body.accountingLinkage.status,'MANUAL_VERIFICATION_AVAILABLE');
-  assert.deepEqual(body.summary,{invoiceCount:1,withoutVerifiedPostingCount:1,withoutVerifiedPostingAmountScaled:'125000',missingReceivableCount:0,standaloneJournalCount:0,verifiedPostingCount:0});
+  assert.deepEqual(body.summary,{invoiceCount:1,withoutVerifiedPostingCount:1,withoutVerifiedPostingAmountScaled:'125000',missingReceivableCount:0,standaloneJournalCount:0,verifiedPostingCount:0,invoiceAmountScaled:'125000'});
   assert.deepEqual(body.items.map(x=>x.invoiceId),[invoiceIds[0]]);
   const b=await reconciliation(request(owners[1]));
   assert.equal(b.status,200);
