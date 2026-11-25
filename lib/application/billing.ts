@@ -79,7 +79,9 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
 
     const now = new Date().toISOString();
     const postingDate = now.slice(0, 10);
-    if (rule) await assertFinancePeriodOpen(query, context.actorId, postingDate);
+    // Billing itself is a financial operation; reject closed periods even
+    // when auto-posting is disabled, preventing unposted backdated activity.
+    await assertFinancePeriodOpen(query, context.actorId, postingDate);
     const invoiceId = crypto.randomUUID();
     const receivableId = crypto.randomUUID();
     const rowVersion = Number(measurement.version) + 1;
@@ -95,7 +97,7 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
         dueDate: input.dueDate,
         rowVersion,
         accounting: rule ? { status: 'auto_posted', ruleVersion: Number(rule.row_version) } :
-          { status: 'not_configured' },
+          { status: 'not_enabled' },
       },
       refreshPolicy: ['operation.workspace', 'finance.receivables', 'serviceOrder.context'],
     };
