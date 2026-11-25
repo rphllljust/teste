@@ -2,6 +2,7 @@ import { database } from '../../db/raw';
 import { ApiError, type RequestContext } from '../api/http';
 import { postReceiptIfConfigured,reverseReceiptPostingIfAny,savedReceiptPosting } from './receivable-posting';
 import { postPayablePaymentIfConfigured,reversePayablePaymentPostingIfAny,savedPayablePaymentPosting } from './payable-posting';
+import { getPayableCloseReadiness } from './payable-close-readiness';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
@@ -64,8 +65,10 @@ export async function getPeriodCloseReadiness(query: Query, actorId: string, per
     'WHERE o.owner_id=$1 AND s.effective_date>=$2 AND s.effective_date<=$3',
     [actorId,periodStart,periodEnd],
   );
+  const payable=await getPayableCloseReadiness(query,actorId,periodStart,periodEnd);
   const row=result.rows[0],cashRow=cash.rows[0];
   return {
+    ...payable,
     blockingInvoices:Number(row?.blockingInvoices??0),
     blockingAmountScaled:String(row?.blockingAmountScaled??'0'),
     invalidCashLinks:Number(cashRow?.invalidCashLinks??0),
@@ -81,6 +84,9 @@ export async function assertPeriodReadyToClose(query: Query, actorId: string, pe
   if(readiness.invalidCashLinks>0)
     throw new ApiError(409,'FINANCE_CASH_LEDGER_INTEGRITY',
       'Fechamento bloqueado: há baixas financeiras com vínculo contábil persistido inconsistente.');
+  if(readiness.invalidPayableLinks>0||readiness.invalidPayablePaymentLinks>0)
+    throw new ApiError(409,'FINANCE_PAYABLE_LEDGER_INTEGRITY',
+      'Fechamento bloqueado: obrigações ou pagamentos têm vínculo contábil de origem inconsistente.');
   return readiness;
 }
 
