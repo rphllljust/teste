@@ -94,6 +94,25 @@ test('manual invoice link enforces same actor, equal journal balance, replay and
   }),actor);
   const journal=await postJournal(request(owner,'/api/accounting/journals',journalRequest));
   assert.equal(journal.status,201,JSON.stringify(await journal.clone().json()));
+  // Matching numbers without an asset/revenue classification do not certify billing.
+  const expenseAccount=randomUUID(),unrelatedId=randomUUID();
+  await pool.query(
+    "INSERT INTO chart_accounts(id,code,name,type,created_at,actor_id,request_hash) VALUES($1,$1,'CI expense','expense',$2,$3,'ci')",
+    [expenseAccount,new Date().toISOString(),owner],
+  );
+  const unrelated=await postJournal(request(owner,'/api/accounting/journals',{
+    ...journalRequest,id:unrelatedId,sourceReference:'CI-UNRELATED-JOURNAL',
+    lines:[
+      {id:randomUUID(),accountId:debitAccount,debit:'125000',credit:'0'},
+      {id:randomUUID(),accountId:expenseAccount,debit:'0',credit:'125000'},
+    ],
+  }));
+  assert.equal(unrelated.status,201);
+  const unrelatedLink=await linkInvoice(request(owner,'/api/accounting/invoice-links',{
+    id:randomUUID(),commandKey:randomUUID(),invoiceId:invoiceIds[0],journalId:unrelatedId,
+  }));
+  assert.equal(unrelatedLink.status,409);
+  assert.equal((await unrelatedLink.json() as {code:string}).code,'ACCOUNTING_CLASSIFICATION_MISMATCH');
   const link={
     id:randomUUID(),commandKey:randomUUID(),invoiceId:invoiceIds[0],journalId,
   };
