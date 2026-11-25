@@ -14,6 +14,40 @@ export async function assertFinancePeriodOpen(query: Query, actorId: string, eff
   if (closed.rows.length) throw new ApiError(409, 'FINANCE_PERIOD_CLOSED', 'O período financeiro está fechado para novos lançamentos.');
 }
 
+/**
+ * A financially closed month cannot contain invoices without an unrevoked,
+ * period-matched, balanced journal. This operates solely on the authenticated
+ * owner's invoices and does not interpret free-text source references as keys.
+ * In a close transaction, the caller MUST hold lockFinancePeriodScope first.
+ */
+export async function getPeriodCloseReadiness(query: Query, actorId: string, periodStart: string, periodEnd: string) {
+  const result = await query(
+    'SELECT COUNT(*)::int AS "blockingInvoices", '+
+    'COALESCE(SUM(i.amount),0)::text AS "blockingAmountScaled" '+
+    'FROM invoices i JOIN service_orders o ON o.id=i.order_id '+
+    'LEFT JOIN accounting_invoice_links l ON l.invoice_id=i.id AND l.actor_id=o.owner_id '+
+    'LEFT JOIN journal_entries j ON j.id=l.journal_id AND j.actor_id=o.owner_id '+
+    'LEFT JOIN journal_entries rev ON rev.reversal_of=j.id '+
+    'WHERE o.owner_id=$1 AND LEFT(i.created_at,10)>=$2 AND LEFT(i.created_at,10)<=$3 '+
+    'AND NOT (l.id IS NOT NULL AND l.amount=i.amount '+
+    "AND j.status='posted' AND j.reversal_of IS NULL AND rev.id IS NULL "+
+    'AND j.effective_date>=$2 AND j.effective_date<=$3 '+
+    'AND (SELECT COALESCE(SUM(jl.debit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount '+
+    'AND (SELECT COALESCE(SUM(jl.credit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount)',
+    [actorId,periodStart,periodEnd],
+  );
+  const row = result.rows[0];
+  return { blockingInvoices: Number(row?.blockingInvoices ?? 0),
+    blockingAmountScaled: String(row?.blockingAmountScaled ?? '0') };
+}
+export async function assertPeriodReadyToClose(query: Query, actorId: string, periodStart: string, periodEnd: string) {
+  const readiness = await getPeriodCloseReadiness(query, actorId, periodStart, periodEnd);
+  if (readiness.blockingInvoices > 0)
+    throw new ApiError(409, 'FINANCE_CLOSE_BLOCKED',
+      'O fechamento exige que todas as faturas do período possuam contabilização publicada, conciliada e não estornada.');
+  return readiness;
+}
+
 export type SettlementInput = {
   receivableId: string;
   amount: number;
