@@ -27,6 +27,7 @@ const migrations = [
   { id: '0016_field_service_measurement_lifecycle', file: '../drizzle-pg/0016_field_service_measurement_lifecycle.sql' },
   { id: '0017_enterprise_tenancy_foundation', file: '../drizzle-pg/0017_enterprise_tenancy_foundation.sql' },
   { id: '0018_accounting_invoice_links', file: '../drizzle-pg/0018_accounting_invoice_links.sql' },
+  { id: '0019_native_invoice_posting_rules', file: '../drizzle-pg/0019_native_invoice_posting_rules.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });

@@ -157,6 +157,7 @@ jobs:
             '0016_field_service_measurement_lifecycle',
             '0017_enterprise_tenancy_foundation',
             '0018_accounting_invoice_links',
+            '0019_native_invoice_posting_rules',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
