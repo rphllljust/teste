@@ -1,35 +1,26 @@
-# Accounting integration gates
+# Accounting integration gates — verified manual invoice links (stage 1)
 
-## Audit scope
+**Source linkage is not the same as automatic accounting posting.** A journal created manually can now be linked to a specific invoice only after a transaction validates the same authenticated actor's ownership of both, a posted original journal with no reversal, two-sided balanced totals exactly matching the invoice, an open financial period and idempotency. The link is append-only and audited.
 
-This document records the contracts verified on the accounting, billing, receivables, procurement and fiscal paths. It is intentionally fail-closed: a textual sourceReference is not treated as a persisted document relationship.
+| Business path | Automatic posting | Persisted origin link | Guard |
+|---|---:|---|---|
+| Billing: approved measurement -> invoice | No | Manual invoice -> posted journal, migration 0018 | exact amount/owner, no reversal |
+| Receivable generated from invoice | No | Indirect via invoice | settlement and owner gates remain separate |
+| Procurement receipts, stock and payable | No | Not implemented | do not claim GL posting |
+| Manual fiscal document | No | Not implemented | no external tax submission |
+| Standalone accounting journal | Manual, yes | sourceReference alone does not prove linkage | strict balanced lines and closed-period check |
 
-## Verified contracts
+## Architecture
 
-| Area | Existing contract | Accounting link currently persisted | Gate |
-|---|---|---:|---|
-| Billing | POST /api/commands with command=invoice | No | Do not claim accounting posting |
-| Receivables | Created transactionally by the invoice command | No | Do not claim accounting posting |
-| Internal procurement | /api/procurement and procurement command/receipt routes | No | Do not claim accounting posting |
-| Fiscal manual | /api/fiscal/documents with UUID-validated origins | No | Do not claim accounting posting |
-| Accounting | POST /api/accounting/journals | sourceReference only | Standalone journal only |
+- Additive PostgreSQL table `accounting_invoice_links` stores actor ID, invoice UUID, posted journal UUID, amount, request hash, correlation ID and timestamp. Unique constraints prevent double-linking either side; foreign keys reference both records.
+- `POST /api/accounting/invoice-links` works under transaction and locks the financial period before row locks to prevent competing closures/deadlocks. Authorization is enforced by joining invoices to owner-scoped service orders and journals to their posting actor. A replay returns the saved durable receipt; mismatched keys fail.
+- A database trigger rejects changes and deletes of the verified link, while a finance audit event records verification. If a journal is subsequently reversed, the link stays as an audit fact but reconciliation treats it as unverified.
+- `GET /api/accounting/reconciliation` separately reports manually verified, missing or reversed-linked invoices, with no assumption that human-readable sourceReference is an accounting key.
+- The accounting Object Page offers a deliberate user action to associate a posted journal with an invoice. It never posts the journal automatically.
+- Existing D1 baseline and legacy owner-scoped business rows are untouched. Global tenancy/RLS and account posting rules remain a later, independently gated stage.
 
-## Evidence
+## Outstanding Tier 1 criteria
 
-The current journal contract accepts id, effectiveDate, sourceReference, description and balanced lines. The journal_entries table contains source_reference, but no source_type, source_id, invoice ID, receivable ID, procurement order ID, fiscal document ID, or polymorphic relation table.
+Automatic posting by configured accounting rule version, recognition vs liquidation, tax posting, payable/stock valuation, fiscal and bank reconciliation, clearing, correction/compensating journals, multi-company close and period reports are **not implemented** by this PR.
 
-The invoice and receivable tables are linked to each other, and fiscal documents can validate UUID origins. Neither contract creates or posts a journal entry. Procurement creates purchase orders and receipts but has no accounting command.
-
-## Fail-closed rules
-
-1. A journal with a human-readable sourceReference is not an accounting link.
-2. Unknown source fields must remain rejected by the strict accounting request schema.
-3. No UI or API may report billing, receivable, procurement, or fiscal accounting integration until a persisted relation and transactionally recorded posting contract exists.
-4. Manual fiscal registration remains manual and non-authorized; it cannot create an accounting posting.
-5. OFBiz and external fiscal transmission remain out of scope until their real configuration/contracts exist.
-
-## Required contract before implementation
-
-A future accounting-link change must first introduce and test an explicit contract containing, at minimum: relation type, source UUID, target journal UUID, actor/tenant ownership, idempotency key, correlation ID, posting status and failure state, immutable audit event, and duplicate/concurrency constraints.
-
-Until that contract exists, the correct state is NOT_SUPPORTED / BLOCKED_BY_CONTRACT, not a simulated success.
+A green schema gate, synthetic PostgreSQL integration or Railway SUCCESS is not authenticated E2E/UAT and does not authorize production. Require separate backup restore, cross-module financial reconciliation, full business scenarios, and permission isolation before release.
