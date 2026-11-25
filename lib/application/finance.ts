@@ -3,7 +3,13 @@ import { ApiError, type RequestContext } from '../api/http';
 
 type Query = (sql: string, params?: unknown[]) => Promise<{ rows: Array<Record<string, unknown>>; rowCount: number | null }>;
 const audit = (query: Query, context: RequestContext, entityType: string, entityId: string, action: string, requestHash: string, metadata: Record<string, unknown>) => query(`INSERT INTO finance_audit_events (id,entity_type,entity_id,action,actor_id,request_hash,correlation_id,metadata,occurred_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`, [crypto.randomUUID(), entityType, entityId, action, context.actorId, requestHash, context.correlationId, JSON.stringify(metadata), new Date().toISOString()]);
+// All finance mutations and period closes share the same actor-scoped transaction lock.
+// This serializes the close with in-flight postings and prevents a stale open-period check.
+export async function lockFinancePeriodScope(query: Query, actorId: string) {
+  await query('SELECT pg_advisory_xact_lock(hashtextextended($1::text, 0))', ['cisne-finance-period:' + actorId]);
+}
 export async function assertFinancePeriodOpen(query: Query, actorId: string, effectiveDate: string) {
+  await lockFinancePeriodScope(query, actorId);
   const closed = await query("SELECT 1 FROM finance_period_closes WHERE actor_id=$1 AND status='closed' AND period_start<=$2 AND period_end>=$2 LIMIT 1", [actorId, effectiveDate]);
   if (closed.rows.length) throw new ApiError(409, 'FINANCE_PERIOD_CLOSED', 'O período financeiro está fechado para novos lançamentos.');
 }
