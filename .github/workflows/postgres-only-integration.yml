@@ -1,5 +1,7 @@
 name: PostgreSQL-only gate and real handler integration
 on:
+  push:
+    branches: [main]
   pull_request:
     paths:
       - '.openai/hosting.json'
