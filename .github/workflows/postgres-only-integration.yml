@@ -161,6 +161,7 @@ jobs:
             '0020_receivable_cash_ledger',
             '0021_chart_accounts_tenant_unique',
             '0022_native_payable_accounting',
+            '0023_procurement_supplier_three_way_match',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
