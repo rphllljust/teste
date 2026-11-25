@@ -11,8 +11,11 @@ export async function getPayableCloseReadiness(query:Query,actorId:string,start:
   'AND j.effective_date=l.effective_date '+
   'AND (SELECT COALESCE(SUM(debit),0) FROM journal_lines WHERE entry_id=j.id)=p.amount '+
   'AND (SELECT COALESCE(SUM(credit),0) FROM journal_lines WHERE entry_id=j.id)=p.amount '+
+  'AND j.expected_count=2 AND (SELECT COUNT(*) FROM journal_lines WHERE entry_id=j.id)=2 '+
   'AND EXISTS(SELECT 1 FROM journal_lines jl JOIN chart_accounts a ON a.id=jl.account_id '+
-  "WHERE jl.entry_id=j.id AND jl.credit=p.amount AND a.type='liability' AND a.actor_id=p.actor_id)";
+  "WHERE jl.entry_id=j.id AND jl.credit=p.amount AND jl.debit=0 AND a.type='liability' AND a.actor_id=p.actor_id) "+
+  'AND EXISTS(SELECT 1 FROM journal_lines jl JOIN chart_accounts a ON a.id=jl.account_id '+
+  "WHERE jl.entry_id=j.id AND jl.debit=p.amount AND jl.credit=0 AND a.type IN ('expense','asset') AND a.actor_id=p.actor_id)";
  const accrual=await query(
   'SELECT COUNT(*) FILTER (WHERE l.id IS NULL)::int AS "unpostedPayables", '+
   'COALESCE(SUM(p.amount) FILTER (WHERE l.id IS NULL),0)::text AS "unpostedPayablesAmountScaled", '+
@@ -28,7 +31,25 @@ export async function getPayableCloseReadiness(query:Query,actorId:string,start:
   "AND j.actor_id=p.actor_id AND j.status='posted' AND j.effective_date=e.effective_date "+
   'AND (SELECT COALESCE(SUM(debit),0) FROM journal_lines WHERE entry_id=j.id)=e.amount '+
   'AND (SELECT COALESCE(SUM(credit),0) FROM journal_lines WHERE entry_id=j.id)=e.amount '+
-  'AND EXISTS(SELECT 1 FROM accounting_payable_links src WHERE src.payable_id=p.id AND src.actor_id=p.actor_id) '+
+  'AND j.expected_count=2 AND (SELECT COUNT(*) FROM journal_lines WHERE entry_id=j.id)=2 '+
+  // Only the liability account recognized by this payable may be cleared.
+  'AND EXISTS(SELECT 1 FROM accounting_payable_links src '+
+  'JOIN journal_entries source_j ON source_j.id=src.journal_id AND source_j.actor_id=p.actor_id '+
+  'JOIN journal_lines source_line ON source_line.entry_id=src.journal_id '+
+  'JOIN chart_accounts liability ON liability.id=source_line.account_id AND liability.actor_id=p.actor_id '+
+  'JOIN journal_lines paid_line ON paid_line.entry_id=j.id AND paid_line.account_id=source_line.account_id '+
+  "WHERE src.payable_id=p.id AND src.actor_id=p.actor_id AND src.amount=p.amount "+
+  "AND source_j.status='posted' AND source_j.reversal_of IS NULL "+
+  'AND NOT EXISTS(SELECT 1 FROM journal_entries src_rev WHERE src_rev.reversal_of=source_j.id) '+
+  "AND liability.type='liability' AND source_line.credit=p.amount "+
+  "AND ((e.kind='payment' AND paid_line.debit=e.amount AND paid_line.credit=0) OR "+
+  "(e.kind='reversal' AND paid_line.credit=e.amount AND paid_line.debit=0))) "+
+  // The opposite line must be in a bank/cash asset account owned by this tenant.
+  'AND EXISTS(SELECT 1 FROM journal_lines bank_line '+
+  'JOIN chart_accounts bank_account ON bank_account.id=bank_line.account_id '+
+  "WHERE bank_line.entry_id=j.id AND bank_account.actor_id=p.actor_id AND bank_account.type='asset' "+
+  "AND ((e.kind='payment' AND bank_line.credit=e.amount AND bank_line.debit=0) OR "+
+  "(e.kind='reversal' AND bank_line.debit=e.amount AND bank_line.credit=0))) "+
   "AND ((e.kind='payment' AND j.reversal_of IS NULL) OR "+
   "(e.kind='reversal' AND COALESCE(j.reversal_of=(SELECT prior.journal_id "+
   'FROM accounting_payable_payment_links prior WHERE prior.payment_id=e.reverses_id '+
