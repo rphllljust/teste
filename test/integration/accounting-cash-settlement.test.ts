@@ -9,6 +9,7 @@ import {POST as bill} from '../../app/api/finance/billing/route';
 import {POST as settle} from '../../app/api/finance/receivables/settlements/route';
 import {POST as reverseSettlement} from '../../app/api/finance/receivables/settlements/[id]/reverse/route';
 import {POST as reverseJournal} from '../../app/api/accounting/journals/[id]/reverse/route';
+import {GET as cashReconciliation} from '../../app/api/accounting/receipt-reconciliation/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
  throw new Error('Real PostgreSQL and NODE_ENV=test required for cash ledger suite.');
@@ -77,6 +78,11 @@ test('native receipt posting enforces recognized A/R, journal reversal chain, id
  assert.equal(legacy.status,201);
  assert.equal((await legacy.json() as {resource:{accounting:{status:string}}}).resource.accounting.status,'not_enabled');
  assert.equal(await linkCount(legacyKey),0);
+ const legacyRecon=await cashReconciliation(makeRequest(actor,'/api/accounting/receipt-reconciliation'));
+ assert.equal(legacyRecon.status,200);
+ assert.deepEqual((await legacyRecon.json() as {summary:{eventCount:number;postedEvents:number;unpostedEvents:number}}).summary.eventCount,1);
+ const outsiderRecon=await cashReconciliation(makeRequest(outsider,'/api/accounting/receipt-reconciliation'));
+ assert.equal((await outsiderRecon.json() as {summary:{eventCount:number}}).summary.eventCount,0);
  const wrong=await configureRule(makeRequest(actor,routeRule,
   rule('receivable_receipt',assetBank,revenue)));
  assert.equal(wrong.status,409);
@@ -145,6 +151,15 @@ test('native receipt posting enforces recognized A/R, journal reversal chain, id
  const reversalInfo=await reversed.json() as {resource:{accounting:{status:string;journalId:string}}};
  assert.equal(reversalInfo.resource.accounting.status,'auto_reversed');
  assert.equal(await linkCount(reversalKey),1);
+ const reconAfterReversal=await cashReconciliation(makeRequest(actor,'/api/accounting/receipt-reconciliation'));
+ assert.equal(reconAfterReversal.status,200);
+ const reconBody=await reconAfterReversal.json() as {summary:{eventCount:number;postedEvents:number;unpostedEvents:number;reversals:number;netLedgerAmountScaled:string;netSettlementAmountScaled:string}};
+ assert.equal(reconBody.summary.eventCount,3);
+ assert.equal(reconBody.summary.postedEvents,2);
+ assert.equal(reconBody.summary.unpostedEvents,1);
+ assert.equal(reconBody.summary.reversals,1);
+ assert.equal(reconBody.summary.netLedgerAmountScaled,'0');
+ assert.equal(reconBody.summary.netSettlementAmountScaled,'5000');
  const journalLink=await pool.query('SELECT reversal_of FROM journal_entries WHERE id=$1',
   [reversalInfo.resource.accounting.journalId]);
  assert.equal(journalLink.rows[0].reversal_of,body.resource.accounting.journalId);
