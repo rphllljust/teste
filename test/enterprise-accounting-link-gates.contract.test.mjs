@@ -31,3 +31,14 @@ test('fiscal and command contracts do not claim accounting posting', async () =>
   assert.doesNotMatch(commands, /accounting\/journals/);
   assert.doesNotMatch(fiscal, /accounting\/journals/);
 });
+
+
+test('journal reversal form submits the exact API commandKey field', async () => {
+  const [form, reverse] = await Promise.all([
+    readFile(new URL('../app/AccountingWorkspace.tsx', import.meta.url), 'utf8'),
+    readFile(new URL('../app/api/accounting/journals/[id]/reverse/route.ts', import.meta.url), 'utf8'),
+  ]);
+  assert.match(form, /commandKey:reversing\.key/);
+  assert.doesNotMatch(form, /JSON\.stringify\(\{key:reversing\.key/);
+  assert.match(reverse, /commandKey:z\.string\(\)\.uuid\(\)/);
+});
