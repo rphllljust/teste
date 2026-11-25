@@ -58,6 +58,22 @@ export async function POST(request:Request){
     'SELECT COALESCE(SUM(debit),0)::text AS debit,COALESCE(SUM(credit),0)::text AS credit '+
     'FROM journal_lines WHERE entry_id=$1',[data.journalId],
    );
+   // First-stage recognition contract: receivable asset debit, sales revenue
+   // credit. Do not certify arbitrary balanced journals as invoice revenue.
+   const classification=await query(
+    'SELECT COUNT(*)::int AS lines, '+
+    "COUNT(*) FILTER (WHERE l.debit>0 AND c.type='asset' AND c.actor_id=$2 AND c.active=1)::int AS \"receivableDebits\", "+
+    "COUNT(*) FILTER (WHERE l.credit>0 AND c.type='revenue' AND c.actor_id=$2 AND c.active=1)::int AS \"revenueCredits\", "+
+    'COUNT(*) FILTER (WHERE c.id IS NULL OR c.actor_id<>$2 OR c.active<>1 OR '+
+    "NOT ((l.debit>0 AND c.type='asset') OR (l.credit>0 AND c.type='revenue')))::int AS invalid "+
+    'FROM journal_lines l LEFT JOIN chart_accounts c ON c.id=l.account_id WHERE l.entry_id=$1',
+    [data.journalId,ctx!.actorId],
+   );
+   const kinds=classification.rows[0];
+   if(Number(kinds.lines)<2||Number(kinds.invalid)!==0||
+      Number(kinds.receivableDebits)<1||Number(kinds.revenueCredits)<1)
+    throw new ApiError(409,'ACCOUNTING_CLASSIFICATION_MISMATCH',
+      'A fatura exige débito em ativo a receber e crédito em receita, com contas próprias e ativas.');
    const amount=BigInt(String(invoice.rows[0].amount));
    if(amount<=0n||BigInt(String(totals.rows[0].debit))!==amount||
       BigInt(String(totals.rows[0].credit))!==amount)
