@@ -6,6 +6,7 @@ const files = Object.freeze({
   page: await readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
   primitives: await readFile(new URL("../app/components/enterprise/EnterprisePrimitives.tsx", import.meta.url), "utf8"),
   auth: await readFile(new URL("../lib/api/http-auth.test.mjs", import.meta.url), "utf8"),
+  crm: await readFile(new URL("../app/api/crm/route.ts", import.meta.url), "utf8"),
   origin: await readFile(new URL("../lib/api/mutation-origin.test.mjs", import.meta.url), "utf8"),
   sessions: await readFile(new URL("../lib/api/staging-session.test.mjs", import.meta.url), "utf8"),
 });
@@ -40,12 +41,18 @@ test("shell navigation exposes a labelled enterprise navigation landmark", () =>
 
 test("tenant and permission tests are wired to real security contracts", () => {
   expectAll(files.auth, [
-    ["authentication is required", /401|unauthorized|autentic/i],
-    ["tenant ownership is asserted", /owner_id|ownerId|tenant/i],
+    ["forged staging identity is rejected", /staging public workspace denies a forged browser identity/],
+    ["untrusted identities are denied with 403", /assert\.equal\(result\?\.status,\s*403\)/],
+    ["client-supplied dispatch secrets are rejected", /staging rejects all client-supplied dispatch secrets and identity headers/],
   ], "HTTP auth tests");
+  expectAll(files.crm, [
+    ["CRM binds server-authenticated actor identity", /requestContext\(request/],
+    ["CRM queries are tenant-scoped", /owner_id/],
+    ["CRM uses the verified actor", /context\.actorId/],
+  ], "CRM tenant isolation");
   expectAll(files.origin, [
     ["mutation origin is validated", /origin|Origin|CSRF|mutation/i],
-    ["unsafe mutation is rejected without trusted origin", /403|forbidden|rejeit/i],
+    ["untrusted mutation origins are rejected", /assert\.equal\(mutationOriginAllowed\(request\(origin\),env\),false\)/],
   ], "mutation-origin tests");
   expectAll(files.sessions, [
     ["staging session is signed or authenticated", /cookie|session|assinad|authenticated/i],
