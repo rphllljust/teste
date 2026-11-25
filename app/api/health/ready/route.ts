@@ -17,12 +17,15 @@ export async function GET(){
    "to_regclass('public.accounting_settlement_links') IS NOT NULL AND "+
    "to_regclass('public.accounting_payable_links') IS NOT NULL AND "+
    "to_regclass('public.accounting_payable_payment_links') IS NOT NULL AND "+
+   "to_regclass('public.procurement_supplier_invoices') IS NOT NULL AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0017_enterprise_tenancy_foundation') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0020_receivable_cash_ledger') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
-   "WHERE id='0022_native_payable_accounting')) AS ready",
+   "WHERE id='0022_native_payable_accounting') AND "+
+   "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
+   "WHERE id='0023_procurement_supplier_three_way_match')) AS ready",
   ).bind().first<{ready:boolean}>();
   if(result?.ready===true)return Response.json({ready:true},{status:200,headers});
  }catch{
