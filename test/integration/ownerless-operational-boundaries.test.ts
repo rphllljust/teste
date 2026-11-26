@@ -95,3 +95,11 @@ test('authorized execution still enforces optimistic version before inserting fa
  const rows=await pool.query('SELECT COUNT(*)::int AS n FROM execution_entries WHERE order_id=$1',[ownedOrder]);
  assert.equal(rows.rows[0].n,0);
 });
+
+test('financial aging rejects nonexistent calendar dates without querying or mutating the ledger',async()=>{
+ for(const asOf of ['2026-02-30','2026-13-01','2026-11-31']){
+  const response=await finance(req('/api/finance/workspace?asOf='+asOf));
+  assert.equal(response.status,400);
+  assert.equal((await response.json() as {code:string}).code,'VALIDATION_FAILED');
+ }
+});
