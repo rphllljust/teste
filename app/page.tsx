@@ -1637,6 +1637,7 @@ function HomeView() {
             />
           ) : page === "Resource Planning Board" ? (
             <ResourcePlanningBoard
+              onNavigate={navigate}
               onOpenOrder={(id) => {
                 navigate("Ordens de serviço");
                 void openOrigin(id);
