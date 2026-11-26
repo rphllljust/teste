@@ -28,9 +28,9 @@ before(async()=>{
  const now=new Date().toISOString();
  await pool.query(`INSERT INTO saved_views
  (id,name,query,category,view,created_at,owner_id,definition,schema_version,row_version,is_default,view_key)
- VALUES($1,'Legacy ownerless view','','','',$4,NULL,$5,1,1,0,'serviceOrders.worklist'),
- ($2,'Foreign sensitive view','','','',$4,$6,$5,1,1,0,'serviceOrders.worklist')`,
- [legacyId,foreignId,mineId,now,JSON.stringify(definition),outsider]);
+ VALUES($1,'Legacy ownerless view','','','',$3,NULL,$4,1,1,0,'serviceOrders.worklist'),
+ ($2,'Foreign sensitive view','','','',$3,$5,$4,1,1,0,'serviceOrders.worklist')`,
+ [legacyId,foreignId,now,JSON.stringify(definition),outsider]);
 });
 after(async()=>{await closeDatabase();await pool.end();});
 test('ownerless and foreign views are not visible in an authenticated list',async()=>{
