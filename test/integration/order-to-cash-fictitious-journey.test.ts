@@ -386,10 +386,9 @@ async () => {
   assert.equal(dossier.order.status,'completed');
   assert.equal(dossier.provenance.ownerScoped,true);
   assert.equal(dossier.provenance.consistency,'repeatable_read');
-  assert.deepEqual(dossier.financials,{
-    billedScaled:String(scaledAmount),settledScaled:String(scaledAmount),
-    outstandingScaled:'0',
-  });
+  assert.equal(dossier.financials.billedScaled,String(scaledAmount));
+  assert.equal(dossier.financials.settledScaled,String(scaledAmount));
+  assert.equal(dossier.financials.outstandingScaled,'0');
   const documents = new Map(dossier.stages.map(stage=>[stage.key,stage]));
   const exactDocuments = [
     ['client',clientId],['proposal',proposalId],['contract',contractId],
