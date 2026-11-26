@@ -419,6 +419,10 @@ async () => {
   assert.ok(ownerList.items.some(item=>item.id===orderId
     && item.billedScaled===String(scaledAmount)
     && item.settledScaled===String(scaledAmount)));
+  const byOrderNumber = await record<{items:Array<{id:string}>}>(
+    await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?q='+orderId.slice(0,8))),
+    '13c Busca empresarial pelo identificador persistido da OS',200);
+  assert.ok(byOrderNumber.items.some(item=>item.id===orderId));
   assert.equal((await readEnterpriseDossier(req(outsider,dossierPath),paths(orderId))).status,404,
     'outsider must never receive dossier documents');
   const outsiderList = await record<{ items: Array<{ id: string }> }>(
