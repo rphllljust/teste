@@ -28,7 +28,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { page, pageSize, state, q, resourceKind } = parsed.data;
     const offset = (page - 1) * pageSize;
     const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=?';
-    const stateFilter = state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL';
+    const stateFilter = state === 'active' ? "e.kind='report' AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)" : "e.kind='report' AND EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)";
     const conditions = [stateFilter];
     const values = [id, context.actorId];
     if (q) {
