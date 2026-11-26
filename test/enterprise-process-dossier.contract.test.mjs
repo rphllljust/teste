@@ -24,7 +24,7 @@ test('all data is selected from an owned OS under a read-only PostgreSQL snapsho
   assert.match(model,/service_orders\s+WHERE id=\$1 AND owner_id=\$2/);
   assert.match(model,/o\.owner_id=\$1/);
   assert.doesNotMatch(model,/owner_id IS NULL OR/);
-  assert.match(model,/return failure\(error, context\)/m ? detail : detail, /return failure\(error, context\)/);
+  assert.match(detail,/return failure\(error, context\)/);
   assert.match(model,/client\.release\(\)/);
   assert.match(model,/client\.query\('ROLLBACK'\)/);
   assert.match(model,/if \(!order\) throw new ApiError\(404/);
