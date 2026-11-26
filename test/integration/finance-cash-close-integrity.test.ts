@@ -88,12 +88,15 @@ test('period preflight separates legacy cash gaps from inconsistent persisted GL
  const initial=await legacy.json() as {
   canClose:boolean;blockingInvoices:number;invalidCashLinks:number;
   unpostedCashEvents:number;unpostedCashAmountScaled:string;
+  tier1Readiness:{ready:boolean;status:'ready'|'blocked';blockers:Array<{code:string;count:number}>};
  };
  assert.equal(initial.blockingInvoices,0);
  assert.equal(initial.invalidCashLinks,0);
  assert.equal(initial.unpostedCashEvents,1);
  assert.equal(initial.unpostedCashAmountScaled,'4000');
  assert.equal(initial.canClose,true); // legacy remains advisory until adopted
+ assert.equal(initial.tier1Readiness.ready,false);
+ assert.deepEqual(initial.tier1Readiness.blockers.filter(item=>item.code==='unpostedCashEvents'),[{code:'unpostedCashEvents',count:1}]);
  const foreign=await preflight(req(outsider,preflightPath));
  assert.equal((await foreign.json() as {unpostedCashEvents:number}).unpostedCashEvents,0);
 
@@ -102,6 +105,8 @@ test('period preflight separates legacy cash gaps from inconsistent persisted GL
  const cleared=await recognized.json() as typeof initial;
  assert.equal(cleared.unpostedCashEvents,0);
  assert.equal(cleared.invalidCashLinks,0);
+ assert.equal(cleared.tier1Readiness.ready,true);
+ assert.deepEqual(cleared.tier1Readiness.blockers,[]);
 
  // Simulate a corrupt source-linked journal while preserving an immutable
  // link: a wrong effective date is forbidden even if its journal balances.
@@ -112,6 +117,8 @@ test('period preflight separates legacy cash gaps from inconsistent persisted GL
  const response=await broken.json() as typeof initial;
  assert.equal(response.invalidCashLinks,1);
  assert.equal(response.canClose,false);
+ assert.equal(response.tier1Readiness.status,'blocked');
+ assert.deepEqual(response.tier1Readiness.blockers.filter(item=>item.code==='invalidCashLinks'),[{code:'invalidCashLinks',count:1}]);
  const closingId=randomUUID();
  const closing=await closePeriod(req(actor,'/api/finance/periods/close',{
   id:closingId,periodStart:'2027-05-01',periodEnd:'2027-05-31',
