@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { Plus, RefreshCw, Search, X } from "lucide-react";
+import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from "./components/enterprise/EnterpriseSmartGrid";
 import {
   EnterprisePageHeader,
   BusinessStatus,
@@ -234,42 +235,22 @@ export default function AssetsWorkspace() {
           </button>
         </div>
       ) : items.length ? (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Ativo</th>
-                <th>Tipo</th>
-                <th>Localização</th>
-                <th>Responsável</th>
-                <th>Custo/hora</th>
-                <th>Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((a) => (
-                <tr key={a.id}>
-                  <td>
-                    <button
-                      className="row-link"
-                      onClick={() => void open(a.id)}
-                    >
-                      {a.name}
-                    </button>
-                    <small>{a.code}</small>
-                  </td>
-                  <td>{labels[a.kind] ?? a.kind}</td>
-                  <td>{a.location ?? "Não informado"}</td>
-                  <td>{a.responsible ?? "Não informado"}</td>
-                  <td>{money(a.hourlyCost)}</td>
-                  <td>
-                    <span className="badge">{statusLabel(a.status)}</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EnterpriseSmartGrid<Asset> viewId="enterprise-assets" caption="Ativos e frota autorizados"
+          rows={items} getRowKey={a=>a.id} onOpen={a=>void open(a.id)}
+          currentPageLabel={"Página "+page+" · "+total+" registros"}
+          openLabel={a=>"Abrir ativo "+a.name}
+          columns={[
+            {key:"name",title:"Ativo",required:true,
+             render:a=><span className="enterprise-smart-primary"><strong>{a.name}</strong><small>{a.code}</small></span>,
+             text:a=>a.code+" · "+a.name,sortValue:a=>a.name},
+            {key:"type",title:"Tipo",render:a=>labels[a.kind]??a.kind,text:a=>labels[a.kind]??a.kind,sortValue:a=>a.kind},
+            {key:"location",title:"Localização",render:a=>a.location??"Não informado",text:a=>a.location??"",sortValue:a=>a.location??""},
+            {key:"responsible",title:"Responsável",render:a=>a.responsible??"Não informado",text:a=>a.responsible??"",sortValue:a=>a.responsible??""},
+            {key:"cost",title:"Custo/hora",render:a=>money(a.hourlyCost),text:a=>money(a.hourlyCost),align:"end" as const,
+             sortValue:a=>a.hourlyCost},
+            {key:"state",title:"Situação",render:a=><span className="badge">{statusLabel(a.status)}</span>,
+             text:a=>statusLabel(a.status),sortValue:a=>a.status},
+          ] satisfies EnterpriseSmartColumn<Asset>[]}/>
       ) : (
         <div className="empty">
           <h3>Nenhum ativo cadastrado</h3>
