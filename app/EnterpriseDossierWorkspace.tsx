@@ -89,7 +89,6 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initial
   const [detail,setDetail] = useState<Dossier|null>(null);
   const [detailLoading,setDetailLoading] = useState(false);
   const [detailError,setDetailError] = useState('');
-  useEffect(()=>{setSelectedId(initialOrderId);},[initialOrderId]);
 
   useEffect(()=>{
     const timer=setTimeout(()=>{setPage(1);setQuery(search.trim());},260);

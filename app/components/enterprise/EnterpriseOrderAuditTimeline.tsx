@@ -15,7 +15,7 @@ const fmt=(value:string)=>{
  return Number.isNaN(d.getTime())?value:new Intl.DateTimeFormat('pt-BR',{dateStyle:'short',timeStyle:'short'}).format(d);
 };
 /** Paginated, read-only audit. Does not execute business actions. */
-export default function EnterpriseOrderAuditTimeline({orderId,revision}:{orderId:string;revision:number}){
+export default function EnterpriseOrderAuditTimeline({orderId}:{orderId:string}){
  const [open,setOpen]=useState(false);
  const [items,setItems]=useState<Event[]>([]);
  const [cursor,setCursor]=useState<Cursor|null>(null);
@@ -23,7 +23,6 @@ export default function EnterpriseOrderAuditTimeline({orderId,revision}:{orderId
  const [busy,setBusy]=useState(false);
  const [error,setError]=useState('');
  const [generation,setGeneration]=useState(0);
- useEffect(()=>{setOpen(false);setItems([]);setCursor(null);setMore(false);setError('');setGeneration(v=>v+1);},[orderId,revision]);
  useEffect(()=>{
   if(!open)return;
   const abort=new AbortController();

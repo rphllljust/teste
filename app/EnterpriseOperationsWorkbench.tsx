@@ -345,7 +345,7 @@ export default function EnterpriseOperationsWorkbench({
       <EnterpriseProcessJourneyInspector
        orderId={selected.id} revision={revision} navigate={navigate}
        onOpenOrder={onOpenOrder} onDossier={id=>navigate('Dossiês empresariais',id)}/>
-      <EnterpriseOrderAuditTimeline orderId={selected.id} revision={revision}/>
+      <EnterpriseOrderAuditTimeline key={selected.id+'-'+revision} orderId={selected.id}/>
       <div className="enterprise-operations-commands cisne-contextual-command-panel">
        <h3>Comandos contextuais autorizados</h3>
        {detail.order.availableCommands?.length?
