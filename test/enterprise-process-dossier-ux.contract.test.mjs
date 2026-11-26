@@ -49,3 +49,20 @@ test('scaled money uses BigInt to avoid rounding persisted financial facts',()=>
   assert.match(workspace,/toString\(\)\.padStart\(5, '0'\)/);
   assert.doesNotMatch(workspace,/Number\(raw\)\s*\/\s*10000/);
 });
+
+test('dossier provides secure signed-session HML login only when the API requires it',()=>{
+  assert.match(workspace,/response\.status === 403 && value\.code === 'STAGING_PRIVATE_ACCESS_REQUIRED'/);
+  assert.match(workspace,/throw new HmlSessionRequired/);
+  assert.match(workspace,/if\(cause instanceof HmlSessionRequired\)setNeedsAuth\(true\)/);
+  assert.match(workspace,/needsAuth&&<section className="enterprise-dossier-auth"/);
+  assert.match(workspace,/id="enterprise-dossier-auth-title"/);
+  assert.match(workspace,/name="passphrase" type="password" minLength=\{24\} maxLength=\{160\}/);
+  assert.match(workspace,/fetch\('\/api\/auth\/staging-login',\{/);
+  assert.match(workspace,/method:'POST',credentials:'same-origin'/);
+  assert.match(workspace,/result\.authenticated!==true/);
+  assert.match(workspace,/setRevision\(previous=>previous\+1\)/);
+  assert.match(workspace,/form\.reset\(\)/);
+  assert.doesNotMatch(workspace,/localStorage|sessionStorage|console\.log\(passphrase\)/);
+  assert.match(css,/\.enterprise-dossier-auth/);
+  assert.match(css,/\.enterprise-dossier-auth input:focus-visible/);
+});
