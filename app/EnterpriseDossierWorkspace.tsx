@@ -64,8 +64,11 @@ function scaledMoney(raw: string): string {
   return sign + 'R$ ' + integer + ',' + (decimals.endsWith('00') ? decimals.slice(0, 2) : decimals);
 }
 
+class HmlSessionRequired extends Error {}
 async function json<T>(response:Response):Promise<T>{
   const value = await response.json() as T & ApiFailure;
+  if (response.status === 403 && value.code === 'STAGING_PRIVATE_ACCESS_REQUIRED')
+    throw new HmlSessionRequired('Entre com a credencial de homologação para consultar os dossiês.');
   if (!response.ok) throw new Error(value.error ?? 'Não foi possível consultar os registros empresariais.');
   return value;
 }
@@ -79,6 +82,8 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
   const [list,setList] = useState<ListResponse|null>(null);
   const [loading,setLoading] = useState(true);
   const [error,setError] = useState('');
+  const [needsAuth,setNeedsAuth] = useState(false);
+  const [loginBusy,setLoginBusy] = useState(false);
   const [selectedId,setSelectedId] = useState<string|null>(null);
   const [detail,setDetail] = useState<Dossier|null>(null);
   const [detailLoading,setDetailLoading] = useState(false);
@@ -98,10 +103,11 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
         const result=await json<ListResponse>(await fetch('/api/enterprise/journeys?'+params,{
           cache:'no-store',credentials:'same-origin',signal:abort.signal,
         }));
-        if(!abort.signal.aborted)setList(result);
+        if(!abort.signal.aborted){setList(result);setNeedsAuth(false);}
       }catch(cause){
         if(!abort.signal.aborted){
           setList(null);
+          if(cause instanceof HmlSessionRequired)setNeedsAuth(true);
           setError(cause instanceof Error?cause.message:'Consulta empresarial indisponível.');
         }
       }finally{if(!abort.signal.aborted)setLoading(false);}
@@ -120,7 +126,13 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
         }));
         if(!abort.signal.aborted)setDetail(result);
       }catch(cause){
-        if(!abort.signal.aborted)setDetailError(cause instanceof Error?cause.message:'Dossiê indisponível.');
+        if(!abort.signal.aborted){
+          if(cause instanceof HmlSessionRequired){
+            setNeedsAuth(true);
+            setSelectedId(null);
+          }
+          setDetailError(cause instanceof Error?cause.message:'Dossiê indisponível.');
+        }
       }finally{if(!abort.signal.aborted)setDetailLoading(false);}
     },0);
     return ()=>{clearTimeout(timer);abort.abort();};
@@ -147,6 +159,33 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
     document.addEventListener('keydown',listener);
     return ()=>{document.removeEventListener('keydown',listener);previous?.focus();};
   },[selectedId]);
+  async function loginHml(event:React.FormEvent<HTMLFormElement>){
+    event.preventDefault();
+    if(loginBusy)return;
+    const form=event.currentTarget;
+    const passphrase=String(new FormData(form).get('passphrase')??'');
+    setLoginBusy(true);
+    try{
+      const response=await fetch('/api/auth/staging-login',{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({passphrase}),
+      });
+      const result=await response.json() as {authenticated?:boolean;error?:string};
+      if(!response.ok||result.authenticated!==true)
+        throw new Error(result.error??'Credencial de homologação não autorizada.');
+      form.reset();
+      setNeedsAuth(false);
+      setError('');
+      setDetailError('');
+      setRevision(previous=>previous+1);
+    }catch(cause){
+      form.reset();
+      setError(cause instanceof Error?cause.message:'Falha ao autenticar no ambiente de homologação.');
+    }finally{
+      setLoginBusy(false);
+    }
+  }
   const reload=()=>setRevision(r=>r+1);
   const select=(id:string)=>{setDetail(null);setDetailError('');setSelectedId(id);};
   const close=()=>{setSelectedId(null);setDetail(null);setDetailError('');};
@@ -184,6 +223,21 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
       <CircleAlert size={18} aria-hidden="true"/><p>{error}</p>
       <button className="secondary" type="button" onClick={reload}>Tentar novamente</button>
     </div>}
+    {needsAuth&&<section className="enterprise-dossier-auth" aria-labelledby="enterprise-dossier-auth-title">
+      <div><span className="eyebrow">ACESSO CONTROLADO · SOMENTE HOMOLOGAÇÃO</span>
+        <h2 id="enterprise-dossier-auth-title">Entrar no CISNE HML</h2>
+        <p>Os dossiês exigem sessão assinada. A credencial não é gravada no navegador e libera somente os documentos autorizados ao operador de homologação.</p>
+      </div>
+      <form onSubmit={event=>{void loginHml(event);}}>
+        <label>Credencial de homologação
+          <input name="passphrase" type="password" minLength={24} maxLength={160}
+            autoComplete="off" placeholder="Insira sua credencial de homologação" required/>
+        </label>
+        <button type="submit" className="primary" disabled={loginBusy}>
+          {loginBusy?'Autenticando…':'Entrar nos Dossiês'}
+        </button>
+      </form>
+    </section>}
     {loading ? <div className="enterprise-dossier-loading" role="status">Consultando cadeia empresarial…</div>
     : list ? <>
       <div className="enterprise-dossier-list-meta" aria-live="polite">
