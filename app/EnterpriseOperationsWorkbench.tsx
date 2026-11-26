@@ -7,6 +7,8 @@ import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/en
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
 import EnterpriseAccountingExceptionRibbon from './components/enterprise/EnterpriseAccountingExceptionRibbon';
+import EnterpriseProcessJourneyInspector from './components/enterprise/EnterpriseProcessJourneyInspector';
+import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
 
 type Queue='all'|'attention'|'overdue'|'unmeasured'|'draft'|'authorized'|'executing'|'completed';
 type Sort='priority'|'deadline'|'recent'|'client';
@@ -24,7 +26,7 @@ type ResponseData={
 };
 type Detail={
  order:Row & {
-   availableCommands?:Array<{id:string;label:string;primary?:boolean}>;
+   availableCommands?:Array<{id:string;label:string;primary?:boolean;expectedVersion:number;requiredInputs?:string[]}>;
    relations?:{clientId?:string|null;contractId?:string|null;measurements:number;invoices:number;receivables:number};
    sublists?:{history:{items:Array<{id:string;label:string;command:string;created_at:string}>;pageInfo:{total:number;hasMore:boolean}}};
  };
@@ -33,7 +35,8 @@ export type EnterpriseOperationsProps={
  mode?:'command'|'field';
  onCreate?:()=>void;
  onOpenOrder:(id:string)=>void;
- navigate:(module:string)=>void;
+ onCommandOrder?:(id:string,commandId:string)=>void;
+ navigate:(module:string,orderId?:string)=>void;
 };
 const statuses:Record<string,string>={
  draft:'Rascunho',prepared:'Preparada',planned:'Planejada',
@@ -63,7 +66,7 @@ const safeError=async(response:Response)=>{
  * It navigates to the authoritative transaction where commands are validated.
  */
 export default function EnterpriseOperationsWorkbench({
- mode='command',onCreate,onOpenOrder,navigate,
+ mode='command',onCreate,onOpenOrder,onCommandOrder,navigate,
 }:EnterpriseOperationsProps){
  const [queue,setQueue]=useState<Queue>(mode==='field'?'executing':'attention');
  const [search,setSearch]=useState('');
@@ -339,27 +342,35 @@ export default function EnterpriseOperationsWorkbench({
         <div><dt>Recebíveis</dt><dd>{detail.order.relations?.receivables??0}</dd></div>
        </dl>
       </section>
-      <section className="enterprise-operations-object-section" aria-labelledby="operations-document-history">
-       <h3 id="operations-document-history">Histórico e auditoria</h3>
-       {(detail.order.sublists?.history?.items??[]).length?
-        <ol>{detail.order.sublists?.history?.items.slice(0,5).map(event=><li key={event.id}>
-          <span>{event.label}</span><small>{date(event.created_at)}</small></li>)}</ol>:
-        <p>Nenhum evento disponível.</p>}
-      </section>
-      <div className="enterprise-operations-commands">
-       <h3>Transições autorizadas para esta OS</h3>
+      <EnterpriseProcessJourneyInspector
+       orderId={selected.id} revision={revision} navigate={name=>navigate(name)}
+       onOpenOrder={onOpenOrder} onDossier={id=>navigate('Dossiês empresariais',id)}/>
+      <EnterpriseOrderAuditTimeline orderId={selected.id} revision={revision}/>
+      <div className="enterprise-operations-commands cisne-contextual-command-panel">
+       <h3>Comandos contextuais autorizados</h3>
        {detail.order.availableCommands?.length?
-        <ul className="cisne-workstation-command-tags">{detail.order.availableCommands.map(command=>
-         <li key={command.id}>{command.label}</li>)}</ul>:
-        <p>Nenhum comando de transição disponível neste contexto.</p>}
-       <small>Executar somente na página oficial da ordem, com validação pelo servidor.</small>
+        <ul className="cisne-workstation-command-tags">{detail.order.availableCommands.map(command=>{
+         const direct=['authorize','start','complete','cancel'].includes(command.id)&&
+          (!command.requiredInputs||command.requiredInputs.length===0)&&Boolean(onCommandOrder);
+         return <li key={command.id}>
+          <button type="button" disabled={detailLoading} onClick={()=>{
+           if(direct)onCommandOrder?.(selected.id,command.id);
+           else onOpenOrder(selected.id);
+          }}>
+           {command.label} <ArrowRight size={12}/>
+          </button>
+         </li>;
+        })}</ul>:
+        <p>Nenhum comando disponível no estado atual.</p>}
+       <small>O servidor confirma novamente propriedade, versão e situação antes de abrir a autorização.
+        Nenhum comando é executado pelo inspetor.</small>
       </div>
      </>}
      <div className="enterprise-operations-object-actions">
       <button type="button" className="primary" onClick={()=>onOpenOrder(selected.id)}>
        Abrir OS e comandos autorizados <ArrowRight size={15}/>
       </button>
-      <button type="button" className="secondary" onClick={()=>navigate('Dossiês empresariais')}>Consultar dossiês</button>
+      <button type="button" className="secondary" onClick={()=>navigate('Dossiês empresariais',selected.id)}>Dossiê desta OS</button>
       <button type="button" className="secondary" onClick={()=>navigate('Resource Planning Board')}>Planejar recursos</button>
      </div>
     </div>:<div className="enterprise-operations-object-placeholder">

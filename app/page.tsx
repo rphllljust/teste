@@ -1132,6 +1132,23 @@ function HomeView() {
       });
     }
   }
+  async function openAuthorizedContextCommand(id:string,commandId:string){
+    if(!['authorize','start','complete','cancel'].includes(commandId))return;
+    try{
+      const response=await fetch('/api/orders/'+encodeURIComponent(id),{cache:'no-store',credentials:'same-origin'});
+      const value=await response.json() as {order?:Order;error?:string};
+      if(!response.ok||!value.order||value.order.id!==id)
+        throw new Error(value.error??'Ordem não autorizada.');
+      const allowed=value.order.availableCommands?.find(item=>item.id===commandId);
+      if(!allowed||allowed.requiredInputs?.length)
+        throw new Error('Comando não liberado no estado atual. Atualize a OS.');
+      navigate('Ordens de serviço',id);
+      command(commandId,value.order);
+    }catch(error){
+      setNoticeTone('error');
+      setNotice(error instanceof Error?error.message:'Comando indisponível.');
+    }
+  }
   async function openOrigin(id: string) {
     try {
       const r = await fetch("/api/orders/" + encodeURIComponent(id));
@@ -1652,9 +1669,10 @@ function HomeView() {
               navigate={navigate}
               onCreate={newOrder}
               onOpenOrder={(id) => {
-                navigate("Ordens de serviço");
+                navigate("Ordens de serviço",id);
                 void openOrigin(id);
               }}
+              onCommandOrder={(id,commandId)=>{void openAuthorizedContextCommand(id,commandId);}}
             />
           ) : isWork ? (
             <>
@@ -2582,7 +2600,8 @@ function HomeView() {
               </footer>
             </section>
           ) : page === "Dossiês empresariais" ? (
-            <EnterpriseDossierWorkspace navigate={navigate} onOpenOrder={id=>{navigate("Ordens de serviço");void openOrigin(id);}} />
+            <EnterpriseDossierWorkspace navigate={navigate} initialOrderId={businessOrder||null}
+             onOpenOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}} />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
               onClients={() => navigate("Clientes e propostas")}

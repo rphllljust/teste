@@ -60,3 +60,35 @@ test('accounting exceptions stay visible on the work tab with no fabricated zero
  assert.match(ribbon,/===null\?'Faturas: indisponível'/);
  assert.doesNotMatch(ribbon,/faker|Math\.random|mockInvoices/);
 });
+
+test('Tier 1 connects 14-stage PostgreSQL journeys, exact dossier and owner-scoped audit to the object inspector',()=>{
+ const journey=read('app/components/enterprise/EnterpriseProcessJourneyInspector.tsx');
+ const audit=read('app/components/enterprise/EnterpriseOrderAuditTimeline.tsx');
+ const auditRoute=read('app/api/orders/[id]/audit/route.ts');
+ const dossiers=read('app/EnterpriseDossierWorkspace.tsx');
+ assert.match(workbench,/<EnterpriseProcessJourneyInspector/);
+ assert.match(workbench,/<EnterpriseOrderAuditTimeline/);
+ assert.match(workbench,/navigate\('Dossiês empresariais',selected\.id\)/);
+ assert.match(journey,/\/api\/enterprise\/journeys\//);
+ assert.match(journey,/ownerScoped!==true/);
+ assert.match(journey,/repeatable_read/);
+ assert.match(journey,/onDossier\(orderId\)/);
+ assert.match(dossiers,/initialOrderId/);
+ assert.match(audit,/\/api\/orders\//);
+ assert.match(audit,/correlationId/);
+ assert.match(auditRoute,/REPEATABLE READ READ ONLY/);
+ assert.match(auditRoute,/WHERE id=\$1 AND owner_id=\$2/);
+ assert.match(auditRoute,/FROM field_measurement_events/);
+ assert.doesNotMatch(workbench,/method:\s*['"]POST['"]/);
+});
+test('contextual transitions require a fresh authorized read and keep the existing transactional confirmation',()=>{
+ const center=read('app/EnterpriseCommandCenter.tsx');
+ assert.match(workbench,/onCommandOrder\?\.\(selected\.id,command\.id\)/);
+ assert.match(center,/onCommandOrder=\{onCommandOrder\}/);
+ assert.match(shell,/async function openAuthorizedContextCommand/);
+ assert.match(shell,/fetch\('\/api\/orders\/'\+encodeURIComponent\(id\),\{cache:'no-store',credentials:'same-origin'\}\)/);
+ assert.match(shell,/value\.order\.availableCommands\?\.find/);
+ assert.match(shell,/command\(commandId,value\.order\)/);
+ assert.match(shell,/navigate\('Ordens de serviço',id\)/);
+ assert.match(workbench,/Nenhum comando é executado pelo inspetor/);
+});

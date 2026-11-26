@@ -35,7 +35,7 @@ type Dossier = {
   history: Array<{ id: string; command: string; createdAt: string }>;
   provenance: { source: string; ownerScoped: boolean; consistency: string; warning: string };
 };
-type Props = { navigate: (module: string) => void; onOpenOrder: (id: string) => void };
+type Props = { navigate: (module: string) => void; onOpenOrder: (id: string) => void; initialOrderId?:string|null };
 type ApiFailure = { error?: string; code?: string };
 const labels: Record<string,string> = {
   draft:'Rascunho',authorized:'Autorizada',executing:'Em execução',
@@ -74,7 +74,7 @@ async function json<T>(response:Response):Promise<T>{
   return value;
 }
 
-export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props){
+export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initialOrderId=null}:Props){
   const [search,setSearch] = useState('');
   const [query,setQuery] = useState('');
   const [status,setStatus] = useState('all');
@@ -85,10 +85,11 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
   const [error,setError] = useState('');
   const [needsAuth,setNeedsAuth] = useState(false);
   const [loginBusy,setLoginBusy] = useState(false);
-  const [selectedId,setSelectedId] = useState<string|null>(null);
+  const [selectedId,setSelectedId] = useState<string|null>(initialOrderId);
   const [detail,setDetail] = useState<Dossier|null>(null);
   const [detailLoading,setDetailLoading] = useState(false);
   const [detailError,setDetailError] = useState('');
+  useEffect(()=>{setSelectedId(initialOrderId);},[initialOrderId]);
 
   useEffect(()=>{
     const timer=setTimeout(()=>{setPage(1);setQuery(search.trim());},260);
