@@ -14,7 +14,8 @@ test('the process dossier is a real globally navigable ERP workspace',()=>{
   assert.match(nav,/item\("enterprise-dossiers","Dossiês empresariais","file"\)/);
   assert.match(shell,/import EnterpriseDossierWorkspace from "\.\/EnterpriseDossierWorkspace"/);
   assert.match(shell,/page === "Dossiês empresariais"/);
-  assert.match(shell,/<EnterpriseDossierWorkspace navigate=\{navigate\}/);
+  assert.match(shell,/<EnterpriseDossierWorkspace key=\{businessOrder\|\|'dossier-list'\} navigate=\{navigate\}/);
+  assert.match(shell,/initialOrderId=\{businessOrder\|\|null\}/);
   assert.match(cockpit,/module:'Dossiês empresariais'/);
   assert.match(layout,/enterprise-dossier\.css/);
 });
