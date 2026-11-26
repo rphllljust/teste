@@ -24,7 +24,7 @@ test('CSV remains scoped to authorized current page and guards against formulas'
  assert.match(source,/\[=\+@-\]/);
  assert.match(source,/currentPageLabel="Página atual"/);
  assert.match(source,/Blob\(\[content\]/);
- assert.match(source,/não alteram permissões/);
+ assert.match(source,/nem alteram permissões/);
 });
 test('three business modules consume the same configurable list report grid',()=>{
  assert.match(dossier,/<EnterpriseSmartGrid viewId="enterprise-dossiers"/);
