@@ -199,6 +199,30 @@ try {
       const scoped=await scopedOrders.json();
       assert.equal(scoped.source,'postgres_owner_scoped_operations');
       assert.ok(Array.isArray(scoped.items),'worklist returns persisted, authorized records');
+      // Integration gate: the same authorized OS must resolve to a verified
+      // 14-stage dossier and an owner-scoped, append-only timeline.
+      if(scoped.items.length){
+        const orderId=scoped.items[0].id;
+        const dossierResponse=await context.request.get(
+          base.origin+'/api/enterprise/journeys/'+encodeURIComponent(orderId),time);
+        assert.equal(dossierResponse.status(),200,profile.name+' persisted process dossier');
+        const process=await dossierResponse.json();
+        assert.equal(process.order?.id,orderId);
+        assert.equal(process.provenance?.ownerScoped,true);
+        assert.equal(process.provenance?.consistency,'repeatable_read');
+        assert.equal(process.stages?.length,14);
+        const auditResponse=await context.request.get(
+          base.origin+'/api/orders/'+encodeURIComponent(orderId)+'/audit?pageSize=2',time);
+        assert.equal(auditResponse.status(),200,profile.name+' owned operational timeline');
+        const trace=await auditResponse.json();
+        assert.equal(trace.orderId,orderId);
+        assert.equal(trace.source,'postgres_owned_event_trace');
+        assert.ok(Array.isArray(trace.items));
+        assert.ok(trace.items.every(item=>typeof item.command==='string'));
+        const invalidAudit=await context.request.get(
+          base.origin+'/api/orders/invalid/audit',time);
+        assert.equal(invalidAudit.status(),400,profile.name+' invalid audit path rejected');
+      }
       await page.goto(base.origin+'/#'+encodeURIComponent('Visão operacional'),
         {waitUntil:'domcontentloaded',...time});
       await page.getByRole('tab',{name:'Trabalho',exact:true})

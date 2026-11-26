@@ -67,3 +67,12 @@ test('Wave 7 accepts true public UI at all viewports without exposing business r
   assert.match(browser,/await page\.goto\(pageHref,\{waitUntil:'domcontentloaded'/);
   assert.doesNotMatch(browser,/localStorage\.setItem\([^\n]*passphrase/);
 });
+
+test('authenticated Tier1 UAT proves 14-stage dossier and correlated audit per owned order',()=>{
+ assert.match(browser,/process\.stages\?\.length,14/);
+ assert.match(browser,/process\.provenance\?\.ownerScoped,true/);
+ assert.match(browser,/process\.provenance\?\.consistency,'repeatable_read'/);
+ assert.match(browser,/\/api\/orders\/'\+encodeURIComponent\(orderId\)\+'\/audit\?pageSize=2'/);
+ assert.match(browser,/trace\.source,'postgres_owned_event_trace'/);
+ assert.match(browser,/invalidAudit\.status\(\),400/);
+});
