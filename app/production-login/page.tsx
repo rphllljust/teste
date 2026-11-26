@@ -6,8 +6,8 @@ export default function ProductionLogin(){
  const [error,setError]=useState('');
  useEffect(()=>{
   let active=true;
-  fetch('/api/auth/production-login',{cache:'no-store'}).then(r=>r.json()).then(d=>{
-   if(active&&d.authenticated===true)window.location.replace('/');
+  fetch('/api/auth/production-login',{cache:'no-store'}).then(r=>r.json()).then((d:unknown)=>{
+   if(active&&typeof d==='object'&&d!==null&&'authenticated' in d&&d.authenticated===true)window.location.replace('/');
   }).catch(()=>{});
   return()=>{active=false};
  },[]);
