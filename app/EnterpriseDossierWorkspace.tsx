@@ -126,6 +126,27 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
     return ()=>{clearTimeout(timer);abort.abort();};
   },[selectedId,revision]);
 
+
+  useEffect(()=>{
+    if(!selectedId)return;
+    const previous=document.activeElement as HTMLElement|null;
+    const listener=(event:KeyboardEvent)=>{
+      if(event.key==='Escape'){
+        event.preventDefault();setSelectedId(null);setDetail(null);return;
+      }
+      if(event.key!=='Tab')return;
+      const overlay=document.querySelector<HTMLElement>('.enterprise-dossier-drawer');
+      if(!overlay)return;
+      const controls=[...overlay.querySelectorAll<HTMLElement>('a[href],button:not(:disabled),input:not(:disabled),select:not(:disabled)')]
+        .filter(element=>element.getClientRects().length>0);
+      if(!controls.length)return;
+      const first=controls[0],last=controls[controls.length-1];
+      if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+      else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+    };
+    document.addEventListener('keydown',listener);
+    return ()=>{document.removeEventListener('keydown',listener);previous?.focus();};
+  },[selectedId]);
   const reload=()=>setRevision(r=>r+1);
   const select=(id:string)=>{setDetail(null);setDetailError('');setSelectedId(id);};
   const close=()=>{setSelectedId(null);setDetail(null);setDetailError('');};
