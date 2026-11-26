@@ -24,6 +24,8 @@ import { POST as reconcileBank } from '../../app/api/bank/commands/route';
 import { GET as bankDetails } from '../../app/api/bank/statements/[id]/route';
 import { GET as ledger } from '../../app/api/accounting/ledger/route';
 import { GET as closePreflight } from '../../app/api/finance/periods/preflight/route';
+import { GET as listEnterpriseDossiers } from '../../app/api/enterprise/journeys/route';
+import { GET as readEnterpriseDossier } from '../../app/api/enterprise/journeys/[id]/route';
 import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -369,6 +371,68 @@ async () => {
     invoiceAmount: scaledAmount, settledAmount: scaledAmount,
     journalAmount: scaledAmount,
   });
+
+  // 13. New enterprise dossier is not decorative: it must reconstruct the
+  // identical audited PostgreSQL graph and stay inaccessible to outsiders.
+  const dossierPath = '/api/enterprise/journeys/' + orderId;
+  const dossier = await record<{
+    order: { id: string; title: string; status: string };
+    stages: Array<{ key: string; state: string; items: Array<{ id: string }> }>;
+    financials: { billedScaled: string; settledScaled: string; outstandingScaled: string };
+    provenance: { ownerScoped: boolean; consistency: string };
+  }>(await readEnterpriseDossier(req(owner,dossierPath),paths(orderId)),
+    '13 Dossiê empresarial transversal no PostgreSQL real',200);
+  assert.equal(dossier.order.id,orderId);
+  assert.equal(dossier.order.status,'completed');
+  assert.equal(dossier.provenance.ownerScoped,true);
+  assert.equal(dossier.provenance.consistency,'repeatable_read');
+  assert.deepEqual(dossier.financials,{
+    billedScaled:String(scaledAmount),settledScaled:String(scaledAmount),
+    outstandingScaled:'0',
+  });
+  const documents = new Map(dossier.stages.map(stage=>[stage.key,stage]));
+  const exactDocuments = [
+    ['client',clientId],['proposal',proposalId],['contract',contractId],
+    ['order',orderId],['execution',execution.resource.id],['measurement',measurement.resource.id],
+    ['billing',billing.resource.invoiceId],['receivable',billing.resource.receivableId],
+    ['receipt',settlementKey],['accounting',billing.resource.accounting.journalId],
+    ['close',closeId],
+  ] as const;
+  for(const [stage,id] of exactDocuments){
+    const item=documents.get(stage);
+    assert.equal(item?.state,'linked',stage+' missing from persisted owner-scoped dossier');
+    assert.ok(item?.items.some(evidence=>evidence.id===id),stage+' ID was not the exact stored document');
+  }
+  assert.ok(documents.get('accounting')?.items.some(row=>row.id===receipt.resource.accounting.journalId),
+    'both financial journals must be independently linked');
+  assert.equal(documents.get('bank')?.state,'linked');
+  assert.equal(documents.get('crm')?.state,'not_linked',
+    'no fictitious CRM opportunity must be manufactured');
+  assert.equal(documents.get('purchaseOrder')?.state,'not_linked',
+    'no fictitious customer PO must be manufactured');
+
+  const ownerList = await record<{
+    items: Array<{ id: string; billedScaled: string; settledScaled: string }>;
+    pageInfo: { total: number; hasMore: boolean };
+  }>(await listEnterpriseDossiers(req(owner,
+    '/api/enterprise/journeys?status=completed&q=Auditoria&pageSize=20')),
+    '13a Fila paginada de processos com valores persistidos',200);
+  assert.ok(ownerList.items.some(item=>item.id===orderId
+    && item.billedScaled===String(scaledAmount)
+    && item.settledScaled===String(scaledAmount)));
+  assert.equal((await readEnterpriseDossier(req(outsider,dossierPath),paths(orderId))).status,404,
+    'outsider must never receive dossier documents');
+  const outsiderList = await record<{ items: Array<{ id: string }> }>(
+    await listEnterpriseDossiers(req(outsider,'/api/enterprise/journeys')),
+    '13b Usuário externo sem acesso à cadeia',200);
+  assert.ok(!outsiderList.items.some(item=>item.id===orderId));
+  assert.equal((await readEnterpriseDossier(req(owner,'/api/enterprise/journeys/'+randomUUID()),
+    paths(randomUUID()))).status,404);
+  assert.equal((await readEnterpriseDossier(req(owner,'/api/enterprise/journeys/invalid'),
+    paths('invalid'))).status,400);
+  assert.equal((await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?pageSize=200'))).status,400,
+    'unbounded query must be rejected, never cause full-table extraction');
+
   console.log(JSON.stringify({
     event: 'CISNE_ORDER_TO_CASH_FICTITIOUS_CI',
     state: 'CHAIN_LINKS_VERIFIED_WITH_CASH_LEDGER',
