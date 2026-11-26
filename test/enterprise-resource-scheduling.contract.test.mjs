@@ -1,0 +1,43 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+const api=read('app/api/resources/allocations/route.ts');
+const release=read('app/api/resources/allocations/[id]/commands/route.ts');
+const board=read('app/ResourcePlanningBoard.tsx');
+const css=read('app/components/enterprise/enterprise-resource-planning.css');
+const layout=read('app/layout.tsx');
+const integrated=read('test/integration/resource-allocations.test.ts');
+test('schedule reads only tenant-authorized PostgreSQL records within bounded real dates',()=>{
+ assert.match(api,/export async function GET\(request:Request\)/);
+ assert.match(api,/context=requestContext\(request\)/);
+ assert.match(api,/a\.owner_id=\?/);
+ assert.match(api,/INNER JOIN service_orders o ON o\.id=a\.order_id AND o\.owner_id=a\.owner_id/);
+ assert.match(api,/a\.starts_at < \? AND a\.ends_at > \?/);
+ assert.match(api,/days<1\|\|days>31/);
+ assert.match(api,/LIMIT 501/);
+ assert.match(api,/postgres_owner_scoped_allocations/);
+});
+test('resource board is a transactional booking console, not a decorative worklist',()=>{
+ assert.match(board,/fetch\("\/api\/resources\/allocations\?"\+range/);
+ assert.match(board,/fetch\("\/api\/resources\/allocations",\{method:"POST"/);
+ assert.match(board,/crypto\.randomUUID\(\)/);
+ assert.match(board,/command:"release"/);
+ assert.match(board,/resourceType:selectedResource\.type/);
+ assert.match(board,/new Date\(startTime\),end=new Date\(endTime\)/);
+ assert.match(board,/a\.startsAt/);
+ assert.match(board,/matched\.map\(a=>/);
+ assert.match(board,/role="table"/);
+ assert.match(board,/Não representa disponibilidade contratual|não representa disponibilidade contratual/);
+ assert.match(board,/Conflitos retornam HTTP 409/);
+ assert.match(release,/VERSION_CONFLICT/);
+ assert.match(css,/\.planning-timeline-scroll/);
+ assert.ok(layout.includes('enterprise-resource-planning.css'));
+});
+test('CI runs real owner-scoped allocation, calendar and release on disposable PostgreSQL',()=>{
+ assert.match(integrated,/GET as listAllocations/);
+ assert.match(integrated,/POST as releaseAllocation/);
+ assert.match(integrated,/assert\.equal\(outside\.status,200\)/);
+ assert.match(integrated,/assert\.equal\(outsideBook\.status,404\)/);
+ assert.match(integrated,/assert\.equal\(release\.status,201\)/);
+});
