@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenText, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, DatabaseZap, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { EnterpriseObjectSectionNavigation, EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
+import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
 
 type DossierListItem = {
   id: string; title: string; client: string; state: string; createdAt: string;
@@ -360,6 +361,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initial
               <strong>{event.command}</strong><span>{dateLabel(event.createdAt)}</span>
             </li>)}</ol>:<p>Nenhum evento de OS disponível.</p>}
           </section>
+          <EnterpriseOrderAuditTimeline key={detail.order.id+'-'+revision} orderId={detail.order.id}/>
           <footer className="enterprise-dossier-provenance">
             <DatabaseZap size={16} aria-hidden="true"/>
             <p>Consulta autenticada com leitura consistente no banco de dados.

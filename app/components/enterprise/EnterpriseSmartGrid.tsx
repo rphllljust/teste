@@ -121,7 +121,7 @@ export function EnterpriseSmartGrid<T>({
     <strong>{caption}</strong><span>{currentPageLabel} · {rows.length} registro(s)</span>
    </div>
    <div className="enterprise-smart-controls">
-    <span className="enterprise-smart-selected" aria-live="polite">{displayedSelected.length?displayedSelected.length+" selecionados":"Sem seleção"}</span>
+    <span className="enterprise-smart-selected" aria-live="polite">{displayedSelected.length?displayedSelected.length+" marcados na página":activeKey!=null?"OS em inspeção · nenhuma marcada":"Nenhuma seleção em lote"}</span>
     <button type="button" className="secondary" disabled={!exportRows.length} onClick={exportPage}>
      <Download size={15} aria-hidden="true"/> Exportar página
     </button>

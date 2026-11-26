@@ -102,3 +102,12 @@ test('cross-module stage navigation preserves the selected OS for scoped views',
  assert.match(shell,/setBusinessOrder\(orderId\)/);
  assert.match(shell,/initialOrderId=\{businessOrder\|\|null\}/);
 });
+
+test('auditable evidence is consistent across dossier and operations; inspection is distinct from bulk selection',()=>{
+ const dossier=read('app/EnterpriseDossierWorkspace.tsx');
+ const smart=read('app/components/enterprise/EnterpriseSmartGrid.tsx');
+ assert.match(dossier,/<EnterpriseOrderAuditTimeline key=\{detail\.order\.id\+'-'\+revision\}/);
+ assert.match(dossier,/orderId=\{detail\.order\.id\}/);
+ assert.match(smart,/OS em inspeção · nenhuma marcada/);
+ assert.match(smart,/Nenhuma seleção em lote/);
+});
