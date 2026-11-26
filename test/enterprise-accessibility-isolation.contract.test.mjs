@@ -66,3 +66,15 @@ test("enterprise journey offers eight real workspaces without claiming business 
  assert.match(center,/A navegação não significa que uma transação foi concluída/);
  assert.match(center,/onClick=\{\(\)=>navigate\(step\.module\)\}/);
 });
+
+test("commercial-to-accounting journey exposes CRM, real proposals, treasury, and period close",async()=>{
+ const center=await readFile(new URL('../app/EnterpriseCommandCenter.tsx',import.meta.url),'utf8');
+ const nav=await readFile(new URL('../lib/navigation/catalog.ts',import.meta.url),'utf8');
+ for(const module of ['CRM e Vendas','Propostas e PO','Tesouraria','Fechamentos']){
+  assert.ok(center.includes("module:'"+module+"'"),module+' must have a related action');
+  assert.ok(nav.includes('"'+module+'"'),module+' must be a registered workspace');
+ }
+ assert.match(center,/onClick=\{\(\)=>navigate\(action\.module\)\}/);
+ assert.match(center,/aria-label="Acessos complementares da jornada"/);
+ assert.doesNotMatch(center,/navegação transacional/);
+});
