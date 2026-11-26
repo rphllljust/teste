@@ -27,7 +27,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Consulta de execução inválida.');
     const { page, pageSize, state, q, resourceKind } = parsed.data;
     const offset = (page - 1) * pageSize;
-    const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?)';
+    const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=?';
     const stateFilter = state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL';
     const conditions = [stateFilter];
     const values = [id, context.actorId];
@@ -43,7 +43,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const filtered = from + ' AND ' + conditions.join(' AND ');
     const db = database();
     const rows = await db.batch([
-      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
+      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND owner_id=?').bind(id, context.actorId),
       db.prepare(`SELECT e.* ${filtered} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, pageSize, offset),
       db.prepare(`SELECT count(*)::int total ${filtered}`).bind(...values),
       ...(q || resourceKind ? [db.prepare(`SELECT count(*)::int total ${from} AND ${stateFilter}`).bind(id, context.actorId)] : []),
@@ -69,7 +69,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const p = parsed.data;
     const hash = await fingerprint({ actor: context.actorId, orderId: id, payload: p });
     const result = await database().transaction(async query => {
-      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND (owner_id IS NULL OR owner_id=$2) FOR UPDATE', [id, context!.actorId]);
+      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [id, context!.actorId]);
       if (!order.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem não encontrada.');
       const row = order.rows[0] as { id: string; status: string; version: number };
       if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
