@@ -45,3 +45,18 @@ test('operational cockpit never counts draft orders as approved work or all non-
  assert.doesNotMatch(cockpit,/Aprovações pendentes/);
  assert.doesNotMatch(cockpit,/Ordens em execução/);
 });
+
+
+test('document details share a single accessible section navigation with observed active location',async()=>{
+ const primitives=await readFile(new URL('../app/components/enterprise/EnterprisePrimitives.tsx',import.meta.url),'utf8');
+ assert.match(primitives,/export function EnterpriseObjectSectionNavigation/);
+ assert.match(primitives,/closest\('\.drawer'\)/);
+ assert.match(primitives,/rootMargin: '-135px/);
+ assert.match(primitives,/aria-current=\{active === section\.id \? 'location'/);
+ for(const file of ['ClientsWorkspace.tsx','ProposalsWorkspace.tsx','ContractsWorkspace.tsx','AccountingWorkspace.tsx']){
+  const src=await readFile(new URL('../app/'+file,import.meta.url),'utf8');
+  assert.match(src, /<EnterpriseObjectSectionNavigation/,'missing shared navigation: '+file);
+  assert.match(src, /className="drawer enterprise-object-detail"/,'missing responsive Object Page: '+file);
+  assert.doesNotMatch(src, /<nav className="object-anchors"/,'duplicate local Object Page navigation: '+file);
+ }
+});
