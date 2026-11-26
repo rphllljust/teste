@@ -5,6 +5,7 @@ import { ArrowRight, CalendarClock, CheckCircle2, CircleAlert, ClipboardList, Li
 import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
+import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
 
 type Queue='all'|'attention'|'overdue'|'unmeasured'|'draft'|'authorized'|'executing'|'completed';
 type Sort='priority'|'deadline'|'recent'|'client';
@@ -182,6 +183,7 @@ export default function EnterpriseOperationsWorkbench({
   </div>
   {mode==='command'&&<EnterpriseOperationsAnalytics summary={summary} analytics={data?.analytics}
     generatedAt={data?.generatedAt} navigate={navigate}/>}
+  {mode==='command'&&<EnterpriseFinancialAssurance navigate={navigate}/>}
   <div className="enterprise-operations-toolbar">
    <label className="enterprise-operations-search"><Search size={16}/>
     <input value={search} type="search" onChange={e=>setSearch(e.target.value)}
