@@ -66,7 +66,7 @@ test('financial close cannot be presented as strict Tier 1 accounting certificat
  assert.match(preflight,/tier1Readiness:/);
 });
 test('new finance stylesheet has no unterminated selectors',()=>{
- const source=css.replace(/\\/\\*[\\s\\S]*?\\*\\//g,'');
+ const source=css;
  let depth=0;
  for(const char of source){if(char==='{')depth++;if(char==='}')depth--;assert.ok(depth>=0);}
  assert.equal(depth,0);
