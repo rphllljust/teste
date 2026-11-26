@@ -13,8 +13,8 @@ const query = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(50),
 }).strict();
 
-function project(row: Record<string, unknown>) {
-  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
+function project(row: Record<string, unknown>, corrected: boolean) {
+  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: corrected ? 'corrected' : 'active', label: corrected ? 'Anulado' : 'Ativo' }, availableCommands: corrected ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -50,7 +50,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
-    const items = (rows[1].results as Record<string, unknown>[]).map(project);
+    const items = (rows[1].results as Record<string, unknown>[]).map(row=>project(row,state==='corrected'));
     const total = Number((rows[2].results[0] as { total: number }).total);
     const sourceCount = rows[3]?.results[0] as { total: number } | undefined;
     const sourceTotal = sourceCount ? Number(sourceCount.total) : total;
