@@ -272,9 +272,17 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
         state:asText(v.status),createdAt:asText(v.created_at),module:'Fechamentos',
       }))),
     ];
-    const billedScaled = invoices.reduce((sum,row)=>sum+BigInt(scaled(row.amount_scaled)),0n).toString();
-    const settledScaled = settlements.reduce((sum,row)=>
-      sum+(row.kind==='receipt'?1n:-1n)*BigInt(scaled(row.amount_scaled)),0n).toString();
+    // Totals MUST cover all documents, not just the latest 50 displayed.
+    // PostgreSQL sums numeric facts and transmits text; no JS float rounding.
+    const totals = (await read(`SELECT
+      (SELECT coalesce(sum(i.amount),0)::text FROM invoices i WHERE i.order_id=$1) AS billed_scaled,
+      (SELECT coalesce(sum(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END),0)::text
+       FROM receivable_settlements s JOIN receivables r ON r.id=s.receivable_id
+       JOIN invoices i ON i.id=r.invoice_id
+       WHERE i.order_id=$1 AND s.actor_id=$2) AS settled_scaled`,
+      [orderId,actorId]))[0];
+    const billedScaled = scaled(totals?.billed_scaled);
+    const settledScaled = scaled(totals?.settled_scaled);
     return {
       order: {
         id:asText(order.id),title:asText(order.title),status:asText(order.status),
