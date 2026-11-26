@@ -6,6 +6,7 @@ import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
+import EnterpriseAccountingExceptionRibbon from './components/enterprise/EnterpriseAccountingExceptionRibbon';
 
 type Queue='all'|'attention'|'overdue'|'unmeasured'|'draft'|'authorized'|'executing'|'completed';
 type Sort='priority'|'deadline'|'recent'|'client';
@@ -215,6 +216,7 @@ export default function EnterpriseOperationsWorkbench({
      <strong>{item.value??'—'}</strong><span>{item.label}</span>
     </button>)}
   </div>
+  {mode==='command'&&<EnterpriseAccountingExceptionRibbon revision={revision} onOpen={()=>setSurface('finance')}/>}
   {mode==='command'&&<div className="cisne-workstation-views">
    <div className="cisne-workstation-view-tabs" role="tablist" aria-label="Espaços da estação de trabalho">
     <button type="button" role="tab" id="cisne-view-work" aria-controls="cisne-panel-work"

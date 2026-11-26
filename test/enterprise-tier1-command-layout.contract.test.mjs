@@ -49,3 +49,14 @@ test('responsive inspector is a scoped drawer, legacy shell and all business dom
  assert.match(workbench,/role=\{narrow&&mobileInspectorOpen\?'dialog'/);
  assert.match(workbench,/Comandos|Transições autorizadas/);
 });
+test('accounting exceptions stay visible on the work tab with no fabricated zeros',()=>{
+ const ribbon=read('app/components/enterprise/EnterpriseAccountingExceptionRibbon.tsx');
+ assert.match(workbench,/<EnterpriseAccountingExceptionRibbon revision={revision} onOpen=\{\(\)=>setSurface\('finance'\)\}/);
+ assert.match(ribbon,/\/api\/accounting\/reconciliation/);
+ assert.match(ribbon,/\/api\/accounting\/receipt-reconciliation/);
+ assert.match(ribbon,/Promise\.allSettled/);
+ assert.match(ribbon,/cache:'no-store',credentials:'same-origin'/);
+ assert.match(ribbon,/Number\.isSafeInteger/);
+ assert.match(ribbon,/===null\?'Faturas: indisponível'/);
+ assert.doesNotMatch(ribbon,/faker|Math\.random|mockInvoices/);
+});

@@ -109,3 +109,13 @@
  .cisne-workstation-view-tabs button[aria-selected="true"] { border-bottom:3px solid Highlight; }
  .cisne-workstation-tier1 .enterprise-operations-list .enterprise-smart-scroll tr[aria-selected="true"] { outline:2px solid Highlight; }
 }
+/* Small, authoritative accounting exception signal remains visible while working. */
+.cisne-accounting-exception-ribbon{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid #d9e6ed;border-radius:6px;background:#f5f9fb;padding:10px 12px;min-height:42px}
+.cisne-accounting-exception-heading{display:inline-flex;align-items:center;gap:7px;white-space:nowrap;color:#1c5568;font-size:11px}
+.cisne-accounting-exception-message{flex:1;min-width:200px;font-size:11px;color:#567182;line-height:1.5}
+.cisne-accounting-exception-ribbon>button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#076578;font-size:11px;font-weight:750;cursor:pointer}
+.cisne-accounting-exception-ribbon>button:hover{text-decoration:underline}
+.cisne-accounting-exception-ribbon[data-state="warning"]{background:#fff8ed;border-color:#eddbbe}
+.cisne-accounting-exception-ribbon[data-state="warning"] .cisne-accounting-exception-heading{color:#9b522f}
+.cisne-accounting-exception-ribbon[data-state="warning"] .cisne-accounting-exception-message{color:#8b5437}
+@media(max-width:540px){.cisne-accounting-exception-ribbon{gap:6px}.cisne-accounting-exception-message{flex-basis:100%}.cisne-accounting-exception-ribbon>button{padding:5px 0}}
