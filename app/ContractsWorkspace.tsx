@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Plus,X} from 'lucide-react';
 import type {Client} from './ClientsWorkspace';
-import { EnterprisePageHeader, EnterpriseObjectSummary, EnterpriseObjectSectionNavigation } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseObjectSummary, EnterpriseObjectSectionNavigation } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import { evaluateEnterpriseAction, type EnterpriseActionDefinition } from './components/enterprise/EnterpriseActionCatalog';
 export type Contract={id:string;reference:string;clientId:string;clientName:string;proposalId:string;proposalTitle:string;purchaseOrderId:string|null;poReference:string|null;scope:string;startsOn:string;endsOn:string|null;signedReference:string|null;state:{code:string;label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[];client?:Client;canCreateOrder?:boolean;related?:{orders:{total:number;openTotal:number}};history?:{command:string;createdAt:string}[];warnings?:string[]};
@@ -43,5 +43,5 @@ function ContractsWorkspace({onCreateOrder,onOrders,onSource}:{onCreateOrder:(co
 }
 
 export default function EnterpriseContractsWorkspace(props: Parameters<typeof ContractsWorkspace>[0]) {
- return <><EnterprisePageHeader breadcrumb="Contratos / Contratos" eyebrow="CISNE ENTERPRISE · OBJECT DOMAIN" title="Contratos" description="Proposta de origem, vigência, ordens vinculadas e comandos condicionais ao estado real." /><ContractsWorkspace {...props}/></>;
+ return <ContractsWorkspace {...props}/>;
 }
