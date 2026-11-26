@@ -50,7 +50,14 @@ async function snapshot<T>(work: (read: ReadQuery) => Promise<T>): Promise<T> {
   const client: PoolClient = await databasePool().connect();
   try {
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const read: ReadQuery = async (sql, params = []) => (await client.query(sql, params)).rows as Row[];
+    // pg@9 rejects overlapping queries on one client; preserve one snapshot
+    // while serializing any independently scheduled read-model projections.
+    let queue: Promise<void> = Promise.resolve();
+    const read: ReadQuery = (sql, params = []) => {
+      const task = queue.then(async () => (await client.query(sql, params)).rows as Row[]);
+      queue = task.then(() => undefined, () => undefined);
+      return task;
+    };
     const result = await work(read);
     await client.query('COMMIT');
     return result;
