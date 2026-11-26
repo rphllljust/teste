@@ -79,6 +79,50 @@ try {
         console.warn('HML_VIEWPORT_WARNING '+profile.name+' root overflow '+overflow+'px');
       }
 
+      // Wave 7 release UAT: verify the two NEW document-first command workspaces
+      // on the LIVE Railway deployment, without session or business fixtures.
+      const opsApi = await context.request.get(base.origin +
+        '/api/enterprise/operations?queue=attention&page=1&pageSize=5',time);
+      assert.equal(opsApi.status(),403,profile.name+' deny anonymous owner-scoped command center');
+      const forgedOps = await context.request.get(base.origin +
+        '/api/enterprise/operations?queue=all',{
+        ...time,headers:{'oai-authenticated-user-id':'forged-actor','x-cisne-dispatch-secret':'forged'},
+      });
+      assert.equal(forgedOps.status(),403,profile.name+' deny forged command-center actor');
+      const commandPages = [
+        {label:'Visão operacional',heading:'Centro de operações',key:'operations'},
+        {label:'Field Service Cockpit',heading:'Despacho e execução',key:'field'},
+      ];
+      for (const command of commandPages) {
+        const target = base.origin + '/#' + encodeURIComponent(command.label);
+        const live = await page.goto(target,{waitUntil:'domcontentloaded',...time});
+        assert.equal(live?.status(),200,profile.name+' '+command.key+' shell response');
+        await page.getByRole('heading',{name:command.heading,exact:true})
+          .waitFor({state:'visible',...time});
+        await page.getByRole('region',{name:'Centro transacional de operações'})
+          .waitFor({state:'visible',...time});
+        const indicators = await page.locator('.enterprise-operations-indicators button').count();
+        assert.equal(indicators,5,profile.name+' '+command.key+' factual work queue shortcuts');
+        assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
+        await page.screenshot({
+          path:join(artifactDir,'unauthenticated-'+command.key+'-'+profile.name+'.png'),
+          fullPage:false,
+        });
+        const pageWidth=await page.evaluate(()=>({
+          available:document.documentElement.clientWidth,
+          scroll:document.documentElement.scrollWidth,
+        }));
+        assert.ok(pageWidth.scroll-pageWidth.available<=24,
+          profile.name+' '+command.key+' unexpected root horizontal overflow');
+        console.log('HML_WAVE7_PUBLIC '+JSON.stringify({
+          screen:command.key,profile:profile.name,heading:'PASS',indicators,
+          rootOverflowPx:Math.max(0,pageWidth.scroll-pageWidth.available),
+          anonymousApi:'DENIED',
+        }));
+      }
+      // Return to the dossier before optional signed-session acceptance.
+      await page.goto(pageHref,{waitUntil:'domcontentloaded',...time});
+
       if (!secret) {
         results.push({profile:profile.name,public:'PASS',authenticated:'NOT_RUN',records:'NOT_RUN',
           navigation:'PASS',horizontalOverflowPx:Math.max(0,overflow)});
