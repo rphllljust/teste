@@ -37,7 +37,7 @@ function savePageCsv(filename:string,headers:string[],rows:string[][]){
  const url=URL.createObjectURL(blob);
  try{
   const a=document.createElement("a");a.href=url;a.download=filename;
-  document.body.append(a);a.click();a.remove();
+  document.body.appendChild(a);a.click();a.remove();
  }finally{URL.revokeObjectURL(url);}
 }
 
