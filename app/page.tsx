@@ -2705,7 +2705,7 @@ function HomeView() {
           ) : page === "Fiscal e tributos" ? (
             <FiscalWorkspace />
           ) : page === "Fechamentos" ? (
-            <CloseCenterWorkspace />
+            <CloseCenterWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Compras" ? (
             <ProcurementWorkspace initialOrderId={mrpOrderId} />
           ) : page === "Estoque e compras" ? (
