@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenCheck, CircleAlert, Wallet } from 'lucide-react';
+import EnterpriseCloseReadiness from './EnterpriseCloseReadiness';
 
 type FinanceMetric={metricId:string;value:string|null;status:'available'|'unknown'};
 type FinanceData={metrics:FinanceMetric[];generatedAt:string};
@@ -76,6 +77,7 @@ export default function EnterpriseFinancialAssurance({navigate}:{
     <strong>{unpostedCash??unknown}</strong><small>{unpostedCash===0?'Nenhuma pendência identificada':'Legado ou lançamento não apropriado'}</small>
    </button>
   </div>
+  <EnterpriseCloseReadiness navigate={navigate}/>
   <p className={issues>0?'cisne-finance-assurance-warning':''}>
    {loading?'Consultando indicadores com autorização do usuário…':
     !data.finance&&!data.accounting&&!data.cash?'As consultas financeiras estão indisponíveis. Nenhum valor foi presumido.':
