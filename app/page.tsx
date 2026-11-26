@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import EnterpriseOrderContextRibbon from "./components/enterprise/EnterpriseOrderContextRibbon";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -1442,6 +1443,16 @@ function HomeView() {
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          {["Dossiês empresariais","Execução","Medições","Faturamento","Financeiro"].includes(page)&&
+           (page==="Execução"?executionOrder:businessOrder)&&
+            <EnterpriseOrderContextRibbon
+              key={page+"-"+(page==="Execução"?executionOrder:businessOrder)}
+              orderId={page==="Execução"?executionOrder:businessOrder}
+              currentPage={page}
+              navigate={navigate}
+              openOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}}
+              clear={()=>navigate(page)}
+            />}
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![

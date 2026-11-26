@@ -155,3 +155,23 @@
 .cisne-contextual-command-panel .cisne-workstation-command-tags li button:disabled{opacity:.5}
 @media(min-width:1400px){.cisne-integrated-rail{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:540px){.cisne-integrated-rail{grid-template-columns:repeat(2,minmax(0,1fr));max-height:180px}}
+
+/* Verified, cross-domain transaction context for a selected service order. */
+.cisne-transaction-context{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;margin-bottom:12px;
+ border:1px solid #cfe2eb;border-radius:7px;background:#f5f9fb;min-width:0}
+.cisne-transaction-context-identity{display:flex;align-items:center;gap:8px;flex:1 1 210px;min-width:160px;color:#155c70}
+.cisne-transaction-context-identity>span{display:grid;gap:3px;min-width:0}
+.cisne-transaction-context-identity strong{font-size:12px;font-weight:750;letter-spacing:.01em}
+.cisne-transaction-context-identity small{font-size:10px;line-height:1.4;color:#60798a;overflow-wrap:anywhere}
+.cisne-transaction-context-links{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+.cisne-transaction-context-links button{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;min-height:29px;
+ border:1px solid transparent;border-radius:4px;background:transparent;color:#23687b;font-size:11px;font-weight:600;cursor:pointer}
+.cisne-transaction-context-links button:hover{background:#e8f3f7}
+.cisne-transaction-context-links button[aria-current="page"]{background:#e4f2f5;border-color:#bad5df;color:#0b5368}
+.cisne-transaction-context-dismiss{display:inline-flex;align-items:center;justify-content:center;padding:6px;min-height:30px;min-width:30px;
+ border:1px solid #cee0e9;border-radius:5px;background:white;color:#51788c;cursor:pointer}
+.cisne-transaction-context[data-state="unavailable"]{background:#fff8f3;border-color:#f1d9c5}
+.cisne-transaction-context[data-state="unavailable"] .cisne-transaction-context-identity{color:#965a36}
+@media(max-width:900px){.cisne-transaction-context-links{flex:1 1 100%}.cisne-transaction-context-links button{flex:1 0 auto;justify-content:center}}
+@media(max-width:540px){.cisne-transaction-context{gap:8px;padding:9px}.cisne-transaction-context-identity{flex:1 1 80%}
+ .cisne-transaction-context-dismiss{margin-left:auto}.cisne-transaction-context-links button{font-size:10px;padding:6px}}

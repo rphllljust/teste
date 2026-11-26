@@ -122,3 +122,18 @@ test('deep links and browser history restore an owned OS filter for supported mo
  assert.match(shell,/initialOrderId=\{businessOrder\|\|null\}/);
  assert.match(shell,/objectHash\(name, orderId \|\| undefined\)/);
 });
+
+test('the shared order context is authenticated and links all supported business domains',()=>{
+ const ribbon=read('app/components/enterprise/EnterpriseOrderContextRibbon.tsx');
+ assert.match(shell,/<EnterpriseOrderContextRibbon/);
+ assert.match(shell,/page==="Execução"\?executionOrder:businessOrder/);
+ assert.match(shell,/clear=\{\(\)=>navigate\(page\)\}/);
+ assert.match(ribbon,/fetch\('\/api\/orders\/'\+encodeURIComponent\(orderId\)/);
+ assert.match(ribbon,/credentials:'same-origin',cache:'no-store'/);
+ assert.match(ribbon,/json\.order\?\.id!==orderId/);
+ assert.match(ribbon,/typeof json\.order\.version!=='number'/);
+ for(const module of ['Dossiês empresariais','Execução','Medições','Faturamento','Financeiro'])
+  assert.ok(ribbon.includes("'"+module+"'"),'missing linked domain '+module);
+ assert.match(ribbon,/if\(!order\)return/);
+ assert.doesNotMatch(ribbon,/method:\s*['"]POST['"]|mockOrder|Math\.random/);
+});
