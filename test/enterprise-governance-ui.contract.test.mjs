@@ -96,6 +96,7 @@ test('governance behaves as a responsive object page with factual tenant scope a
 test('stale company and role responses cannot leak across rapid tenant switches',()=>{
  assert.match(page,/const detailRequest=useRef\(0\)/);
  assert.match(page,/const request=\+\+detailRequest\.current/);
+ assert.match(page,/detailRequest\.current \+= 1/);
  assert.match(page,/if\(request!==detailRequest\.current\)return/);
  assert.match(page,/if\(request===detailRequest\.current\)setError/);
  assert.match(page,/if\(request===detailRequest\.current\)setLoadingDetail\(false\)/);
