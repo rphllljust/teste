@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, useEffect, useRef, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -24,24 +24,74 @@ export function EnterpriseObjectSectionNavigation({
   const navRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(sections[0]?.id ?? '');
   const ids = sections.map(section => section.id).join('|');
+
   useEffect(() => {
     const root = navRef.current?.closest('.drawer');
-    if (!root || typeof IntersectionObserver === 'undefined') return;
-    const targets = ids.split('|').map(id => root.querySelector<HTMLElement>('[id="' + id + '"]')).filter((el): el is HTMLElement => !!el);
+    if (!root) return;
+    // Keep document links scoped to their own drawer even when IDs repeat.
+    const available = Array.from(root.querySelectorAll<HTMLElement>('[id]'));
+    const targets = ids.split('|').map(id => available.find(element => element.id === id))
+      .filter((element): element is HTMLElement => Boolean(element));
     if (!targets.length) return;
+    setActive(targets[0].id);
+    const syncActive = () => {
+      const readingLine = root.getBoundingClientRect().top + 145;
+      let current = targets[0];
+      for (const target of targets) {
+        if (target.getBoundingClientRect().top <= readingLine) current = target;
+      }
+      setActive(current.id);
+    };
+    root.addEventListener('scroll', syncActive, { passive: true });
+    syncActive();
+    if (typeof IntersectionObserver === 'undefined') {
+      return () => root.removeEventListener('scroll', syncActive);
+    }
     const observer = new IntersectionObserver(entries => {
-      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      const visible = entries.filter(entry => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
       if (visible[0]) setActive(visible[0].target.id);
+      else syncActive();
     }, { root, rootMargin: '-135px 0px -55% 0px', threshold: [0, 0.25, 0.5] });
     targets.forEach(target => observer.observe(target));
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      root.removeEventListener('scroll', syncActive);
+    };
   }, [ids]);
+
+  const navigateToSection = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    const root = navRef.current?.closest('.drawer');
+    const target = Array.from(root?.querySelectorAll<HTMLElement>('[id]') ?? [])
+      .find(element => element.id === id);
+    if (!target) return;
+    event.preventDefault(); // Do not change the host application's URL hash.
+    if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+    target.scrollIntoView({ block: 'start', behavior: 'auto' });
+    target.focus({ preventScroll: true });
+    setActive(id);
+  };
+
+  const focusAdjacent = (event: KeyboardEvent<HTMLAnchorElement>, currentIndex: number) => {
+    const count = sections.length;
+    if (!count) return;
+    let next = currentIndex;
+    if (event.key === 'ArrowRight') next = (currentIndex + 1) % count;
+    else if (event.key === 'ArrowLeft') next = (currentIndex - 1 + count) % count;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = count - 1;
+    else return;
+    event.preventDefault();
+    navRef.current?.querySelectorAll<HTMLAnchorElement>('a')[next]?.focus();
+  };
+
   return <nav ref={navRef} className="object-anchors" aria-label={label}>
-    {sections.map(section => <a
+    {sections.map((section, index) => <a
       key={section.id}
       href={'#' + section.id}
       aria-current={active === section.id ? 'location' : undefined}
-      onClick={() => setActive(section.id)}
+      onClick={event => navigateToSection(event, section.id)}
+      onKeyDown={event => focusAdjacent(event, index)}
     >{section.label}</a>)}
   </nav>;
 }
