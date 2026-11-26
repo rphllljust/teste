@@ -342,6 +342,21 @@ function HomeView() {
     [businessContract, setBusinessContract] = useState(""),
     [commercialOrigin, setCommercialOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
+  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("cisne:workspace-density");
+      if (saved === "compact" || saved === "comfortable") setDensity(saved);
+    } catch {
+      // Local storage may be disabled by managed browsers; density still works per session.
+    }
+  }, []);
+  function toggleDensity() {
+    const next = density === "compact" ? "comfortable" : "compact";
+    setDensity(next);
+    try { window.localStorage.setItem("cisne:workspace-density", next); }
+    catch { /* Browser restrictions must not interrupt the workspace. */ }
+  }
   const defaultsApplied = useRef(false);
   const operationGeneration = useRef(0);
   const requestGeneration = useRef(0);
@@ -1219,7 +1234,7 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app">
+    <div className="app" data-density={density}>
       {sidebar && (
         <button
           className="sidebar-scrim"
@@ -1311,12 +1326,32 @@ function HomeView() {
               <Search size={16} />
               Buscar no Cisne<kbd>Ctrl K</kbd>
             </button>
-            <span className="app-mode-pill">
-              <span aria-hidden="true" />
-              Workspace
-            </span>
+            <button
+              type="button"
+              className="enterprise-density-control"
+              aria-label={density === "compact" ? "Ativar visualização confortável" : "Ativar visualização compacta"}
+              aria-pressed={density === "compact"}
+              onClick={toggleDensity}
+              title="Alternar densidade de tabelas e formulários"
+            >
+              <SlidersHorizontal size={16} />
+              <span>{density === "compact" ? "Compacta" : "Confortável"}</span>
+            </button>
           </div>
         </header>
+        <nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">
+          <span>Acesso rápido</span>
+          {["Visão operacional", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+            <button
+              type="button"
+              key={module}
+              aria-current={page === module ? "page" : undefined}
+              onClick={() => navigate(module)}
+            >
+              {module}
+            </button>
+          ))}
+        </nav>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
