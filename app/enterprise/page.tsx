@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Tenant={id:string;slug:string;name:string;role:string;status:string};
 type Company={id:string;code:string;name:string;status:string;taxId?:string|null};
@@ -27,8 +27,18 @@ export default function EnterpriseStructurePage(){
  const [saving,setSaving]=useState(false);
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
+ const [memberQuery,setMemberQuery]=useState('');
+ const [roleFilter,setRoleFilter]=useState('all');
+ const detailRequest=useRef(0);
  const current=tenants.find(t=>t.id===tenantId);
  const isOwner=current?.role==='owner';
+ const canManage=isOwner||current?.role==='admin';
+ const filteredMembers=members.filter(member=>
+  (roleFilter==='all'||member.role===roleFilter)&&
+  (member.actorId.toLocaleLowerCase('pt-BR').includes(memberQuery.trim().toLocaleLowerCase('pt-BR')))
+ );
+ const activeMembers=members.filter(member=>member.status==='active').length;
+ const activeCompanies=companies.filter(company=>company.status==='active').length;
 
  const loadTenants=useCallback(async()=>{
   try{
@@ -40,7 +50,8 @@ export default function EnterpriseStructurePage(){
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void loadTenants(),0);return()=>clearTimeout(timer);},[loadTenants]);
  const loadDetail=useCallback(async(id:string)=>{
-  if(!id){setCompanies([]);setMembers([]);return;}
+  const request=++detailRequest.current;
+  if(!id){setCompanies([]);setMembers([]);setLoadingDetail(false);return;}
   setLoadingDetail(true);
   try{
    const root=tenantUrl+'/'+encodeURIComponent(id);
@@ -48,9 +59,13 @@ export default function EnterpriseStructurePage(){
     read<{items:Company[]}>(await fetch(root+'/legal-entities',{cache:'no-store'})),
     read<{items:Member[]}>(await fetch(root+'/members',{cache:'no-store'})),
    ]);
+   if(request!==detailRequest.current)return;
    setCompanies(companiesResult.items);setMembers(membersResult.items);
-  }catch(cause){setError(cause instanceof Error?cause.message:'Não foi possível consultar as unidades e permissões.');}
-  finally{setLoadingDetail(false);}
+  }catch(cause){
+   if(request===detailRequest.current)setError(cause instanceof Error?cause.message:'Não foi possível consultar as unidades e permissões.');
+  }finally{
+   if(request===detailRequest.current)setLoadingDetail(false);
+  }
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId),0);return()=>clearTimeout(timer);},[tenantId,loadDetail]);
 
@@ -90,67 +105,149 @@ export default function EnterpriseStructurePage(){
   finally{setSaving(false);}
  }
  async function deactivate(actorId:string){
-  if(!tenantId)return;setSaving(true);setError('');setNotice('');
+  if(!tenantId||!window.confirm('Desativar este vínculo empresarial? O usuário perderá o acesso concedido por esta organização.'))return;
+  setSaving(true);setError('');setNotice('');
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'deactivate',actorId});
    await loadDetail(tenantId);setNotice('Membro desativado com evento de auditoria.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao desativar vínculo.');}
   finally{setSaving(false);}
  }
- return <main className="app" style={{minHeight:'100vh',padding:'clamp(16px,3vw,40px)'}}>
-  <div className="worklist" style={{maxWidth:1180,margin:'0 auto'}}>
-   <header className="list-title">
-    <div><p className="eyebrow">CISNE / GOVERNANÇA EMPRESARIAL</p><h1>Estrutura empresarial</h1>
-    <p>Organizações, empresas jurídicas e acessos nativos com registro persistido e auditoria.</p></div>
-    <Link className="secondary" href="/" prefetch={false}>Voltar ao ERP</Link>
+ return <main className="app enterprise-governance">
+  <div className="enterprise-governance-layout">
+   <header className="enterprise-governance-header">
+    <div className="enterprise-governance-heading">
+     <span className="eyebrow">CISNE / ESTRUTURA ORGANIZACIONAL</span>
+     <h1>Governança empresarial</h1>
+     <p>Organizações, empresas jurídicas, vínculos e permissões com registros persistidos e auditoria.</p>
+    </div>
+    <div className="enterprise-governance-actions">
+     {current&&<button type="button" className="secondary" disabled={loadingDetail||saving}
+      onClick={()=>void loadDetail(tenantId)}>Atualizar organização</button>}
+     <Link className="secondary" href="/" prefetch={false}>Voltar ao ERP</Link>
+    </div>
    </header>
-   <p className="linked-info">Esta área administra o cadastro empresarial nativo. O isolamento dos registros legados por tenant ainda está em migração controlada; a presença de uma empresa aqui não altera os dados existentes.</p>
+
+   <nav className="enterprise-governance-anchors" aria-label="Seções de governança">
+    <a href="#governance-organizations">Organizações</a>
+    {current&&<a href="#governance-companies">Empresas jurídicas</a>}
+    {current&&canManage&&<a href="#governance-access">Pessoas e acessos</a>}
+   </nav>
+
+   <aside className="enterprise-governance-warning" role="note">
+    <strong>Escopo de implantação controlado</strong>
+    <p>O isolamento dos registros legados por tenant ainda está em migração controlada.
+     Criar uma organização ou empresa jurídica aqui não altera nem transfere dados históricos.</p>
+   </aside>
    {error&&<p role="alert" className="form-error">{error}</p>}
    {notice&&<p role="status" className="linked-info">{notice}</p>}
-   <section className="module-workspace">
-    <h2>Organizações</h2>
-    {loading?<p role="status">Carregando…</p>:<label>Organização ativa
-      <select value={tenantId} onChange={e=>{setError('');setTenantId(e.target.value);}} aria-label="Selecionar organização">
-       <option value="">Selecione uma organização</option>
-       {tenants.map(t=><option value={t.id} key={t.id}>{t.name} · {t.role}</option>)}
-      </select></label>}
-    <form onSubmit={createTenant}>
-     <h3>Registrar organização</h3>
-     <div className="form-row">
-      <label>Identificador (slug)<input name="slug" pattern="[a-z][a-z0-9-]{2,47}" minLength={3} maxLength={48} placeholder="grupo-exemplo" required/></label>
-      <label>Razão de referência<input name="name" minLength={3} maxLength={160} required/></label>
-     </div><button className="primary" disabled={saving}>Criar organização</button>
-    </form>
+
+   <section id="governance-organizations" className="enterprise-governance-panel" aria-labelledby="governance-organizations-title">
+    <div className="enterprise-governance-panel-heading">
+     <div><span className="eyebrow">01 / CONTEXTO EMPRESARIAL</span>
+      <h2 id="governance-organizations-title">Organizações e contexto ativo</h2>
+      <p>A seleção define o escopo de consulta desta página; as permissões são verificadas pelo servidor.</p>
+     </div>
+    </div>
+    {loading?<p role="status">Carregando organizações…</p>:<label className="enterprise-governance-select">Organização ativa
+     <select value={tenantId} onChange={e=>{
+      setError('');setNotice('');setMemberQuery('');setRoleFilter('all');
+      setCompanies([]);setMembers([]);setTenantId(e.target.value);
+     }} aria-label="Selecionar organização">
+      <option value="">Selecione uma organização</option>
+      {tenants.map(t=><option value={t.id} key={t.id}>{t.name} · {t.role}</option>)}
+     </select>
+    </label>}
+    {current&&<div className="enterprise-governance-facts" aria-label="Contexto persistido da organização">
+     <div><span>Organização</span><strong>{current.name}</strong><small>{current.slug}</small></div>
+     <div><span>Seu papel</span><strong>{current.role}</strong><small>Permissão da sessão</small></div>
+     <div><span>Situação</span><strong>{current.status}</strong><small>Estado registrado</small></div>
+     <div><span>Empresas ativas</span><strong>{loadingDetail?'—':activeCompanies}</strong><small>Registros da organização</small></div>
+     {canManage&&<div><span>Membros ativos</span><strong>{loadingDetail?'—':activeMembers}</strong><small>Vínculos provisionados</small></div>}
+    </div>}
+    <details className="enterprise-governance-disclosure">
+     <summary>Registrar nova organização</summary>
+     <form onSubmit={createTenant}>
+      <p className="enterprise-governance-hint">A criação é transacional, com identificador exclusivo e comando auditável.</p>
+      <div className="form-row">
+       <label>Identificador (slug)<input name="slug" pattern="[a-z][a-z0-9-]{2,47}" minLength={3} maxLength={48} placeholder="grupo-exemplo" required/></label>
+       <label>Razão de referência<input name="name" minLength={3} maxLength={160} required/></label>
+      </div>
+      <button className="primary" disabled={saving}>Criar organização</button>
+     </form>
+    </details>
    </section>
-   {current&&<section className="module-workspace" aria-busy={loadingDetail}>
-    <h2>Empresas jurídicas · {current.name}</h2>
+
+   {current&&<section id="governance-companies" className="enterprise-governance-panel" aria-labelledby="governance-companies-title" aria-busy={loadingDetail}>
+    <div className="enterprise-governance-panel-heading">
+     <div><span className="eyebrow">02 / ESTRUTURA LEGAL</span>
+      <h2 id="governance-companies-title">Empresas jurídicas · {current.name}</h2>
+      <p>Entidades vinculadas à organização selecionada, sem reclassificar registros legados.</p>
+     </div>
+     <span className="enterprise-governance-count">{loadingDetail?'Atualizando…':companies.length+' registro(s)'}</span>
+    </div>
     {loadingDetail?<p role="status">Consultando estrutura…</p>:companies.length?
-      <div className="table-wrap"><table><thead><tr><th>Código</th><th>Nome</th><th>Status</th></tr></thead>
-       <tbody>{companies.map(c=><tr key={c.id}><td>{c.code}</td><td>{c.name}</td><td>{c.status}</td></tr>)}</tbody>
-      </table></div>:<p>Nenhuma empresa jurídica cadastrada.</p>}
-    {isOwner||current.role==='admin'?<form onSubmit={createCompany}>
-     <h3>Registrar empresa jurídica</h3>
-     <div className="form-row"><label>Código<input name="code" pattern="[A-Za-z0-9_-]{2,20}" required maxLength={20}/></label>
-      <label>Razão social<input name="name" minLength={3} maxLength={160} required/></label>
-      <label>CNPJ (somente números, opcional)<input name="taxId" inputMode="numeric" pattern="[0-9]{14}"/></label></div>
-     <button className="primary" disabled={saving}>Registrar empresa</button>
-    </form>:null}
+     <div className="table-wrap enterprise-governance-table"><table>
+      <caption className="sr-only">Empresas jurídicas da organização ativa</caption>
+      <thead><tr><th scope="col">Código</th><th scope="col">Nome</th><th scope="col">Situação</th></tr></thead>
+      <tbody>{companies.map(company=><tr key={company.id}>
+       <td><strong>{company.code}</strong></td><td>{company.name}</td>
+       <td><span className="enterprise-governance-state">{company.status}</span></td>
+      </tr>)}</tbody>
+     </table></div>:<p className="enterprise-governance-empty">Nenhuma empresa jurídica registrada nesta organização.</p>}
+    {canManage&&<details className="enterprise-governance-disclosure">
+     <summary>Registrar empresa jurídica</summary>
+     <form onSubmit={createCompany}>
+      <div className="form-row">
+       <label>Código<input name="code" pattern="[A-Za-z0-9_-]{2,20}" required maxLength={20}/></label>
+       <label>Razão social<input name="name" minLength={3} maxLength={160} required/></label>
+       <label>CNPJ (somente números, opcional)<input name="taxId" inputMode="numeric" pattern="[0-9]{14}"/></label>
+      </div><button className="primary" disabled={saving}>Registrar empresa</button>
+     </form>
+    </details>}
    </section>}
-   {current&&(isOwner||current.role==='admin')&&<section className="module-workspace">
-    <h2>Equipe e permissões</h2>
-    <p>Perfis provisionados no contexto da organização; a autorização da API é independente da interface.</p>
-    <div className="table-wrap"><table><thead><tr><th>Identidade autenticável</th><th>Papel</th><th>Situação</th><th>Ação</th></tr></thead>
-    <tbody>{members.map(m=><tr key={m.actorId}><td>{m.actorId}</td><td>{m.role}</td><td>{m.status}</td>
-     <td>{isOwner&&m.role!=='owner'&&m.status==='active'?<button className="secondary" type="button" disabled={saving} onClick={()=>void deactivate(m.actorId)}>Desativar</button>:'—'}</td>
-    </tr>)}</tbody></table></div>
-    {isOwner&&<form onSubmit={provision}>
-     <h3>Provisionar identidade</h3>
-     <div className="form-row">
-      <label>ID de usuário autenticado<input name="actorId" minLength={8} maxLength={200} required pattern="[A-Za-z0-9_.:@-]+"/></label>
-      <label>Papel<select name="role" defaultValue="operator"><option value="operator">Operador</option><option value="accountant">Contador</option><option value="auditor">Auditor</option><option value="admin">Administrador</option></select></label>
-     </div><button className="primary" disabled={saving}>Provisionar membro</button>
-     <p className="muted">O ID deve corresponder a uma identidade verificada no provedor. Este cadastro não cria contas ou credenciais.</p>
-    </form>}
+
+   {current&&canManage&&<section id="governance-access" className="enterprise-governance-panel" aria-labelledby="governance-access-title" aria-busy={loadingDetail}>
+    <div className="enterprise-governance-panel-heading">
+     <div><span className="eyebrow">03 / SEGREGAÇÃO DE FUNÇÕES</span>
+      <h2 id="governance-access-title">Pessoas, papéis e acesso</h2>
+      <p>Provisionamento e desativação de vínculos por organização; autorização da API é independente da interface.</p>
+     </div>
+     <span className="enterprise-governance-count">{loadingDetail?'Atualizando…':members.length+' vínculo(s)'}</span>
+    </div>
+    <div className="enterprise-governance-filters">
+     <label>Buscar identidade<input type="search" value={memberQuery}
+      onChange={event=>setMemberQuery(event.target.value)} placeholder="Identidade autenticável" aria-label="Filtrar membros"/></label>
+     <label>Papel<select value={roleFilter} onChange={event=>setRoleFilter(event.target.value)} aria-label="Filtrar por papel">
+      <option value="all">Todos os papéis</option>
+      {['owner','admin','operator','accountant','auditor'].map(role=><option key={role} value={role}>{role}</option>)}
+     </select></label>
+    </div>
+    {loadingDetail?<p role="status">Consultando vínculos…</p>:
+     filteredMembers.length?<div className="table-wrap enterprise-governance-table"><table>
+      <caption className="sr-only">Membros e permissões da organização ativa</caption>
+      <thead><tr><th scope="col">Identidade autenticável</th><th scope="col">Papel</th><th scope="col">Situação</th><th scope="col">Ação permitida</th></tr></thead>
+      <tbody>{filteredMembers.map(m=><tr key={m.actorId}>
+       <td><strong>{m.actorId}</strong></td><td>{m.role}</td><td><span className="enterprise-governance-state">{m.status}</span></td>
+       <td>{isOwner&&m.role!=='owner'&&m.status==='active'?
+        <button className="secondary" type="button" disabled={saving} onClick={()=>void deactivate(m.actorId)}>Desativar vínculo</button>:'—'}</td>
+      </tr>)}</tbody>
+     </table></div>:<p className="enterprise-governance-empty">Nenhum vínculo corresponde à consulta e ao filtro atual.</p>}
+    <p className="enterprise-governance-hint" role="status">{filteredMembers.length} de {members.length} vínculo(s) exibido(s).</p>
+    {isOwner&&<details className="enterprise-governance-disclosure">
+     <summary>Provisionar identidade autenticável</summary>
+     <form onSubmit={provision}>
+      <div className="form-row">
+       <label>ID de usuário autenticado<input name="actorId" minLength={8} maxLength={200} required pattern="[A-Za-z0-9_.:@-]+"/></label>
+       <label>Papel<select name="role" defaultValue="operator">
+        <option value="operator">Operador</option><option value="accountant">Contador</option>
+        <option value="auditor">Auditor</option><option value="admin">Administrador</option>
+       </select></label>
+      </div>
+      <button className="primary" disabled={saving}>Provisionar membro</button>
+      <p className="enterprise-governance-hint">O ID deve corresponder a uma identidade verificada no provedor. O provisionamento não cria credenciais.</p>
+     </form>
+    </details>}
    </section>}
   </div>
  </main>;
