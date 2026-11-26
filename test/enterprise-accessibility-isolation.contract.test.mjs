@@ -53,3 +53,16 @@ test("density is persisted safely without affecting tenant state or API permissi
     ["two density states", /"compact" \| "comfortable"/],
   ], "responsive workspace density");
 });
+
+
+test("enterprise journey offers eight real workspaces without claiming business completion",async()=>{
+ const center=await readFile(new URL('../app/EnterpriseCommandCenter.tsx',import.meta.url),'utf8');
+ const nav=await readFile(new URL('../lib/navigation/catalog.ts',import.meta.url),'utf8');
+ for(const mod of ['Clientes e propostas','Contratos','Ordens de serviço','Execução','Medições','Faturamento','Caixa e conciliação','Contabilidade']){
+  assert.match(center,new RegExp("module:'"+mod+"'"),mod+' must exist in enterprise journey');
+  assert.ok(nav.includes('"'+mod+'"'),mod+' must resolve to a real workspace');
+ }
+ assert.match(center,/<nav className="value-stream" aria-label="Jornada empresarial entre módulos">/);
+ assert.match(center,/A navegação não significa que uma transação foi concluída/);
+ assert.match(center,/onClick=\{\(\)=>navigate\(step\.module\)\}/);
+});
