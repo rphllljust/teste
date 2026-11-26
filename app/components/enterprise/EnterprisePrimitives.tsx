@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, useEffect, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type KeyboardEvent, type MouseEvent, type ReactNode } from 'react';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -15,6 +15,121 @@ export function EnterprisePageHeader({ eyebrow, title, description, actions, bre
 export type EnterpriseObjectHeaderProps = { type:string; reference?:string; title:string; status?:EnterpriseStatus; statusLabel?:string; facts?:ReactNode; actions?:ReactNode; description?:string };
 export function BusinessObjectHeader({ type, reference, title, status, statusLabel, facts, actions, description }: EnterpriseObjectHeaderProps) { return <header className="business-object-header" aria-label={`${type}: ${title}`}><div className="business-object-heading"><span className="eyebrow">{type}{reference ? ` · ${reference}` : ''}</span><h2>{title}</h2>{description && <p className="enterprise-muted">{description}</p>}{facts && <div className="business-object-facts">{facts}</div>}</div>{(status || actions) && <div className="business-object-actions" aria-label="Ações do objeto">{status && <BusinessStatus status={status} label={statusLabel} />}{actions}</div>}</header>; }
 export const EnterpriseObjectHeader = BusinessObjectHeader;
+
+export type EnterpriseObjectSection = { id: string; label: string };
+/** Scoped drawer anchors: active location follows the actual scroll region. */
+export function EnterpriseObjectSectionNavigation({
+  sections, label = 'Seções do documento',
+}: { sections: readonly EnterpriseObjectSection[]; label?: string }) {
+  const navRef = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(sections[0]?.id ?? '');
+  const ids = sections.map(section => section.id).join('|');
+
+  useEffect(() => {
+    const root = navRef.current?.closest('.drawer');
+    if (!root) return;
+    // Keep document links scoped to their own drawer even when IDs repeat.
+    const available = Array.from(root.querySelectorAll<HTMLElement>('[id]'));
+    const targets = ids.split('|').map(id => available.find(element => element.id === id))
+      .filter((element): element is HTMLElement => Boolean(element));
+    if (!targets.length) return;
+    setActive(targets[0].id);
+    const syncActive = () => {
+      const readingLine = root.getBoundingClientRect().top + 145;
+      let current = targets[0];
+      for (const target of targets) {
+        if (target.getBoundingClientRect().top <= readingLine) current = target;
+      }
+      setActive(current.id);
+    };
+    root.addEventListener('scroll', syncActive, { passive: true });
+    syncActive();
+    if (typeof IntersectionObserver === 'undefined') {
+      return () => root.removeEventListener('scroll', syncActive);
+    }
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting)
+        .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible[0]) setActive(visible[0].target.id);
+      else syncActive();
+    }, { root, rootMargin: '-135px 0px -55% 0px', threshold: [0, 0.25, 0.5] });
+    targets.forEach(target => observer.observe(target));
+    return () => {
+      observer.disconnect();
+      root.removeEventListener('scroll', syncActive);
+    };
+  }, [ids]);
+
+  const navigateToSection = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
+    const root = navRef.current?.closest('.drawer');
+    const target = Array.from(root?.querySelectorAll<HTMLElement>('[id]') ?? [])
+      .find(element => element.id === id);
+    if (!target) return;
+    event.preventDefault(); // Do not change the host application's URL hash.
+    if (!target.hasAttribute('tabindex')) target.tabIndex = -1;
+    target.scrollIntoView({ block: 'start', behavior: 'auto' });
+    target.focus({ preventScroll: true });
+    setActive(id);
+  };
+
+  const focusAdjacent = (event: KeyboardEvent<HTMLAnchorElement>, currentIndex: number) => {
+    const count = sections.length;
+    if (!count) return;
+    let next = currentIndex;
+    if (event.key === 'ArrowRight') next = (currentIndex + 1) % count;
+    else if (event.key === 'ArrowLeft') next = (currentIndex - 1 + count) % count;
+    else if (event.key === 'Home') next = 0;
+    else if (event.key === 'End') next = count - 1;
+    else return;
+    event.preventDefault();
+    navRef.current?.querySelectorAll<HTMLAnchorElement>('a')[next]?.focus();
+  };
+
+  return <nav ref={navRef} className="object-anchors" aria-label={label}>
+    {sections.map((section, index) => <a
+      key={section.id}
+      href={'#' + section.id}
+      aria-current={active === section.id ? 'location' : undefined}
+      onClick={event => navigateToSection(event, section.id)}
+      onKeyDown={event => focusAdjacent(event, index)}
+    >{section.label}</a>)}
+  </nav>;
+}
+
+
+export type EnterpriseObjectSummaryFact = { label: string; value: ReactNode };
+export type EnterpriseObjectSummaryProps = {
+  id?: string;
+  type: string;
+  reference?: string | null;
+  title: string;
+  subtitle?: string | null;
+  status?: string | null;
+  facts?: ReadonlyArray<EnterpriseObjectSummaryFact>;
+};
+/**
+ * Consistent transaction header for commercial, operational and financial
+ * object details. Facts are supplied from real object projections only.
+ * Never infer a status or an amount from unrelated records.
+ */
+export function EnterpriseObjectSummary({
+  id, type, reference, title, subtitle, status, facts = [],
+}: EnterpriseObjectSummaryProps) {
+  return <section id={id} className="enterprise-object-summary" aria-label={type + ': ' + title}>
+    <span className="enterprise-object-summary-reference">{type}{reference ? ' · ' + reference : ''}</span>
+    <div className="enterprise-object-summary-title">
+      <h2>{title}</h2>
+      {status && <span className="badge" role="status">{status}</span>}
+    </div>
+    {subtitle && <p>{subtitle}</p>}
+    {facts.length > 0 && <dl className="enterprise-object-facts">
+      {facts.map(fact => <div className="enterprise-object-fact" key={fact.label}>
+        <dt>{fact.label}</dt><dd>{fact.value ?? '—'}</dd>
+      </div>)}
+    </dl>}
+  </section>;
+}
+
 
 export type EnterpriseObjectPageProps = HTMLAttributes<HTMLElement> & { title:string; header:ReactNode; sections?:Array<{id:string;label:string}>; children:ReactNode };
 export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) {

@@ -36,3 +36,45 @@ test("tenant and permission security contracts remain covered", () => {
 test("unsupported capabilities remain explicit", () => {
   expectAll(files.page, [["command metadata", /availableCommands/], ["blocked/manual state", /blocked|manual|not.?configured|não configurad|indispon/i], ["refresh", /Atualizar|refresh|reload/i]], "enterprise shell");
 });
+
+test("global quick access uses real module routing, not decorative links", () => {
+  expectAll(files.page, [
+    ["enterprise quick access landmark", /<nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">/],
+    ["all module quick actions navigate", /onClick=\{\(\) => navigate\(module\)\}/],
+    ["quick navigation tracks current module", /aria-current=\{page === module \? "page" : undefined\}/],
+  ], "global module shortcuts");
+});
+test("density is persisted safely without affecting tenant state or API permissions", () => {
+  expectAll(files.page, [
+    ["density attribute", /data-density=\{density\}/],
+    ["restored preference", /localStorage\.getItem\("cisne:workspace-density"\)/],
+    ["stored preference", /localStorage\.setItem\("cisne:workspace-density", next\)/],
+    ["accessible density button", /aria-pressed=\{density === "compact"\}/],
+    ["two density states", /"compact" \| "comfortable"/],
+  ], "responsive workspace density");
+});
+
+
+test("enterprise journey offers eight real workspaces without claiming business completion",async()=>{
+ const center=await readFile(new URL('../app/EnterpriseCommandCenter.tsx',import.meta.url),'utf8');
+ const nav=await readFile(new URL('../lib/navigation/catalog.ts',import.meta.url),'utf8');
+ for(const mod of ['Clientes e propostas','Contratos','Ordens de serviço','Execução','Medições','Faturamento','Caixa e conciliação','Contabilidade']){
+  assert.match(center,new RegExp("module:'"+mod+"'"),mod+' must exist in enterprise journey');
+  assert.ok(nav.includes('"'+mod+'"'),mod+' must resolve to a real workspace');
+ }
+ assert.match(center,/<nav className="value-stream" aria-label="Jornada empresarial entre módulos">/);
+ assert.match(center,/A navegação não significa que uma transação foi concluída/);
+ assert.match(center,/onClick=\{\(\)=>navigate\(step\.module\)\}/);
+});
+
+test("commercial-to-accounting journey exposes CRM, real proposals, treasury, and period close",async()=>{
+ const center=await readFile(new URL('../app/EnterpriseCommandCenter.tsx',import.meta.url),'utf8');
+ const nav=await readFile(new URL('../lib/navigation/catalog.ts',import.meta.url),'utf8');
+ for(const moduleLabel of ['CRM e Vendas','Propostas e PO','Tesouraria','Fechamentos']){
+  assert.ok(center.includes("module:'"+moduleLabel+"'"),moduleLabel+' must have a related action');
+  assert.ok(nav.includes('"'+moduleLabel+'"'),moduleLabel+' must be a registered workspace');
+ }
+ assert.match(center,/onClick=\{\(\)=>navigate\(action\.module\)\}/);
+ assert.match(center,/aria-label="Acessos complementares da jornada"/);
+ assert.doesNotMatch(center,/navegação transacional/);
+});

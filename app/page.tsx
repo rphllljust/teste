@@ -97,6 +97,9 @@ type Order = {
   created_at: string;
 };
 const iconByKey = { activity: Activity, dashboard: LayoutDashboard, orders: ClipboardList, people: Users, assets: Truck, finance: Wallet, billing: Receipt, accounting: BookOpen, inventory: Package, file: FileText, procurement: Package, field: HardHat, calendar: CalendarDays } as const;
+function normalizeEnterpriseSearch(value: string): string {
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
+}
 const modules: { group: string; items: [string, LucideIcon][] }[] = moduleGroups.map((group) => ({
   group: group.label,
   items: group.items.map((item: ModuleNavItem) => [item.label, iconByKey[item.icon]] as [string, LucideIcon]),
@@ -342,6 +345,25 @@ function HomeView() {
     [businessContract, setBusinessContract] = useState(""),
     [commercialOrigin, setCommercialOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
+  const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  useEffect(() => {
+    // Restore after hydration; no synchronous setState in effects or SSR/localStorage mismatch.
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem("cisne:workspace-density");
+        if (saved === "compact" || saved === "comfortable") setDensity(saved);
+      } catch {
+        // Managed browsers may deny localStorage; session density still works.
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  function toggleDensity() {
+    const next = density === "compact" ? "comfortable" : "compact";
+    setDensity(next);
+    try { window.localStorage.setItem("cisne:workspace-density", next); }
+    catch { /* Browser restrictions must not interrupt the workspace. */ }
+  }
   const defaultsApplied = useRef(false);
   const operationGeneration = useRef(0);
   const requestGeneration = useRef(0);
@@ -350,6 +372,8 @@ function HomeView() {
   const currentGroup =
     modules.find((group) => group.items.some(([name]) => name === page))?.group ??
     "INÍCIO E OPERAÇÃO";
+  const paletteModuleResults = modules.flatMap((group) => group.items)
+    .filter(([name]) => normalizeEnterpriseSearch(name).includes(normalizeEnterpriseSearch(paletteQuery)));
   useEffect(() => {
     const media = window.matchMedia("(min-width: 1440px)");
     const update = () => setDocked(media.matches);
@@ -727,6 +751,29 @@ function HomeView() {
     window.addEventListener("keydown", key);
     return () => window.removeEventListener("keydown", key);
   }, []);
+  function handlePaletteKey(event: React.KeyboardEvent<HTMLElement>) {
+    const options = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>(
+      'button[data-palette-option="true"]',
+    ));
+    const target = event.target as HTMLElement;
+    const isSearch = target instanceof HTMLInputElement;
+    if (event.key === "Enter" && isSearch && options.length) {
+      event.preventDefault();
+      options[0].click();
+      return;
+    }
+    if (!["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key) || !options.length) return;
+    if (isSearch && (event.key === "Home" || event.key === "End")) return;
+    const current = options.indexOf(target as HTMLButtonElement);
+    const last = options.length - 1;
+    let next = current;
+    if (event.key === "ArrowDown") next = current < 0 ? 0 : (current + 1) % options.length;
+    else if (event.key === "ArrowUp") next = current < 0 ? last : (current - 1 + options.length) % options.length;
+    else if (event.key === "Home") next = 0;
+    else if (event.key === "End") next = last;
+    event.preventDefault();
+    options[next]?.focus();
+  }
   function navigate(name: string, orderId = "") {
     setBusinessClient("");
     setBusinessContract("");
@@ -1219,7 +1266,7 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app">
+    <div className="app" data-density={density}>
       {sidebar && (
         <button
           className="sidebar-scrim"
@@ -1311,12 +1358,32 @@ function HomeView() {
               <Search size={16} />
               Buscar no Cisne<kbd>Ctrl K</kbd>
             </button>
-            <span className="app-mode-pill">
-              <span aria-hidden="true" />
-              Workspace
-            </span>
+            <button
+              type="button"
+              className="enterprise-density-control"
+              aria-label={density === "compact" ? "Ativar visualização confortável" : "Ativar visualização compacta"}
+              aria-pressed={density === "compact"}
+              onClick={toggleDensity}
+              title="Alternar densidade de tabelas e formulários"
+            >
+              <SlidersHorizontal size={16} />
+              <span>{density === "compact" ? "Compacta" : "Confortável"}</span>
+            </button>
           </div>
         </header>
+        <nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">
+          <span>Acesso rápido</span>
+          {["Visão operacional", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+            <button
+              type="button"
+              key={module}
+              aria-current={page === module ? "page" : undefined}
+              onClick={() => navigate(module)}
+            >
+              {module}
+            </button>
+          ))}
+        </nav>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
@@ -3515,6 +3582,8 @@ function HomeView() {
             role="dialog"
             aria-modal="true"
             aria-label="Busca global"
+            aria-describedby="cisne-palette-help"
+            onKeyDown={handlePaletteKey}
             onClick={(e) => e.stopPropagation()}
           >
             <label className="search-input">
@@ -3551,6 +3620,7 @@ function HomeView() {
                     {paletteResult.items.map((o) => (
                       <button
                         className="palette-result"
+                        data-palette-option="true"
                         key={o.id}
                         onClick={() => {
                           if (!isWork) navigate("Ordens de serviço");
@@ -3583,20 +3653,18 @@ function HomeView() {
               </div>
             )}
             <p>ÁREAS DO CISNE</p>
-            {modules
-              .flatMap((g) => g.items)
-              .filter(([n]) =>
-                n.toLowerCase().includes(paletteQuery.toLowerCase()),
-              )
-              .map(([n, Icon]) => (
-                <button key={n} onClick={() => navigate(n)}>
-                  <Icon size={18} />
-                  {n}
-                  <ChevronRight size={15} />
-                </button>
-              ))}
-            <footer>
-              <span>Busca por título da OS e cliente informado</span>
+            {paletteModuleResults.map(([name, Icon]) => (
+              <button type="button" data-palette-option="true" key={name} onClick={() => navigate(name)} aria-label={"Abrir módulo " + name}>
+                <Icon size={18} aria-hidden="true" />
+                {name}
+                <ChevronRight size={15} aria-hidden="true" />
+              </button>
+            ))}
+            {paletteModuleResults.length === 0 && (
+              <div className="palette-state" role="status">Nenhum módulo corresponde à busca.</div>
+            )}
+            <footer id="cisne-palette-help">
+              <span>Setas para escolher · Enter para abrir · Esc para fechar. Busca por título da OS e cliente informado.</span>
               <kbd>Esc</kbd>
             </footer>
           </section>
