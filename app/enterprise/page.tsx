@@ -59,7 +59,7 @@ export default function EnterpriseStructurePage(){
   finally{setLoading(false);}
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void loadTenants(),0);return()=>clearTimeout(timer);},[loadTenants]);
- const loadDetail=useCallback(async(id:string)=>{
+ const loadDetail=useCallback(async(id:string,role:string)=>{
   const request=++detailRequest.current;
   if(!id){setCompanies([]);setMembers([]);setLoadingDetail(false);return;}
   setLoadingDetail(true);
@@ -67,7 +67,9 @@ export default function EnterpriseStructurePage(){
    const root=tenantUrl+'/'+encodeURIComponent(id);
    const [companiesResult,membersResult]=await Promise.all([
     read<{items:Company[]}>(await fetch(root+'/legal-entities',{cache:'no-store'})),
-    read<{items:Member[]}>(await fetch(root+'/members',{cache:'no-store'})),
+    ['owner','admin'].includes(role)
+     ?read<{items:Member[]}>(await fetch(root+'/members',{cache:'no-store'}))
+     :Promise.resolve({items:[] as Member[]}),
    ]);
    if(request!==detailRequest.current)return;
    setCompanies(companiesResult.items);setMembers(membersResult.items);
@@ -77,7 +79,7 @@ export default function EnterpriseStructurePage(){
    if(request===detailRequest.current)setLoadingDetail(false);
   }
  },[]);
- useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId),0);return()=>clearTimeout(timer);},[tenantId,loadDetail]);
+ useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId,current?.role??''),0);return()=>clearTimeout(timer);},[tenantId,current?.role,loadDetail]);
 
  async function loadAudit(id:string,cursor:PermissionCursor|null=null){
   const request=++auditRequest.current;
@@ -120,7 +122,7 @@ export default function EnterpriseStructurePage(){
    await post(tenantUrl+'/'+tenantId+'/legal-entities',{id:newId(),commandKey:newId(),
     code:String(form.get('code')??'').trim().toUpperCase(),
     name:String(form.get('name')??'').trim(),...(form.get('taxId')?{taxId:String(form.get('taxId'))}:{})});
-   await loadDetail(tenantId);formElement.reset();setNotice('Empresa jurídica registrada.');
+   await loadDetail(tenantId,current?.role??'');formElement.reset();setNotice('Empresa jurídica registrada.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao registrar empresa jurídica.');}
   finally{setSaving(false);}
  }
@@ -131,7 +133,7 @@ export default function EnterpriseStructurePage(){
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'provision',
     actorId:String(form.get('actorId')??'').trim(),role:String(form.get('role')??'operator')});
-   await loadDetail(tenantId);formElement.reset();
+   await loadDetail(tenantId,current?.role??'');formElement.reset();
    setNotice('Vínculo provisionado. A identidade deverá autenticar-se com seu próprio acesso.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao provisionar membro.');}
   finally{setSaving(false);}
@@ -141,7 +143,7 @@ export default function EnterpriseStructurePage(){
   setSaving(true);setError('');setNotice('');
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'deactivate',actorId});
-   await loadDetail(tenantId);setNotice('Membro desativado com evento de auditoria.');
+   await loadDetail(tenantId,current?.role??'');setNotice('Membro desativado com evento de auditoria.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao desativar vínculo.');}
   finally{setSaving(false);}
  }
@@ -155,7 +157,7 @@ export default function EnterpriseStructurePage(){
     </div>
     <div className="enterprise-governance-actions">
      {current&&<button type="button" className="secondary" disabled={loadingDetail||saving}
-      onClick={()=>void loadDetail(tenantId)}>Atualizar organização</button>}
+      onClick={()=>void loadDetail(tenantId,current?.role??'')}>Atualizar organização</button>}
      <Link className="secondary" href="/" prefetch={false}>Voltar ao ERP</Link>
     </div>
    </header>
