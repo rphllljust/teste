@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
 import {POST as allocate} from '../../app/api/resources/allocations/route';
+import {GET as listAllocations} from '../../app/api/resources/allocations/route';
+import {POST as releaseAllocation} from '../../app/api/resources/allocations/[id]/commands/route';
+
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
@@ -31,6 +34,37 @@ test('resource allocation is tenant-scoped, idempotent, conflict-safe and blocks
  assert.deepEqual(professionalRace.map(response=>response.status).sort((a,b)=>a-b),[201,409]);
  const assetRace=await Promise.all([asset2,asset2].map(resourceId=>allocate(req({id:randomUUID(),orderId:order,resourceType:'asset',resourceId,startsAt:now,endsAt:later},actor))));
  assert.deepEqual(assetRace.map(response=>response.status).sort((a,b)=>a-b),[201,409]);
+ const calendar=(who:string,query:string)=>
+  setTestIdentity(new Request('http://localhost/api/resources/allocations?'+query),who);
+ const week='from=2026-11-20&to=2026-11-27&resourceType=all&status=active';
+ const ownerView=await listAllocations(calendar(actor,week));
+ assert.equal(ownerView.status,200);
+ const bookingRows=await ownerView.json() as {
+  items:Array<{id:string;orderId:string;resourceId:string;rowVersion:number}>;
+  limited:boolean;source:string;
+ };
+ assert.equal(bookingRows.source,'postgres_owner_scoped_allocations');
+ assert.equal(bookingRows.limited,false);
+ assert.equal(bookingRows.items.length,3);
+ assert.ok(bookingRows.items.some(item=>item.id===payload.id&&item.orderId===order));
+ const outside=await listAllocations(calendar(other,week));
+ assert.equal(outside.status,200);
+ assert.deepEqual((await outside.json() as {items:unknown[]}).items,[]);
+ const outsideBook=await releaseAllocation(
+  setTestIdentity(new Request('http://localhost/api/resources/allocations/'+payload.id+'/commands',{
+   method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({key:randomUUID(),version:1,command:'release'}),
+  }),other),{params:Promise.resolve({id:payload.id})});
+ assert.equal(outsideBook.status,404);
+ const release=await releaseAllocation(
+  setTestIdentity(new Request('http://localhost/api/resources/allocations/'+payload.id+'/commands',{
+   method:'POST',headers:{'content-type':'application/json'},
+   body:JSON.stringify({key:randomUUID(),version:1,command:'release'}),
+  }),actor),{params:Promise.resolve({id:payload.id})});
+ assert.equal(release.status,201);
+ const released=await listAllocations(calendar(actor,week));
+ assert.equal((await released.json() as {items:unknown[]}).items.length,2);
+ assert.equal((await listAllocations(calendar(actor,'from=2026-11-20&to=2027-02-01'))).status,400);
  const count=await pool.query('SELECT count(*)::int AS n FROM resource_allocations WHERE owner_id=$1',[actor]);
  assert.equal(count.rows[0].n,3);
 });
