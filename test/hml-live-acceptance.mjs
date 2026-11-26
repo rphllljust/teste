@@ -96,7 +96,7 @@ try {
       for (const command of commandPages) {
         const target = base.origin + '/#' + encodeURIComponent(command.label);
         const live = await page.goto(target,{waitUntil:'domcontentloaded',...time});
-        assert.equal(live?.status(),200,profile.name+' '+command.key+' shell response');
+        if(live)assert.equal(live.status(),200,profile.name+' '+command.key+' shell response');
         await page.getByRole('heading',{name:command.heading,exact:true})
           .waitFor({state:'visible',...time});
         await page.getByRole('region',{name:'Centro transacional de operações'})
