@@ -67,7 +67,7 @@ export async function POST(request: Request) {
         return result;
       }
 
-      const measurementRows = await query('SELECT m.id,m.order_id,m.amount,m.status,m.version,o.owner_id FROM measurements m JOIN service_orders o ON o.id=m.order_id WHERE m.id=$1 AND (o.owner_id IS NULL OR o.owner_id=$2) FOR UPDATE', [p.id, context!.actorId]);
+      const measurementRows = await query('SELECT m.id,m.order_id,m.amount,m.status,m.version,o.owner_id FROM measurements m JOIN service_orders o ON o.id=m.order_id WHERE m.id=$1 AND o.owner_id=$2 FOR UPDATE', [p.id, context!.actorId]);
       if (!measurementRows.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Medição não encontrada.');
       const measurement = measurementRows.rows[0] as { id: string; order_id: string; amount: number; status: string; version: number; owner_id: string | null };
       if (measurement.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A medição mudou. Atualize o contexto.');
