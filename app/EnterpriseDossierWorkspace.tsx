@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenText, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, DatabaseZap, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
-import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseObjectSectionNavigation, EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 
 type DossierListItem = {
@@ -310,7 +310,14 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
               <ClipboardList size={16} aria-hidden="true"/> Abrir ordem de serviço
             </button>
           </div>
-          <div className="enterprise-dossier-financials" aria-label="Conciliação de valores da cadeia identificada">
+          <EnterpriseObjectSectionNavigation rootSelector=".enterprise-dossier-drawer"
+            label="Navegação pelas seções da cadeia empresarial"
+            sections={[
+              {id:'dossier-financials',label:'Valores'},
+              ...detail.stages.map(stage=>({id:'dossier-'+stage.key,label:stage.title})),
+              {id:'dossier-history',label:'Auditoria'},
+            ]}/>
+          <div id="dossier-financials" className="enterprise-dossier-financials" aria-label="Conciliação de valores da cadeia identificada">
             <div><span>Faturado identificado</span><strong>{scaledMoney(detail.financials.billedScaled)}</strong></div>
             <div><span>Recebimentos líquidos</span><strong>{scaledMoney(detail.financials.settledScaled)}</strong></div>
             <div><span>Diferença documental</span><strong>{scaledMoney(detail.financials.outstandingScaled)}</strong></div>
@@ -328,7 +335,8 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
               <span>{detail.stages.filter(stage=>stage.state==='linked').length} de {detail.stages.length} etapas com registros</span>
             </div>
             <p className="enterprise-dossier-legend">Etapas com registros não representam processos concluídos. Cada situação corresponde ao estado efetivamente persistido.</p>
-            {detail.stages.map((stage,index)=><section key={stage.key} className="enterprise-dossier-stage" aria-label={stage.title}>
+            {detail.stages.map((stage,index)=><section key={stage.key} id={'dossier-'+stage.key}
+              className="enterprise-dossier-stage" aria-label={stage.title}>
               <div className="enterprise-dossier-stage-heading">
                 <span className="enterprise-dossier-stage-number">{String(index+1).padStart(2,'0')}</span>
                 <div><h4>{stage.title}</h4>
@@ -346,7 +354,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
               {stage.truncated&&<p className="enterprise-dossier-limit">Exibindo somente os 50 registros mais recentes nesta etapa.</p>}
             </section>)}
           </section>
-          <section className="enterprise-dossier-history">
+          <section id="dossier-history" className="enterprise-dossier-history">
             <h3>Histórico da ordem</h3>
             {detail.history.length? <ol>{detail.history.map(event=><li key={event.id}>
               <strong>{event.command}</strong><span>{dateLabel(event.createdAt)}</span>
