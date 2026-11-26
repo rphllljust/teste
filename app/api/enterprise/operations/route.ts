@@ -40,7 +40,7 @@ export async function GET(request:Request){
     const base=`o.owner_id=$1
       AND ($2='' OR o.title ILIKE $2 OR o.client ILIKE $2 OR o.id::text ILIKE $2)
       AND ($3='all' OR o.category=$3)`;
-    const overdue=`o.due_date IS NOT NULL AND o.due_date < CURRENT_DATE
+    const overdue=`o.due_date IS NOT NULL AND o.due_date < to_char(CURRENT_DATE,'YYYY-MM-DD')
         AND o.status NOT IN ('completed','cancelled')`;
     const unmeasured=`o.status='completed'
         AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id)`;
@@ -90,8 +90,7 @@ export async function GET(request:Request){
     const items=(rows.rows as Array<Record<string,unknown>>).map(row=>{
       const status=String(row.status);
       const hasDue=row.due_date!=null&&String(row.due_date).length>0;
-      const isOverdue=hasDue && String(row.due_date).slice(0,10)<
-        new Date().toISOString().slice(0,10) && !['completed','cancelled'].includes(status);
+      const isOverdue=hasDue && Number(row.attention_rank)===0;
       const isUnmeasured=status==='completed'&&Number(row.measurements)===0;
       return {
         id:String(row.id),title:String(row.title),client:String(row.client),
