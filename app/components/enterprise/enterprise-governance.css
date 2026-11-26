@@ -109,3 +109,12 @@
 @media (prefers-reduced-motion: reduce) {
   .enterprise-governance * { scroll-behavior: auto !important; }
 }
+
+/* Enterprise permission-event ledger: visibly distinguish recorded facts from permissions. */
+#governance-audit .enterprise-governance-panel-heading > div{min-width:0;flex:1 1 350px}
+#governance-audit .enterprise-governance-table table{min-width:760px}
+#governance-audit .enterprise-governance-table td{font-size:12px;max-width:260px}
+#governance-audit .enterprise-governance-table code{font-size:11px;overflow-wrap:anywhere;white-space:normal;color:#24485c}
+#governance-audit > button.secondary{margin-top:14px;min-height:36px}
+#governance-audit .enterprise-governance-empty{margin-bottom:12px}
+@media(max-width:720px){#governance-audit .enterprise-governance-panel-heading > button{width:100%}}
