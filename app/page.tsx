@@ -1440,6 +1440,7 @@ function HomeView() {
               "Field Service Cockpit",
               "Resource Planning Board",
               "Dossiês empresariais",
+              "Visão operacional",
             ].includes(page) && (
               <>
               <EnterprisePageHeader
@@ -1478,7 +1479,6 @@ function HomeView() {
             </div>
           )}
           {[
-            "Visão operacional",
             "Ordens de serviço",
             "Execução",
             "Medições",
