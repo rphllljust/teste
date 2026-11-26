@@ -32,6 +32,7 @@ const migrations = [
   { id: '0021_chart_accounts_tenant_unique', file: '../drizzle-pg/0021_chart_accounts_tenant_unique.sql' },
   { id: '0022_native_payable_accounting', file: '../drizzle-pg/0022_native_payable_accounting.sql' },
   { id: '0023_procurement_supplier_three_way_match', file: '../drizzle-pg/0023_procurement_supplier_three_way_match.sql' },
+  { id: '0024_enterprise_owner_query_indexes', file: '../drizzle-pg/0024_enterprise_owner_query_indexes.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
