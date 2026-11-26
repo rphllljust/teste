@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, X } from 'lucide-react';
-import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 
 type Lead = {
   id:string; contactName:string; companyName:string; contactEmail:string|null;
