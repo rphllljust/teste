@@ -1,0 +1,159 @@
+/* CISNE ERP Tier 1 — transaction dossier. Source: owned PostgreSQL facts only. */
+.enterprise-dossier { min-width:0; max-width:100%; }
+.enterprise-dossier .enterprise-page-header { align-items:flex-start; }
+.enterprise-dossier-notice {
+  display:flex; align-items:flex-start; gap:11px; padding:13px 17px;
+  border:1px solid #bcd9dc; border-left:3px solid #2f8390;
+  background:#f4fafb; border-radius:8px; margin:0 0 16px;
+}
+.enterprise-dossier-notice svg { flex-shrink:0; color:#17697c; margin-top:2px; }
+.enterprise-dossier-notice p { margin:0; color:#49687b; line-height:1.6; font-size:12px; }
+.enterprise-dossier-notice strong { color:#195266; }
+.enterprise-dossier-toolbar {
+  display:flex; gap:12px; align-items:end; padding:18px; border:1px solid #dce7ef;
+  background:white; border-radius:9px 9px 0 0; flex-wrap:wrap;
+}
+.enterprise-dossier-toolbar > label { display:grid; gap:6px; font-size:12px; font-weight:650; min-width:170px; }
+.enterprise-dossier-toolbar > label:first-child { flex:1 1 280px; }
+.enterprise-dossier-toolbar input, .enterprise-dossier-toolbar select {
+  border:1px solid #cbd8e3; border-radius:7px; padding:9px 12px;
+  background:white; color:#21394d; min-height:41px; width:100%; max-width:100%;
+}
+.enterprise-dossier-search-input { position:relative; display:flex; align-items:center; min-width:0; }
+.enterprise-dossier-search-input svg { position:absolute; left:10px; color:#627c8f; }
+.enterprise-dossier-search-input input { padding-left:34px; }
+.enterprise-dossier-list-meta {
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  padding:11px 18px; font-size:11px; color:#5b7489;
+  background:#f8fafc; border-inline:1px solid #dce7ef;
+}
+.enterprise-dossier-list-meta strong { color:#1b4059; }
+.enterprise-dossier-table-wrap {
+  background:white; overflow-x:auto; overscroll-behavior-inline:contain;
+  border-inline:1px solid #dce7ef; scrollbar-width:thin;
+}
+.enterprise-dossier-table { border-spacing:0; border-collapse:separate; min-width:980px; width:100%; }
+.enterprise-dossier-table th {
+  position:sticky; top:0; z-index:1; background:#f2f6f9; padding:11px 14px;
+  font-size:11px; font-weight:700; color:#4f6678; white-space:nowrap;
+}
+.enterprise-dossier-table td { padding:12px 14px; border-bottom:1px solid #e8eef3; font-size:12px; vertical-align:middle; }
+.enterprise-dossier-table td:first-child { min-width:210px; max-width:340px; white-space:normal; }
+.enterprise-dossier-table td strong { display:block; font-size:12px; font-weight:700; overflow-wrap:anywhere; }
+.enterprise-dossier-table td small { display:block; margin-top:4px; color:#6c8194; overflow-wrap:anywhere; }
+.enterprise-dossier-table tbody tr:hover { background:#f5f9fc; }
+.enterprise-dossier-table .secondary { min-height:35px; font-size:11px; white-space:nowrap; padding:6px 9px; }
+.enterprise-dossier-status {
+  display:inline-flex; padding:4px 9px; border:1px solid #d9e4ed;
+  background:#f2f6fa; border-radius:99px; font-size:11px; font-weight:650; white-space:nowrap;
+}
+.enterprise-dossier-status.status-completed { color:#246653; background:#eef7f1; border-color:#cae5d3; }
+.enterprise-dossier-status.status-executing { color:#206582; background:#eef7fa; border-color:#c2deeb; }
+.enterprise-dossier-status.status-cancelled { color:#a03939; background:#fff5f3; border-color:#f4d5d0; }
+.enterprise-dossier-num { font-variant-numeric:tabular-nums; font-weight:700; white-space:nowrap; text-align:right; }
+.enterprise-dossier-pagination {
+  display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+  padding:13px 18px; background:#fff; border:1px solid #dce7ef; border-radius:0 0 9px 9px;
+  color:#637b90; font-size:12px;
+}
+.enterprise-dossier-pagination > div { display:flex; gap:8px; }
+.enterprise-dossier-pagination .secondary { min-height:35px; }
+.enterprise-dossier-empty,
+.enterprise-dossier-loading { display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:10px; background:white; border:1px solid #dce7ef;
+  padding:48px 18px; color:#6b8295; text-align:center; }
+.enterprise-dossier-error { display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  border:1px solid #efc8c8; border-left:3px solid #b94e4e; border-radius:7px;
+  background:#fff9f8; color:#963b3b; padding:12px 15px; margin-bottom:14px; font-size:12px; }
+.enterprise-dossier-error p { flex:1 1 220px; margin:0; }
+.enterprise-dossier-overlay { display:flex; justify-content:flex-end; align-items:stretch; z-index:90; }
+.enterprise-dossier-drawer {
+  width:min(1050px,calc(100vw - 32px)); height:100dvh; min-height:0;
+  background:#fff; overflow-y:auto; overscroll-behavior-y:contain;
+  padding:0 28px 32px; border-left:1px solid #d6e3ed; box-shadow:-16px 0 48px rgb(16 32 48 / 18%);
+}
+.enterprise-dossier-drawer-head {
+  position:sticky; top:0; z-index:10; display:flex; justify-content:space-between;
+  align-items:center; gap:10px; padding:16px 0; border-bottom:1px solid #dfe8f0;
+  background:white;
+}
+.enterprise-dossier-drawer-head h2 { margin:4px 0 0; font-size:20px; }
+.enterprise-dossier-object-head {
+  padding:20px; border:1px solid #dfe8f0; border-radius:9px; background:#f8fafc; margin:18px 0;
+}
+.enterprise-dossier-object-head h2 { margin:5px 0 6px; font-size:clamp(20px,2vw,29px); overflow-wrap:anywhere; }
+.enterprise-dossier-object-head > p { margin:0 0 15px; color:#62798e; }
+.enterprise-dossier-factrow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; margin:12px 0 18px; }
+.enterprise-dossier-factrow > div { padding:11px 13px; border:1px solid #dfe6ef; background:white; border-radius:7px; min-width:0; }
+.enterprise-dossier-factrow span { display:block; font-size:11px; color:#5d7588; }
+.enterprise-dossier-factrow strong { display:block; margin-top:5px; font-size:13px; overflow-wrap:anywhere; }
+.enterprise-dossier-financials {
+  display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:18px;
+}
+.enterprise-dossier-financials > div {
+  border:1px solid #dbe5ee; border-radius:8px; padding:15px; min-width:0; background:white;
+}
+.enterprise-dossier-financials span { display:block; color:#5e768b; font-size:12px; margin-bottom:7px; }
+.enterprise-dossier-financials strong { display:block; color:#203e57; font-size:clamp(17px,1.8vw,24px); font-variant-numeric:tabular-nums; white-space:normal; overflow-wrap:anywhere; }
+.enterprise-dossier-financials p { grid-column:1 / -1; margin:0; font-size:11px; color:#677d8e; }
+.enterprise-dossier-alerts { margin:0 0 20px; padding:16px; border:1px solid #eadcbf; border-radius:8px; background:#fffcf6; }
+.enterprise-dossier-alerts h3 { margin:0 0 12px; font-size:15px; }
+.enterprise-dossier-alert { display:flex; align-items:flex-start; gap:8px; font-size:12px; color:#735f43; line-height:1.5; margin:8px 0; }
+.enterprise-dossier-alert svg { flex-shrink:0; }
+.enterprise-dossier-alert.severity-warning { color:#984b2d; }
+.enterprise-dossier-section-head { display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; }
+.enterprise-dossier-section-head h3 { font-size:17px; margin:0; }
+.enterprise-dossier-section-head > span { color:#697f90; font-size:12px; }
+.enterprise-dossier-legend { font-size:12px; color:#708395; margin:10px 0 14px; }
+.enterprise-dossier-stage {
+  border:1px solid #dfe8ef; border-radius:8px; margin-bottom:12px; overflow:hidden;
+}
+.enterprise-dossier-stage-heading { display:flex; align-items:center; gap:10px; background:#f6f9fc; padding:12px 15px; }
+.enterprise-dossier-stage-number {
+  display:inline-flex; flex-shrink:0; align-items:center; justify-content:center;
+  width:31px; height:31px; border:1px solid #d1e1e9; background:white; border-radius:7px;
+  color:#2b6e81; font-size:12px; font-weight:700;
+}
+.enterprise-dossier-stage-heading > div { flex:1; min-width:0; }
+.enterprise-dossier-stage-heading h4 { margin:0; font-size:13px; font-weight:700; }
+.enterprise-dossier-stage-heading small { display:block; color:#667e91; margin-top:3px; font-size:11px; }
+.enterprise-dossier-stage-heading button { min-height:32px; font-size:11px; padding:6px 9px; }
+.enterprise-dossier-evidence { list-style:none; padding:0 15px; margin:0; }
+.enterprise-dossier-evidence li { display:flex; justify-content:space-between; align-items:center;
+  gap:10px; min-width:0; padding:11px 0; border-bottom:1px solid #e9eef3; }
+.enterprise-dossier-evidence li:last-child { border-bottom:0; }
+.enterprise-dossier-evidence li > div { min-width:0; }
+.enterprise-dossier-evidence strong { display:block; font-size:12px; overflow-wrap:anywhere; }
+.enterprise-dossier-evidence small { display:block; color:#6c8091; font-size:11px; margin-top:3px; }
+.enterprise-dossier-stage-empty { font-size:12px; color:#768a98; margin:0; padding:13px 15px; }
+.enterprise-dossier-limit { margin:0; padding:8px 15px; color:#8a6531; background:#fff9ec; font-size:11px; }
+.enterprise-dossier-history { margin-top:20px; }
+.enterprise-dossier-history h3 { font-size:16px; }
+.enterprise-dossier-history ol { margin:0; padding:0; list-style:none; }
+.enterprise-dossier-history li { display:flex; justify-content:space-between; gap:10px; padding:9px 0; border-bottom:1px solid #ecf0f4; font-size:12px; }
+.enterprise-dossier-history li span { color:#647d92; }
+.enterprise-dossier-provenance { display:flex; align-items:flex-start; gap:8px; border-top:1px solid #dfe6ed; padding-top:15px; margin-top:22px; color:#637a8d; font-size:11px; }
+.enterprise-dossier-provenance svg { flex-shrink:0; }
+.enterprise-dossier-provenance p { margin:0; }
+@media (max-width:1000px) {
+ .enterprise-dossier-drawer { width:min(900px,calc(100vw - 16px)); padding-inline:20px; }
+ .enterprise-dossier-financials { grid-template-columns:repeat(2,minmax(0,1fr)); }
+}
+@media (max-width:700px) {
+ .enterprise-dossier-drawer { width:100vw; height:100dvh; max-height:100dvh; padding:0 14px 24px; border-left:0; }
+ .enterprise-dossier-factrow, .enterprise-dossier-financials { grid-template-columns:1fr; }
+ .enterprise-dossier-toolbar { padding:13px; }
+ .enterprise-dossier-toolbar > label { flex:1 1 100%; }
+ .enterprise-dossier-stage-heading { flex-wrap:wrap; padding:10px; }
+ .enterprise-dossier-stage-heading button { flex:1 1 100%; justify-content:center; }
+ .enterprise-dossier-list-meta > span:last-child { display:none; }
+ .enterprise-dossier-evidence li { flex-wrap:wrap; }
+ .enterprise-dossier-evidence li > span { margin-left:auto; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .enterprise-dossier * { scroll-behavior:auto !important; animation-duration:.01ms !important; }
+}
+@media (forced-colors:active) {
+ .enterprise-dossier-status, .enterprise-dossier-stage-number { border:1px solid CanvasText; }
+ .enterprise-dossier a:focus-visible, .enterprise-dossier button:focus-visible { outline:2px solid Highlight; }
+}
