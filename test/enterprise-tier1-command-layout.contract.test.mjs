@@ -1,0 +1,51 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const workbench=read('app/EnterpriseOperationsWorkbench.tsx');
+const shell=read('app/page.tsx');
+const grid=read('app/components/enterprise/EnterpriseSmartGrid.tsx');
+const layout=read('app/layout.tsx');
+const css=read('app/components/enterprise/enterprise-operations-tier1.css');
+
+test('the command center separates operational work, analytics and finance while retaining authenticated evidence',()=>{
+ assert.match(workbench,/useState<'work'\|'insights'\|'finance'>\('work'\)/);
+ assert.match(workbench,/role="tablist"/);
+ for(const tab of ['cisne-view-work','cisne-view-insights','cisne-view-finance'])assert.ok(workbench.includes(tab));
+ assert.match(workbench,/surface==='insights'&&/);
+ assert.match(workbench,/surface==='finance'&&/);
+ assert.match(workbench,/surface==='work'/);
+ assert.match(workbench,/<EnterpriseOperationsAnalytics/);
+ assert.match(workbench,/<EnterpriseFinancialAssurance/);
+ assert.match(workbench,/fetch\('\/api\/enterprise\/operations\?'\+params/);
+ assert.match(workbench,/fetch\('\/api\/orders\/'\+encodeURIComponent\(selectedId\)/);
+ assert.doesNotMatch(workbench,/Math\.random|mockOrders|faker/);
+});
+test('worklist is legible, keyboard-operable, owner-scoped and does not mutate transactions',()=>{
+ assert.match(workbench,/key:'evidence',title:'Evidências'/);
+ assert.match(workbench,/row\.evidence\.executions/);
+ assert.match(workbench,/row\.evidence\.measurements/);
+ assert.match(workbench,/row\.evidence\.invoices/);
+ assert.match(workbench,/activeKey=\{selectedId\}/);
+ assert.match(workbench,/cisne-workstation-mobile-list/);
+ assert.match(workbench,/onClick=\{\(\)=>inspectOrder\(row\)\}/);
+ assert.match(workbench,/event\.key==='Escape'/);
+ assert.match(workbench,/onOpenOrder\(selected\.id\)/);
+ assert.match(grid,/activeKey\?:Key\|null/);
+ assert.match(grid,/aria-selected=\{activeKey!=null/);
+ assert.doesNotMatch(workbench,/method:\s*['"]POST['"]/);
+});
+test('responsive inspector is a scoped drawer, legacy shell and all business domains remain intact',()=>{
+ assert.match(shell,/data-workspace=\{page === "Visão operacional"/);
+ assert.match(layout,/enterprise-operations-tier1\.css/);
+ assert.match(css,/min-width:1100px/);
+ assert.match(css,/max-width:1060px/);
+ assert.match(css,/max-width:800px/);
+ assert.match(css,/max-width:540px/);
+ assert.match(css,/data-mobile-inspector="open"/);
+ assert.match(css,/cisne-workstation-mobile-list/);
+ assert.match(css,/forced-colors:active/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(workbench,/role=\{narrow&&mobileInspectorOpen\?'dialog'/);
+ assert.match(workbench,/Comandos|Transições autorizadas/);
+});

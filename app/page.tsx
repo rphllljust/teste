@@ -1279,7 +1279,8 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}>
+    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
+      data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" : "standard"}>
       {sidebar && (
         <button
           className="sidebar-scrim"
