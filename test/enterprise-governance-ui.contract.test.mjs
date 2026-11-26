@@ -71,3 +71,33 @@ test('object navigation scopes its anchors, keeps URL stable, and supports keybo
  assert.match(source,/root\.addEventListener\('scroll', syncActive/);
  assert.match(source,/root\.removeEventListener\('scroll', syncActive/);
 });
+
+test('governance behaves as a responsive object page with factual tenant scope and guarded actions',async()=>{
+ const css=await readFile(new URL('../app/components/enterprise/enterprise-governance.css',import.meta.url),'utf8');
+ const layout=await readFile(new URL('../app/layout.tsx',import.meta.url),'utf8');
+ for(const id of ['governance-organizations','governance-companies','governance-access']){
+  assert.ok(page.includes('id="'+id+'"'),id+' must identify a real section');
+  assert.ok(page.includes('href="#'+id+'"'),id+' must have a navigation anchor');
+ }
+ assert.match(page,/const canManage=isOwner\|\|current\?\.role==='admin'/);
+ assert.match(page,/const activeCompanies=companies\.filter/);
+ assert.match(page,/const activeMembers=members\.filter/);
+ assert.match(page,/aria-label="Contexto persistido da organização"/);
+ assert.match(page,/const filteredMembers=members\.filter/);
+ assert.match(page,/window\.confirm\('Desativar este vínculo empresarial\?/);
+ assert.match(page,/role="note"/);
+ assert.match(page,/isolamento dos registros legados por tenant ainda está em migração controlada/);
+ assert.match(css,/\.enterprise-governance-panel/);
+ assert.match(css,/@media \(max-width: 820px\)/);
+ assert.match(css,/@media \(max-width: 480px\)/);
+ assert.ok(layout.includes('enterprise-governance.css'));
+});
+
+test('stale company and role responses cannot leak across rapid tenant switches',()=>{
+ assert.match(page,/const detailRequest=useRef\(0\)/);
+ assert.match(page,/const request=\+\+detailRequest\.current/);
+ assert.match(page,/if\(request!==detailRequest\.current\)return/);
+ assert.match(page,/if\(request===detailRequest\.current\)setError/);
+ assert.match(page,/if\(request===detailRequest\.current\)setLoadingDetail\(false\)/);
+ assert.match(page,/setCompanies\(\[\]\);setMembers\(\[\]\);setTenantId\(e\.target\.value\)/);
+});
