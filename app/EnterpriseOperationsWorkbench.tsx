@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ArrowRight, CalendarClock, CheckCircle2, CircleAlert, ClipboardList, ListFilter, Plus, RefreshCw, Search, ShieldCheck, Users } from 'lucide-react';
 import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
+import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 
 type Queue='all'|'attention'|'overdue'|'unmeasured'|'draft'|'authorized'|'executing'|'completed';
 type Sort='priority'|'deadline'|'recent'|'client';
@@ -16,6 +17,7 @@ type ResponseData={
  items:Row[];
  summary:{total:number;draft:number;executing:number;overdue:number;unmeasured:number;authorized:number};
  pageInfo:{page:number;pageSize:number;total:number;hasMore:boolean};
+ analytics:OperationsAnalytics;
  source:'postgres_owner_scoped_operations';generatedAt:string;note:string;
 };
 type Detail={
@@ -178,6 +180,8 @@ export default function EnterpriseOperationsWorkbench({
      <strong>{item.value??'—'}</strong><span>{item.label}</span>
     </button>)}
   </div>
+  {mode==='command'&&<EnterpriseOperationsAnalytics summary={summary} analytics={data?.analytics}
+    generatedAt={data?.generatedAt} navigate={navigate}/>}
   <div className="enterprise-operations-toolbar">
    <label className="enterprise-operations-search"><Search size={16}/>
     <input value={search} type="search" onChange={e=>setSearch(e.target.value)}
