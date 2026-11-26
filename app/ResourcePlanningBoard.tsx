@@ -9,7 +9,7 @@ type Asset={id:string;code:string;name:string;kind:string;location:string|null;s
 type Order={id:string;title:string;client:string;category:string;status:string;due_date:string|null};
 type Allocation={id:string;orderId:string;resourceType:"professional"|"asset";resourceId:string;startsAt:string;endsAt:string;status:"active"|"released";rowVersion:number;orderTitle:string;orderClient:string;orderStatus:string;resourceName:string;resourceReference:string|null};
 type Resources={id:string;type:"professional"|"asset";name:string;reference:string;detail:string;status:string};
-type Props={onOpenOrder:(id:string)=>void};
+type Props={onOpenOrder:(id:string)=>void;onNavigate:(module:string)=>void};
 type Loadable={items?:Professional[]|Asset[];orders?:Order[];error?:string};
 type AllocationResult={items:Allocation[];limited:boolean;source:string};
 const DAY=86400000;
@@ -28,7 +28,7 @@ const localizedDateTime=(date:Date)=>{
  return date.getFullYear()+"-"+pad(date.getMonth()+1)+"-"+pad(date.getDate())+"T"+pad(date.getHours())+":"+pad(date.getMinutes());
 };
 
-export default function ResourcePlanningBoard({onOpenOrder}:Props){
+export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
  const [people,setPeople]=useState<Professional[]>([]);
  const [assets,setAssets]=useState<Asset[]>([]);
  const [orders,setOrders]=useState<Order[]>([]);
@@ -140,7 +140,19 @@ export default function ResourcePlanningBoard({onOpenOrder}:Props){
   <div className="planning-ledger-note" role="note">
    <CalendarDays size={17}/><span>Alocações exibidas são registros reais do PostgreSQL. Um recurso sem agendamento não representa disponibilidade contratual confirmada.</span>
   </div>
-  {error&&<ErrorState message={error} onRetry={()=>void load()}/>}
+  {!loading && (activeResources.length===0 || openOrders.length===0) && <section className="planning-preflight" role="note">
+    <div><strong>{activeResources.length===0?"Cadastre capacidade antes de programar":"Cadastre ou autorize uma OS para alocar"}</strong>
+      <p>{activeResources.length===0?"Não existem profissionais ou ativos ativos nesta consulta. As alocações só podem ser registradas para recursos autorizados.":"As alocações exigem uma OS planejada, autorizada ou em execução. Consulte a fila de ordens antes de programar."}</p>
+    </div>
+    <div className="planning-preflight-actions">
+      {activeResources.length===0&&<>
+        <button type="button" className="secondary" onClick={()=>onNavigate("Profissionais")}>Abrir profissionais</button>
+        <button type="button" className="secondary" onClick={()=>onNavigate("Frota e ativos")}>Abrir frota e ativos</button>
+      </>}
+      {openOrders.length===0&&<button type="button" className="secondary" onClick={()=>onNavigate("Ordens de serviço")}>Abrir ordens de serviço</button>}
+    </div>
+  </section>}
+  {error&&<ErrorState message={error} onRetry={()=>void load()}/>
   {notice&&<p className="planning-notice" role="status">{notice}</p>}
   <section className="planning-summary" aria-label="Indicadores de capacidade cadastrada">
    <div><small>Recursos cadastrados consultados</small><strong>{resources.length}</strong><span>Profissionais e ativos</span></div>
