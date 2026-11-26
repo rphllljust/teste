@@ -121,3 +121,22 @@ test('finance close exposes strict Tier 1 readiness and performance indexes are 
  assert.match(migration,/CREATE INDEX IF NOT EXISTS cisne_journal_actor_effective_idx/);
  assert.match(runner,/0024_enterprise_owner_query_indexes/);
 });
+
+test('close readiness runs only after an operator click, uses live accounting preflight and never closes periods',()=>{
+ const close=read('app/components/enterprise/EnterpriseCloseReadiness.tsx');
+ const panel=read('app/components/enterprise/EnterpriseFinancialAssurance.tsx');
+ assert.match(panel,/<EnterpriseCloseReadiness navigate=\{navigate\}\/>/);
+ assert.match(close,/async function run\(\)/);
+ assert.match(close,/onClick=\{\(\)=>void run\(\)\}/);
+ assert.match(close,/\/api\/finance\/periods\/preflight/);
+ assert.match(close,/tier1Readiness\.blockers/);
+ assert.match(close,/role="alert"/);
+ assert.match(close,/navigate\('Fechamentos'\)/);
+ assert.doesNotMatch(close,/\/api\/finance\/periods\/close|method:\s*['"]POST['"]/);
+});
+test('Postgres-only workflow enforces the complete current migration ledger including 0024',()=>{
+ const workflow=read('.github/workflows/postgres-only-integration.yml');
+ assert.match(workflow,/0024_enterprise_owner_query_indexes/);
+ assert.match(workflow,/r\.rows\.length !== expected\.length/);
+ assert.match(workflow,/r\.rows\.some\(x => x\.n !== 1\)/);
+});
