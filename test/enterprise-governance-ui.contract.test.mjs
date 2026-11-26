@@ -60,3 +60,14 @@ test('document details share a single accessible section navigation with observe
   assert.doesNotMatch(src, /<nav className="object-anchors"/,'duplicate local Object Page navigation: '+file);
  }
 });
+
+test('object navigation scopes its anchors, keeps URL stable, and supports keyboard access',async()=>{
+ const source=await readFile(new URL('../app/components/enterprise/EnterprisePrimitives.tsx',import.meta.url),'utf8');
+ assert.match(source,/root\.querySelectorAll<HTMLElement>\('\[id\]'\)/);
+ assert.match(source,/event\.preventDefault\(\); \/\/ Do not change the host application/);
+ assert.match(source,/target\.scrollIntoView\(/);
+ assert.match(source,/target\.focus\(\{ preventScroll: true \}\)/);
+ for(const key of ['ArrowRight','ArrowLeft','Home','End']) assert.ok(source.includes("event.key === '"+key+"'"));
+ assert.match(source,/root\.addEventListener\('scroll', syncActive/);
+ assert.match(source,/root\.removeEventListener\('scroll', syncActive/);
+});
