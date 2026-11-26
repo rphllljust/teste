@@ -127,7 +127,10 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
         if(!abort.signal.aborted)setDetail(result);
       }catch(cause){
         if(!abort.signal.aborted){
-          if(cause instanceof HmlSessionRequired)setNeedsAuth(true);
+          if(cause instanceof HmlSessionRequired){
+            setNeedsAuth(true);
+            setSelectedId(null);
+          }
           setDetailError(cause instanceof Error?cause.message:'Dossiê indisponível.');
         }
       }finally{if(!abort.signal.aborted)setDetailLoading(false);}
