@@ -23,6 +23,8 @@ export async function GET(request: Request) {
 
     const db = database();
     const results = await db.batch([
+      // All four financial metrics must observe the same PostgreSQL snapshot.
+      db.prepare('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY').bind(),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT) AS value
         FROM receivables r
         JOIN invoices i ON i.id=r.invoice_id
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
         WHERE p.actor_id=? AND ${payableBalance}>0 AND p.due_date<?`).bind(context.actorId, asOf),
     ]);
 
-    const row = (index: number) => (results[index].results[0] ?? {}) as AggregateRow;
+    const row = (index: number) => (results[index+1].results[0] ?? {}) as AggregateRow;
     const metric = (
       metricId: string,
       label: string,
