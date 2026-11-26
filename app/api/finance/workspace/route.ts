@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { database } from '../../../../db/raw';
-import { failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { failure, requestContext, respond, validDate, type RequestContext } from '../../../../lib/api/http';
 import { outstandingExpression } from '../../../../lib/projections/operation';
 import { payableBalance } from '../../../../lib/projections/payables';
 
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(validDate);
 
 type AggregateRow = { count?: number | string; value?: string | null };
 
