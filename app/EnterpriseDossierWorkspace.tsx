@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenText, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, DatabaseZap, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 
 type DossierListItem = {
   id: string; title: string; client: string; state: string; createdAt: string;
@@ -186,6 +187,24 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
       setLoginBusy(false);
     }
   }
+  const dossierColumns:EnterpriseSmartColumn<DossierListItem>[]=[
+    {key:'document',title:'Documento e cliente',required:true,
+      render:item=><span className="enterprise-smart-primary"><strong>{item.title}</strong><small>{item.client} · {item.id.slice(0,8).toUpperCase()}</small></span>,
+      text:item=>item.id+' · '+item.title+' · '+item.client,sortValue:item=>item.title},
+    {key:'state',title:'Situação da OS',
+      render:item=><span className={'enterprise-dossier-status status-'+item.state}>{statusLabel(item.state)}</span>,
+      text:item=>statusLabel(item.state),sortValue:item=>item.state},
+    {key:'execution',title:'Execuções',render:item=>item.evidence.executions,
+      text:item=>String(item.evidence.executions),sortValue:item=>item.evidence.executions,align:'end'},
+    {key:'measurements',title:'Medições',render:item=>item.evidence.measurements,
+      text:item=>String(item.evidence.measurements),sortValue:item=>item.evidence.measurements,align:'end'},
+    {key:'invoices',title:'Faturas',render:item=>item.evidence.invoices,
+      text:item=>String(item.evidence.invoices),sortValue:item=>item.evidence.invoices,align:'end'},
+    {key:'billed',title:'Faturado',render:item=>scaledMoney(item.billedScaled),
+      text:item=>scaledMoney(item.billedScaled),align:'end'},
+    {key:'settled',title:'Recebido líquido',render:item=>scaledMoney(item.settledScaled),
+      text:item=>scaledMoney(item.settledScaled),align:'end'},
+  ];
   const reload=()=>setRevision(r=>r+1);
   const select=(id:string)=>{setDetail(null);setDetailError('');setSelectedId(id);};
   const close=()=>{setSelectedId(null);setDetail(null);setDetailError('');};
@@ -249,27 +268,10 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
         <strong>Nenhum processo corresponde aos filtros.</strong>
         <span>Os vínculos de ordens históricas sem proprietário não são expostos.</span>
       </div> :
-      <div className="enterprise-dossier-table-wrap" tabIndex={0} role="region" aria-label="Tabela de processos empresariais">
-        <table className="enterprise-dossier-table">
-          <caption className="sr-only">Processos comerciais e operacionais com registros financeiros associados</caption>
-          <thead><tr>
-            <th scope="col">Documento e cliente</th><th scope="col">Situação da OS</th>
-            <th scope="col">Execuções</th><th scope="col">Medições</th>
-            <th scope="col">Faturas</th><th scope="col">Faturado</th><th scope="col">Recebido líquido</th>
-            <th scope="col">Análise</th>
-          </tr></thead>
-          <tbody>{list.items.map(item=><tr key={item.id}>
-            <td><strong>{item.title}</strong><small>{item.client} · {item.id.slice(0,8).toUpperCase()}</small></td>
-            <td><span className={'enterprise-dossier-status status-'+item.state}>{statusLabel(item.state)}</span></td>
-            <td>{item.evidence.executions}</td><td>{item.evidence.measurements}</td>
-            <td>{item.evidence.invoices}</td>
-            <td className="enterprise-dossier-num">{scaledMoney(item.billedScaled)}</td>
-            <td className="enterprise-dossier-num">{scaledMoney(item.settledScaled)}</td>
-            <td><button type="button" className="secondary" onClick={()=>select(item.id)}
-              aria-label={'Abrir dossiê da OS '+item.title}>Examinar <ArrowRight size={15} aria-hidden="true"/></button></td>
-          </tr>)}</tbody>
-        </table>
-      </div>}
+      <EnterpriseSmartGrid viewId="enterprise-dossiers" caption="Tabela de processos empresariais"
+        currentPageLabel={'Página '+list.pageInfo.page+' · '+list.pageInfo.total+' processos autorizados'}
+        rows={list.items} columns={dossierColumns} getRowKey={item=>item.id}
+        onOpen={item=>select(item.id)} openLabel={item=>'Abrir dossiê da OS '+item.title}/>}
       <div className="enterprise-dossier-pagination">
         <span>Página {list.pageInfo.page} · total {list.pageInfo.total}</span>
         <div><button type="button" className="secondary" disabled={page===1} onClick={()=>setPage(v=>Math.max(1,v-1))}>
