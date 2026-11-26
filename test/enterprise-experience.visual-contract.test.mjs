@@ -48,3 +48,17 @@ test('object detail workspaces have wide desktop layout, sticky context and mobi
   assert.match(css, /grid-template-columns: 1fr/);
   assert.match(css, /grid-template-columns: repeat\(8,/);
 });
+
+test('global enterprise workspaces remain functional with scrolling tables and keyboard search on narrow screens', () => {
+  for (const selector of ['.app .business-workspace','.app .operational-workspace','.app .module-workspace',
+    '.app .table-wrap:focus-within','.app .enterprise-data-grid:focus-within',
+    '.app .palette [data-palette-option="true"]:focus-visible','.app .modal-overlay']) {
+    assert.ok(css.includes(selector), selector + ' must participate in the responsive interaction layer');
+  }
+  for (const width of ['1024px', '800px', '480px']) assert.ok(css.includes('max-width: ' + width));
+  assert.match(css, /scroll-snap-align: start/);
+  assert.match(css, /overscroll-behavior: contain/);
+  assert.match(css, /safe-area-inset-top/);
+  assert.match(css, /prefers-reduced-motion: reduce/);
+  assert.match(css, /forced-colors: active/);
+});
