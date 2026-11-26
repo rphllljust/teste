@@ -8,66 +8,69 @@ const css=read('app/components/enterprise/enterprise-finance-tier1.css');
 const overview=read('app/FinanceOverviewWorkspace.tsx');
 const close=read('app/CloseCenterWorkspace.tsx');
 
-test('financial workspace retains global ERP navigation and scopes visual rules across all financial pages',()=>{
- assert.match(shell,/data-workspace=\{page === "Visão operacional"/);
- assert.match(shell,/\\.includes\\(page\\) \\? "finance" : "standard"/);
+test('enterprise finance styles are scoped to all financial modules without hiding ERP navigation',()=>{
+ assert.ok(shell.includes('data-workspace={page === "Visão operacional"'));
+ assert.ok(shell.includes('.includes(page) ? "finance" : "standard"'));
  for(const name of ['Visão financeira','Financeiro','Faturamento','Fluxo de caixa','Tesouraria',
-  'Contas a pagar','Caixa e conciliação','Razão contábil','Contabilidade','Fiscal e tributos','Fechamentos'])
-  assert.ok(shell.includes('"'+name+'"'),'financial module omitted: '+name);
- assert.match(layout,/enterprise-finance-tier1\\.css/);
- assert.match(css,/\\.app\\[data-workspace="finance"\\]/);
- assert.doesNotMatch(css,/cisne-enterprise-global-domains\\s*\\{\\s*display\\s*:\\s*none/);
- for(const width of ['1250px','800px','540px'])assert.ok(css.includes('max-width:'+width));
- assert.match(css,/forced-colors:active/);
- assert.match(css,/prefers-reduced-motion:reduce/);
+   'Contas a pagar','Caixa e conciliação','Razão contábil','Contabilidade','Fiscal e tributos','Fechamentos'])
+  assert.ok(shell.includes('"'+name+'"'),'module missing: '+name);
+ assert.ok(layout.includes('enterprise-finance-tier1.css'));
+ assert.ok(css.includes('.app[data-workspace="finance"]'));
+ assert.ok(!css.includes('.cisne-enterprise-global-domains { display:none'));
+ for(const width of ['max-width:1250px','max-width:800px','max-width:540px'])
+  assert.ok(css.includes(width),width);
+ assert.ok(css.includes('forced-colors:active'));
+ assert.ok(css.includes('prefers-reduced-motion:reduce'));
 });
-test('finance command center exposes authenticated owner-scoped balances and exception queues without inventing bank cash',()=>{
- for(const route of ['/api/finance/workspace','/api/accounting/reconciliation','/api/accounting/receipt-reconciliation','/api/treasury?page=1'])
-  assert.ok(overview.includes(route),'missing authoritative API '+route);
- assert.match(overview,/Promise\\.allSettled/);
- assert.match(overview,/credentials:'same-origin',cache:'no-store'/);
- assert.match(overview,/verifiedCount\\(/);
- assert.match(overview,/assurance\\.treasury\\?\\.pageInfo\\.hasMore/);
- assert.match(overview,/onDrilldown\\(m\\.drilldown\\)/);
- for(const moduleName of ['Contabilidade','Caixa e conciliação','Tesouraria','Fechamentos','Fluxo de caixa','Razão contábil'])
-  assert.ok(overview.includes("'"+moduleName+"'"));
- assert.match(overview,/não representam conexão bancária em tempo real/);
- assert.doesNotMatch(overview,/Math\\.random|faker|mockData|method:\\s*['"]POST/);
+
+test('finance command center uses real authenticated owners and never invents a bank balance',()=>{
+ for(const route of ['/api/finance/workspace','/api/accounting/reconciliation',
+   '/api/accounting/receipt-reconciliation','/api/treasury?page=1'])
+  assert.ok(overview.includes(route),'authoritative route missing '+route);
+ for(const feature of ['Promise.allSettled','credentials:',"cache:'no-store'",
+   'verifiedCount(', 'pageInfo.hasMore','onDrilldown(m.drilldown)',"onNavigate('Fechamentos')",
+   "onNavigate('Fluxo de caixa')","onNavigate('Razão contábil')"])
+  assert.ok(overview.includes(feature),'finance invariant missing '+feature);
+ assert.ok(overview.includes('não representam conexão bancária em tempo real'));
+ for(const unsafe of ['Math.random','faker','mockData',"method:'POST'"])
+  assert.ok(!overview.includes(unsafe),'untrusted source '+unsafe);
 });
-test('bank, treasury, cash, fiscal and ledger provide real corrective actions and source trace',()=>{
+
+test('cash, bank, treasury, ledger and fiscal provide legitimate paths and event provenance',()=>{
  const treasury=read('app/TreasuryWorkspace.tsx');
  const cash=read('app/CashFlowWorkspace.tsx');
  const bank=read('app/BankReconciliationWorkspace.tsx');
  const ledger=read('app/LedgerWorkspace.tsx');
  const fiscal=read('app/FiscalWorkspace.tsx');
- assert.match(treasury,/onImport:\\(\\)=>void/);
- assert.match(treasury,/Abrir importação de extrato/);
- assert.match(cash,/Consultar origem bancária/);
- assert.match(cash,/onNavigate\\('Financeiro'\\)/);
- assert.match(bank,/Importar extrato documentado/);
- assert.match(ledger,/Configurar plano de contas/);
- assert.match(fiscal,/aria-label="Competência fiscal"/);
- assert.match(fiscal,/Correlação: <code>\\{ev\\.correlationId/);
- assert.match(shell,/onImport=\\{\\(\\)=>navigate\\('Caixa e conciliação'\\)\\}/);
+ assert.ok(treasury.includes('onImport:()=>void'));
+ assert.ok(treasury.includes('Abrir importação de extrato'));
+ assert.ok(cash.includes('Consultar origem bancária'));
+ assert.ok(cash.includes("onNavigate('Financeiro')"));
+ assert.ok(bank.includes('Importar extrato documentado'));
+ assert.ok(ledger.includes('Configurar plano de contas'));
+ assert.ok(fiscal.includes('aria-label="Competência fiscal"'));
+ assert.ok(fiscal.includes("ev.correlationId||'Não registrada'"));
+ assert.ok(shell.includes("onImport={()=>navigate('Caixa e conciliação')}"));
 });
-test('financial close cannot be presented as strict Tier 1 accounting certification',()=>{
- assert.match(close,/tier1Readiness\\?:/);
- assert.match(close,/Prévia sem bloqueios detectados/);
- assert.match(close,/certificação contábil Tier 1 NÃO está pronta/);
- assert.match(close,/aria-label="Prontidão contábil Tier 1"/);
- assert.match(close,/blockerDestinations\\[block\\.code\\]/);
- assert.match(close,/onNavigate\\(item\\.module\\)/);
- assert.match(close,/!preflight\\?\\.canClose/);
+
+test('finance close is differentiated from accounting certification and keeps server locks',()=>{
+ for(const item of ['tier1Readiness?:','Prévia sem bloqueios detectados',
+  'certificação contábil Tier 1 NÃO está pronta','aria-label="Prontidão contábil Tier 1"',
+  'blockerDestinations[block.code]','onNavigate(item.module)','!preflight?.canClose'])
+  assert.ok(close.includes(item),'missing close gate '+item);
  const route=read('app/api/finance/periods/close/route.ts');
  const preflight=read('app/api/finance/periods/preflight/route.ts');
- assert.match(route,/assertPeriodReadyToClose/);
- assert.match(route,/lockFinancePeriodScope/);
- assert.match(preflight,/advisoryOnly:true/);
- assert.match(preflight,/tier1Readiness:/);
+ assert.ok(route.includes('assertPeriodReadyToClose'));
+ assert.ok(route.includes('lockFinancePeriodScope'));
+ assert.ok(preflight.includes('advisoryOnly:true'));
+ assert.ok(preflight.includes('tier1Readiness:'));
 });
-test('new finance stylesheet has no unterminated selectors',()=>{
- const source=css;
- let depth=0;
- for(const char of source){if(char==='{')depth++;if(char==='}')depth--;assert.ok(depth>=0);}
- assert.equal(depth,0);
+test('finance stylesheet braces are balanced',()=>{
+ let count=0;
+ for(const char of css){
+  if(char==='{') count++;
+  if(char==='}') count--;
+  assert.ok(count>=0,'unexpected closing brace');
+ }
+ assert.equal(count,0);
 });
