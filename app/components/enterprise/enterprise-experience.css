@@ -1,0 +1,390 @@
+/*
+ * CISNE Enterprise Experience — visual contract shared by every business module.
+ * This layer is intentionally imported LAST. It maps the legacy workspace tokens
+ * onto the enterprise foundation without rewriting business screens.
+ *
+ * Tokens: sober enterprise palette, compact information hierarchy, consistent
+ * control heights and row densities. No invented business statuses or KPIs.
+ */
+:root {
+  --ink: #1b2b41;
+  --muted: #5e7186;
+  --teal: #146c79;
+  --line: #dfe6ee;
+  --nav: #14263d;
+  --canvas: #f5f7fa;
+  --radius: 8px;
+  --control-height: 38px;
+  --cisne-color-canvas: #f5f7fa;
+  --cisne-color-navigation: #14263d;
+  --cisne-color-primary: #146c79;
+  --cisne-color-text: #1b2b41;
+  --cisne-color-text-secondary: #5e7186;
+  --cisne-color-border: #dfe6ee;
+  --cisne-color-selected: #edf5f7;
+  --cisne-radius-sm: 6px;
+  --cisne-radius-md: 8px;
+  --cisne-shadow-focus: 0 0 0 3px rgb(20 108 121 / 21%);
+  --cisne-control-height: 38px;
+  --cisne-table-row-height: 42px;
+  --cisne-elevation: 0 1px 2px rgb(15 35 56 / 4%), 0 5px 17px rgb(15 35 56 / 3%);
+}
+body {
+  background: var(--cisne-color-canvas);
+  color: var(--cisne-color-text);
+  -webkit-font-smoothing: antialiased;
+}
+.app .sidebar {
+  background: linear-gradient(180deg, #182b44 0%, #112236 100%);
+  border-right: 1px solid rgb(255 255 255 / 8%);
+  box-shadow: 2px 0 16px rgb(13 27 47 / 7%);
+}
+.app .brand {
+  height: 74px;
+  letter-spacing: .055em;
+  border-bottom: 1px solid rgb(255 255 255 / 7%);
+}
+.app .brand-mark {
+  background: #1a6072;
+  color: #f1f9fb;
+  border: 1px solid rgb(255 255 255 / 15%);
+  border-radius: 10px;
+}
+.app .company {
+  margin-top: 14px;
+  background: rgb(255 255 255 / 4%);
+  border-color: rgb(255 255 255 / 13%);
+}
+.app .nav-group { padding: 4px 10px; }
+.app .nav-group p {
+  margin-block: 12px 5px;
+  color: #a5b5c6;
+  letter-spacing: .105em;
+  font-size: 10px;
+}
+.app .nav-group button {
+  min-height: 37px;
+  margin-block: 2px;
+  gap: 10px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  font-weight: 500;
+  color: #d4deea;
+  transition: background-color .13s ease, border-color .13s ease;
+}
+.app .nav-group button:hover { background: rgb(255 255 255 / 9%); color: #fff; }
+.app .nav-group button.active {
+  background: #23566d;
+  border-color: rgb(179 221 230 / 20%);
+  box-shadow: inset 3px 0 #90dde5;
+  color: #fff;
+}
+.app .nav-group button.active > svg { color: #b4eef0; }
+.app .sidebar-bottom {
+  border-top-color: rgb(255 255 255 / 14%);
+  background: rgb(2 17 34 / 13%);
+}
+.app .main { background: var(--cisne-color-canvas); min-width: 0; }
+.app .topbar {
+  height: 62px;
+  position: sticky;
+  top: 0;
+  z-index: 22;
+  padding-inline: 24px;
+  background: rgb(255 255 255 / 97%);
+  border-bottom: 1px solid var(--cisne-color-border);
+  box-shadow: 0 1px 0 rgb(16 31 51 / 2%);
+  backdrop-filter: blur(10px);
+}
+.app .crumb {
+  min-width: 0;
+  color: var(--cisne-color-text-secondary);
+  font-size: 12px;
+}
+.app .crumb strong {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--cisne-color-text);
+  font-weight: 650;
+}
+.app .global-search {
+  min-height: 36px;
+  padding: 6px 12px;
+  border: 1px solid var(--cisne-color-border);
+  border-radius: 7px;
+  background: #f8fafc;
+  color: var(--cisne-color-text-secondary);
+}
+.app .global-search:hover { background: #edf4f8; border-color: #b4c8d6; }
+.app .global-search kbd { background: white; border-color: #d7e1ea; }
+.app .main main { padding: 24px 28px 40px; max-width: 1740px; }
+.app .enterprise-page-header,
+.app .heading {
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+.app .enterprise-page-header h1,
+.app .heading h1 {
+  font-size: clamp(23px, 2.1vw, 29px);
+  font-weight: 680;
+  line-height: 1.2;
+  letter-spacing: -.027em;
+}
+.app .enterprise-page-header p,
+.app .heading p { color: var(--cisne-color-text-secondary); line-height: 1.45; }
+.app .enterprise-breadcrumb { letter-spacing: .015em; }
+.app .eyebrow {
+  color: #3e677e;
+  letter-spacing: .1em;
+  font-weight: 700;
+}
+.app .primary, .app .secondary, .app .enterprise-button {
+  border-radius: 7px;
+  font-weight: 610;
+  min-height: 38px;
+  transition: background-color .12s ease, border-color .12s ease;
+}
+.app .primary { background: #146c79; border-color: #146c79; }
+.app .primary:hover { background: #105866; border-color: #105866; }
+.app .secondary { border-color: #cad7e2; background: white; }
+.app .secondary:hover { background: #f0f5f9; border-color: #aebfce; }
+.app .worklist,
+.app .enterprise-panel,
+.app .module-workspace,
+.app .work-context,
+.app .procurement-queue,
+.app .procurement-context > section {
+  border-color: var(--cisne-color-border);
+  box-shadow: var(--cisne-elevation);
+}
+.app .worklist {
+  border-radius: 10px;
+  overflow: clip;
+}
+.app .list-title {
+  padding-block: 17px;
+  border-bottom-color: var(--cisne-color-border);
+  gap: 14px;
+}
+.app .list-title h2 {
+  font-size: 18px;
+  font-weight: 665;
+  letter-spacing: -.014em;
+}
+.app .list-title p { line-height: 1.45; }
+.app .filters, .app .linked-filters { gap: 10px; }
+.app .filters input,
+.app .filters select,
+.app .modal input,
+.app .modal select,
+.app .modal textarea {
+  border-radius: 7px;
+  border-color: #cbd7e1;
+  min-height: 38px;
+  background-color: white;
+}
+.app .table-wrap,
+.app .enterprise-data-grid,
+.app .enterprise-foundation-grid {
+  max-width: 100%;
+  overflow: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.app .table-wrap table,
+.app .enterprise-data-grid table,
+.app .enterprise-foundation-grid table {
+  border-collapse: separate;
+  border-spacing: 0;
+  width: 100%;
+}
+.app .table-wrap th,
+.app .enterprise-data-grid th,
+.app .enterprise-foundation-grid th {
+  background: #f5f8fb;
+  color: #526880;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .025em;
+  text-transform: none;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 1px solid #d9e3ed;
+}
+.app .table-wrap td,
+.app .enterprise-data-grid td,
+.app .enterprise-foundation-grid td {
+  border-bottom-color: #e8edf2;
+  font-size: 13px;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+.app .table-wrap tbody tr:hover,
+.app .enterprise-data-grid tbody tr:hover,
+.app .enterprise-foundation-grid tbody tr:hover { background: #f1f7f9; }
+.app .table-wrap tbody tr:focus-within,
+.app .enterprise-foundation-grid tbody tr:focus-visible { outline: 2px solid #2b8290; outline-offset: -2px; }
+.app .badge, .app .enterprise-status-badge, .app .enterprise-status {
+  border-radius: 5px;
+  letter-spacing: .01em;
+  font-weight: 650;
+}
+.app .object-anchors,
+.app .enterprise-object-tabs,
+.app .enterprise-section-navigation {
+  background: #fff;
+  border-bottom: 1px solid #d9e3ed;
+  scrollbar-width: thin;
+  scroll-padding-inline: 12px;
+}
+.app .object-anchors a,
+.app .enterprise-object-tabs a,
+.app .enterprise-section-navigation a {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+}
+.app .object-anchors a:hover,
+.app .enterprise-object-tabs a:hover,
+.app .enterprise-section-navigation a:hover { border-bottom-color: #8ab5c2; }
+.app .enterprise-object-tabs a[aria-current="true"] { color: #146c79; border-bottom-color: #146c79; font-weight: 650; }
+.app .drawer { border-left: 1px solid #dfe6ee; box-shadow: -12px 0 40px rgb(19 37 58 / 14%); }
+.app .drawer > header { background: white; border-bottom: 1px solid #e6edf4; }
+.app .modal { border-radius: 12px; box-shadow: 0 18px 56px rgb(10 22 39 / 23%); }
+.app .modal > header { border-bottom: 1px solid #e5ebf2; }
+.app .metrics,
+.app .enterprise-lanes,
+.app .enterprise-grid { gap: 12px; }
+.app .metric-context,
+.app .enterprise-lane { border-radius: 9px; }
+.app .enterprise-panel { border-radius: 10px; }
+.app .enterprise-object-summary {
+  display: grid; gap: 7px;
+  padding: 16px;
+  border: 1px solid #dce6ee;
+  border-radius: 9px;
+  background: #f9fbfd;
+  margin: 0 0 16px;
+}
+.app .enterprise-object-summary-title {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+}
+.app .enterprise-object-summary h2 { margin: 0; font-size: 21px; letter-spacing: -.025em; }
+.app .enterprise-object-summary p { margin: 0; color: #53687d; font-size: 13px; }
+.app .enterprise-object-summary-reference {
+  font-size: 10px; font-weight: 750; letter-spacing: .105em; color: #56758c;
+}
+.app .enterprise-object-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 8px;
+  margin-top: 7px;
+}
+.app .enterprise-object-fact {
+  border: 1px solid #e1e9f0;
+  border-radius: 7px;
+  padding: 9px 11px;
+  min-width: 0;
+  background: white;
+}
+.app .enterprise-object-fact dt { margin: 0; color: #65788b; font-size: 11px; }
+.app .enterprise-object-fact dd { margin: 4px 0 0; color: #1c3044; font-weight: 650; overflow-wrap: anywhere; font-size: 13px; }
+.app .enterprise-density-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  min-height: 36px;
+  border: 1px solid #d3e0e9;
+  background: #fff;
+  color: #4e647a;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.app .enterprise-density-control:hover { background: #eef4f7; }
+.app .enterprise-quick-access {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 28px;
+  background: #fff;
+  border-bottom: 1px solid #e5ebf2;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.app .enterprise-quick-access > span { font-size: 11px; color: #708195; white-space: nowrap; margin-right: 3px; }
+.app .enterprise-quick-access button {
+  display: inline-flex; align-items: center; justify-content: center;
+  gap: 7px; padding: 5px 10px; min-height: 30px;
+  white-space: nowrap; border-radius: 6px;
+  font-size: 12px; font-weight: 600; color: #466075;
+  border: 1px solid transparent;
+}
+.app .enterprise-quick-access button:hover { background: #f0f5f9; }
+.app .enterprise-quick-access button[aria-current="page"] {
+  background: #eaf4f6;
+  color: #126676;
+  border-color: #c3dce2;
+}
+.app[data-density="compact"] {
+  --cisne-table-row-height: 36px;
+  --cisne-control-height: 34px;
+}
+.app[data-density="compact"] .worklist .table-wrap td,
+.app[data-density="compact"] .worklist .table-wrap th,
+.app[data-density="compact"] .enterprise-data-grid td,
+.app[data-density="compact"] .enterprise-data-grid th {
+  padding-top: 6px;
+  padding-bottom: 6px;
+  height: 36px;
+}
+.app[data-density="compact"] .worklist .list-title { padding-block: 12px; }
+.app[data-density="compact"] .worklist .filters { padding-block: 10px; }
+.app[data-density="compact"] .enterprise-object-summary { padding: 12px; }
+.app[data-density="comfortable"] { --cisne-table-row-height: 48px; --cisne-control-height: 42px; }
+.app[data-density="comfortable"] .table-wrap td,
+.app[data-density="comfortable"] .table-wrap th,
+.app[data-density="comfortable"] .enterprise-data-grid td,
+.app[data-density="comfortable"] .enterprise-data-grid th { padding-block: 12px; }
+.app[data-density="comfortable"] .worklist .list-title { padding-block: 22px; }
+.app button:focus-visible,
+.app a:focus-visible,
+.app input:focus-visible,
+.app select:focus-visible,
+.app textarea:focus-visible {
+  outline: 2px solid #0f7784;
+  outline-offset: 2px;
+}
+@media (max-width: 1200px) {
+  .app .main main { padding: 20px; }
+  .app .enterprise-quick-access { padding-inline: 20px; }
+  .app .enterprise-page-header h1 { font-size: 25px; }
+}
+@media (max-width: 800px) {
+  .app .main main { padding: 16px 14px 30px; }
+  .app .topbar { padding-inline: 14px; }
+  .app .enterprise-quick-access { padding: 8px 14px; }
+  .app .enterprise-quick-access > span { display: none; }
+  .app .enterprise-page-header { align-items: stretch; }
+  .app .enterprise-page-header h1 { font-size: 23px; }
+  .app .enterprise-object-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app .table-wrap th,
+  .app .enterprise-data-grid th { white-space: nowrap; }
+}
+@media (max-width: 460px) {
+  .app .enterprise-density-control span { display: none; }
+  .app .enterprise-density-control { padding-inline: 9px; }
+  .app .enterprise-quick-access button { font-size: 11px; padding-inline: 8px; }
+  .app .enterprise-object-facts { grid-template-columns: 1fr; }
+  .app .modal { max-width: calc(100vw - 12px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app .nav-group button, .app .primary, .app .secondary { transition: none; }
+}

@@ -16,6 +16,40 @@ export type EnterpriseObjectHeaderProps = { type:string; reference?:string; titl
 export function BusinessObjectHeader({ type, reference, title, status, statusLabel, facts, actions, description }: EnterpriseObjectHeaderProps) { return <header className="business-object-header" aria-label={`${type}: ${title}`}><div className="business-object-heading"><span className="eyebrow">{type}{reference ? ` · ${reference}` : ''}</span><h2>{title}</h2>{description && <p className="enterprise-muted">{description}</p>}{facts && <div className="business-object-facts">{facts}</div>}</div>{(status || actions) && <div className="business-object-actions" aria-label="Ações do objeto">{status && <BusinessStatus status={status} label={statusLabel} />}{actions}</div>}</header>; }
 export const EnterpriseObjectHeader = BusinessObjectHeader;
 
+export type EnterpriseObjectSummaryFact = { label: string; value: ReactNode };
+export type EnterpriseObjectSummaryProps = {
+  id?: string;
+  type: string;
+  reference?: string | null;
+  title: string;
+  subtitle?: string | null;
+  status?: string | null;
+  facts?: ReadonlyArray<EnterpriseObjectSummaryFact>;
+};
+/**
+ * Consistent transaction header for commercial, operational and financial
+ * object details. Facts are supplied from real object projections only.
+ * Never infer a status or an amount from unrelated records.
+ */
+export function EnterpriseObjectSummary({
+  id, type, reference, title, subtitle, status, facts = [],
+}: EnterpriseObjectSummaryProps) {
+  return <section id={id} className="enterprise-object-summary" aria-label={type + ': ' + title}>
+    <span className="enterprise-object-summary-reference">{type}{reference ? ' · ' + reference : ''}</span>
+    <div className="enterprise-object-summary-title">
+      <h2>{title}</h2>
+      {status && <span className="badge" role="status">{status}</span>}
+    </div>
+    {subtitle && <p>{subtitle}</p>}
+    {facts.length > 0 && <dl className="enterprise-object-facts">
+      {facts.map(fact => <div className="enterprise-object-fact" key={fact.label}>
+        <dt>{fact.label}</dt><dd>{fact.value ?? '—'}</dd>
+      </div>)}
+    </dl>}
+  </section>;
+}
+
+
 export type EnterpriseObjectPageProps = HTMLAttributes<HTMLElement> & { title:string; header:ReactNode; sections?:Array<{id:string;label:string}>; children:ReactNode };
 export function EnterpriseObjectPage({ title, header, sections=[], children, className, ...props }: EnterpriseObjectPageProps) {
   const [activeSection, setActiveSection] = useState(sections[0]?.id ?? '');
