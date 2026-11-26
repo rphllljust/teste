@@ -21,6 +21,7 @@ import CloseCenterWorkspace from "./CloseCenterWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import ProcurementWorkspace from "./ProcurementWorkspace";
 import EnterpriseCommandCenter from "./EnterpriseCommandCenter";
+import EnterpriseDossierWorkspace from "./EnterpriseDossierWorkspace";
 import CRMWorkspace from "./CRMWorkspace";
 import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
@@ -1373,7 +1374,7 @@ function HomeView() {
         </header>
         <nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">
           <span>Acesso rápido</span>
-          {["Visão operacional", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+          {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
             <button
               type="button"
               key={module}
@@ -1412,6 +1413,7 @@ function HomeView() {
               "Estoque e compras",
               "Field Service Cockpit",
               "Resource Planning Board",
+              "Dossiês empresariais",
             ].includes(page) && (
               <>
               <EnterprisePageHeader
@@ -2549,6 +2551,8 @@ function HomeView() {
                 </span>
               </footer>
             </section>
+          ) : page === "Dossiês empresariais" ? (
+            <EnterpriseDossierWorkspace navigate={navigate} onOpenOrder={id=>{navigate("Ordens de serviço");void openOrigin(id);}} />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
               onClients={() => navigate("Clientes e propostas")}
