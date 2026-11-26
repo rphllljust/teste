@@ -27,12 +27,12 @@ export async function GET(request: Request) {
         FROM receivables r
         JOIN invoices i ON i.id=r.invoice_id
         JOIN service_orders o ON o.id=i.order_id
-        WHERE (o.owner_id IS NULL OR o.owner_id=?) AND ${outstandingExpression}>0`).bind(context.actorId),
+        WHERE o.owner_id=? AND ${outstandingExpression}>0`).bind(context.actorId),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT) AS value
         FROM receivables r
         JOIN invoices i ON i.id=r.invoice_id
         JOIN service_orders o ON o.id=i.order_id
-        WHERE (o.owner_id IS NULL OR o.owner_id=?) AND ${outstandingExpression}>0 AND r.due_date<?`).bind(context.actorId, asOf),
+        WHERE o.owner_id=? AND ${outstandingExpression}>0 AND r.due_date<?`).bind(context.actorId, asOf),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${payableBalance}),0) AS TEXT) AS value
         FROM payables p
         WHERE p.actor_id=? AND ${payableBalance}>0`).bind(context.actorId),
