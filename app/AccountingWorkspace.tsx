@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useState} from 'react';
 import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader,EnterpriseObjectSummary, EnterpriseObjectSectionNavigation} from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 type Account={id:string;code:string;name:string;type:string;active:number};
 type PostingRule={id:string;sourceType:string;debitAccountId:string;creditAccountId:string;active:number;rowVersion:number};
 type PayablePolicyType='payable_accrual'|'payable_payment';
@@ -258,7 +259,23 @@ export default function AccountingWorkspace(){
    <strong>Conciliação de origem</strong>
    {reconciliation?<p>{reconciliation.summary.automaticPostingCount} fatura(s) contabilizada(s) automaticamente; {reconciliation.summary.manualVerifiedCount} vinculada(s) manualmente. Total de {reconciliation.summary.verifiedPostingCount} fatura(s) com vínculo válido; {reconciliation.summary.withoutVerifiedPostingCount} ainda sem vínculo válido, total de {moneyScaled(reconciliation.summary.withoutVerifiedPostingAmountScaled)}. {reconciliation.summary.missingReceivableCount} sem título a receber. Regras ativas geram partidas somente em novos faturamentos; estornos voltam a aparecer como pendência.</p>:reconciliationError?<p role="alert">Conciliação indisponível: {reconciliationError}</p>:<p role="status">Conferindo vínculos de faturamento…</p>}
  </section>
- {error?<div className="empty" role="alert">{error}<button onClick={()=>void load()} className="secondary">Tentar novamente</button></div>:loading?<div className="empty" role="status">Consultando diário…</div>:entries.length?<div className="table-wrap"><table><thead><tr><th>Data / origem</th><th>Descrição</th><th>Débitos</th><th>Créditos</th><th>Situação</th></tr></thead><tbody>{entries.map(e=><tr key={e.id}><td><button className="row-link" onClick={()=>void open(e.id)}>{date(e.effectiveDate)}</button><small>{e.sourceReference}</small></td><td>{e.description}</td><td className="amount">{moneyScaled(e.debitScaled)}</td><td className="amount">{moneyScaled(e.creditScaled)}</td><td><span className="badge">Postado</span></td></tr>)}</tbody></table></div>:<div className="empty"><h3>Nenhum lançamento postado</h3><p>Cadastre pelo menos duas contas e informe uma origem para lançar partidas equilibradas.</p></div>}
+ {error?<div className="empty" role="alert">{error}<button onClick={()=>void load()} className="secondary">Tentar novamente</button></div>:loading?<div className="empty" role="status">Consultando diário…</div>:entries.length?<EnterpriseSmartGrid<Entry> viewId="enterprise-accounting-journals"
+  caption="Diário contábil publicado" rows={entries} getRowKey={e=>e.id}
+  currentPageLabel={'Página '+page+' · lançamentos autorizados'}
+  onOpen={e=>void open(e.id)} openLabel={e=>'Abrir lançamento '+e.sourceReference}
+  columns={[
+    {key:'origin',title:'Data / origem',required:true,
+      render:e=><span className="enterprise-smart-primary"><strong>{date(e.effectiveDate)}</strong><small>{e.sourceReference}</small></span>,
+      text:e=>e.effectiveDate+' · '+e.sourceReference,sortValue:e=>e.effectiveDate},
+    {key:'description',title:'Descrição',render:e=>e.description,
+      text:e=>e.description,sortValue:e=>e.description},
+    {key:'debit',title:'Débitos',render:e=>moneyScaled(e.debitScaled),
+      text:e=>moneyScaled(e.debitScaled),align:'end' as const},
+    {key:'credit',title:'Créditos',render:e=>moneyScaled(e.creditScaled),
+      text:e=>moneyScaled(e.creditScaled),align:'end' as const},
+    {key:'status',title:'Situação',render:e=><span className="badge">{e.status==='posted'?'Postado':e.status}</span>,
+      text:e=>e.status,sortValue:e=>e.status},
+  ] satisfies EnterpriseSmartColumn<Entry>[]}/>:<div className="empty"><h3>Nenhum lançamento postado</h3><p>Cadastre pelo menos duas contas e informe uma origem para lançar partidas equilibradas.</p></div>}
  <footer className="table-footer"><span>Página {page}</span><div className="pagination"><button disabled={page===1} onClick={()=>setPage(v=>v-1)}>Anterior</button><button disabled={!hasMore} onClick={()=>setPage(v=>v+1)}>Próxima</button></div></footer>
  {notice&&!creatingAccount&&!creatingEntry&&<p role="status" className="linked-info">{notice}</p>}
  {detail&&<div className="overlay" onClick={()=>setDetail(null)}><aside className="drawer enterprise-object-detail" role="dialog" aria-modal="true" aria-label="Partidas do lançamento" onClick={e=>e.stopPropagation()}><header><span className="eyebrow">OBJECT PAGE · DIÁRIO POSTADO</span><button className="icon-button" onClick={()=>setDetail(null)} aria-label="Fechar lançamento">Fechar</button></header><EnterpriseObjectSectionNavigation label="Seções do lançamento" sections={[{id:"ledger-detail",label:"Identificação"},{id:"ledger-lines",label:"Partidas"}]}/><EnterpriseObjectSummary id="ledger-detail" type="LANÇAMENTO CONTÁBIL" reference={detail.entry.sourceReference} title={detail.entry.sourceReference} subtitle={detail.entry.description} status={detail.entry.reversalOf?"Estorno":detail.entry.reversalId?"Estornado":detail.entry.status==="posted"?"Publicado":detail.entry.status==="draft"?"Rascunho":detail.entry.status} facts={[{label:"Data efetiva",value:date(detail.entry.effectiveDate)},{label:"Partidas",value:detail.lines.length},{label:"Classificação",value:detail.entry.reversalOf?"Estorno":"Lançamento"}]}/><h3 id="ledger-lines">Partidas</h3>{detail.entry.reversalOf&&<p className="linked-info">Estorno de {detail.entry.reversalOf.slice(0,8).toUpperCase()}</p>}{detail.entry.reversalId&&<p className="linked-info">Estornado por {detail.entry.reversalId.slice(0,8).toUpperCase()}</p>}{detail.lines.map(l=><div className="event-row" key={l.id}><span>{l.code} · {l.name}</span><small>Débito {moneyScaled(l.debitScaled)} · Crédito {moneyScaled(l.creditScaled)}</small></div>)}{!detail.entry.reversalOf&&!detail.entry.reversalId&&<button className="secondary" onClick={()=>{setReversing({key:crypto.randomUUID(),originalId:detail.entry.id});setNotice('');}}>Estornar lançamento</button>}{!detail.entry.reversalOf&&!detail.entry.reversalId&&reconciliation?.items.some(x=>!x.verifiedPosting&&!x.journalId)&&<button className="secondary" onClick={()=>{setLinking({id:crypto.randomUUID(),key:crypto.randomUUID(),journalId:detail.entry.id});setNotice('');}}>Vincular origem da fatura</button>}</aside></div>}
