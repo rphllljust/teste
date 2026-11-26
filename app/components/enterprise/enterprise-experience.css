@@ -388,3 +388,127 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .app .nav-group button, .app .primary, .app .secondary { transition: none; }
 }
+
+
+/* Enterprise object workspaces: full information context, not a narrow CRUD drawer. */
+.app .drawer.enterprise-object-detail {
+  box-sizing: border-box;
+  width: min(940px, calc(100vw - 48px));
+  max-width: 100%;
+  height: 100dvh;
+  max-height: 100dvh;
+  padding: 26px 30px 38px;
+  background: #fff;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: contain;
+  border-left: 1px solid var(--cisne-color-border);
+  box-shadow: -16px 0 46px rgb(17 35 55 / 16%);
+}
+.app .drawer.enterprise-object-detail > header {
+  position: sticky;
+  top: -26px;
+  z-index: 6;
+  min-height: 76px;
+  margin: -26px -30px 0;
+  padding: 14px 30px;
+  background: #fff;
+  border-bottom: 1px solid var(--cisne-color-border);
+  box-sizing: border-box;
+}
+.app .drawer.enterprise-object-detail > .object-anchors {
+  position: sticky;
+  top: 50px;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  min-height: 45px;
+  margin: 0 -30px 20px;
+  padding: 5px 30px;
+  border: 0;
+  border-bottom: 1px solid var(--cisne-color-border);
+  border-radius: 0;
+  background: #fff;
+  scroll-padding-inline: 30px;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.app .drawer.enterprise-object-detail .object-anchors a {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 6px 6px 0 0;
+  padding: 6px 12px;
+  min-height: 32px;
+  color: #526a80;
+  font-weight: 650;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.app .drawer.enterprise-object-detail .object-anchors a[aria-current="location"],
+.app .drawer.enterprise-object-detail .object-anchors a:hover {
+  background: #eaf4f6;
+  border-bottom-color: #146c79;
+  color: #145d6c;
+}
+.app .drawer.enterprise-object-detail > section[id],
+.app .drawer.enterprise-object-detail > [id] { scroll-margin-top: 144px; }
+.app .drawer.enterprise-object-detail > section {
+  min-width: 0;
+  padding: 8px 0 22px;
+  border-bottom: 1px solid #e6edf3;
+}
+.app .drawer.enterprise-object-detail > section:last-child { border-bottom: 0; }
+.app .drawer.enterprise-object-detail .enterprise-object-summary {
+  padding: 20px;
+  background: #f7fafc;
+  border: 1px solid #dce7ef;
+}
+.app .drawer.enterprise-object-detail .enterprise-object-summary h2 { font-size: clamp(20px, 2.2vw, 27px); }
+.app .drawer.enterprise-object-detail .enterprise-object-facts {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+}
+.app .drawer.enterprise-object-detail .enterprise-object-summary ~ dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 24px;
+}
+.app .drawer.enterprise-object-detail .command-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+  gap: 8px;
+}
+.app .drawer.enterprise-object-detail .event-row { gap: 14px; }
+.app .value-stream {
+  grid-template-columns: repeat(8, minmax(138px, 1fr));
+  overflow-x: auto;
+  overscroll-behavior-inline: contain;
+  scrollbar-width: thin;
+}
+.app .enterprise-value-note { font-size: 12px; line-height: 1.5; color: #5f7183; margin: 4px 0 14px; }
+@media (max-width: 1024px) {
+  .app .drawer.enterprise-object-detail { width: min(780px, calc(100vw - 24px)); padding-inline: 22px; }
+  .app .drawer.enterprise-object-detail > header { margin-inline: -22px; padding-inline: 22px; }
+  .app .drawer.enterprise-object-detail > .object-anchors { margin-inline: -22px; padding-inline: 22px; }
+}
+@media (max-width: 700px) {
+  .app .drawer.enterprise-object-detail {
+    width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    padding: 16px 14px 28px;
+    border-left: 0;
+    box-shadow: none;
+  }
+  .app .drawer.enterprise-object-detail > header { min-height: 64px; top: -16px; margin: -16px -14px 0; padding: 10px 14px; }
+  .app .drawer.enterprise-object-detail > .object-anchors { top: 48px; margin: 0 -14px 14px; padding: 4px 14px; }
+  .app .drawer.enterprise-object-detail .enterprise-object-summary { padding: 14px; }
+  .app .drawer.enterprise-object-detail .enterprise-object-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .app .drawer.enterprise-object-detail .enterprise-object-summary ~ dl { grid-template-columns: 1fr; }
+  .app .drawer.enterprise-object-detail .event-row { flex-wrap: wrap; }
+}
+@media (max-width: 390px) {
+  .app .drawer.enterprise-object-detail .enterprise-object-facts { grid-template-columns: 1fr; }
+  .app .drawer.enterprise-object-detail .object-anchors a { padding-inline: 9px; }
+}
