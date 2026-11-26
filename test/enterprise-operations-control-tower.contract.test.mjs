@@ -66,3 +66,58 @@ test('Visão operacional and Field Service share enterprise source, without doub
  assert.match(css,/prefers-reduced-motion:reduce/);
  assert.match(css,/forced-colors:active/);
 });
+
+test('Tier 1 executive analytics are owner scoped and never invent financial values',()=>{
+ const analytics=read('app/EnterpriseOperationsAnalytics.tsx');
+ const financial=read('app/components/enterprise/EnterpriseFinancialAssurance.tsx');
+ const menu=read('app/components/enterprise/EnterpriseGlobalDomainNav.tsx');
+ const workspace=read('app/components/enterprise/enterprise-workbench.css');
+ assert.match(api,/statusBreakdown/);
+ assert.match(api,/dueBreakdown/);
+ assert.match(api,/WHERE o\.owner_id=\$1/);
+ assert.match(api,/BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY/);
+ assert.match(api,/analytics:/);
+ assert.match(workbench,/<EnterpriseOperationsAnalytics/);
+ assert.match(workbench,/<EnterpriseFinancialAssurance/);
+ assert.match(analytics,/statusBuckets/);
+ assert.match(analytics,/dueBuckets/);
+ assert.match(analytics,/navigate\('Financeiro'\)/);
+ assert.doesNotMatch(analytics,/faker|Math\.random|mockOrders|R\$ 345|91,7%/i);
+ assert.match(financial,/api\/finance\/workspace/);
+ assert.match(financial,/api\/accounting\/reconciliation/);
+ assert.match(financial,/api\/accounting\/receipt-reconciliation/);
+ assert.match(financial,/Promise\.allSettled/);
+ assert.match(financial,/BigInt\(scaled\)/);
+ assert.match(menu,/currentPage=|currentPage:string/);
+ assert.match(menu,/aria-current=/);
+ assert.match(page,/EnterpriseGlobalDomainNav/);
+ assert.match(workspace,/\.cisne-enterprise-global-domains/);
+});
+
+test('legacy ownership and execution revisions are fail closed',()=>{
+ const list=read('app/api/orders/route.ts');
+ const execution=read('app/api/orders/[id]/execution/route.ts');
+ const linked=read('lib/projections/operation.ts');
+ const linkedDetail=read('app/api/operation/[kind]/[id]/route.ts');
+ const fin=read('app/api/finance/workspace/route.ts');
+ const commands=read('app/api/commands/route.ts');
+ for(const file of [list,execution,linked,linkedDetail,fin,commands])
+  assert.doesNotMatch(file,/owner_id IS NULL OR owner_id/);
+ assert.match(execution,/VERSION_CONFLICT/);
+ assert.match(execution,/NOT EXISTS \(SELECT 1 FROM execution_entries reversal/);
+ assert.match(commands,/m\.id=\$1 AND o\.owner_id=\$2 FOR UPDATE/);
+});
+
+test('finance close exposes strict Tier 1 readiness and performance indexes are registered',()=>{
+ const preflight=read('app/api/finance/periods/preflight/route.ts');
+ const migration=read('drizzle-pg/0024_enterprise_owner_query_indexes.sql');
+ const runner=read('scripts/migrate-postgres.mjs');
+ assert.match(preflight,/tier1Readiness:/);
+ assert.match(preflight,/unpostedCashEvents/);
+ assert.match(preflight,/unpostedPayables/);
+ assert.match(preflight,/unpostedPayablePayments/);
+ assert.match(preflight,/ready:tier1Blockers\.length===0/);
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS cisne_orders_owner_status_due_idx/);
+ assert.match(migration,/CREATE INDEX IF NOT EXISTS cisne_journal_actor_effective_idx/);
+ assert.match(runner,/0024_enterprise_owner_query_indexes/);
+});
