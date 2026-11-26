@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { Pool } from 'pg';
-import { PROTECTED_MIGRATION, validateRestoreAttestation } from './migration-safety.mjs';
+import { PROTECTED_MIGRATION, validateRestoreAttestation, isVerifiedEmptyInstallation } from './migration-safety.mjs';
 import { assertNextcrmMigrationPreflight, NEXTCRM_BRIDGE_MIGRATIONS, NEXTCRM_BRIDGE_TABLES } from './nextcrm-migration-preflight.mjs';
 
 // Source-controlled, append-only migrations. Neither this script nor its
@@ -58,16 +58,35 @@ try {
     appliedIds: appliedNextcrm.rows.map(row => row.id),
     presentTables: existingNextcrmTables.rows.map(row => row.name),
   });
+  // Verify fresh installation using the LIVE catalog under an advisory transaction
+  // lock. No user tables/views/sequences in ANY non-system schema and no history
+  // are allowed. If any object exists, protected migrations demand real
+  // restore evidence exactly as before.
+  const [catalog, ledger, namespace] = await Promise.all([
+    client.query(`SELECT COUNT(*)::integer AS count FROM pg_catalog.pg_class AS c
+      JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
+      WHERE n.nspname NOT IN ('pg_catalog','information_schema')
+        AND n.nspname !~ '^pg_'
+        AND c.relkind IN ('r','p','v','m','f','S')
+        AND NOT(n.nspname='public' AND c.relname='_cisne_schema_migrations')`),
+    client.query('SELECT COUNT(*)::integer AS count FROM _cisne_schema_migrations'),
+    client.query('SELECT current_schema() AS schema'),
+  ]);
+  const firstInstall=namespace.rows[0]?.schema==='public'&&isVerifiedEmptyInstallation({
+    userRelations:catalog.rows[0]?.count,
+    ledgerRows:ledger.rows[0]?.count,
+  });
+  if(firstInstall)console.info('CISNE_FIRST_INSTALL: verified empty catalog and migration ledger');
   const completed = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [PROTECTED_MIGRATION]);
   if (!completed.rowCount) {
     const protectedSql = await readFile(new URL('../drizzle-pg/' + PROTECTED_MIGRATION + '.sql', import.meta.url), 'utf8');
-    validateRestoreAttestation({ migrationId: PROTECTED_MIGRATION, sql: protectedSql });
+    if(!firstInstall)validateRestoreAttestation({ migrationId: PROTECTED_MIGRATION, sql: protectedSql });
   }
   const nextcrmMigration = '0003_nextcrm_document_bridge';
   const nextcrmApplied = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [nextcrmMigration]);
   if (!nextcrmApplied.rowCount) {
     const nextcrmSql = await readFile(new URL('../drizzle-pg/' + nextcrmMigration + '.sql', import.meta.url), 'utf8');
-    validateRestoreAttestation({ migrationId: nextcrmMigration, sql: nextcrmSql, env: { ...process.env, CISNE_DB_RESTORE_ATTESTATION: process.env.CISNE_DB_RESTORE_ATTESTATION_0003 } });
+    if(!firstInstall)validateRestoreAttestation({ migrationId: nextcrmMigration, sql: nextcrmSql, env: { ...process.env, CISNE_DB_RESTORE_ATTESTATION: process.env.CISNE_DB_RESTORE_ATTESTATION_0003 } });
   }
   for (const migration of migrations) {
     const result = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id=$1', [migration.id]);
