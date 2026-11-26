@@ -73,6 +73,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       if (!order.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem não encontrada.');
       const row = order.rows[0] as { id: string; status: string; version: number };
       if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
+      if (row.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A OS foi alterada. Atualize o documento.');
       const prior = await query('SELECT result,request_hash FROM order_events WHERE id=$1', [p.key]);
       if (prior.rows.length) {
         if (prior.rows[0].request_hash !== hash || !prior.rows[0].result) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de execução já utilizada.');
@@ -90,7 +91,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await query('UPDATE order_events SET result=$2 WHERE id=$1', [entryId, JSON.stringify(result)]);
         return result;
       }
-      const original = await query('SELECT id FROM execution_entries WHERE id=$1 AND order_id=$2 AND reverses_id IS NULL FOR UPDATE', [p.reversesId, id]);
+      const original = await query(
+        "SELECT e.id FROM execution_entries e WHERE e.id=$1 AND e.order_id=$2 AND e.kind='report' "+
+        "AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id) FOR UPDATE OF e",
+        [p.reversesId, id],
+      );
       if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Apontamento original não encontrado.');
       const reversalId = crypto.randomUUID();
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [reversalId, id, p.command, row.version, now, context!.actorId, hash, reversalId, context!.correlationId]);
