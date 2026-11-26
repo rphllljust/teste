@@ -49,3 +49,14 @@ export function validateRestoreAttestation({migrationId,sql,env=process.env,now=
   return {kind:'attested',migrationId,digest,backupId:evidence.backupId,
     restoreTarget:evidence.restoreTarget,verifiedAt:evidence.verifiedAt};
 }
+/**
+ * First installation is NOT a migration over existing records.
+ * Caller must inspect the PostgreSQL catalog under the transaction lock.
+ * The migration ledger alone is excluded only because it was just created.
+ * Never accept an environment flag, a manually supplied table count, or
+ * an operator's claimed backup as proof that a real database is empty.
+ */
+export function isVerifiedEmptyInstallation({userRelations,ledgerRows}){
+ return Number.isSafeInteger(userRelations)&&userRelations===0&&
+  Number.isSafeInteger(ledgerRows)&&ledgerRows===0;
+}

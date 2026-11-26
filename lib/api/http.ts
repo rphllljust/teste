@@ -1,6 +1,7 @@
 import { stagingBoundaryError } from './staging-access.mjs';
 import { mutationOriginAllowed } from './mutation-origin.mjs';
 import { validateStagingSession } from './staging-session.mjs';
+import { validateProductionSession } from './production-session.mjs';
 import { getTestIdentity } from './test-identity.mjs';
 import { safeErrorDiagnostics } from './error-diagnostics.mjs';
 export class ApiError extends Error{constructor(public status:number,public code:string,message:string){super(message);}}
@@ -14,6 +15,8 @@ export function requestContext(request:Request,mutation=false):RequestContext{
  // HTTP headers are deliberately ignored in that mode.
  const actorId=process.env.RAILWAY_ENVIRONMENT_NAME==='staging'
   ? validateStagingSession(request)
+  : process.env.RAILWAY_ENVIRONMENT_NAME==='production'
+    ? validateProductionSession(request)
   : process.env.NODE_ENV==='test'
     ? getTestIdentity(request)
     : request.headers.get('oai-authenticated-user-id');
