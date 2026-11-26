@@ -51,20 +51,21 @@ export function EnterpriseSmartGrid<T>({
  const [selected,setSelected]=useState<Set<Key>>(()=>new Set());
  const [exportNotice,setExportNotice]=useState("");
  const keys=columns.map(column=>column.key).join("|");
+ const requiredKeys=columns.filter(column=>column.required).map(column=>column.key).join("|");
  useEffect(()=>{
   const timer=window.setTimeout(()=>{
    try{
     const saved=JSON.parse(window.localStorage.getItem(storageKey)||"[]") as unknown;
     if(Array.isArray(saved)){
      const allowed=new Set(keys.split("|"));
-     const next=saved.filter((key):key is string=>typeof key==="string"&&allowed.has(key)&&
-      !columns.some(column=>column.key===key&&column.required));
+     const required=new Set(requiredKeys.split("|"));
+     const next=saved.filter((key):key is string=>typeof key==="string"&&allowed.has(key)&&!required.has(key));
      setHidden(next.length>=columns.length?[]:next);
     }
    }catch{ /* Optional view preferences never block access to data. */ }
   },0);
   return()=>window.clearTimeout(timer);
- },[storageKey,keys,columns]);
+ },[storageKey,keys,requiredKeys]);
  const visible=columns.filter(column=>!hidden.includes(column.key));
  const ordered=useMemo(()=>{
   const column=columns.find(value=>value.key===sort?.key);
