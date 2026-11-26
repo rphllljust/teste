@@ -21,6 +21,7 @@ import CloseCenterWorkspace from "./CloseCenterWorkspace";
 import InventoryWorkspace from "./InventoryWorkspace";
 import ProcurementWorkspace from "./ProcurementWorkspace";
 import EnterpriseCommandCenter from "./EnterpriseCommandCenter";
+import EnterpriseGlobalDomainNav from "./components/enterprise/EnterpriseGlobalDomainNav";
 import EnterpriseDossierWorkspace from "./EnterpriseDossierWorkspace";
 import CRMWorkspace from "./CRMWorkspace";
 import MRPWorkspace from "./MRPWorkspace";
@@ -1411,6 +1412,7 @@ function HomeView() {
             ))}
           </nav>}
         </header>
+        <EnterpriseGlobalDomainNav currentPage={page} navigate={navigate}/>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
