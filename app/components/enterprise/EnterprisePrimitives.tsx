@@ -1,6 +1,6 @@
 'use client';
 
-import { Component, useEffect, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
+import { Component, useEffect, useRef, useState, type ErrorInfo, type FormEvent, type HTMLAttributes, type Key, type MouseEvent, type ReactNode } from 'react';
 
 export type EnterpriseStatus = 'draft'|'pending'|'approved'|'in_progress'|'completed'|'cancelled'|'warning'|'blocked';
 const labels: Record<EnterpriseStatus, string> = { draft:'Rascunho', pending:'Pendente', approved:'Aprovado', in_progress:'Em execução', completed:'Concluído', cancelled:'Cancelado', warning:'Atenção', blocked:'Bloqueado' };
@@ -15,6 +15,37 @@ export function EnterprisePageHeader({ eyebrow, title, description, actions, bre
 export type EnterpriseObjectHeaderProps = { type:string; reference?:string; title:string; status?:EnterpriseStatus; statusLabel?:string; facts?:ReactNode; actions?:ReactNode; description?:string };
 export function BusinessObjectHeader({ type, reference, title, status, statusLabel, facts, actions, description }: EnterpriseObjectHeaderProps) { return <header className="business-object-header" aria-label={`${type}: ${title}`}><div className="business-object-heading"><span className="eyebrow">{type}{reference ? ` · ${reference}` : ''}</span><h2>{title}</h2>{description && <p className="enterprise-muted">{description}</p>}{facts && <div className="business-object-facts">{facts}</div>}</div>{(status || actions) && <div className="business-object-actions" aria-label="Ações do objeto">{status && <BusinessStatus status={status} label={statusLabel} />}{actions}</div>}</header>; }
 export const EnterpriseObjectHeader = BusinessObjectHeader;
+
+export type EnterpriseObjectSection = { id: string; label: string };
+/** Scoped drawer anchors: active location follows the actual scroll region. */
+export function EnterpriseObjectSectionNavigation({
+  sections, label = 'Seções do documento',
+}: { sections: readonly EnterpriseObjectSection[]; label?: string }) {
+  const navRef = useRef<HTMLElement>(null);
+  const [active, setActive] = useState(sections[0]?.id ?? '');
+  const ids = sections.map(section => section.id).join('|');
+  useEffect(() => {
+    const root = navRef.current?.closest('.drawer');
+    if (!root || typeof IntersectionObserver === 'undefined') return;
+    const targets = ids.split('|').map(id => root.querySelector<HTMLElement>('[id="' + id + '"]')).filter((el): el is HTMLElement => !!el);
+    if (!targets.length) return;
+    const observer = new IntersectionObserver(entries => {
+      const visible = entries.filter(entry => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
+      if (visible[0]) setActive(visible[0].target.id);
+    }, { root, rootMargin: '-135px 0px -55% 0px', threshold: [0, 0.25, 0.5] });
+    targets.forEach(target => observer.observe(target));
+    return () => observer.disconnect();
+  }, [ids]);
+  return <nav ref={navRef} className="object-anchors" aria-label={label}>
+    {sections.map(section => <a
+      key={section.id}
+      href={'#' + section.id}
+      aria-current={active === section.id ? 'location' : undefined}
+      onClick={() => setActive(section.id)}
+    >{section.label}</a>)}
+  </nav>;
+}
+
 
 export type EnterpriseObjectSummaryFact = { label: string; value: ReactNode };
 export type EnterpriseObjectSummaryProps = {

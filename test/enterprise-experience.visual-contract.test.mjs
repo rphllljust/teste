@@ -36,3 +36,15 @@ test('CSS has balanced braces without unfinished selectors', () => {
   }, 0);
   assert.equal(depth, 0);
 });
+
+
+test('object detail workspaces have wide desktop layout, sticky context and mobile full-screen fallbacks', () => {
+  assert.match(css, /\.drawer\.enterprise-object-detail/);
+  assert.match(css, /width: min\(940px/);
+  assert.match(css, /height: 100dvh/);
+  assert.match(css, /> \.object-anchors/);
+  assert.match(css, /aria-current="location"/);
+  assert.match(css, /@media \(max-width: 700px\)/);
+  assert.match(css, /grid-template-columns: 1fr/);
+  assert.match(css, /grid-template-columns: repeat\(8,/);
+});
