@@ -111,3 +111,14 @@ test('auditable evidence is consistent across dossier and operations; inspection
  assert.match(smart,/OS em inspeção · nenhuma marcada/);
  assert.match(smart,/Nenhuma seleção em lote/);
 });
+
+test('deep links and browser history restore an owned OS filter for supported modules',()=>{
+ assert.match(shell,/window\.addEventListener\("hashchange", route\)/);
+ assert.match(shell,/window\.addEventListener\("popstate", route\)/);
+ assert.match(shell,/setBusinessOrder\(parsed\.objectId \?\? ""\)/);
+ assert.match(shell,/setExecutionOrder\(parsed\.objectId \?\? ""\)/);
+ assert.match(shell,/setLinkedNumber\(1\)/);
+ assert.match(shell,/key=\{businessOrder\|\|'dossier-list'\}/);
+ assert.match(shell,/initialOrderId=\{businessOrder\|\|null\}/);
+ assert.match(shell,/objectHash\(name, orderId \|\| undefined\)/);
+});
