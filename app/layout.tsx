@@ -6,6 +6,7 @@ import "./components/enterprise/enterprise-foundation.css";
 import "./components/enterprise/enterprise-experience.css";
 import "./components/enterprise/enterprise-governance.css";
 import "./components/enterprise/enterprise-dossier.css";
+import "./components/enterprise/enterprise-resource-planning.css";
 
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",
