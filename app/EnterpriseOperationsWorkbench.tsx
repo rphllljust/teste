@@ -184,7 +184,8 @@ export default function EnterpriseOperationsWorkbench({
    sortValue:row=>row.attentionRank},
  ],[]);
  const inspectOrder=(row:Row)=>{
-  setSelectedId(row.id);setInspectorVisible(true);setMobileInspectorOpen(true);
+  setSelectedId(row.id);setInspectorVisible(true);
+  setMobileInspectorOpen(window.matchMedia('(max-width:1060px)').matches);
  };
  const quick=[
   {key:'all' as Queue,label:'OS no contexto',value:summary?.total,icon:ClipboardList},
@@ -266,10 +267,13 @@ export default function EnterpriseOperationsWorkbench({
    {(q||category!=='all'||queue!==(mode==='field'?'executing':'attention'))&&<button type="button" className="text-button"
      onClick={()=>{setSearch('');setQ('');setCategory('all');selectQueue(mode==='field'?'executing':'attention');}}>Limpar filtros</button>}
    <button type="button" className="cisne-workstation-inspector-toggle"
-    aria-controls="cisne-order-inspector" aria-expanded={inspectorVisible}
-    onClick={()=>{setInspectorVisible(value=>!value);setMobileInspectorOpen(false);}}>
-    {inspectorVisible?<PanelRightClose size={16}/>:<PanelRightOpen size={16}/>}
-    {inspectorVisible?'Ocultar inspeção':'Mostrar inspeção'}
+    aria-controls="cisne-order-inspector" aria-expanded={narrow?mobileInspectorOpen:inspectorVisible}
+    onClick={()=>{
+     if(narrow){setInspectorVisible(true);setMobileInspectorOpen(true);}
+     else{setInspectorVisible(value=>!value);setMobileInspectorOpen(false);}
+    }}>
+    {(narrow||!inspectorVisible)?<PanelRightOpen size={16}/>:<PanelRightClose size={16}/>}
+    {narrow?'Inspecionar OS':inspectorVisible?'Ocultar inspeção':'Mostrar inspeção'}
    </button>
   </div>
   <div className="enterprise-operations-body" data-inspector={inspectorVisible?'open':'closed'}
