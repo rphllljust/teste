@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ArrowRight, CheckCircle2, CircleAlert, Plus, RefreshCw, Search, Users, X } from 'lucide-react';
-import { EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 
 type Lead = {
   id:string; contactName:string; companyName:string; contactEmail:string|null;
@@ -395,5 +394,5 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
 }
 
 export default function EnterpriseCRMWorkspace(props: Parameters<typeof CRMWorkspace>[0]) {
- return <><EnterprisePageHeader breadcrumb="Comercial / CRM" eyebrow="CISNE ENTERPRISE · WORKLIST" title="CRM e vendas" description="Leads, oportunidades e propostas conectados aos objetos comerciais." /><CRMWorkspace {...props}/></>;
+ return <CRMWorkspace {...props}/>;
 }

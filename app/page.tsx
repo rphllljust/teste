@@ -29,7 +29,7 @@ import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
-import { EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
+import { EnterpriseObjectSectionNavigation, EnterpriseObjectSummary, EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
 import type { LucideIcon } from "lucide-react";
 import { moduleGroups, isModuleLabel, moduleHash, type ModuleNavItem } from "../lib/navigation/catalog";
 import { objectHash, parseObjectHash } from "../lib/navigation/object-routes";
@@ -347,18 +347,29 @@ function HomeView() {
     [commercialOrigin, setCommercialOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  const [navigationCollapsed, setNavigationCollapsed] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     // Restore after hydration; no synchronous setState in effects or SSR/localStorage mismatch.
     const timer = window.setTimeout(() => {
       try {
         const saved = window.localStorage.getItem("cisne:workspace-density");
         if (saved === "compact" || saved === "comfortable") setDensity(saved);
+        if (window.localStorage.getItem("cisne:workbench-navigation") === "collapsed") setNavigationCollapsed(true);
       } catch {
         // Managed browsers may deny localStorage; session density still works.
       }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  function toggleNavigation() {
+    setNavigationCollapsed(value => {
+      const next = !value;
+      try { window.localStorage.setItem("cisne:workbench-navigation", next ? "collapsed" : "expanded"); }
+      catch { /* Layout preference remains available for the session. */ }
+      return next;
+    });
+  }
   function toggleDensity() {
     const next = density === "compact" ? "comfortable" : "compact";
     setDensity(next);
@@ -1267,7 +1278,7 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app" data-density={density}>
+    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}>
       {sidebar && (
         <button
           className="sidebar-scrim"
@@ -1276,7 +1287,7 @@ function HomeView() {
         />
       )}
       <aside className={"sidebar " + (sidebar ? "mobile-open" : "")}>
-        <Link prefetch={false} className="brand" href="/" aria-label="Cisne início">
+        <Link prefetch={false} className="brand" href="/" aria-label="Cisne início" title="CISNE Rondônia">
           <span className="brand-mark">
             <Layers size={24} />
           </span>
@@ -1299,6 +1310,8 @@ function HomeView() {
                   key={name}
                   onClick={() => navigate(name)}
                   className={page === name ? "active" : ""}
+                  title={name}
+                  aria-label={name}
                   aria-current={page === name ? "page" : undefined}
                 >
                   <Icon size={18} />
@@ -1333,6 +1346,14 @@ function HomeView() {
         <header className="topbar">
           <div className="crumb">
             <button
+              type="button"
+              className="enterprise-nav-collapse icon-button"
+              aria-label={navigationCollapsed ? "Expandir navegação lateral" : "Recolher navegação lateral"}
+              aria-pressed={navigationCollapsed}
+              onClick={toggleNavigation}
+              title={navigationCollapsed ? "Expandir menu" : "Recolher menu"}
+            ><PanelLeft size={19}/></button>
+            <button
               className="mobile-toggle icon-button"
               aria-label={sidebar ? "Fechar menu" : "Abrir menu"}
               aria-expanded={sidebar}
@@ -1347,6 +1368,11 @@ function HomeView() {
             <strong>{page}</strong>
           </div>
           <div className="top-actions">
+            <button type="button" className="enterprise-shortcut-trigger secondary"
+              aria-expanded={shortcutsOpen} aria-controls="cisne-workbench-shortcuts"
+              onClick={() => setShortcutsOpen(previous => !previous)}>
+              <LayoutDashboard size={16}/> Atalhos <ChevronRight size={14}/>
+            </button>
             <button
               className="global-search"
               aria-label="Buscar no Cisne — Ctrl ou Command K"
@@ -1371,20 +1397,20 @@ function HomeView() {
               <span>{density === "compact" ? "Compacta" : "Confortável"}</span>
             </button>
           </div>
+          {shortcutsOpen && <nav id="cisne-workbench-shortcuts" className="enterprise-quick-access" aria-label="Atalhos de trabalho">
+            <span>Acesso rápido aos módulos</span>
+            {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+              <button
+                type="button"
+                key={module}
+                aria-current={page === module ? "page" : undefined}
+                onClick={() => { setShortcutsOpen(false); navigate(module); }}
+              >
+                {module}
+              </button>
+            ))}
+          </nav>}
         </header>
-        <nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">
-          <span>Acesso rápido</span>
-          {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
-            <button
-              type="button"
-              key={module}
-              aria-current={page === module ? "page" : undefined}
-              onClick={() => navigate(module)}
-            >
-              {module}
-            </button>
-          ))}
-        </nav>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
@@ -1414,6 +1440,7 @@ function HomeView() {
               "Field Service Cockpit",
               "Resource Planning Board",
               "Dossiês empresariais",
+              "Visão operacional",
             ].includes(page) && (
               <>
               <EnterprisePageHeader
@@ -1452,7 +1479,6 @@ function HomeView() {
             </div>
           )}
           {[
-            "Visão operacional",
             "Ordens de serviço",
             "Execução",
             "Medições",
@@ -1611,6 +1637,7 @@ function HomeView() {
             />
           ) : page === "Resource Planning Board" ? (
             <ResourcePlanningBoard
+              onNavigate={navigate}
               onOpenOrder={(id) => {
                 navigate("Ordens de serviço");
                 void openOrigin(id);
@@ -3158,40 +3185,30 @@ function HomeView() {
                 <X size={21} />
               </button>
             </header>
-            <span className={"badge status-" + selected.status}>
-              {statusNames[selected.status]}
-            </span>
-            <h2>{selected.title}</h2>
-            <p className="muted">
-              OS · {selected.id.slice(0, 8).toUpperCase()}
-            </p>
-            <dl>
-              <div>
-                <dt>
-                  {selected.client_id || selected.relations?.clientId
-                    ? "Cliente cadastrado"
-                    : "Cliente histórico informado"}
-                </dt>
-                <dd>{selected.client}</dd>
-              </div>
-              <div>
-                <dt>Atividade</dt>
-                <dd>{selected.category}</dd>
-              </div>
-              <div>
-                <dt>Data prevista</dt>
-                <dd>{date(selected.due_date)}</dd>
-              </div>
-              <div>
-                <dt>Registrada em</dt>
-                <dd>{date(selected.created_at)}</dd>
-              </div>
-            </dl>
-            <h3 className="drawer-section-title">Escopo da operação</h3>
+            <EnterpriseObjectSummary
+               type="Ordem de serviço" reference={selected.id.slice(0,8).toUpperCase()}
+               title={selected.title} status={statusNames[selected.status]}
+               subtitle={selected.client+" · "+selected.category}
+               facts={[
+                 {label:selected.client_id||selected.relations?.clientId?"Cliente cadastrado":"Cliente histórico informado",
+                   value:selected.client},
+                 {label:"Atividade",value:selected.category},
+                 {label:"Data prevista",value:date(selected.due_date)},
+                 {label:"Registrada em",value:date(selected.created_at)},
+               ]}/>
+             <EnterpriseObjectSectionNavigation label="Seções da ordem de serviço"
+               sections={[
+                 {id:"order-scope",label:"Escopo"},
+                 {id:"order-next",label:"Comandos"},
+                 {id:"order-commercial",label:"Origem comercial"},
+                 {id:"order-related",label:"Registros relacionados"},
+                 {id:"order-history",label:"Histórico"},
+               ]}/>
+             <h3 id="order-scope" className="drawer-section-title">Escopo da operação</h3>
             <p className="description drawer-scope">
               {selected.description || "Escopo não informado."}
             </p>
-            <div className="next-block">
+            <div id="order-next" className="next-block">
               <span className="eyebrow">CONTINUIDADE</span>
               <h3>
                 {selected.availableCommands?.find((c) => c.primary)?.label ??
@@ -3220,7 +3237,7 @@ function HomeView() {
                 {contextError}
               </p>
             )}
-            <h3 className="drawer-section-title">Origem comercial</h3>
+            <h3 id="order-commercial" className="drawer-section-title">Origem comercial</h3>
             {(selected.client_id ?? selected.relations?.clientId) && (
               <button
                 className="related"
@@ -3365,7 +3382,7 @@ function HomeView() {
             {(selected.client_id ?? selected.relations?.clientId) && (
               <OrderNextcrmDocuments key={selected.id} orderId={selected.id} />
             )}
-            <h3 className="drawer-section-title">Registros relacionados</h3>
+            <h3 id="order-related" className="drawer-section-title">Registros relacionados</h3>
             <button
               className="related"
               onClick={() => {
@@ -3404,7 +3421,7 @@ function HomeView() {
                 <ChevronRight size={16} />
               </button>
             ))}
-            <details className="drawer-history">
+            <details id="order-history" className="drawer-history">
               <summary>Histórico operacional recente</summary>
               {contextError ? (
                 <p className="muted">Histórico indisponível.</p>

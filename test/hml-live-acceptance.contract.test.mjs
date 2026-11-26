@@ -51,3 +51,19 @@ test('encrypted credential is optional on PR but full manual HML is fail-closed'
   assert.match(doc,/NO-GO para produção/);
   assert.match(doc,/nove alterações pré-existentes não aplicadas/);
 });
+
+test('Wave 7 accepts true public UI at all viewports without exposing business records',()=>{
+  assert.match(browser,/const commandPages = \[/);
+  assert.match(browser,/label:'Visão operacional',heading:'Centro de operações'/);
+  assert.match(browser,/label:'Field Service Cockpit',heading:'Despacho e execução'/);
+  assert.match(browser,/getByRole\('region',\{name:'Centro transacional de operações'\}\)/);
+  assert.match(browser,/getByRole\('combobox',\{name:'Fila operacional'\}\)/);
+  assert.match(browser,/enterprise-operations-indicators button/);
+  assert.match(browser,/assert\.equal\(opsApi\.status\(\),403/);
+  assert.match(browser,/assert\.equal\(forgedOps\.status\(\),403/);
+  assert.match(browser,/HML_WAVE7_PUBLIC/);
+  assert.match(browser,/pageWidth\.scroll-pageWidth\.available<=24/);
+  assert.match(browser,/unauthenticated-'\+command\.key\+'-'\+profile\.name/);
+  assert.match(browser,/await page\.goto\(pageHref,\{waitUntil:'domcontentloaded'/);
+  assert.doesNotMatch(browser,/localStorage\.setItem\([^\n]*passphrase/);
+});

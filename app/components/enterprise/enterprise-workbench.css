@@ -1,0 +1,120 @@
+/* CISNE enterprise workbench — one global navigation/interaction system for all 26 modules.
+   The sidebar remains a full accessible navigation when collapsed on desktop.
+   Only a stable context bar remains above document workspaces; module shortcuts
+   appear on demand. No business data, commands or server permissions are changed. */
+.app { --cisne-workbench-top:54px; --cisne-workbench-side:236px; }
+.app .main { min-width:0; position:relative; }
+.app .topbar {
+  min-height:var(--cisne-workbench-top);
+  height:var(--cisne-workbench-top);
+  padding-inline:clamp(12px,1.8vw,24px);
+  z-index:35;
+  box-shadow:0 1px 2px rgb(16 32 50 / 4%);
+}
+.app .topbar .crumb { flex:1;min-width:0;display:flex;align-items:center;gap:9px; }
+.app .topbar .crumb > strong { white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:38vw; }
+.app .topbar .top-actions { gap:8px; }
+.app .enterprise-nav-collapse { display:none;align-items:center;justify-content:center;width:35px;height:35px;min-width:35px;border:1px solid #d8e4ed;border-radius:6px;color:#567282;background:white; }
+.app .enterprise-nav-collapse:hover { color:#186578;background:#eff6f8; }
+.app .enterprise-shortcut-trigger { display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:5px 12px;font-size:12px;white-space:nowrap; }
+.app .enterprise-shortcut-trigger[aria-expanded="true"] { background:#eaf4f7;color:#126477;border-color:#8ab8c7; }
+.app .enterprise-shortcut-trigger[aria-expanded="true"] svg:last-child { transform:rotate(90deg); }
+.app .enterprise-quick-access {
+  position:absolute;right:22px;left:auto;top:calc(100% + 5px);z-index:50;
+  width:min(720px,calc(100vw - 40px));max-height:min(70dvh,530px);
+  padding:14px;gap:5px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  background:#fff;border:1px solid #d8e5ee;border-radius:10px;
+  box-shadow:0 16px 45px rgb(11 37 55 / 16%);overflow-y:auto;
+  scrollbar-width:thin;overscroll-behavior:contain;
+}
+.app .enterprise-quick-access > span { grid-column:1 / -1;display:block;padding:5px 8px 9px;color:#62798c;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em; }
+.app .enterprise-quick-access button { display:flex;justify-content:flex-start;align-items:center;min-height:40px;width:100%;padding:8px 12px;border-radius:6px;font-size:12px;white-space:normal;text-align:left; }
+.app .enterprise-quick-access button[aria-current="page"] { background:#e7f3f6;border-color:#95c6d0;color:#145c6a; }
+.app .enterprise-quick-access button:focus-visible { outline:2px solid #136d7e;outline-offset:-2px; }
+.app .main .enterprise-breadcrumb { display:none; }
+.app .enterprise-page-header,.app .heading {
+  padding:0 0 14px;margin:0 0 16px;border-bottom:1px solid #dbe5ed;
+}
+.app .enterprise-page-header-copy { flex:1 1 370px;min-width:0; }
+.app .enterprise-page-header h1,.app .heading h1 { font-size:clamp(22px,1.9vw,28px);line-height:1.17;margin:3px 0 6px; }
+.app .enterprise-page-header .eyebrow { letter-spacing:.055em;font-size:11px; }
+.app .enterprise-page-actions { display:flex;flex-wrap:wrap;justify-content:flex-end;align-items:center;gap:8px; }
+.app .main main { width:auto;max-width:1920px;padding:clamp(16px,1.55vw,28px) clamp(16px,1.9vw,34px) 40px; }
+.app .main main .erp-experience-page,
+.app .main main .enterprise-dossier,
+.app .main main .worklist { min-width:0;max-width:100%; }
+.app .enterprise-page-header .primary,.app .enterprise-page-header .secondary { min-height:38px; }
+.app .worklist,.app .enterprise-panel,.app .enterprise-work-queue { min-width:0; }
+.app .enterprise-data-grid,.app .table-wrap,.app .enterprise-dossier-table-wrap { max-width:100%;overflow:auto; }
+.app .enterprise-worklist-header h2,.app .planning-rail-heading h2 { font-size:16px; }
+.app .enterprise-filter-bar,.app .filters { min-height:52px; }
+.app button:focus-visible,.app a:focus-visible,.app input:focus-visible,.app select:focus-visible {
+  outline:2px solid #167789;outline-offset:2px;
+}
+@media(min-width:801px){
+  .app .enterprise-nav-collapse { display:inline-flex; }
+  .app[data-navigation="collapsed"] { --cisne-workbench-side:68px; }
+  .app[data-navigation="collapsed"] .sidebar { width:68px!important; }
+  .app[data-navigation="collapsed"] > .main { margin-left:68px!important; }
+  .app[data-navigation="collapsed"] .brand { justify-content:center;padding:0;gap:0; }
+  .app[data-navigation="collapsed"] .brand > span:last-child { display:none; }
+  .app[data-navigation="collapsed"] .company { justify-content:center;padding:9px;min-height:48px; }
+  .app[data-navigation="collapsed"] .company > span { display:none; }
+  .app[data-navigation="collapsed"] .nav-group { padding:4px 7px; }
+  .app[data-navigation="collapsed"] .nav-group p { font-size:0;max-height:9px;overflow:hidden;margin:7px 0 2px; }
+  .app[data-navigation="collapsed"] .nav-group button { justify-content:center;gap:0;width:100%;min-height:40px;padding:8px; }
+  .app[data-navigation="collapsed"] .nav-group button > span,
+  .app[data-navigation="collapsed"] .nav-group button .nav-count { display:none; }
+  .app[data-navigation="collapsed"] .nav-group button svg { flex:none; }
+  .app[data-navigation="collapsed"] .sidebar-bottom { padding:8px 5px; }
+  .app[data-navigation="collapsed"] .sidebar-bottom .version { display:none; }
+  .app[data-navigation="collapsed"] .sidebar-bottom button { font-size:0;min-width:0;padding:10px;justify-content:center;gap:0; }
+  .app[data-navigation="collapsed"] .sidebar-bottom button kbd { display:none; }
+  .app[data-navigation="collapsed"] .enterprise-structure-link { font-size:0;justify-content:center;gap:0!important;padding:10px!important; }
+}
+@media(max-width:1100px){
+  .app .topbar .crumb > span:not(:first-child) { display:none; }
+  .app .topbar .crumb > svg { display:none; }
+  .app .topbar .crumb strong { max-width:44vw; }
+  .app .enterprise-page-actions { justify-content:flex-start; }
+}
+@media(max-width:800px){
+  .app .enterprise-nav-collapse { display:none; }
+  .app .enterprise-shortcut-trigger { min-width:38px;padding:7px;justify-content:center; }
+  .app .enterprise-shortcut-trigger svg:last-child { display:none; }
+  .app .enterprise-shortcut-trigger { font-size:0;gap:0; }
+  .app .enterprise-quick-access { right:10px;top:calc(100% + 5px);width:min(500px,calc(100vw - 20px)); }
+  .app .main main { padding:16px 14px 35px; }
+}
+@media(max-width:480px){
+  .app .topbar .crumb strong { max-width:40vw; }
+  .app .enterprise-quick-access { grid-template-columns:1fr; }
+  .app .enterprise-page-header,.app .heading { padding-bottom:12px;gap:10px; }
+  .app .enterprise-page-actions { width:100%; }
+}
+@media(prefers-reduced-motion:reduce){
+  .app .enterprise-shortcut-trigger svg:last-child { transition:none!important; }
+}
+@media(forced-colors:active){
+  .app .enterprise-quick-access button[aria-current="page"] { border:1px solid Highlight; }
+  .app .enterprise-nav-collapse { border:1px solid CanvasText; }
+}
+
+
+/* Wave 8: one effective document header per workspace. The local document header
+   keeps authorized actions and the application shell supplies the breadcrumb. */
+.app .cisne-crm > .cisne-crm-heading,
+.app .business-workspace > .worklist > .list-title {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:12px;padding:12px 16px;margin:0;border-bottom:1px solid #dbe5ed;
+}
+.app .business-workspace > .worklist > .list-title h2,
+.app .cisne-crm > .cisne-crm-heading h2 { font-size:clamp(20px,1.7vw,25px);line-height:1.2;margin:3px 0; }
+.app .business-workspace > .worklist > .list-title p,
+.app .cisne-crm > .cisne-crm-heading p {margin:3px 0 0;color:#62788a;line-height:1.45}
+@media(max-width:680px) {
+ .app .business-workspace > .worklist > .list-title,
+ .app .cisne-crm > .cisne-crm-heading {align-items:stretch;padding:12px}
+ .app .business-workspace > .worklist > .list-title .command-buttons,
+ .app .cisne-crm > .cisne-crm-heading .cisne-crm-actions {display:flex;flex-wrap:wrap;width:100%}
+}

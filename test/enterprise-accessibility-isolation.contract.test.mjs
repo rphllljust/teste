@@ -39,8 +39,8 @@ test("unsupported capabilities remain explicit", () => {
 
 test("global quick access uses real module routing, not decorative links", () => {
   expectAll(files.page, [
-    ["enterprise quick access landmark", /<nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">/],
-    ["all module quick actions navigate", /onClick=\{\(\) => navigate\(module\)\}/],
+    ["enterprise quick access landmark", /shortcutsOpen && <nav id="cisne-workbench-shortcuts" className="enterprise-quick-access" aria-label="Atalhos de trabalho">/],
+    ["all module quick actions navigate", /setShortcutsOpen\(false\); navigate\(module\);/],
     ["quick navigation tracks current module", /aria-current=\{page === module \? "page" : undefined\}/],
   ], "global module shortcuts");
 });

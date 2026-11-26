@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Plus, RefreshCw, Search, X } from "lucide-react";
+import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from "./components/enterprise/EnterpriseSmartGrid";
 import {
   EnterprisePageHeader,
   BusinessStatus,
@@ -204,44 +205,21 @@ export default function ProfessionalsWorkspace() {
           </button>
         </div>
       ) : items.length ? (
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Profissional</th>
-                <th>Matrícula</th>
-                <th>Especialidade</th>
-                <th>Departamento</th>
-                <th>Custo/hora</th>
-                <th>Situação</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((p) => (
-                <tr key={p.id}>
-                  <td>
-                    <button
-                      className="row-link"
-                      onClick={() => void open(p.id)}
-                    >
-                      {p.name}
-                    </button>
-                    <small>{p.phone ?? "Telefone não informado"}</small>
-                  </td>
-                  <td>{p.registration}</td>
-                  <td>{p.specialty}</td>
-                  <td>{p.department}</td>
-                  <td>{money(p.hourlyCost)}</td>
-                  <td>
-                    <span className={"badge status-" + p.status}>
-                      {p.status === "active" ? "Ativo" : "Inativo"}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <EnterpriseSmartGrid<Professional> viewId="enterprise-professionals" caption="Profissionais autorizados"
+          rows={items} getRowKey={p=>p.id} onOpen={p=>void open(p.id)}
+          openLabel={p=>"Abrir profissional "+p.name}
+          columns={[
+            {key:"name",title:"Profissional",required:true,
+             render:p=><span className="enterprise-smart-primary"><strong>{p.name}</strong><small>{p.phone??"Telefone não informado"}</small></span>,
+             text:p=>p.name,sortValue:p=>p.name},
+            {key:"registration",title:"Matrícula",render:p=>p.registration,text:p=>p.registration,sortValue:p=>p.registration},
+            {key:"specialty",title:"Especialidade",render:p=>p.specialty,text:p=>p.specialty,sortValue:p=>p.specialty},
+            {key:"department",title:"Departamento",render:p=>p.department,text:p=>p.department,sortValue:p=>p.department},
+            {key:"cost",title:"Custo/hora",render:p=>money(p.hourlyCost),text:p=>money(p.hourlyCost),align:"end" as const,
+             sortValue:p=>p.hourlyCost},
+            {key:"state",title:"Situação",render:p=><span className={"badge status-"+p.status}>{p.status==="active"?"Ativo":"Inativo"}</span>,
+             text:p=>p.status==="active"?"Ativo":"Inativo",sortValue:p=>p.status},
+          ] satisfies EnterpriseSmartColumn<Professional>[]}/>
       ) : (
         <div className="empty">
           <h3>Nenhum profissional cadastrado</h3>
