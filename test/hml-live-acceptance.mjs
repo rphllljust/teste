@@ -104,6 +104,29 @@ try {
         const indicators = await page.locator('.enterprise-operations-indicators button').count();
         assert.equal(indicators,5,profile.name+' '+command.key+' factual work queue shortcuts');
         assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
+        // Tier 1 workstation: verify the three genuine work surfaces, not just HTML markers.
+        if(command.key==='operations'){
+          const tabs=page.getByRole('tablist',{name:'Espaços da estação de trabalho'});
+          await tabs.waitFor({state:'visible',...time});
+          const work=page.getByRole('tab',{name:'Trabalho',exact:true});
+          const analysis=page.getByRole('tab',{name:'Análise operacional',exact:true});
+          const finance=page.getByRole('tab',{name:'Controladoria',exact:true});
+          assert.equal(await work.getAttribute('aria-selected'),'true');
+          await analysis.click();
+          await page.getByRole('heading',{name:'OS por situação',exact:true}).waitFor({state:'visible',...time});
+          assert.equal(await analysis.getAttribute('aria-selected'),'true');
+          await finance.click();
+          await page.getByRole('region',{name:'Integração financeira e contábil'})
+            .waitFor({state:'visible',...time});
+          assert.equal(await finance.getAttribute('aria-selected'),'true');
+          await work.click();
+          await page.getByRole('region',{name:'Sinais de integridade contábil'})
+            .waitFor({state:'visible',...time});
+          assert.equal(await work.getAttribute('aria-selected'),'true');
+          const forbiddenAccounting=await context.request.get(
+            base.origin+'/api/accounting/reconciliation',time);
+          assert.equal(forbiddenAccounting.status(),403,profile.name+' anonymous accounting denied');
+        }
         await page.screenshot({
           path:join(artifactDir,'unauthenticated-'+command.key+'-'+profile.name+'.png'),
           fullPage:false,
@@ -169,6 +192,48 @@ try {
         assert.match(dossier.financials?.settledScaled||'',/^-?\d+$/);
         recordTest = 'PASS';
       }
+      // Authenticated, READ-ONLY acceptance of the new worklist layout and object inspector.
+      const scopedOrders=await context.request.get(
+        base.origin+'/api/enterprise/operations?queue=all&page=1&pageSize=5',time);
+      assert.equal(scopedOrders.status(),200,profile.name+' owner-scoped worklist API');
+      const scoped=await scopedOrders.json();
+      assert.equal(scoped.source,'postgres_owner_scoped_operations');
+      assert.ok(Array.isArray(scoped.items),'worklist returns persisted, authorized records');
+      await page.goto(base.origin+'/#'+encodeURIComponent('Visão operacional'),
+        {waitUntil:'domcontentloaded',...time});
+      await page.getByRole('tab',{name:'Trabalho',exact:true})
+        .waitFor({state:'visible',...time});
+      await page.getByRole('combobox',{name:'Fila operacional'}).selectOption('all');
+      if(scoped.items.length){
+        if(profile.width<=800){
+          const first=page.locator('.cisne-workstation-mobile-order').first();
+          await first.waitFor({state:'visible',...time});
+          await first.click();
+          const dialog=page.getByRole('dialog',{name:'Object Page da ordem selecionada'});
+          await dialog.waitFor({state:'visible',...time});
+          await page.getByRole('button',{name:'Fechar inspeção'}).click();
+          await dialog.waitFor({state:'hidden',...time});
+        }else{
+          const first=page.locator('.enterprise-smart-open').first();
+          await first.waitFor({state:'visible',...time});
+          await first.click();
+          assert.equal(await page.locator('.enterprise-operations-object').isVisible(),true);
+          await page.getByRole('button',{name:'Ocultar inspeção'}).click();
+          await page.getByRole('button',{name:'Mostrar inspeção'}).click();
+          assert.equal(await page.locator('.enterprise-operations-object').isVisible(),true);
+        }
+      }
+      const workstationOverflow=await page.evaluate(()=>({
+        available:document.documentElement.clientWidth,
+        scroll:document.documentElement.scrollWidth,
+      }));
+      assert.ok(workstationOverflow.scroll-workstationOverflow.available<=24,
+        profile.name+' Tier 1 workstation unexpected horizontal overflow');
+      console.log('HML_TIER1_WORKSTATION '+JSON.stringify({
+        profile:profile.name,tabs:'PASS',protectedLedger:'PASS',
+        authenticatedList:'PASS',inspector:scoped.items.length?'PASS':'NO_RECORDS',
+        rootOverflowPx:Math.max(0,workstationOverflow.scroll-workstationOverflow.available),
+      }));
       results.push({profile:profile.name,public:'PASS',authenticated:'PASS',
         records:recordTest,navigation:'PASS',horizontalOverflowPx:Math.max(0,overflow)});
       assert.deepEqual(uncaught,[],profile.name+' unhandled page errors');
