@@ -512,3 +512,117 @@ body {
   .app .drawer.enterprise-object-detail .enterprise-object-facts { grid-template-columns: 1fr; }
   .app .drawer.enterprise-object-detail .object-anchors a { padding-inline: 9px; }
 }
+
+
+/*
+ * Global enterprise interaction hardening — data-dense workspaces must remain
+ * keyboard-accessible and usable across desktop, tablet and narrow phones.
+ * Shared styles only; no inferred permissions or fabricated business data.
+ */
+.app .business-workspace,
+.app .operational-workspace,
+.app .module-workspace,
+.app .enterprise-panel,
+.app .worklist,
+.app .enterprise-grid > *,
+.app .work-layout > *,
+.app .module-grid > * { min-width: 0; }
+.app .module-workspace,
+.app .work-context,
+.app .enterprise-panel { overflow-wrap: anywhere; }
+.app .table-wrap,
+.app .enterprise-data-grid,
+.app .enterprise-foundation-grid {
+  position: relative;
+  isolation: isolate;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto;
+  scroll-padding-inline: 16px;
+}
+.app .table-wrap:focus-within,
+.app .enterprise-data-grid:focus-within,
+.app .enterprise-foundation-grid:focus-within {
+  outline: 2px solid #1c7784;
+  outline-offset: -2px;
+}
+.app .table-wrap table { min-width: min(100%, 620px); }
+.app .table-wrap th,
+.app .enterprise-data-grid th,
+.app .enterprise-foundation-grid th { white-space: nowrap; }
+.app .table-wrap td .row-link,
+.app .enterprise-data-grid td button { min-height: 32px; }
+.app .table-wrap td a,
+.app .table-wrap td button { overflow-wrap: anywhere; }
+.app .enterprise-quick-access { overscroll-behavior-inline: contain; scroll-padding-inline: 22px; }
+.app .enterprise-quick-access button { flex: 0 0 auto; }
+.app .palette {
+  width: min(600px, calc(100vw - 32px)); max-height: min(85dvh, 760px);
+  overscroll-behavior: contain; scrollbar-width: thin;
+  border: 1px solid #dae5ed;
+}
+.app .palette > .search-input {
+  position: sticky; top: 0; z-index: 2; background: white;
+  border-color: #c7d6e2; min-height: 50px;
+}
+.app .palette .palette-result,
+.app .palette > button[data-palette-option="true"] {
+  border-radius: 6px; min-height: 44px;
+}
+.app .palette [data-palette-option="true"]:focus-visible {
+  outline: 2px solid #0f7784; outline-offset: -2px;
+  background: #eaf4f6;
+}
+.app .palette .palette-result:focus-visible { background: #eaf4f6; }
+.app .modal-overlay { overflow-y: auto; overscroll-behavior: contain; }
+.app .modal-overlay > .modal,
+.app .modal-overlay > .palette {
+  min-width: 0; max-height: min(90dvh, 900px); overflow-y: auto;
+}
+.app .modal input,
+.app .modal select,
+.app .modal textarea,
+.app .palette input { max-width: 100%; }
+@media (max-width: 1024px) {
+  .app .module-grid,
+  .app .work-layout { grid-template-columns: minmax(0, 1fr); }
+  .app .module-grid > aside { border-left: 0; border-top: 1px solid #dfe6ee; padding: 16px 0 0; }
+  .app .module-workspace { padding: clamp(14px, 2vw, 22px); }
+}
+@media (max-width: 800px) {
+  .app .main { min-width: 0; }
+  .app .topbar { gap: 8px; }
+  .app .crumb { flex: 1 1 auto; overflow: hidden; }
+  .app .top-actions { gap: 6px; }
+  .app .global-search { min-width: 40px; min-height: 40px; justify-content: center; }
+  .app .global-search svg { flex-shrink: 0; }
+  .app .enterprise-quick-access { scroll-snap-type: x proximity; }
+  .app .enterprise-quick-access button { scroll-snap-align: start; }
+  .app .filters,
+  .app .linked-filters { flex-wrap: wrap; }
+  .app .filters .search-input { flex: 1 1 210px; max-width: none; }
+}
+@media (max-width: 480px) {
+  .app .topbar { min-height: 60px; padding-inline: 10px; }
+  .app .crumb .crumb-divider,
+  .app .crumb > span:not(:first-child) { display: none; }
+  .app .crumb > strong { max-width: 46vw; }
+  .app .enterprise-density-control { min-width: 40px; justify-content: center; }
+  .app .modal-overlay { align-items: start; padding: max(12px, env(safe-area-inset-top)) 10px max(12px, env(safe-area-inset-bottom)); }
+  .app .modal-overlay > .palette,
+  .app .modal-overlay > .modal { width: 100%; max-height: calc(100dvh - 28px); }
+  .app .palette { padding: 10px; }
+  .app .palette > button[data-palette-option="true"] { padding-inline: 9px; }
+  .app .table-wrap th, .app .table-wrap td { padding-inline: 10px; }
+  .app .enterprise-page-actions, .app .heading > .primary { width: 100%; }
+  .app .enterprise-page-actions .primary, .app .enterprise-page-actions .secondary { flex: 1 1 auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app .enterprise-quick-access { scroll-snap-type: none; }
+  .app .palette *, .app .table-wrap * { scroll-behavior: auto !important; }
+}
+@media (forced-colors: active) {
+  .app .palette [data-palette-option="true"]:focus-visible,
+  .app .table-wrap:focus-within,
+  .app .enterprise-data-grid:focus-within { outline: 2px solid Highlight; }
+  .app .enterprise-quick-access button[aria-current="page"] { border: 1px solid Highlight; }
+}
