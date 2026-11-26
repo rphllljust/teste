@@ -39,7 +39,7 @@ export default function EnterpriseCloseReadiness({navigate}:{
   try{
    const response=await fetch('/api/finance/periods/preflight?'+new URLSearchParams({
     periodStart:month.start,periodEnd:month.end,
-   }),{credentials:'same-origin',cache:'no-store'});
+   }).toString(),{credentials:'same-origin',cache:'no-store'});
    if(!response.ok)throw Error('Conferência indisponível ('+response.status+').');
    const payload:Preflight=await response.json();
    if(!payload.tier1Readiness||!Array.isArray(payload.tier1Readiness.blockers))
