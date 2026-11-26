@@ -140,3 +140,13 @@ test('Postgres-only workflow enforces the complete current migration ledger incl
  assert.match(workflow,/r\.rows\.length !== expected\.length/);
  assert.match(workflow,/r\.rows\.some\(x => x\.n !== 1\)/);
 });
+
+test('finance cards derive values from a single read-only repeatable-read PostgreSQL transaction',()=>{
+ const finance=read('app/api/finance/workspace/route.ts');
+ assert.match(finance,/db\.batch\(\[/);
+ assert.match(finance,/SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY/);
+ assert.match(finance,/results\[index\+1\]/);
+ assert.match(finance,/WHERE o\.owner_id=\?/);
+ assert.match(finance,/WHERE p\.actor_id=\?/);
+ assert.doesNotMatch(finance,/Math\.random|faker|mockBalance/);
+});
