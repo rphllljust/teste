@@ -45,6 +45,12 @@ try {
       assert.equal(landing?.status(),200,profile.name+' shell HTTP');
       await page.getByRole('heading',{name:'Dossiês empresariais',exact:true})
         .waitFor({state:'visible',...time});
+      // The HML operator must be able to log in directly from this module.
+      // Do not fill, screenshot after authentication or log the passphrase.
+      await page.locator('.enterprise-dossier-auth input[name="passphrase"][type="password"]')
+        .waitFor({state:'visible',timeout:15_000});
+      assert.equal(await page.getByRole('button',{name:'Entrar nos Dossiês',exact:true}).isVisible(),
+        true, profile.name+' direct signed-session form');
       const region = page.getByRole('region',{name:'Tabela de processos empresariais'});
       // Unauthenticated shell may display the API access-denied state instead of a table.
       assert.ok((await page.locator('body').innerText()).includes('Dossiês empresariais'),
