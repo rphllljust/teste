@@ -50,7 +50,14 @@ async function snapshot<T>(work: (read: ReadQuery) => Promise<T>): Promise<T> {
   const client: PoolClient = await databasePool().connect();
   try {
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const read: ReadQuery = async (sql, params = []) => (await client.query(sql, params)).rows as Row[];
+    // pg@9 rejects overlapping queries on one client; preserve one snapshot
+    // while serializing any independently scheduled read-model projections.
+    let queue: Promise<void> = Promise.resolve();
+    const read: ReadQuery = (sql, params = []) => {
+      const task = queue.then(async () => (await client.query(sql, params)).rows as Row[]);
+      queue = task.then(() => undefined, () => undefined);
+      return task;
+    };
     const result = await work(read);
     await client.query('COMMIT');
     return result;
@@ -66,7 +73,7 @@ export type DossierListFilter = { q: string; status: string; page: number; pageS
 export async function listEnterpriseDossiers(actorId: string, filter: DossierListFilter) {
   return snapshot(async read => {
     const where = `o.owner_id=$1
-      AND ($2='' OR o.title ILIKE $2 OR o.client ILIKE $2)
+      AND ($2='' OR o.title ILIKE $2 OR o.client ILIKE $2 OR o.id ILIKE $2)
       AND ($3='' OR o.status=$3)`;
     const q = filter.q ? '%' + filter.q.replace(/[%_\\]/g, '\\$&') + '%' : '';
     const count = await read(`SELECT count(*)::int AS total FROM service_orders o WHERE ${where}`, [actorId, q, filter.status]);
