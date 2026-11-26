@@ -152,7 +152,7 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
       {openOrders.length===0&&<button type="button" className="secondary" onClick={()=>onNavigate("Ordens de serviço")}>Abrir ordens de serviço</button>}
     </div>
   </section>}
-  {error&&<ErrorState message={error} onRetry={()=>void load()}/>
+  {error&&<ErrorState message={error} onRetry={()=>void load()}/>}
   {notice&&<p className="planning-notice" role="status">{notice}</p>}
   <section className="planning-summary" aria-label="Indicadores de capacidade cadastrada">
    <div><small>Recursos cadastrados consultados</small><strong>{resources.length}</strong><span>Profissionais e ativos</span></div>
