@@ -21,7 +21,7 @@
     "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs lib/domain/bank-ofx.test.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs",
     "test:route-inventory": "node --test test/enterprise-route-inventory.contract.test.mjs",
-    "test:enterprise-contracts": "node --test test/procurement-fiscal.fail-closed.contract.test.mjs test/enterprise-transactional-journeys.synthetic.test.mjs test/enterprise-accounting-link-gates.contract.test.mjs test/enterprise-governance-ui.contract.test.mjs test/enterprise-finance-close-ui.contract.test.mjs",
+    "test:enterprise-contracts": "node --test test/procurement-fiscal.fail-closed.contract.test.mjs test/enterprise-transactional-journeys.synthetic.test.mjs test/enterprise-accounting-link-gates.contract.test.mjs test/enterprise-governance-ui.contract.test.mjs test/enterprise-finance-close-ui.contract.test.mjs test/enterprise-process-dossier.contract.test.mjs",
     "test:enterprise-states": "node --test test/enterprise-data-state.contract.test.mjs",
     "test:enterprise-quality-contracts": "node --test test/enterprise-accessibility-isolation.contract.test.mjs test/enterprise-experience.visual-contract.test.mjs test/enterprise-palette-keyboard.contract.test.mjs",
     "test:typed-catalog": "node --test test/enterprise-typed-catalog.contract.test.mjs",
