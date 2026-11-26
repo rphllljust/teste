@@ -132,8 +132,8 @@ test('the shared order context is authenticated and links all supported business
  assert.match(ribbon,/credentials:'same-origin',cache:'no-store'/);
  assert.match(ribbon,/json\.order\?\.id!==orderId/);
  assert.match(ribbon,/typeof json\.order\.version!=='number'/);
- for(const module of ['Dossiês empresariais','Execução','Medições','Faturamento','Financeiro'])
-  assert.ok(ribbon.includes("'"+module+"'"),'missing linked domain '+module);
+ for(const businessModule of ['Dossiês empresariais','Execução','Medições','Faturamento','Financeiro'])
+  assert.ok(ribbon.includes("'"+businessModule+"'"),'missing linked domain '+businessModule);
  assert.match(ribbon,/if\(!order\)return/);
  assert.doesNotMatch(ribbon,/method:\s*['"]POST['"]|mockOrder|Math\.random/);
 });
