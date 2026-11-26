@@ -1,9 +1,8 @@
 /* CISNE Tier 1 enterprise workstation: Fiori-style worklist / analytical / finance surfaces.
  * Scopes all changes to the command center; existing domain APIs, RBAC and document routes remain unchanged. */
 .app[data-workspace="operations"] .main main.operational-workspace { max-width:none; }
-@media (min-width:1100px) {
- .app[data-workspace="operations"][data-navigation="expanded"] .cisne-enterprise-global-domains { display:none; }
-}
+/* A barra ERP Empresarial / Domínios de negócio permanece visível na Visão operacional.
+ * A responsividade da barra segue o componente global; não a ocultar ao expandir a lateral. */
 .cisne-workstation-tier1 { --work-border:#d2e0e9; --work-text:#19364b; --work-muted:#5e7789; --work-accent:#096f7d; gap:10px; }
 .cisne-workstation-tier1 .enterprise-page-header { padding-bottom:10px;border-bottom:1px solid var(--work-border); }
 .cisne-workstation-tier1 .enterprise-operations-assurance { color:#526f80;font-size:11px;padding:0 2px; }

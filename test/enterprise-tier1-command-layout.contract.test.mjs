@@ -38,7 +38,11 @@ test('worklist is legible, keyboard-operable, owner-scoped and does not mutate t
 test('responsive inspector is a scoped drawer, legacy shell and all business domains remain intact',()=>{
  assert.match(shell,/data-workspace=\{page === "Visão operacional"/);
  assert.match(layout,/enterprise-operations-tier1\.css/);
- assert.match(css,/min-width:1100px/);
+ assert.match(shell,/<EnterpriseGlobalDomainNav currentPage={page} navigate={navigate}\/>/);
+ const domainNav=read('app/components/enterprise/EnterpriseGlobalDomainNav.tsx');
+ assert.match(domainNav,/aria-label="Domínios de negócio"/);
+ assert.match(domainNav,/ERP Empresarial/);
+ assert.doesNotMatch(css,/\.app\[data-workspace="operations"\]\[data-navigation="expanded"\][^\n]*\.cisne-enterprise-global-domains\s*\{\s*display\s*:\s*none/);
  assert.match(css,/max-width:1060px/);
  assert.match(css,/max-width:800px/);
  assert.match(css,/max-width:540px/);
