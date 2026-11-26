@@ -344,12 +344,16 @@ function HomeView() {
     [executionOrder, setExecutionOrder] = useState("");
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
   useEffect(() => {
-    try {
-      const saved = window.localStorage.getItem("cisne:workspace-density");
-      if (saved === "compact" || saved === "comfortable") setDensity(saved);
-    } catch {
-      // Local storage may be disabled by managed browsers; density still works per session.
-    }
+    // Restore after hydration; no synchronous setState in effects or SSR/localStorage mismatch.
+    const timer = window.setTimeout(() => {
+      try {
+        const saved = window.localStorage.getItem("cisne:workspace-density");
+        if (saved === "compact" || saved === "comfortable") setDensity(saved);
+      } catch {
+        // Managed browsers may deny localStorage; session density still works.
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
   function toggleDensity() {
     const next = density === "compact" ? "comfortable" : "compact";
