@@ -19,11 +19,8 @@ export async function GET(request: Request) {
   } catch (error) { return failure(error, context); }
 }
 
-export async function POST(request: Request) {
-  let context: RequestContext | undefined;
-  try {
-    context = requestContext(request, true);
-    const parsed = command.safeParse(await jsonBody(request));
+export async function saveBankStatement(context: RequestContext, body: unknown) {
+    const parsed = command.safeParse(body);
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Extrato ou linhas inválidas.');
     const data = parsed.data;
     if (data.periodEnd < data.periodStart) throw new ApiError(400, 'VALIDATION_FAILED', 'O período do extrato é inválido.');
@@ -34,10 +31,17 @@ export async function POST(request: Request) {
     const existing = await db.prepare('SELECT actor_id,request_hash FROM bank_statements WHERE id=?').bind(data.id).first<{ actor_id: string; request_hash: string }>();
     if (existing) { if (existing.actor_id !== context.actorId || existing.request_hash !== hash) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de extrato já utilizado.'); return respond({ id: data.id, replayed: true }, context); }
     await db.transaction(async query => {
-      for (const line of data.lines) await assertFinancePeriodOpen(query, context!.actorId, line.bookedDate);
-      await query('INSERT INTO bank_statements(id,account_reference,source_reference,period_start,period_end,opening_balance,closing_balance,expected_count,status,created_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [data.id, data.accountReference, data.sourceReference, data.periodStart, data.periodEnd, data.openingBalance, data.closingBalance, data.lines.length, 'imported', new Date().toISOString(), context!.actorId, hash, context!.correlationId]);
+      for (const line of data.lines) await assertFinancePeriodOpen(query, context.actorId, line.bookedDate);
+      await query('INSERT INTO bank_statements(id,account_reference,source_reference,period_start,period_end,opening_balance,closing_balance,expected_count,status,created_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', [data.id, data.accountReference, data.sourceReference, data.periodStart, data.periodEnd, data.openingBalance, data.closingBalance, data.lines.length, 'imported', new Date().toISOString(), context.actorId, hash, context.correlationId]);
       for (const line of data.lines) await query('INSERT INTO bank_statement_lines(id,statement_id,external_key,booked_date,description,amount) VALUES($1,$2,$3,$4,$5,$6)', [line.id, data.id, line.externalKey, line.bookedDate, line.description, line.amount]);
     });
     return respond({ id: data.id }, context, 201);
+}
+
+export async function POST(request: Request) {
+  let context: RequestContext | undefined;
+  try {
+    context = requestContext(request, true);
+    return await saveBankStatement(context, await jsonBody(request));
   } catch (error) { return failure(error, context); }
 }
