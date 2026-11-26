@@ -14,6 +14,8 @@ test('HML browser is pinned to actual Railway Staging and never changes business
   assert.match(browser,/768, height:1024/);
   assert.match(browser,/390, height:844/);
   assert.match(browser,/page\.getByRole\('heading',\{name:'Dossiês empresariais'/);
+  assert.match(browser,/\.enterprise-dossier-auth input\[name="passphrase"\]\[type="password"\]/);
+  assert.match(browser,/name:'Entrar nos Dossiês',exact:true/);
   assert.doesNotMatch(browser,/\/api\/enterprise\/journeys.*method:\s*'POST'/);
   assert.doesNotMatch(browser,/console\.(?:log|error)\(secret\)/);
 });
