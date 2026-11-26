@@ -1306,7 +1306,9 @@ function HomeView() {
   };
   return (
     <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
-      data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" : "standard"}>
+      data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" :
+        ["Visão financeira","Faturamento","Financeiro","Fluxo de caixa","Tesouraria","Contas a pagar",
+         "Caixa e conciliação","Razão contábil","Contabilidade","Fiscal e tributos","Fechamentos"].includes(page) ? "finance" : "standard"}>
       {sidebar && (
         <button
           className="sidebar-scrim"
