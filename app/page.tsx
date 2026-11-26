@@ -2683,9 +2683,10 @@ function HomeView() {
           ) : page === "Visão financeira" ? (
             <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)} />
           ) : page === "Fluxo de caixa" ? (
-            <CashFlowWorkspace />
+            <CashFlowWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Tesouraria" ? (
             <TreasuryWorkspace
+              onImport={()=>navigate('Caixa e conciliação')}
               onAccount={(account) => {
                 navigate("Caixa e conciliação");
                 setBankAccount(account);
@@ -2698,7 +2699,7 @@ function HomeView() {
               initialAccountReference={bankAccount}
             />
           ) : page === "Razão contábil" ? (
-            <LedgerWorkspace />
+            <LedgerWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Contabilidade" ? (
             <AccountingWorkspace />
           ) : page === "Fiscal e tributos" ? (
