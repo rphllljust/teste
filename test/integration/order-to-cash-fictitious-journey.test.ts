@@ -26,6 +26,7 @@ import { GET as ledger } from '../../app/api/accounting/ledger/route';
 import { GET as closePreflight } from '../../app/api/finance/periods/preflight/route';
 import { GET as listEnterpriseDossiers } from '../../app/api/enterprise/journeys/route';
 import { GET as readEnterpriseDossier } from '../../app/api/enterprise/journeys/[id]/route';
+import { GET as readOperationalCenter } from '../../app/api/enterprise/operations/route';
 import { POST as closePeriod } from '../../app/api/finance/periods/close/route';
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -435,6 +436,33 @@ async () => {
     paths('invalid'))).status,400);
   assert.equal((await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?pageSize=200'))).status,400,
     'unbounded query must be rejected, never cause full-table extraction');
+
+  // 14. Control Tower must read the same persisted owner-scoped order,
+  // never treating anonymous/legacy records as authorized documents.
+  const controlTower=await record<{
+    items:Array<{id:string;status:string;evidence:{measurements:number;invoices:number}}>;
+    summary:{total:number;unmeasured:number};
+    pageInfo:{total:number;hasMore:boolean};
+    source:string;
+  }>(await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?queue=all&q='+orderId.slice(0,8))),
+    '14 Centro de comando com documentos persistidos',200);
+  assert.equal(controlTower.source,'postgres_owner_scoped_operations');
+  assert.equal(controlTower.pageInfo.total,1);
+  assert.ok(controlTower.items.some(item=>item.id===orderId && item.status==='completed'
+    && item.evidence.measurements===1 && item.evidence.invoices===1));
+  assert.equal(controlTower.summary.unmeasured,0);
+  const unauthorizedTower=await record<{
+    items:Array<{id:string}>;summary:{total:number};
+  }>(await readOperationalCenter(req(outsider,
+    '/api/enterprise/operations?queue=all')),
+    '14a Centro operacional não expõe OS de outro usuário',200);
+  assert.equal(unauthorizedTower.summary.total,0);
+  assert.deepEqual(unauthorizedTower.items,[]);
+  assert.equal((await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?pageSize=999'))).status,400);
+  assert.equal((await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?queue=invalid'))).status,400);
 
   console.log(JSON.stringify({
     event: 'CISNE_ORDER_TO_CASH_FICTITIOUS_CI',
