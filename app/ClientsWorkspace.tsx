@@ -2,7 +2,7 @@
 import {useCallback,useEffect,useRef,useState} from 'react';
 import {Plus,RefreshCw,Search,X} from 'lucide-react';
 import type {ClientFields} from '../lib/domain/clients';
-import { EnterprisePageHeader, EnterpriseObjectSummary, EnterpriseObjectSectionNavigation } from './components/enterprise/EnterprisePrimitives';
+import { EnterpriseObjectSummary, EnterpriseObjectSectionNavigation } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 export type Client={id:string;legalName:string;tradeName:string|null;document:string|null;email:string|null;phone:string|null;state:{code:'active'|'inactive';label:string;rowVersion:number};availableCommands:{id:string;label:string;expectedVersion:number}[]};
 type Context=Client&{related:{orders:{total:number}};history:{command:string;createdAt:string}[];warnings:string[]};
@@ -181,5 +181,5 @@ function ClientsWorkspace({onCreateOrder,onOrders}:{onCreateOrder:(client:Client
 }
 
 export default function EnterpriseClientsWorkspace(props: Parameters<typeof ClientsWorkspace>[0]) {
- return <><EnterprisePageHeader breadcrumb="Comercial / Clientes" eyebrow="CISNE ENTERPRISE · LIST REPORT" title="Clientes" description="Cadastro empresarial, relacionamento CRM e ordens vinculadas." /><ClientsWorkspace {...props}/></>;
+ return <ClientsWorkspace {...props}/>;
 }

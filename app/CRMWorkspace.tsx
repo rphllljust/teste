@@ -395,5 +395,5 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
 }
 
 export default function EnterpriseCRMWorkspace(props: Parameters<typeof CRMWorkspace>[0]) {
- return <><EnterprisePageHeader breadcrumb="Comercial / CRM" eyebrow="CISNE ENTERPRISE · WORKLIST" title="CRM e vendas" description="Leads, oportunidades e propostas conectados aos objetos comerciais." /><CRMWorkspace {...props}/></>;
+ return <CRMWorkspace {...props}/>;
 }
