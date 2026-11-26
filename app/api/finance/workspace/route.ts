@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { database } from '../../../../db/raw';
-import { failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { failure, requestContext, respond, validDate, type RequestContext } from '../../../../lib/api/http';
 import { outstandingExpression } from '../../../../lib/projections/operation';
 import { payableBalance } from '../../../../lib/projections/payables';
 
-const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/).refine(validDate);
 
 type AggregateRow = { count?: number | string; value?: string | null };
 
@@ -23,16 +23,18 @@ export async function GET(request: Request) {
 
     const db = database();
     const results = await db.batch([
+      // All four financial metrics must observe the same PostgreSQL snapshot.
+      db.prepare('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY').bind(),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT) AS value
         FROM receivables r
         JOIN invoices i ON i.id=r.invoice_id
         JOIN service_orders o ON o.id=i.order_id
-        WHERE (o.owner_id IS NULL OR o.owner_id=?) AND ${outstandingExpression}>0`).bind(context.actorId),
+        WHERE o.owner_id=? AND ${outstandingExpression}>0`).bind(context.actorId),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${outstandingExpression}),0) AS TEXT) AS value
         FROM receivables r
         JOIN invoices i ON i.id=r.invoice_id
         JOIN service_orders o ON o.id=i.order_id
-        WHERE (o.owner_id IS NULL OR o.owner_id=?) AND ${outstandingExpression}>0 AND r.due_date<?`).bind(context.actorId, asOf),
+        WHERE o.owner_id=? AND ${outstandingExpression}>0 AND r.due_date<?`).bind(context.actorId, asOf),
       db.prepare(`SELECT COUNT(*) AS count,CAST(COALESCE(SUM(${payableBalance}),0) AS TEXT) AS value
         FROM payables p
         WHERE p.actor_id=? AND ${payableBalance}>0`).bind(context.actorId),
@@ -41,7 +43,7 @@ export async function GET(request: Request) {
         WHERE p.actor_id=? AND ${payableBalance}>0 AND p.due_date<?`).bind(context.actorId, asOf),
     ]);
 
-    const row = (index: number) => (results[index].results[0] ?? {}) as AggregateRow;
+    const row = (index: number) => (results[index+1].results[0] ?? {}) as AggregateRow;
     const metric = (
       metricId: string,
       label: string,

@@ -5,6 +5,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 type Tenant={id:string;slug:string;name:string;role:string;status:string};
 type Company={id:string;code:string;name:string;status:string;taxId?:string|null};
 type Member={actorId:string;role:string;status:string;createdAt:string};
+type PermissionEvent={id:string;actorId:string;action:string;resourceId:string;correlationId:string;createdAt:string};
+type PermissionCursor={cursorAt:string;cursorId:string};
+type AuditResponse={items:PermissionEvent[];pageInfo:{pageSize:number;hasMore:boolean;nextCursor:PermissionCursor|null}};
 
 async function read<T>(response:Response):Promise<T>{
  const result=await response.json() as T&{error?:string};
@@ -29,10 +32,17 @@ export default function EnterpriseStructurePage(){
  const [notice,setNotice]=useState('');
  const [memberQuery,setMemberQuery]=useState('');
  const [roleFilter,setRoleFilter]=useState('all');
+ const [auditEvents,setAuditEvents]=useState<PermissionEvent[]>([]);
+ const [auditCursor,setAuditCursor]=useState<PermissionCursor|null>(null);
+ const [auditTenant,setAuditTenant]=useState('');
+ const [auditLoading,setAuditLoading]=useState(false);
+ const [auditError,setAuditError]=useState('');
+ const auditRequest=useRef(0);
  const detailRequest=useRef(0);
  const current=tenants.find(t=>t.id===tenantId);
  const isOwner=current?.role==='owner';
  const canManage=isOwner||current?.role==='admin';
+ const canAudit=['owner','admin','auditor'].includes(current?.role??'');
  const filteredMembers=members.filter(member=>
   (roleFilter==='all'||member.role===roleFilter)&&
   (member.actorId.toLocaleLowerCase('pt-BR').includes(memberQuery.trim().toLocaleLowerCase('pt-BR')))
@@ -49,7 +59,7 @@ export default function EnterpriseStructurePage(){
   finally{setLoading(false);}
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void loadTenants(),0);return()=>clearTimeout(timer);},[loadTenants]);
- const loadDetail=useCallback(async(id:string)=>{
+ const loadDetail=useCallback(async(id:string,role:string)=>{
   const request=++detailRequest.current;
   if(!id){setCompanies([]);setMembers([]);setLoadingDetail(false);return;}
   setLoadingDetail(true);
@@ -57,7 +67,9 @@ export default function EnterpriseStructurePage(){
    const root=tenantUrl+'/'+encodeURIComponent(id);
    const [companiesResult,membersResult]=await Promise.all([
     read<{items:Company[]}>(await fetch(root+'/legal-entities',{cache:'no-store'})),
-    read<{items:Member[]}>(await fetch(root+'/members',{cache:'no-store'})),
+    ['owner','admin'].includes(role)
+     ?read<{items:Member[]}>(await fetch(root+'/members',{cache:'no-store'}))
+     :Promise.resolve({items:[] as Member[]}),
    ]);
    if(request!==detailRequest.current)return;
    setCompanies(companiesResult.items);setMembers(membersResult.items);
@@ -67,8 +79,30 @@ export default function EnterpriseStructurePage(){
    if(request===detailRequest.current)setLoadingDetail(false);
   }
  },[]);
- useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId),0);return()=>clearTimeout(timer);},[tenantId,loadDetail]);
+ useEffect(()=>{const timer=setTimeout(()=>void loadDetail(tenantId,current?.role??''),0);return()=>clearTimeout(timer);},[tenantId,current?.role,loadDetail]);
 
+ async function loadAudit(id:string,cursor:PermissionCursor|null=null){
+  const request=++auditRequest.current;
+  setAuditLoading(true);setAuditError('');
+  if(!cursor){setAuditEvents([]);setAuditCursor(null);}
+  try{
+   const params=new URLSearchParams({pageSize:'25'});
+   if(cursor){params.set('cursorAt',cursor.cursorAt);params.set('cursorId',cursor.cursorId);}
+   const result=await read<AuditResponse>(await fetch(
+    tenantUrl+'/'+encodeURIComponent(id)+'/audit?'+params.toString(),{cache:'no-store',
+    credentials:'same-origin'},
+   ));
+   if(request!==auditRequest.current)return;
+   setAuditTenant(id);
+   setAuditEvents(previous=>cursor&&auditTenant===id?
+    [...previous,...result.items.filter(item=>!previous.some(old=>old.id===item.id))]:result.items);
+   setAuditCursor(result.pageInfo.nextCursor);
+  }catch(cause){
+   if(request===auditRequest.current)setAuditError(cause instanceof Error?cause.message:'Auditoria indisponível.');
+  }finally{
+   if(request===auditRequest.current)setAuditLoading(false);
+  }
+ }
  async function createTenant(event:React.FormEvent<HTMLFormElement>){
   event.preventDefault();const formElement=event.currentTarget;setSaving(true);setError('');setNotice('');
   const form=new FormData(event.currentTarget);
@@ -88,7 +122,7 @@ export default function EnterpriseStructurePage(){
    await post(tenantUrl+'/'+tenantId+'/legal-entities',{id:newId(),commandKey:newId(),
     code:String(form.get('code')??'').trim().toUpperCase(),
     name:String(form.get('name')??'').trim(),...(form.get('taxId')?{taxId:String(form.get('taxId'))}:{})});
-   await loadDetail(tenantId);formElement.reset();setNotice('Empresa jurídica registrada.');
+   await loadDetail(tenantId,current?.role??'');formElement.reset();setNotice('Empresa jurídica registrada.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao registrar empresa jurídica.');}
   finally{setSaving(false);}
  }
@@ -99,7 +133,7 @@ export default function EnterpriseStructurePage(){
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'provision',
     actorId:String(form.get('actorId')??'').trim(),role:String(form.get('role')??'operator')});
-   await loadDetail(tenantId);formElement.reset();
+   await loadDetail(tenantId,current?.role??'');formElement.reset();
    setNotice('Vínculo provisionado. A identidade deverá autenticar-se com seu próprio acesso.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao provisionar membro.');}
   finally{setSaving(false);}
@@ -109,7 +143,7 @@ export default function EnterpriseStructurePage(){
   setSaving(true);setError('');setNotice('');
   try{
    await post(tenantUrl+'/'+tenantId+'/members',{commandKey:newId(),action:'deactivate',actorId});
-   await loadDetail(tenantId);setNotice('Membro desativado com evento de auditoria.');
+   await loadDetail(tenantId,current?.role??'');setNotice('Membro desativado com evento de auditoria.');
   }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao desativar vínculo.');}
   finally{setSaving(false);}
  }
@@ -123,7 +157,7 @@ export default function EnterpriseStructurePage(){
     </div>
     <div className="enterprise-governance-actions">
      {current&&<button type="button" className="secondary" disabled={loadingDetail||saving}
-      onClick={()=>void loadDetail(tenantId)}>Atualizar organização</button>}
+      onClick={()=>void loadDetail(tenantId,current?.role??'')}>Atualizar organização</button>}
      <Link className="secondary" href="/" prefetch={false}>Voltar ao ERP</Link>
     </div>
    </header>
@@ -132,6 +166,7 @@ export default function EnterpriseStructurePage(){
     <a href="#governance-organizations">Organizações</a>
     {current&&<a href="#governance-companies">Empresas jurídicas</a>}
     {current&&canManage&&<a href="#governance-access">Pessoas e acessos</a>}
+    {current&&canAudit&&<a href="#governance-audit">Auditoria de permissões</a>}
    </nav>
 
    <aside className="enterprise-governance-warning" role="note">
@@ -154,6 +189,8 @@ export default function EnterpriseStructurePage(){
       setError('');setNotice('');setMemberQuery('');setRoleFilter('all');
       // Invalidate in-flight responses before React commits the new organization.
       detailRequest.current += 1;
+      auditRequest.current += 1;
+      setAuditEvents([]);setAuditCursor(null);setAuditTenant('');setAuditError('');
       setCompanies([]);setMembers([]);setTenantId(e.target.value);
      }} aria-label="Selecionar organização">
       <option value="">Selecione uma organização</option>
@@ -250,6 +287,39 @@ export default function EnterpriseStructurePage(){
       <p className="enterprise-governance-hint">O ID deve corresponder a uma identidade verificada no provedor. O provisionamento não cria credenciais.</p>
      </form>
     </details>}
+   </section>}
+   {current&&canAudit&&<section id="governance-audit" className="enterprise-governance-panel" aria-labelledby="governance-audit-title">
+    <div className="enterprise-governance-panel-heading">
+     <div><span className="eyebrow">04 / TRILHA DE PERMISSÕES</span>
+      <h2 id="governance-audit-title">Auditoria de acessos · {current.name}</h2>
+      <p>Eventos persistidos de criação de organização, provisionamento, desativação e estrutura empresarial.
+       Esta trilha não representa o diário financeiro nem todos os acessos aos módulos.</p>
+     </div>
+     <button type="button" className="secondary" disabled={auditLoading}
+      onClick={()=>void loadAudit(tenantId)}>Consultar eventos</button>
+    </div>
+    {auditError&&<p role="alert" className="form-error">{auditError}</p>}
+    {auditLoading&&<p role="status">Consultando eventos autorizados…</p>}
+    {auditTenant===tenantId&&auditEvents.length>0&&<div className="table-wrap enterprise-governance-table">
+     <table>
+      <caption className="sr-only">Eventos de permissões da organização selecionada</caption>
+      <thead><tr><th scope="col">Data e hora</th><th scope="col">Evento</th><th scope="col">Ator</th>
+       <th scope="col">Recurso</th><th scope="col">Correlação</th></tr></thead>
+      <tbody>{auditEvents.map(event=><tr key={event.id}>
+       <td>{new Date(event.createdAt).toLocaleString('pt-BR')}</td>
+       <td><strong>{event.action}</strong></td>
+       <td><code>{event.actorId}</code></td>
+       <td><code>{event.resourceId}</code></td>
+       <td><code>{event.correlationId}</code></td>
+      </tr>)}</tbody>
+     </table>
+    </div>}
+    {auditTenant===tenantId&&auditEvents.length===0&&!auditLoading&&!auditError&&
+     <p className="enterprise-governance-empty">Nenhum evento de permissão localizado nesta organização.</p>}
+    {auditTenant!==tenantId&&!auditLoading&&
+     <p className="enterprise-governance-hint">Consulta por demanda, com autorização no servidor e paginação por evento.</p>}
+    {auditTenant===tenantId&&auditCursor&&<button type="button" className="secondary"
+     disabled={auditLoading} onClick={()=>void loadAudit(tenantId,auditCursor)}>Carregar eventos anteriores</button>}
    </section>}
   </div>
  </main>;

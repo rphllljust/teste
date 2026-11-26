@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     const requested = new URL(request.url).searchParams.get('viewKey');
     if (requested && !viewKey.safeParse(requested).success) throw new ApiError(400, 'VALIDATION_FAILED', 'Consulta inválida.');
     const db = database();
-    const rows = await db.prepare(`SELECT id,name,query,category,view,definition,row_version,is_default FROM saved_views WHERE (owner_id IS NULL OR owner_id=?)${requested ? ' AND view_key=?' : ''} ORDER BY is_default DESC,name ASC,id ASC`).bind(context.actorId, ...(requested ? [requested] : [])).all<Record<string, unknown>>();
+    const rows = await db.prepare(`SELECT id,name,query,category,view,definition,row_version,is_default FROM saved_views WHERE owner_id=?${requested ? ' AND view_key=?' : ''} ORDER BY is_default DESC,name ASC,id ASC`).bind(context.actorId, ...(requested ? [requested] : [])).all<Record<string, unknown>>();
     return respond({ views: rows.results.map(serialize) }, context);
   } catch (error) { return failure(error, context); }
 }
@@ -35,7 +35,8 @@ export async function POST(request: Request) {
     const db = database();
     const prior = await db.prepare('SELECT owner_id FROM saved_views WHERE id=?').bind(id).first<{ owner_id: string | null }>();
     if (prior && prior.owner_id !== context.actorId) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de consulta já utilizado.');
-    await db.prepare(`INSERT INTO saved_views(id,name,query,category,view,created_at,owner_id,definition,schema_version,row_version,is_default,view_key) VALUES(?,?,?,?,?,?,?,?,?,?,0,?) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,query=EXCLUDED.query,category=EXCLUDED.category,view=EXCLUDED.view,definition=EXCLUDED.definition,schema_version=EXCLUDED.schema_version,row_version=saved_views.row_version+1`).bind(id, name, parsed.data.query ?? '', parsed.data.category ?? '', parsed.data.view ?? '', new Date().toISOString(), context.actorId, JSON.stringify(definition), definition.schemaVersion, definition.viewKey).run();
+    const saved = await db.prepare(`INSERT INTO saved_views(id,name,query,category,view,created_at,owner_id,definition,schema_version,row_version,is_default,view_key) VALUES(?,?,?,?,?,?,?,?,?,1,0,?) ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,query=EXCLUDED.query,category=EXCLUDED.category,view=EXCLUDED.view,definition=EXCLUDED.definition,schema_version=EXCLUDED.schema_version,row_version=saved_views.row_version+1 WHERE saved_views.owner_id=EXCLUDED.owner_id RETURNING id`).bind(id, name, parsed.data.query ?? '', parsed.data.category ?? '', parsed.data.view ?? '', new Date().toISOString(), context.actorId, JSON.stringify(definition), definition.schemaVersion, definition.viewKey).first<{id:string}>();
+    if (!saved) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Identificador de consulta já utilizado por outro contexto.');
     return respond({ id, requestHash: hash }, context, prior ? 200 : 201);
   } catch (error) { return failure(error, context); }
 }

@@ -59,7 +59,7 @@ export async function GET(request:Request){
       WHEN o.status IN ('draft','prepared') THEN 3 ELSE 4 END`;
     client=await databasePool().connect();
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
-    const [summary,matched,rows]=await (async()=>{
+    const [summary,matched,rows,statusBreakdown,dueBreakdown]=await (async()=>{
       // Serial execution on one pg client preserves compatibility across driver versions.
       const summary=await client!.query(`SELECT
         COUNT(*)::int AS total,
@@ -82,10 +82,29 @@ export async function GET(request:Request){
         FROM service_orders o WHERE ${base} AND ${queue}
         ORDER BY ${orderings[p.sort]} LIMIT $5 OFFSET $6`,
         [...params,p.pageSize,(p.page-1)*p.pageSize]);
-      return [summary,matched,rows];
+      const statusBreakdown=await client!.query(`SELECT o.status, COUNT(*)::int AS total
+        FROM service_orders o WHERE o.owner_id=$1 GROUP BY o.status ORDER BY o.status`,[context!.actorId]);
+      const dueBreakdown=await client!.query(`SELECT
+        COUNT(*) FILTER (WHERE ${overdue})::int AS overdue,
+        COUNT(*) FILTER (WHERE o.status NOT IN ('completed','cancelled')
+          AND o.due_date >= to_char(CURRENT_DATE,'YYYY-MM-DD')
+          AND o.due_date <= to_char(CURRENT_DATE+7,'YYYY-MM-DD'))::int AS next_7,
+        COUNT(*) FILTER (WHERE o.status NOT IN ('completed','cancelled')
+          AND o.due_date > to_char(CURRENT_DATE+7,'YYYY-MM-DD')
+          AND o.due_date <= to_char(CURRENT_DATE+15,'YYYY-MM-DD'))::int AS next_15,
+        COUNT(*) FILTER (WHERE o.status NOT IN ('completed','cancelled')
+          AND o.due_date > to_char(CURRENT_DATE+15,'YYYY-MM-DD'))::int AS later,
+        COUNT(*) FILTER (WHERE o.status NOT IN ('completed','cancelled')
+          AND (o.due_date IS NULL OR o.due_date=''))::int AS without_date
+        FROM service_orders o WHERE o.owner_id=$1`,[context!.actorId]);
+      return [summary,matched,rows,statusBreakdown,dueBreakdown];
     })();
     await client.query('COMMIT');
     const s=summary.rows[0] as Record<string,unknown>;
+    const due=dueBreakdown.rows[0] as Record<string,unknown>;
+    const statusBuckets=(statusBreakdown.rows as Array<{status:string;total:number}>).map(value=>({
+      status:String(value.status),total:Number(value.total),
+    }));
     const total=Number((matched.rows[0] as {total:number}).total);
     const items=(rows.rows as Array<Record<string,unknown>>).map(row=>{
       const status=String(row.status);
@@ -111,6 +130,12 @@ export async function GET(request:Request){
         overdue:Number(s.overdue),unmeasured:Number(s.unmeasured),authorized:Number(s.authorized),
       },
       pageInfo:{page:p.page,pageSize:p.pageSize,total,hasMore:p.page*p.pageSize<total},
+      analytics:{
+        statusBuckets,
+        dueBuckets:{overdue:Number(due.overdue),next7:Number(due.next_7),
+          next15:Number(due.next_15),later:Number(due.later),withoutDate:Number(due.without_date)},
+        completed:statusBuckets.find(bucket=>bucket.status==='completed')?.total??0,
+      },
       source:'postgres_owner_scoped_operations',
       generatedAt:new Date().toISOString(),
       note:'Indicadores globais e registros calculados somente sobre OS atribuídas ao operador autenticado; ações dependem do estado e das permissões no detalhe.',

@@ -13,8 +13,8 @@ const query = z.object({
   pageSize: z.coerce.number().int().min(1).max(50).default(50),
 }).strict();
 
-function project(row: Record<string, unknown>) {
-  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: row.reverses_id ? 'corrected' : 'active', label: row.reverses_id ? 'Anulado' : 'Ativo' }, availableCommands: row.reverses_id ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
+function project(row: Record<string, unknown>, corrected: boolean) {
+  return { id: String(row.id), resourceLabel: String(row.resource_kind), description: String(row.description), quantityScaled: String(row.quantity), unit: String(row.unit), resourceReference: row.resource_reference ? String(row.resource_reference) : null, effectiveDate: String(row.effective_date), reference: String(row.reference), state: { code: corrected ? 'corrected' : 'active', label: corrected ? 'Anulado' : 'Ativo' }, availableCommands: corrected ? [] : [{ id: 'void', label: 'Anular apontamento', expectedVersion: 1 }] };
 }
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -27,8 +27,8 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Consulta de execução inválida.');
     const { page, pageSize, state, q, resourceKind } = parsed.data;
     const offset = (page - 1) * pageSize;
-    const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND (o.owner_id IS NULL OR o.owner_id=?)';
-    const stateFilter = state === 'active' ? 'e.reverses_id IS NULL' : 'e.reverses_id IS NOT NULL';
+    const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=?';
+    const stateFilter = state === 'active' ? "e.kind='report' AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)" : "e.kind='report' AND EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)";
     const conditions = [stateFilter];
     const values = [id, context.actorId];
     if (q) {
@@ -43,14 +43,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const filtered = from + ' AND ' + conditions.join(' AND ');
     const db = database();
     const rows = await db.batch([
-      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND (owner_id IS NULL OR owner_id=?)').bind(id, context.actorId),
+      db.prepare('SELECT id,title,client,status,version FROM service_orders WHERE id=? AND owner_id=?').bind(id, context.actorId),
       db.prepare(`SELECT e.* ${filtered} ORDER BY e.created_at DESC,e.id DESC LIMIT ? OFFSET ?`).bind(...values, pageSize, offset),
       db.prepare(`SELECT count(*)::int total ${filtered}`).bind(...values),
       ...(q || resourceKind ? [db.prepare(`SELECT count(*)::int total ${from} AND ${stateFilter}`).bind(id, context.actorId)] : []),
     ]);
     const order = rows[0].results[0] as Record<string, unknown> | undefined;
     if (!order) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
-    const items = (rows[1].results as Record<string, unknown>[]).map(project);
+    const items = (rows[1].results as Record<string, unknown>[]).map(row=>project(row,state==='corrected'));
     const total = Number((rows[2].results[0] as { total: number }).total);
     const sourceCount = rows[3]?.results[0] as { total: number } | undefined;
     const sourceTotal = sourceCount ? Number(sourceCount.total) : total;
@@ -69,10 +69,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const p = parsed.data;
     const hash = await fingerprint({ actor: context.actorId, orderId: id, payload: p });
     const result = await database().transaction(async query => {
-      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND (owner_id IS NULL OR owner_id=$2) FOR UPDATE', [id, context!.actorId]);
+      const order = await query('SELECT id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [id, context!.actorId]);
       if (!order.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem não encontrada.');
       const row = order.rows[0] as { id: string; status: string; version: number };
       if (row.status !== 'executing') throw new ApiError(409, 'INVALID_STATE', 'Apontamentos só podem ser registrados durante a execução.');
+      if (row.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A OS foi alterada. Atualize o documento.');
       const prior = await query('SELECT result,request_hash FROM order_events WHERE id=$1', [p.key]);
       if (prior.rows.length) {
         if (prior.rows[0].request_hash !== hash || !prior.rows[0].result) throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de execução já utilizada.');
@@ -90,7 +91,11 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
         await query('UPDATE order_events SET result=$2 WHERE id=$1', [entryId, JSON.stringify(result)]);
         return result;
       }
-      const original = await query('SELECT id FROM execution_entries WHERE id=$1 AND order_id=$2 AND reverses_id IS NULL FOR UPDATE', [p.reversesId, id]);
+      const original = await query(
+        "SELECT e.id FROM execution_entries e WHERE e.id=$1 AND e.order_id=$2 AND e.kind='report' "+
+        "AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id) FOR UPDATE OF e",
+        [p.reversesId, id],
+      );
       if (!original.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Apontamento original não encontrado.');
       const reversalId = crypto.randomUUID();
       await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9)', [reversalId, id, p.command, row.version, now, context!.actorId, hash, reversalId, context!.correlationId]);
