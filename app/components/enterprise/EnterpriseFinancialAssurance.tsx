@@ -9,7 +9,7 @@ type Reconciliation={summary:{withoutVerifiedPostingCount:number;missingReceivab
 type Cash={summary:{unpostedEvents:number}};
 type Result={finance:FinanceData|null;accounting:Reconciliation|null;cash:Cash|null};
 const money=(scaled:string|null|undefined)=>{
- if(scaled==null||!^-?\d+$/.test(scaled))return 'Indisponível';
+ if(scaled==null||!/^-?\d+$/.test(scaled))return 'Indisponível';
  try {
   const n=BigInt(scaled);
   const minus=n<0n?'-':'';
