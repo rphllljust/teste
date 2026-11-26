@@ -347,18 +347,29 @@ function HomeView() {
     [commercialOrigin, setCommercialOrigin] = useState(""),
     [executionOrder, setExecutionOrder] = useState("");
   const [density, setDensity] = useState<"compact" | "comfortable">("compact");
+  const [navigationCollapsed, setNavigationCollapsed] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   useEffect(() => {
     // Restore after hydration; no synchronous setState in effects or SSR/localStorage mismatch.
     const timer = window.setTimeout(() => {
       try {
         const saved = window.localStorage.getItem("cisne:workspace-density");
         if (saved === "compact" || saved === "comfortable") setDensity(saved);
+        if (window.localStorage.getItem("cisne:workbench-navigation") === "collapsed") setNavigationCollapsed(true);
       } catch {
         // Managed browsers may deny localStorage; session density still works.
       }
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+  function toggleNavigation() {
+    setNavigationCollapsed(value => {
+      const next = !value;
+      try { window.localStorage.setItem("cisne:workbench-navigation", next ? "collapsed" : "expanded"); }
+      catch { /* Layout preference remains available for the session. */ }
+      return next;
+    });
+  }
   function toggleDensity() {
     const next = density === "compact" ? "comfortable" : "compact";
     setDensity(next);
@@ -1267,7 +1278,7 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app" data-density={density}>
+    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}>
       {sidebar && (
         <button
           className="sidebar-scrim"
@@ -1276,7 +1287,7 @@ function HomeView() {
         />
       )}
       <aside className={"sidebar " + (sidebar ? "mobile-open" : "")}>
-        <Link prefetch={false} className="brand" href="/" aria-label="Cisne início">
+        <Link prefetch={false} className="brand" href="/" aria-label="Cisne início" title="CISNE Rondônia">
           <span className="brand-mark">
             <Layers size={24} />
           </span>
@@ -1299,6 +1310,8 @@ function HomeView() {
                   key={name}
                   onClick={() => navigate(name)}
                   className={page === name ? "active" : ""}
+                  title={name}
+                  aria-label={name}
                   aria-current={page === name ? "page" : undefined}
                 >
                   <Icon size={18} />
@@ -1333,6 +1346,14 @@ function HomeView() {
         <header className="topbar">
           <div className="crumb">
             <button
+              type="button"
+              className="enterprise-nav-collapse icon-button"
+              aria-label={navigationCollapsed ? "Expandir navegação lateral" : "Recolher navegação lateral"}
+              aria-pressed={navigationCollapsed}
+              onClick={toggleNavigation}
+              title={navigationCollapsed ? "Expandir menu" : "Recolher menu"}
+            ><PanelLeft size={19}/></button>
+            <button
               className="mobile-toggle icon-button"
               aria-label={sidebar ? "Fechar menu" : "Abrir menu"}
               aria-expanded={sidebar}
@@ -1347,6 +1368,11 @@ function HomeView() {
             <strong>{page}</strong>
           </div>
           <div className="top-actions">
+            <button type="button" className="enterprise-shortcut-trigger secondary"
+              aria-expanded={shortcutsOpen} aria-controls="cisne-workbench-shortcuts"
+              onClick={() => setShortcutsOpen(previous => !previous)}>
+              <LayoutDashboard size={16}/> Atalhos <ChevronRight size={14}/>
+            </button>
             <button
               className="global-search"
               aria-label="Buscar no Cisne — Ctrl ou Command K"
@@ -1371,20 +1397,20 @@ function HomeView() {
               <span>{density === "compact" ? "Compacta" : "Confortável"}</span>
             </button>
           </div>
+          {shortcutsOpen && <nav id="cisne-workbench-shortcuts" className="enterprise-quick-access" aria-label="Atalhos de trabalho">
+            <span>Acesso rápido aos módulos</span>
+            {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+              <button
+                type="button"
+                key={module}
+                aria-current={page === module ? "page" : undefined}
+                onClick={() => { setShortcutsOpen(false); navigate(module); }}
+              >
+                {module}
+              </button>
+            ))}
+          </nav>}
         </header>
-        <nav className="enterprise-quick-access" aria-label="Acesso rápido aos módulos">
-          <span>Acesso rápido</span>
-          {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
-            <button
-              type="button"
-              key={module}
-              aria-current={page === module ? "page" : undefined}
-              onClick={() => navigate(module)}
-            >
-              {module}
-            </button>
-          ))}
-        </nav>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
