@@ -173,3 +173,21 @@
 @media(max-width:570px){.cisne-operations-management-kpis{grid-template-columns:1fr 1fr}.cisne-operations-analytics-grid{gap:8px}.cisne-operations-donut-row{gap:8px}.cisne-operations-donut{width:106px;flex-basis:106px}.cisne-operations-donut>div{inset:21px}.cisne-operations-attention{grid-template-columns:1fr}.cisne-operations-process li{flex:0 0 100px}.cisne-operations-management-kpis>div,.cisne-operations-management-kpis>button{padding:9px}}
 @media(prefers-reduced-motion:reduce){.cisne-operations-process button{transition:none}}
 @media(forced-colors:active){.cisne-operations-process button.is-current{border:2px solid Highlight}.cisne-operations-donut{border:2px solid CanvasText}}
+
+/* Read-only finance / accounting evidence; no synthetic BRL values. */
+.cisne-finance-assurance{display:grid;gap:8px;padding:11px 12px;border:1px solid #d6e6ed;border-radius:8px;background:#f7fbfd;min-width:0}
+.cisne-finance-assurance header{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.cisne-finance-assurance header>div{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:#18475b;font-size:12px}
+.cisne-finance-assurance header>div span{font-size:10px;font-weight:400;color:#64808f}
+.cisne-finance-assurance header>button{display:flex;align-items:center;gap:5px;padding:5px 9px;border:1px solid #bcd7de;border-radius:5px;background:#fff;color:#1b6678;font-size:11px;cursor:pointer}
+.cisne-finance-assurance-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.cisne-finance-assurance-grid>button{display:grid;grid-template-columns:23px minmax(0,1fr);align-content:center;align-items:center;row-gap:2px;min-width:0;min-height:80px;border:1px solid #d9e5ed;border-radius:7px;background:#fff;text-align:left;padding:10px 12px;cursor:pointer}
+.cisne-finance-assurance-grid>button:hover{border-color:#8abcc8;background:#f8fcfd}
+.cisne-finance-assurance-grid>button>svg{grid-row:1/4;color:#137388}
+.cisne-finance-assurance-grid>button span{color:#507182;font-size:10px;font-weight:700}
+.cisne-finance-assurance-grid>button strong{color:#213b50;font-size:17px;line-height:1.35;overflow-wrap:anywhere}
+.cisne-finance-assurance-grid>button small{color:#778d9b;font-size:10px}
+.cisne-finance-assurance>p{margin:0;font-size:10px;color:#728493;line-height:1.4}
+.cisne-finance-assurance>.cisne-finance-assurance-warning{color:#a35738;font-weight:600}
+@media(max-width:1200px){.cisne-finance-assurance-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:500px){.cisne-finance-assurance-grid{grid-template-columns:1fr 1fr}.cisne-finance-assurance-grid>button{padding:8px}.cisne-finance-assurance-grid>button strong{font-size:14px}}
