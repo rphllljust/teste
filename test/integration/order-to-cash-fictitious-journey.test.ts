@@ -386,10 +386,9 @@ async () => {
   assert.equal(dossier.order.status,'completed');
   assert.equal(dossier.provenance.ownerScoped,true);
   assert.equal(dossier.provenance.consistency,'repeatable_read');
-  assert.deepEqual(dossier.financials,{
-    billedScaled:String(scaledAmount),settledScaled:String(scaledAmount),
-    outstandingScaled:'0',
-  });
+  assert.equal(dossier.financials.billedScaled,String(scaledAmount));
+  assert.equal(dossier.financials.settledScaled,String(scaledAmount));
+  assert.equal(dossier.financials.outstandingScaled,'0');
   const documents = new Map(dossier.stages.map(stage=>[stage.key,stage]));
   const exactDocuments = [
     ['client',clientId],['proposal',proposalId],['contract',contractId],
@@ -420,6 +419,10 @@ async () => {
   assert.ok(ownerList.items.some(item=>item.id===orderId
     && item.billedScaled===String(scaledAmount)
     && item.settledScaled===String(scaledAmount)));
+  const byOrderNumber = await record<{items:Array<{id:string}>}>(
+    await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?q='+orderId.slice(0,8))),
+    '13c Busca empresarial pelo identificador persistido da OS',200);
+  assert.ok(byOrderNumber.items.some(item=>item.id===orderId));
   assert.equal((await readEnterpriseDossier(req(outsider,dossierPath),paths(orderId))).status,404,
     'outsider must never receive dossier documents');
   const outsiderList = await record<{ items: Array<{ id: string }> }>(
