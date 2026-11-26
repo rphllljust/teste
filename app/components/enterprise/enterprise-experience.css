@@ -626,3 +626,53 @@ body {
   .app .enterprise-data-grid:focus-within { outline: 2px solid Highlight; }
   .app .enterprise-quick-access button[aria-current="page"] { border: 1px solid Highlight; }
 }
+
+
+/* Enterprise Smart Grid — business-document-centric table controls.
+   Saved preferences contain only column IDs, never data or tenant identities. */
+.app .enterprise-smart-grid { min-width:0;border:1px solid #dce6ee;border-radius:9px;background:#fff;margin-bottom:10px;overflow:hidden; }
+.app .enterprise-smart-toolbar { display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #dce6ee;background:#f9fbfc; }
+.app .enterprise-smart-label { display:grid;gap:3px; }
+.app .enterprise-smart-label strong { font-size:13px;color:#1b364b; }
+.app .enterprise-smart-label span,.app .enterprise-smart-selected { font-size:11px;color:#637d90; }
+.app .enterprise-smart-controls { display:flex;align-items:center;gap:7px;flex-wrap:wrap; }
+.app .enterprise-smart-controls button { min-height:35px;font-size:11px;display:inline-flex;gap:5px;align-items:center; }
+.app .enterprise-smart-controls button svg { flex:none; }
+.app .enterprise-smart-columns { display:flex;flex-wrap:wrap;gap:10px;padding:14px;border:0;border-bottom:1px solid #e1e8ef;margin:0;background:#f7fafc; }
+.app .enterprise-smart-columns legend { float:left;width:100%;font-size:12px;font-weight:700;padding:0 0 8px;color:#305b6c; }
+.app .enterprise-smart-columns label { display:flex;align-items:center;gap:6px;min-height:30px;padding:4px 9px;border:1px solid #dfe8ee;border-radius:6px;font-size:11px;background:#fff; }
+.app .enterprise-smart-columns label small { color:#6c8191;font-size:10px; }
+.app .enterprise-smart-columns input { accent-color:#1d6a79; }
+.app .enterprise-smart-columns button { display:flex;align-items:center;gap:6px;font-size:11px; }
+.app .enterprise-smart-scroll { overflow-x:auto;max-width:100%;overscroll-behavior-inline:contain;scrollbar-width:thin; }
+.app .enterprise-smart-scroll:focus-visible { outline:2px solid #156f83;outline-offset:-2px; }
+.app .enterprise-smart-scroll table { width:100%;border-collapse:collapse;min-width:650px; }
+.app .enterprise-smart-scroll th { padding:11px 12px;white-space:nowrap;background:#f4f7fa;border-bottom:1px solid #dfe6ec;font-weight:700;font-size:11px;color:#577185;text-align:left; }
+.app .enterprise-smart-scroll td { padding:11px 12px;border-bottom:1px solid #ecf0f4;font-size:12px;color:#264052;vertical-align:middle; }
+.app .enterprise-smart-scroll tr:last-child td { border-bottom:0; }
+.app .enterprise-smart-scroll tbody tr:hover { background:#f8fafb; }
+.app .enterprise-smart-scroll input[type="checkbox"] { accent-color:#187287;width:16px;height:16px; }
+.app .enterprise-smart-scroll th:first-child,.app .enterprise-smart-scroll td:first-child { width:42px;text-align:center;padding-inline:9px; }
+.app .enterprise-smart-sort { display:inline-flex;align-items:center;gap:5px;border:0;padding:3px 0;background:transparent;font-weight:700;color:inherit;cursor:pointer;white-space:nowrap; }
+.app .enterprise-smart-sort:hover { color:#166f82;text-decoration:underline; }
+.app .enterprise-smart-num { text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap; }
+.app .enterprise-smart-primary { display:grid;gap:5px;min-width:150px;max-width:390px; }
+.app .enterprise-smart-primary strong { font-size:12px;overflow-wrap:anywhere; }
+.app .enterprise-smart-primary small { font-size:11px;color:#6a8292;overflow-wrap:anywhere; }
+.app .enterprise-smart-open { min-height:33px!important;font-size:11px!important; }
+.app .enterprise-smart-empty { text-align:center!important;padding:32px!important;color:#6c8394!important; }
+.app .enterprise-smart-export-notice { padding:7px 12px;margin:0;background:#f1f8f3;color:#285e46;font-size:11px; }
+.app .enterprise-smart-footnote { border-top:1px solid #eef2f5;padding:10px 13px;margin:0;color:#718395;font-size:10px;line-height:1.5; }
+@media(max-width:800px) {
+ .app .enterprise-smart-toolbar { align-items:flex-start; }
+ .app .enterprise-smart-controls { width:100%;justify-content:flex-start; }
+ .app .enterprise-smart-selected { display:none; }
+}
+@media(max-width:480px) {
+ .app .enterprise-smart-controls button { flex:1 1 auto;justify-content:center; }
+ .app .enterprise-smart-columns label { flex:1 1 auto; }
+}
+@media(forced-colors:active) {
+ .app .enterprise-smart-scroll input:focus-visible { outline:2px solid Highlight; }
+ .app .enterprise-smart-columns label { border:1px solid CanvasText; }
+}

@@ -32,11 +32,12 @@ test('the workspace reads trusted persisted facts rather than simulating busines
 });
 
 test('business drawer and worklist are keyboard-operable and responsive across devices',()=>{
-  assert.match(workspace,/role="region" aria-label="Tabela de processos empresariais"/);
+  assert.match(workspace,/<EnterpriseSmartGrid viewId="enterprise-dossiers"/);
+  assert.match(read('app/components/enterprise/EnterpriseSmartGrid.tsx'),/role="region"/);
   assert.match(workspace,/role="dialog" aria-modal="true"/);
   assert.match(workspace,/event\.key==='Escape'/);
   assert.match(workspace,/event\.key!=='Tab'/);
-  assert.match(workspace,/aria-label=\{'Abrir dossiê da OS '/);
+  assert.match(workspace,/openLabel=\{item=>'Abrir dossiê da OS '/);
   assert.match(workspace,/if\(!abort\.signal\.aborted\)/);
   assert.match(css,/\.enterprise-dossier-drawer/);
   assert.match(css,/@media \(max-width:700px\)/);

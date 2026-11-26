@@ -38,12 +38,16 @@ test('enterprise object details share a factual status and relationship header',
   assert.match(source,/<EnterpriseObjectSummary/,'Object summary must be used by '+path);
  }
 });
-test('operational cockpit never counts draft orders as approved work or all non-drafts as executing',async()=>{
+test('operational cockpit uses factual server counts instead of client-side assumptions',async()=>{
  const cockpit=await readFile(new URL('../app/EnterpriseCommandCenter.tsx',import.meta.url),'utf8');
- assert.match(cockpit,/OS em preparação/);
- assert.match(cockpit,/Ordens fora de rascunho/);
- assert.doesNotMatch(cockpit,/Aprovações pendentes/);
- assert.doesNotMatch(cockpit,/Ordens em execução/);
+ const workbench=await readFile(new URL('../app/EnterpriseOperationsWorkbench.tsx',import.meta.url),'utf8');
+ const api=await readFile(new URL('../app/api/enterprise/operations/route.ts',import.meta.url),'utf8');
+ assert.match(cockpit,/<EnterpriseOperationsWorkbench navigate=\{navigate\}/);
+ assert.match(workbench,/summary\?\.draft/);
+ assert.match(workbench,/summary\?\.executing/);
+ assert.match(api,/COUNT\(\*\) FILTER\(WHERE o.status IN \('draft','prepared'\)\)/);
+ assert.match(api,/COUNT\(\*\) FILTER\(WHERE o.status IN \('executing','in_progress'\)\)/);
+ assert.doesNotMatch(cockpit,/Math\.max\(0,summary\.total-summary\.drafts\)/);
 });
 
 
