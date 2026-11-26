@@ -16,7 +16,7 @@ const fmt=(raw:string|null)=>{
 };
 /** A linked stage is evidence, never automatic approval. */
 export default function EnterpriseProcessJourneyInspector({orderId,revision,navigate,onOpenOrder,onDossier}:{
- orderId:string;revision:number;navigate:(name:string)=>void;onOpenOrder:(id:string)=>void;onDossier:(id:string)=>void;
+ orderId:string;revision:number;navigate:(name:string,orderId?:string)=>void;onOpenOrder:(id:string)=>void;onDossier:(id:string)=>void;
 }){
  const [dossier,setDossier]=useState<Dossier|null>(null);
  const [selectedStage,setSelectedStage]=useState('order');
@@ -71,7 +71,7 @@ export default function EnterpriseProcessJourneyInspector({orderId,revision,navi
     <div className="cisne-integrated-stage-actions">
      {stage.key==='order'?
       <button type="button" onClick={()=>onOpenOrder(orderId)}>Abrir OS <ArrowRight size={13}/></button>:
-      <button type="button" onClick={()=>navigate(stage.module)}>Abrir {stage.module} <ArrowRight size={13}/></button>}
+      <button type="button" onClick={()=>navigate(stage.module,['Execução','Medições','Faturamento','Financeiro'].includes(stage.module)?orderId:undefined)}>Abrir {stage.module} <ArrowRight size={13}/></button>}
      <button type="button" onClick={()=>onDossier(orderId)}>Dossiê desta OS <ArrowRight size={13}/></button>
     </div>
    </div>}

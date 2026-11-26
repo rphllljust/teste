@@ -92,3 +92,13 @@ test('contextual transitions require a fresh authorized read and keep the existi
  assert.match(shell,/navigate\('Ordens de serviço',id\)/);
  assert.match(workbench,/Nenhum comando é executado pelo inspetor/);
 });
+
+test('cross-module stage navigation preserves the selected OS for scoped views',()=>{
+ const journey=read('app/components/enterprise/EnterpriseProcessJourneyInspector.tsx');
+ const dossier=read('app/EnterpriseDossierWorkspace.tsx');
+ assert.match(journey,/navigate\(stage\.module,\['Execução','Medições','Faturamento','Financeiro'\]/);
+ assert.match(dossier,/navigate\(stage\.module,\['Execução','Medições','Faturamento','Financeiro'\]/);
+ assert.match(shell,/if\(name==='Execução'\)setExecutionOrder\(orderId\)/);
+ assert.match(shell,/setBusinessOrder\(orderId\)/);
+ assert.match(shell,/initialOrderId=\{businessOrder\|\|null\}/);
+});

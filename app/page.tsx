@@ -804,6 +804,7 @@ function HomeView() {
     setDueTo("");
     setLinkedLoading(["Medições", "Faturamento", "Financeiro"].includes(name));
     setBusinessOrder(orderId);
+    if(name==='Execução')setExecutionOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
     window.history.pushState(null, "", objectHash(name, orderId || undefined));

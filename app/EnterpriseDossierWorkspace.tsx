@@ -35,7 +35,7 @@ type Dossier = {
   history: Array<{ id: string; command: string; createdAt: string }>;
   provenance: { source: string; ownerScoped: boolean; consistency: string; warning: string };
 };
-type Props = { navigate: (module: string) => void; onOpenOrder: (id: string) => void; initialOrderId?:string|null };
+type Props = { navigate: (module: string,orderId?:string) => void; onOpenOrder: (id: string) => void; initialOrderId?:string|null };
 type ApiFailure = { error?: string; code?: string };
 const labels: Record<string,string> = {
   draft:'Rascunho',authorized:'Autorizada',executing:'Em execução',
@@ -342,7 +342,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initial
                 <span className="enterprise-dossier-stage-number">{String(index+1).padStart(2,'0')}</span>
                 <div><h4>{stage.title}</h4>
                   <small>{stage.state==='linked'?'Vínculos recuperados':'Sem vínculo confirmado'}</small></div>
-                <button type="button" className="secondary" onClick={()=>{close();navigate(stage.module);}}
+                <button type="button" className="secondary" onClick={()=>{close();navigate(stage.module,['Execução','Medições','Faturamento','Financeiro'].includes(stage.module)?detail.order.id:undefined);}}
                   aria-label={'Abrir módulo '+stage.module}>Abrir módulo <ArrowRight size={14}/></button>
               </div>
               {stage.items.length>0?<ul className="enterprise-dossier-evidence">
