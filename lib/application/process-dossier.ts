@@ -3,7 +3,7 @@ import { ApiError } from '../api/http';
 import type { PoolClient } from 'pg';
 
 export type DossierStageKey =
-  'crm'|'client'|'proposal'|'contract'|'order'|'execution'|'measurement'|'billing'|
+  'crm'|'client'|'proposal'|'purchaseOrder'|'contract'|'order'|'execution'|'measurement'|'billing'|
   'receivable'|'receipt'|'bank'|'accounting'|'close';
 
 export type DossierEvidence = {
@@ -198,24 +198,24 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
     ]);
 
     const journalById = new Map<string,DossierEvidence>();
-    const journalDates: string[] = [];
+    const journalIds: string[] = [];
     for (const row of [...invoices,...settlements]) {
       const journalId = asText(row.journal_id);
       if (!journalId) continue;
-      if (row.journal_date) journalDates.push(asText(row.journal_date));
+      journalIds.push(journalId);
       if (!journalById.has(journalId)) journalById.set(journalId,
         {id:journalId,reference:'Lançamento '+journalId.slice(0,8).toUpperCase(),
          state:asText(row.journal_status)||'vínculo não confirmado',
          createdAt:row.journal_date?asText(row.journal_date):null,module:'Contabilidade'});
     }
-    const periods = journalDates.length ? await read(`SELECT DISTINCT p.id,p.period_start,p.period_end,
+    const periods = journalIds.length ? await read(`SELECT DISTINCT p.id,p.period_start,p.period_end,
       p.status,p.closed_at AS created_at FROM finance_period_closes p
       WHERE p.actor_id=$1 AND EXISTS (
         SELECT 1 FROM journal_entries j
-        WHERE j.actor_id=$1 AND j.effective_date=ANY($2::text[])
+        WHERE j.actor_id=$1 AND j.id=ANY($2::text[])
         AND j.effective_date BETWEEN p.period_start AND p.period_end
       ) ORDER BY p.closed_at DESC,p.id DESC LIMIT ${readOnlyLimit}`,
-      [actorId,[...new Set(journalDates)]]) : [];
+      [actorId,[...new Set(journalIds)]]) : [];
 
     if (!contractId) alerts.push({code:'NO_CONTRACT_ORIGIN',severity:'info',
       message:'Nenhum contrato está diretamente vinculado a esta OS.'});
@@ -243,6 +243,8 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
         [evidence(client,'Clientes e propostas',asText(client.legal_name),asText(client.status))]:[]),
       group('proposal','Proposta comercial','Propostas e PO',proposal ?
         [evidence(proposal,'Propostas e PO',asText(proposal.title),asText(proposal.status),proposal.total)]:[]),
+      group('purchaseOrder','Pedido do cliente','Propostas e PO',purchaseOrder ?
+        [evidence(purchaseOrder,'Propostas e PO',asText(purchaseOrder.reference),asText(purchaseOrder.status))]:[]),
       group('contract','Contrato','Contratos',trustedContract ?
         [evidence(trustedContract,'Contratos',asText(trustedContract.reference),asText(trustedContract.status))]:[]),
       group('order','Ordem de serviço','Ordens de serviço',[
