@@ -2681,7 +2681,7 @@ function HomeView() {
           ) : page === "Propostas e PO" ? (
             <ProposalsWorkspace initialId={commercialOrigin} />
           ) : page === "Visão financeira" ? (
-            <FinanceOverviewWorkspace onDrilldown={drillFinance} />
+            <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)} />
           ) : page === "Fluxo de caixa" ? (
             <CashFlowWorkspace />
           ) : page === "Tesouraria" ? (
