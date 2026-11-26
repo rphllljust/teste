@@ -99,3 +99,22 @@
   .app .enterprise-quick-access button[aria-current="page"] { border:1px solid Highlight; }
   .app .enterprise-nav-collapse { border:1px solid CanvasText; }
 }
+
+
+/* Wave 8: one effective document header per workspace. The local document header
+   keeps authorized actions and the application shell supplies the breadcrumb. */
+.app .cisne-crm > .cisne-crm-heading,
+.app .business-workspace > .worklist > .list-title {
+  display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:12px;padding:12px 16px;margin:0;border-bottom:1px solid #dbe5ed;
+}
+.app .business-workspace > .worklist > .list-title h2,
+.app .cisne-crm > .cisne-crm-heading h2 { font-size:clamp(20px,1.7vw,25px);line-height:1.2;margin:3px 0; }
+.app .business-workspace > .worklist > .list-title p,
+.app .cisne-crm > .cisne-crm-heading p {margin:3px 0 0;color:#62788a;line-height:1.45}
+@media(max-width:680px) {
+ .app .business-workspace > .worklist > .list-title,
+ .app .cisne-crm > .cisne-crm-heading {align-items:stretch;padding:12px}
+ .app .business-workspace > .worklist > .list-title .command-buttons,
+ .app .cisne-crm > .cisne-crm-heading .cisne-crm-actions {display:flex;flex-wrap:wrap;width:100%}
+}
