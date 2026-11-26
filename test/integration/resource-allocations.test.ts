@@ -64,7 +64,7 @@ test('resource allocation is tenant-scoped, idempotent, conflict-safe and blocks
  assert.equal(release.status,201);
  const released=await listAllocations(calendar(actor,week));
  assert.equal((await released.json() as {items:unknown[]}).items.length,2);
- assert.equal((await listAllocations(calendar(actor,'from=2026-11-20&to=2027-02-01')).status,400);
+ assert.equal((await listAllocations(calendar(actor,'from=2026-11-20&to=2027-02-01'))).status,400);
  const count=await pool.query('SELECT count(*)::int AS n FROM resource_allocations WHERE owner_id=$1',[actor]);
  assert.equal(count.rows[0].n,3);
 });
