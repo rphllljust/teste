@@ -19,14 +19,14 @@ export const EnterpriseObjectHeader = BusinessObjectHeader;
 export type EnterpriseObjectSection = { id: string; label: string };
 /** Scoped drawer anchors: active location follows the actual scroll region. */
 export function EnterpriseObjectSectionNavigation({
-  sections, label = 'Seções do documento',
-}: { sections: readonly EnterpriseObjectSection[]; label?: string }) {
+  sections, label = 'Seções do documento', rootSelector = '.drawer',
+}: { sections: readonly EnterpriseObjectSection[]; label?: string; rootSelector?: string }) {
   const navRef = useRef<HTMLElement>(null);
   const [active, setActive] = useState(sections[0]?.id ?? '');
   const ids = sections.map(section => section.id).join('|');
 
   useEffect(() => {
-    const root = navRef.current?.closest('.drawer');
+    const root = navRef.current?.closest(rootSelector) ?? navRef.current?.closest('.drawer');
     if (!root) return;
     // Keep document links scoped to their own drawer even when IDs repeat.
     const available = Array.from(root.querySelectorAll<HTMLElement>('[id]'));
@@ -58,10 +58,10 @@ export function EnterpriseObjectSectionNavigation({
       observer.disconnect();
       root.removeEventListener('scroll', syncActive);
     };
-  }, [ids]);
+  }, [ids,rootSelector]);
 
   const navigateToSection = (event: MouseEvent<HTMLAnchorElement>, id: string) => {
-    const root = navRef.current?.closest('.drawer');
+    const root = navRef.current?.closest(rootSelector) ?? navRef.current?.closest('.drawer');
     const target = Array.from(root?.querySelectorAll<HTMLElement>('[id]') ?? [])
       .find(element => element.id === id);
     if (!target) return;
