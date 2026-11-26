@@ -828,6 +828,13 @@ function HomeView() {
       const name = parsed.module;
       if (modules.some((g) => g.items.some(([n]) => n === name))) {
         setPage(name);
+        // A deep link or browser Back/Forward must recover the same scoped
+        // transaction context. Modules without an OS filter do not inherit it.
+        if (["Dossiês empresariais", "Medições", "Faturamento", "Financeiro"].includes(name)) {
+          setBusinessOrder(parsed.objectId ?? "");
+          setLinkedNumber(1);
+        }
+        if (name === "Execução") setExecutionOrder(parsed.objectId ?? "");
         if (parsed.objectId && name === "Ordens de serviço") void openOrigin(parsed.objectId);
       } else if (!window.location.hash) {
         window.history.replaceState(null, "", objectHash(name));
@@ -2601,7 +2608,7 @@ function HomeView() {
               </footer>
             </section>
           ) : page === "Dossiês empresariais" ? (
-            <EnterpriseDossierWorkspace navigate={navigate} initialOrderId={businessOrder||null}
+            <EnterpriseDossierWorkspace key={businessOrder||'dossier-list'} navigate={navigate} initialOrderId={businessOrder||null}
              onOpenOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}} />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
