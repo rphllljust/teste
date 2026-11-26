@@ -67,3 +67,10 @@
 @media(max-width:620px){ .planning-summary { grid-template-columns:1fr 1fr; } .planning-summary > div { padding:10px; } .planning-calendar-head { padding:12px; } .planning-transactions-panel header { padding:12px; } .planning-week-actions { width:100%;justify-content:flex-start; } .planning-allocation-item { flex-wrap:wrap; } .planning-time-fields { grid-template-columns:1fr; } .planning-filters select { flex:1 1 100%; } .planning-modal-overlay { align-items:flex-start; } .planning-allocation-dialog { padding:14px;max-height:calc(100dvh - 25px); } }
 @media(prefers-reduced-motion:reduce){ .planning-timeline-scroll { scroll-behavior:auto!important; } }
 @media(forced-colors:active){ .planning-booking { border:1px solid Highlight; } }
+
+/* Actionable empty-capacity state: link to the actual master-data workspaces. */
+.planning-preflight { display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:16px 18px;background:#f8fafc;border:1px solid #dbe5ed;border-radius:8px;font-size:12px;margin:12px 0; }
+.planning-preflight strong { font-size:13px;color:#24465a; }
+.planning-preflight p { margin:5px 0 0;color:#61798a;max-width:720px;line-height:1.6; }
+.planning-preflight-actions { display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
+@media(max-width:620px){ .planning-preflight-actions { width:100%; } .planning-preflight-actions button { flex:1 1 auto; } }
