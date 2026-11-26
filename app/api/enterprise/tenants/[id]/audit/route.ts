@@ -20,8 +20,8 @@ type EventRow = {
 
 /**
  * Authenticated tenant-scoped permission audit.
- * This endpoint exposes only the immutable event history that the enterprise
- * membership commands actually write; it does not imply comprehensive GL,
+ * This endpoint exposes only permission events persisted by enterprise
+ * membership commands; it does not imply comprehensive GL,
  * document, or access-log coverage across unrelated ERP modules.
  */
 export async function GET(request:Request,route:Route){
