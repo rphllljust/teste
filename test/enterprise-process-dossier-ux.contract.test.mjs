@@ -1,0 +1,51 @@
+import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import test from 'node:test';
+
+const read=(path)=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
+const shell=read('app/page.tsx');
+const nav=read('lib/navigation/catalog.ts');
+const cockpit=read('app/EnterpriseCommandCenter.tsx');
+const workspace=read('app/EnterpriseDossierWorkspace.tsx');
+const css=read('app/components/enterprise/enterprise-dossier.css');
+const layout=read('app/layout.tsx');
+
+test('the process dossier is a real globally navigable ERP workspace',()=>{
+  assert.match(nav,/item\("enterprise-dossiers","Dossiês empresariais","file"\)/);
+  assert.match(shell,/import EnterpriseDossierWorkspace from "\.\/EnterpriseDossierWorkspace"/);
+  assert.match(shell,/page === "Dossiês empresariais"/);
+  assert.match(shell,/<EnterpriseDossierWorkspace navigate=\{navigate\}/);
+  assert.match(cockpit,/module:'Dossiês empresariais'/);
+  assert.match(layout,/enterprise-dossier\.css/);
+});
+
+test('the workspace reads trusted persisted facts rather than simulating business progress',()=>{
+  assert.match(workspace,/fetch\('\/api\/enterprise\/journeys\?'\+params/);
+  assert.match(workspace,/fetch\('\/api\/enterprise\/journeys\/'\+encodeURIComponent\(selectedId\)/);
+  assert.match(workspace,/cache:'no-store',credentials:'same-origin'/);
+  assert.match(workspace,/detail\.provenance\.warning/);
+  assert.match(workspace,/Etapas com registros não representam processos concluídos/);
+  assert.match(workspace,/Não equivale ao saldo contábil global do cliente/);
+  assert.match(workspace,/detail\.stages\.map/);
+  assert.match(workspace,/detail\.financials\.outstandingScaled/);
+  assert.doesNotMatch(workspace,/Math\.random|faker|mockData|mockOrders/i);
+});
+
+test('business drawer and worklist are keyboard-operable and responsive across devices',()=>{
+  assert.match(workspace,/role="region" aria-label="Tabela de processos empresariais"/);
+  assert.match(workspace,/role="dialog" aria-modal="true"/);
+  assert.match(workspace,/event\.key==='Escape'/);
+  assert.match(workspace,/event\.key!=='Tab'/);
+  assert.match(workspace,/aria-label=\{'Abrir dossiê da OS '/);
+  assert.match(workspace,/if\(!abort\.signal\.aborted\)/);
+  assert.match(css,/\.enterprise-dossier-drawer/);
+  assert.match(css,/@media \(max-width:700px\)/);
+  assert.match(css,/@media \(forced-colors:active\)/);
+  assert.match(css,/prefers-reduced-motion:reduce/);
+});
+
+test('scaled money uses BigInt to avoid rounding persisted financial facts',()=>{
+  assert.match(workspace,/BigInt\(raw\)/);
+  assert.match(workspace,/toString\(\)\.padStart\(5, '0'\)/);
+  assert.doesNotMatch(workspace,/Number\(raw\)\s*\/\s*10000/);
+});
