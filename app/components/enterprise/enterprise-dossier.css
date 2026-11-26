@@ -157,3 +157,28 @@
  .enterprise-dossier-status, .enterprise-dossier-stage-number { border:1px solid CanvasText; }
  .enterprise-dossier a:focus-visible, .enterprise-dossier button:focus-visible { outline:2px solid Highlight; }
 }
+
+
+/* Secure single-operator HML gate: render only on explicit signed-session 403. */
+.enterprise-dossier-auth {
+  display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between;
+  gap: 18px; padding: clamp(15px, 2vw, 24px); margin: 16px 0;
+  border: 1px solid #bdd6e1; border-left: 4px solid #287388;
+  border-radius: 9px; background: #f6fafc;
+}
+.enterprise-dossier-auth > div { flex: 1 1 285px; }
+.enterprise-dossier-auth h2 { margin: 5px 0 8px; font-size: clamp(17px, 2vw, 22px); }
+.enterprise-dossier-auth p { margin: 0; font-size: 12px; line-height: 1.65; color: #496477; max-width: 610px; }
+.enterprise-dossier-auth form { flex: 1 1 290px; max-width: 400px; display: grid; gap: 10px; }
+.enterprise-dossier-auth label { display: grid; gap: 6px; font-size: 12px; font-weight: 650; color: #274e65; }
+.enterprise-dossier-auth input {
+  width: 100%; min-height: 42px; border: 1px solid #bfd3de;
+  border-radius: 7px; padding: 9px 12px; background: white;
+  font: inherit; color: #19364a;
+}
+.enterprise-dossier-auth button { min-height: 42px; justify-content: center; }
+.enterprise-dossier-auth input:focus-visible { outline: 2px solid #17778d; outline-offset: 2px; }
+@media (max-width:700px){
+  .enterprise-dossier-auth form { max-width: none; flex: 1 1 100%; }
+  .enterprise-dossier-auth button { width: 100%; }
+}
