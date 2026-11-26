@@ -152,6 +152,8 @@ export default function EnterpriseStructurePage(){
     {loading?<p role="status">Carregando organizações…</p>:<label className="enterprise-governance-select">Organização ativa
      <select value={tenantId} onChange={e=>{
       setError('');setNotice('');setMemberQuery('');setRoleFilter('all');
+      // Invalidate in-flight responses before React commits the new organization.
+      detailRequest.current += 1;
       setCompanies([]);setMembers([]);setTenantId(e.target.value);
      }} aria-label="Selecionar organização">
       <option value="">Selecione uma organização</option>
