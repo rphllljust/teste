@@ -28,6 +28,11 @@ test('resource board is a transactional booking console, not a decorative workli
  assert.match(board,/a\.startsAt/);
  assert.match(board,/matched\.map\(a=>/);
  assert.match(board,/role="table"/);
+ assert.match(board,/onNavigate\("Profissionais"\)/);
+ assert.match(board,/onNavigate\("Frota e ativos"\)/);
+ assert.match(board,/onNavigate\("Ordens de serviço"\)/);
+ assert.match(read('app/page.tsx'),/onNavigate=\{navigate\}/);
+ assert.match(css,/\.planning-preflight/);
  assert.match(board,/Não representa disponibilidade contratual|não representa disponibilidade contratual/);
  assert.match(board,/Conflitos retornam HTTP 409/);
  assert.match(release,/VERSION_CONFLICT/);
