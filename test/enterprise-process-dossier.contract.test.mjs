@@ -52,8 +52,8 @@ test('commercial source and finance relations are joined by exact document IDs',
 });
 
 test('financial summaries remain exact and never claim completeness from linked records',()=>{
-  assert.match(model,/BigInt\(scaled\(row\.amount_scaled\)\)/);
-  assert.match(model,/row\.kind==='receipt'\?1n:-1n/);
+  assert.match(model,/BigInt\(billedScaled\)-BigInt\(settledScaled\)/);
+  assert.match(model,/CASE WHEN s\.kind='receipt' THEN s\.amount ELSE -s\.amount END/);
   assert.match(model,/Vínculo recuperado não equivale a conclusão ou autorização/);
   assert.match(model,/INVOICE_JOURNAL_UNVERIFIED/);
   assert.match(model,/BANK_MATCH_UNVERIFIED/);
