@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import EnterpriseOrderContextRibbon from "./components/enterprise/EnterpriseOrderContextRibbon";
 import PayablesWorkspace from "./PayablesWorkspace";
+import PaymentRunsWorkspace from "./PaymentRunsWorkspace";
+import CollectionsWorkspace from "./CollectionsWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
 import ContractsWorkspace, { type Contract } from "./ContractsWorkspace";
@@ -1307,7 +1309,7 @@ function HomeView() {
   return (
     <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
       data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" :
-        ["Visão financeira","Faturamento","Financeiro","Fluxo de caixa","Tesouraria","Contas a pagar",
+        ["Visão financeira","Faturamento","Financeiro","Fluxo de caixa","Tesouraria","Contas a pagar","Lotes de pagamentos","Cobrança e inadimplência",
          "Caixa e conciliação","Razão contábil","Contabilidade","Fiscal e tributos","Fechamentos"].includes(page) ? "finance" : "standard"}>
       {sidebar && (
         <button
@@ -1471,6 +1473,8 @@ function HomeView() {
               "Fluxo de caixa",
               "Tesouraria",
               "Contas a pagar",
+              "Lotes de pagamentos",
+              "Cobrança e inadimplência",
               "Caixa e conciliação",
               "Razão contábil",
               "Contabilidade",
@@ -2696,6 +2700,10 @@ function HomeView() {
             />
           ) : page === "Contas a pagar" ? (
             <PayablesWorkspace initialFilters={drillFilters} />
+          ) : page === "Lotes de pagamentos" ? (
+            <PaymentRunsWorkspace />
+          ) : page === "Cobrança e inadimplência" ? (
+            <CollectionsWorkspace />
           ) : page === "Caixa e conciliação" ? (
             <BankReconciliationWorkspace
               initialAccountReference={bankAccount}
