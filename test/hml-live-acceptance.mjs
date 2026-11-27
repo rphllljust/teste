@@ -148,6 +148,16 @@ try {
       const publicFinance=await context.request.get(
         base.origin+'/api/finance/workspace',time);
       assert.equal(publicFinance.status(),403,profile.name+' anonymous finance scope denied');
+      // Tier 1 read-only expansion: portfolio and books must stay denied
+      // before an authenticated staging session exists.
+      for(const route of [
+        '/api/finance/aging?asOf=2026-11-26',
+        '/api/finance/cash-flow?from=2026-11-01&to=2026-11-30',
+        '/api/accounting/ledger?accountId=00000000-0000-4000-8000-000000000000',
+      ]){
+        const response=await context.request.get(base.origin+route,time);
+        assert.equal(response.status(),403,profile.name+' denied anonymous financial ledger '+route);
+      }
       const financePages=[
         {label:'Visão financeira',heading:'Centro financeiro'},
         {label:'Contas a pagar',heading:'Contas a pagar'},
@@ -172,6 +182,10 @@ try {
           profile.name+' '+finance.label+' unexpected page-width overflow');
         if(finance.label==='Visão financeira'){
           await page.getByRole('region',{name:'Filas de exceção e encaminhamento'})
+            .waitFor({state:'visible',...time});
+          await page.getByRole('region',{name:'Análise de vencimentos e liquidez documental'})
+            .waitFor({state:'visible',...time});
+          await page.locator('.finance-tier1-aging-heading')
             .waitFor({state:'visible',...time});
           await page.screenshot({
             path:join(artifactDir,'unauthenticated-finance-'+profile.name+'.png'),
