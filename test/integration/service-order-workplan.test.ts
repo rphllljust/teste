@@ -5,6 +5,7 @@ import {Pool} from 'pg';
 import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET,POST} from '../../app/api/orders/[id]/work-packages/route';
+import {GET as operationalRisk} from '../../app/api/enterprise/operations/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
  throw Error('NO-GO: enterprise OS WBS requires isolated PostgreSQL integration.');
@@ -69,6 +70,18 @@ test('WBS creates, replays, detects dependency cycle, versions and enforces pred
  assert.equal((await post(owner,order,{...first,data:data('WBS-A','DIFFERENT CONTENT')})).status,409);
  const second=create(b,data('WBS-B','Work execution checkpoint',a));
  assert.equal((await post(owner,order,second)).status,201);
+ const risk=await operationalRisk(setTestIdentity(new Request(
+  'http://localhost/api/enterprise/operations?queue=attention&page=1&pageSize=25'),owner));
+ assert.equal(risk.status,200);
+ const flagged=await risk.json() as {summary:{planBlocked:number;planOverdue:number};
+  items:Array<{id:string;planBlocked:boolean}>};
+ assert.equal(flagged.summary.planBlocked,1,'persisted WBS dependency blocker must reach OS priority queue');
+ assert.ok(flagged.items.some(p=>p.id===order&&p.planBlocked));
+ const outside=await operationalRisk(setTestIdentity(new Request(
+  'http://localhost/api/enterprise/operations?queue=attention'),foreign));
+ assert.equal(outside.status,200);
+ assert.equal((await outside.json() as {summary:{planBlocked:number}}).summary.planBlocked,0);
+
  assert.equal((await post(owner,order,{
   action:'revise',key:randomUUID(),packageId:a,expectedVersion:1,
   data:data('WBS-A','Illegal dependency cycle',b)

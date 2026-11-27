@@ -1,0 +1,76 @@
+/* CISNE ERP Tier1 — native OS List Report. Scoped, no global worklist/shell regressions. */
+main[data-os-mode="list"]{--os-ink:#18334b;--os-stroke:#dce5ed;--os-muted:#657b8d;padding-top:14px!important}
+main[data-os-mode="list"] .heading{margin-bottom:10px!important;padding-bottom:9px!important}
+main[data-os-mode="list"] .heading h1{font-size:24px!important;margin:3px 0!important;letter-spacing:-.45px}
+main[data-os-mode="list"] .heading p{font-size:12px;line-height:1.35}
+main[data-os-mode="list"] .heading .primary{min-height:34px;padding:7px 11px;font-size:12px}
+main[data-os-mode="list"] .process-strip{min-height:34px;margin-bottom:10px;padding:3px 11px;border-color:var(--os-stroke)}
+main[data-os-mode="list"] .process-stages button{font-size:10px;padding:4px 0}
+main[data-os-mode="list"] .metrics{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px;margin:0 0 9px!important;border:0!important;background:transparent!important}
+main[data-os-mode="list"] .metrics>button{position:relative;min-height:81px;display:grid!important;grid-template-columns:1fr auto;grid-template-rows:auto 1fr auto;gap:3px;padding:10px 12px!important;border:1px solid var(--os-stroke)!important;border-radius:6px;background:#fff!important;text-align:left;box-shadow:none}
+main[data-os-mode="list"] .metrics>button:hover,main[data-os-mode="list"] .metrics>button:focus-visible{border-color:#91b6c1!important;background:#f8fbfc!important}
+main[data-os-mode="list"] .metrics>button[aria-pressed="true"]{border-color:#5b9b9d!important;box-shadow:inset 0 -2px #2a7880}
+main[data-os-mode="list"] .metrics>button>span{grid-column:1/3;grid-row:1;font-size:11px!important;line-height:1.25;color:#536b7d;display:flex;justify-content:space-between;align-items:center;gap:4px}
+main[data-os-mode="list"] .metrics>button>span svg{width:13px;height:13px;color:#7c909d}
+main[data-os-mode="list"] .metrics strong{grid-column:1/3;grid-row:2;font-size:23px!important;line-height:1;font-variant-numeric:tabular-nums;margin:1px 0!important;color:var(--os-ink);font-weight:660}
+main[data-os-mode="list"] .metrics small{grid-column:1/3;grid-row:3;margin:0;font-size:10px!important;line-height:1.3;color:#6b8992}
+main[data-os-mode="list"] .metrics small svg{height:11px;width:11px}
+.os-tier1-exceptions{border:1px solid var(--os-stroke,#dce5ed);border-radius:6px;background:#fff;padding:10px 12px;margin:0 0 9px;color:#27465b}
+.os-tier1-exceptions-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;min-width:0}
+.os-tier1-exceptions-heading>div:first-child{min-width:0}
+.os-tier1-exceptions-heading .eyebrow{font-size:9px;letter-spacing:.65px;color:#587887}
+.os-tier1-exceptions-heading h2{margin:2px 0 0;font-size:13px;line-height:1.2;color:#24475d;font-weight:650}
+.os-tier1-exceptions-heading p{font-size:10px;color:#7b909d;margin:2px 0 0;line-height:1.35}
+.os-tier1-exceptions-actions{display:flex;gap:4px;align-items:center;flex:none}
+.os-tier1-exceptions-actions .secondary{min-height:27px;padding:4px 7px;gap:4px;font-size:10px;border-radius:4px}
+.os-tier1-exceptions-actions .icon-button{height:28px;width:28px}
+.os-tier1-exceptions-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin:9px 0 6px;border:1px solid #e7edf1;border-radius:4px;background:#f8fafb}
+.os-tier1-exceptions-stats>div{display:flex;align-items:center;gap:6px;padding:6px 9px;min-width:0;border-right:1px solid #e1eaf0}
+.os-tier1-exceptions-stats>div:last-child{border-right:0}
+.os-tier1-exceptions-stats svg{color:#687f8b;flex:none}
+.os-tier1-exceptions-stats span{font-size:10px;color:#5b7383;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-tier1-exceptions-stats strong{font-size:14px;font-weight:700;margin-left:auto;color:#234a5f;font-variant-numeric:tabular-nums}
+.os-tier1-exceptions-worklist{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.os-tier1-exceptions-worklist button{min-width:0;padding:6px 8px;background:#fff;text-align:left;border:1px solid #e0e8ef;border-radius:4px;display:flex;align-items:center;justify-content:space-between;gap:7px}
+.os-tier1-exceptions-worklist button:hover{border-color:#86b4be;background:#f4fafb}
+.os-tier1-exceptions-worklist button>span:first-child{min-width:0}
+.os-tier1-exceptions-worklist strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;line-height:1.3;color:#31546b}
+.os-tier1-exceptions-worklist small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:9px;color:#8294a0;margin-top:1px}
+.os-tier1-exception-kind{font-size:9px;color:#6b8190;white-space:nowrap;display:inline-flex;align-items:center;gap:3px;flex:none}
+.os-tier1-exception-kind.is-overdue{color:#9d583b}
+.os-tier1-exceptions-more,.os-tier1-exceptions-clear,.os-tier1-exceptions-state{margin:6px 0 0;font-size:10px;color:#708491;line-height:1.45}
+.os-tier1-exceptions-state{display:flex;align-items:center;gap:6px}.os-tier1-exceptions-state button{font-size:10px;text-decoration:underline}
+.os-agenda-disclosure{margin:0 0 9px;border:1px solid #dde6ed;border-radius:5px;background:#fff}
+.os-agenda-disclosure>summary{padding:7px 12px;cursor:pointer;min-height:32px;display:flex;align-items:center;justify-content:space-between;gap:8px;color:#496878;font-size:11px;font-weight:630}
+.os-agenda-disclosure>summary span{font-size:10px;color:#8295a1;font-weight:400}
+.os-agenda-disclosure>summary::marker{color:#7698a4}
+.os-agenda-disclosure[open]>.service-agenda{margin:0;border:0;border-top:1px solid #e6edf1;box-shadow:none;padding:10px 12px}
+.os-agenda-disclosure .agenda-heading h3{font-size:12px;margin:1px 0}
+.os-agenda-disclosure .agenda-heading p{font-size:10px}
+.os-agenda-disclosure .agenda-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:7px}
+.os-agenda-disclosure .agenda-item{padding:7px;gap:7px;min-height:37px}
+.os-agenda-disclosure .agenda-item strong{font-size:10px}
+.os-agenda-disclosure .agenda-item small{font-size:9px}
+main[data-os-mode="list"] .worklist{border-radius:6px;overflow:visible}
+main[data-os-mode="list"] .worklist .list-title{padding:10px 14px 9px}
+main[data-os-mode="list"] .worklist .list-title h2{font-size:15px}
+main[data-os-mode="list"] .worklist .list-title .queue-eyebrow{font-size:9px}
+main[data-os-mode="list"] .worklist .tabs{padding-inline:14px;gap:16px}
+main[data-os-mode="list"] .worklist .tabs button{padding:8px 0;min-height:34px;font-size:11px}
+main[data-os-mode="list"] .worklist .filters{padding:8px 14px!important;gap:7px}
+main[data-os-mode="list"] .worklist .filters .search-input{min-height:33px}
+main[data-os-mode="list"] .worklist .filters input,main[data-os-mode="list"] .worklist .filters select{font-size:11px}
+main[data-os-mode="list"] .worklist .table-wrap td{padding:8px 11px;font-size:11px}
+main[data-os-mode="list"] .worklist .table-wrap th{padding:8px 11px;font-size:10px}
+main[data-os-mode="list"] .worklist .table-footer{padding:9px 14px}
+.os-agenda-disclosure>summary:focus-visible,.os-tier1-exceptions button:focus-visible{outline:2px solid #267c97;outline-offset:2px}
+@media(min-width:1450px){main[data-os-mode="list"] .worklist .queue-table{max-height:calc(100dvh - 440px);min-height:200px;overflow:auto}}
+@media(max-width:1100px){.os-tier1-exceptions-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.os-tier1-exceptions-worklist{grid-template-columns:1fr 1fr}.os-agenda-disclosure .agenda-list{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){main[data-os-mode="list"]{padding:12px 14px!important}main[data-os-mode="list"] .metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ .os-tier1-exceptions-heading{align-items:flex-start}.os-tier1-exceptions-worklist{grid-template-columns:1fr}.os-tier1-exceptions-stats span{font-size:9px}.os-tier1-exceptions-stats>div{padding:6px 4px;gap:3px}
+ .os-agenda-disclosure .agenda-list{grid-template-columns:1fr}.os-agenda-disclosure>summary span{display:none}
+ main[data-os-mode="list"] .worklist .tabs{overflow-x:auto}main[data-os-mode="list"] .queue-table{max-height:none}}
+@media(max-width:400px){.os-tier1-exceptions-stats{grid-template-columns:1fr}.os-tier1-exceptions-stats>div{border-right:0;border-bottom:1px solid #e1eaf0}
+ .os-tier1-exceptions-stats>div:last-child{border-bottom:0}.os-tier1-exceptions-heading{flex-wrap:wrap}}
+@media(forced-colors:active){.os-tier1-exceptions,.os-agenda-disclosure{border:1px solid CanvasText}.os-tier1-exceptions-worklist button{border:1px solid ButtonText}}
+@media(prefers-reduced-motion:reduce){.os-tier1-exceptions *,main[data-os-mode="list"] *{scroll-behavior:auto;transition:none!important}}

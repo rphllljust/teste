@@ -12,6 +12,8 @@ import "./components/enterprise/enterprise-execution-workbench.css";
 import "./components/enterprise/enterprise-operations-workbench.css";
 import "./components/enterprise/enterprise-service-order-control.css";
 import "./components/enterprise/enterprise-os-workplan.css";
+import "./components/enterprise/enterprise-os-list-tier1.css";
+import "./components/enterprise/enterprise-os-wizard-tier1.css";
 import "./components/enterprise/enterprise-operations-tier1.css";
 import "./components/enterprise/enterprise-finance-tier1.css";
 import "./components/enterprise/enterprise-finance-command.css";

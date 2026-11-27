@@ -52,7 +52,19 @@ export async function GET(request:Request){
        AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id
          AND done.execution_entry_id=pending.id AND done.status<>'cancelled'))
     )`;
-    const attention=`((${overdue}) OR (${unmeasured}) OR o.status IN ('draft','prepared'))`;
+    // Persistent WBS exceptions are operational facts, independent of invoice/GL state.
+    const planOverdue=`EXISTS (SELECT 1 FROM enterprise_os_work_packages wp
+      WHERE wp.owner_id=o.owner_id AND wp.order_id=o.id
+      AND wp.state NOT IN ('done','cancelled')
+      AND wp.planned_end_on<to_char(CURRENT_DATE,'YYYY-MM-DD'))`;
+    const planBlocked=`EXISTS (SELECT 1 FROM enterprise_os_work_packages wp
+      JOIN enterprise_os_work_packages predecessor
+       ON predecessor.id=wp.depends_on_id AND predecessor.owner_id=wp.owner_id
+       AND predecessor.order_id=wp.order_id
+      WHERE wp.owner_id=o.owner_id AND wp.order_id=o.id
+       AND wp.state NOT IN ('done','cancelled') AND predecessor.state<>'done')`;
+    const attention=`((${overdue}) OR (${unmeasured}) OR (${planOverdue})
+      OR (${planBlocked}) OR o.status IN ('draft','prepared'))`;
     const queue=`($4='all'
       OR ($4='attention' AND ${attention})
       OR ($4='overdue' AND ${overdue})
@@ -63,8 +75,9 @@ export async function GET(request:Request){
       OR ($4='completed' AND o.status='completed'))`;
     const params=[context.actorId,search,p.category,p.queue];
     const attentionRank=`CASE WHEN ${overdue} THEN 0 WHEN ${unmeasured} THEN 1
-      WHEN o.status IN ('executing','in_progress') THEN 2
-      WHEN o.status IN ('draft','prepared') THEN 3 ELSE 4 END`;
+      WHEN ${planOverdue} THEN 2 WHEN ${planBlocked} THEN 3
+      WHEN o.status IN ('executing','in_progress') THEN 4
+      WHEN o.status IN ('draft','prepared') THEN 5 ELSE 6 END`;
     client=await databasePool().connect();
     await client.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
     const [summary,matched,rows,statusBreakdown,dueBreakdown]=await (async()=>{
@@ -75,6 +88,8 @@ export async function GET(request:Request){
         COUNT(*) FILTER(WHERE o.status IN ('executing','in_progress'))::int AS executing,
         COUNT(*) FILTER(WHERE ${overdue})::int AS overdue,
         COUNT(*) FILTER(WHERE ${unmeasured})::int AS unmeasured,
+        COUNT(*) FILTER(WHERE ${planOverdue})::int AS plan_overdue,
+        COUNT(*) FILTER(WHERE ${planBlocked})::int AS plan_blocked,
         COUNT(*) FILTER(WHERE o.status IN ('authorized','planned'))::int AS authorized
         FROM service_orders o WHERE o.owner_id=$1`,[context!.actorId]);
       const matched=await client!.query(`SELECT COUNT(*)::int AS total
@@ -83,6 +98,8 @@ export async function GET(request:Request){
         o.description,o.created_at,o.due_date,
         (${attentionRank}) AS attention_rank,
         (${unmeasured}) AS requires_measurement,
+        (${planOverdue}) AS workplan_overdue,
+        (${planBlocked}) AS workplan_blocked,
         (SELECT COUNT(*)::int FROM measurements m WHERE m.order_id=o.id) AS measurements,
         (SELECT COUNT(*)::int FROM invoices i WHERE i.order_id=o.id) AS invoices,
         (SELECT COUNT(*)::int FROM execution_entries ee WHERE ee.order_id=o.id
@@ -128,6 +145,7 @@ export async function GET(request:Request){
         dueDate:row.due_date==null?null:String(row.due_date).slice(0,10),
         attentionRank:Number(row.attention_rank),
         overdue:isOverdue,unmeasured:isUnmeasured,
+        planOverdue:Boolean(row.workplan_overdue),planBlocked:Boolean(row.workplan_blocked),
         evidence:{measurements:Number(row.measurements),invoices:Number(row.invoices),
           executions:Number(row.executions)},
       };
@@ -137,6 +155,7 @@ export async function GET(request:Request){
       summary:{
         total:Number(s.total),draft:Number(s.draft),executing:Number(s.executing),
         overdue:Number(s.overdue),unmeasured:Number(s.unmeasured),authorized:Number(s.authorized),
+        planOverdue:Number(s.plan_overdue),planBlocked:Number(s.plan_blocked),
       },
       pageInfo:{page:p.page,pageSize:p.pageSize,total,hasMore:p.page*p.pageSize<total},
       analytics:{
@@ -147,7 +166,7 @@ export async function GET(request:Request){
       },
       source:'postgres_owner_scoped_operations',
       generatedAt:new Date().toISOString(),
-      note:'Indicadores globais e registros calculados somente sobre OS atribuídas ao operador autenticado; ações dependem do estado e das permissões no detalhe.',
+      note:'Indicadores globais de OS e WBS persistidas, restritos ao operador autenticado; atividades bloqueadas ou atrasadas são alertas documentais, não execução ou custo realizado.',
     },context);
   }catch(error){
     if(client){try{await client.query('ROLLBACK');}catch{/* preserve original error */}}
