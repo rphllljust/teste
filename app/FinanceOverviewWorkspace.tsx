@@ -25,11 +25,12 @@ async function get<T>(url:string,signal:AbortSignal):Promise<T>{
  return await response.json() as T;
 }
 type Action={label:string;module:string;description:string;count:number|null;critical:boolean};
-export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedgerAccount,onProjectOrder,onProcurementOrder}:{
+export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedgerAccount,onProjectOrder,onProcurementOrder,onProcurementPayable}:{
  onDrilldown:(d:Drilldown)=>void;onNavigate:(module:string)=>void;
  onLedgerAccount:(id:string,from:string,to:string)=>void;
  onProjectOrder:(id:string)=>void;
  onProcurementOrder:(id:string)=>void;
+ onProcurementPayable:(id:string)=>void;
 }){
  const [activeArea,setActiveArea]=useState<'tasks'|'budget'|'aging'|'income'|'projects'|'procurement'>('tasks');
  const [asOf,setAsOf]=useState('');
@@ -138,7 +139,7 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedge
      onClick={()=>setActiveArea('procurement')}>Compras a pagar <span>Rastreabilidade documental</span></button>
    </nav>
    {activeArea==='projects'&&<ProjectCostControlBoard onOrder={onProjectOrder} onNavigate={onNavigate}/>}
-   {activeArea==='procurement'&&<EnterpriseProcureToPayPortfolio onOpenOrder={onProcurementOrder} onNavigate={onNavigate}/>}
+   {activeArea==='procurement'&&<EnterpriseProcureToPayPortfolio onOpenOrder={onProcurementOrder} onOpenPayable={onProcurementPayable} onNavigate={onNavigate}/>}
    {activeArea==='income'&&<ControllingIncomeStatement onLedgerAccount={onLedgerAccount} onNavigate={onNavigate}/>}
    {activeArea==='budget'&&<ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>}
    {activeArea==='aging'&&<FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>}
