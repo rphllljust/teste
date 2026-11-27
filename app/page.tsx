@@ -1316,7 +1316,7 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
+    <div className="app" data-layout-system="tier1" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
       data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" :
         ["Visão financeira","Faturamento","Financeiro","Fluxo de caixa","Tesouraria","Contas a pagar","Lotes de pagamentos","Cobrança e inadimplência",
          "Caixa e conciliação","Razão contábil","Contabilidade","Fiscal e tributos","Fechamentos"].includes(page) ? "finance" : "standard"}>
