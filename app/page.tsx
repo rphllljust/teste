@@ -9,6 +9,7 @@ import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
 import ContractsWorkspace, { type Contract } from "./ContractsWorkspace";
 import ExecutionWorkspace from "./ExecutionWorkspace";
+import EnterpriseServiceOrderControlPanel from "./EnterpriseServiceOrderControlPanel";
 import OrderNextcrmDocuments from "./OrderNextcrmDocuments";
 import OrderPreparation from "./OrderPreparation";
 import MeasurementPreparation from "./MeasurementPreparation";
@@ -3267,6 +3268,7 @@ function HomeView() {
                  {id:"order-scope",label:"Escopo"},
                  {id:"order-next",label:"Comandos"},
                  {id:"order-commercial",label:"Origem comercial"},
+                 {id:"order-control",label:"Controle integrado"},
                  {id:"order-related",label:"Registros relacionados"},
                  {id:"order-history",label:"Histórico"},
                ]}/>
@@ -3448,6 +3450,10 @@ function HomeView() {
             {(selected.client_id ?? selected.relations?.clientId) && (
               <OrderNextcrmDocuments key={selected.id} orderId={selected.id} />
             )}
+            <div id="order-control" className="order-control-native-object">
+              <EnterpriseServiceOrderControlPanel key={selected.id} orderId={selected.id}
+                onOpenOrder={id=>void openOrigin(id)} navigate={navigate}/>
+            </div>
             <h3 id="order-related" className="drawer-section-title">Registros relacionados</h3>
             <button
               className="related"
