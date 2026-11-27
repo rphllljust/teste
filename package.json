@@ -18,7 +18,7 @@
     "test:regression:enterprise": "node test/enterprise-responsive-http-regression.mjs",
     "test": "pnpm test:security && pnpm test:postgres-adapter && pnpm test:domain && pnpm test:route-inventory && pnpm test:enterprise-contracts && pnpm test:enterprise-quality-contracts && pnpm test:typed-catalog && pnpm test:governed-actions && pnpm test:object-routes && pnpm test:measurement-lifecycle",
     "db:generate": "drizzle-kit generate",
-    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs test/finance-cashflow-precision.test.mjs lib/domain/bank-ofx.test.mjs lib/domain/finance-cash-scenario.test.mjs lib/domain/income-statement.test.mjs",
+    "test:domain": "node --experimental-strip-types --test lib/domain/purchase-order-pricing.test.mjs lib/domain/finance.test.mjs test/finance-cashflow-precision.test.mjs lib/domain/bank-ofx.test.mjs lib/domain/finance-cash-scenario.test.mjs lib/domain/income-statement.test.mjs lib/domain/payment-run-readiness.test.mjs",
     "db:migrate": "node scripts/migrate-postgres.mjs",
     "test:route-inventory": "node --test test/enterprise-route-inventory.contract.test.mjs",
     "test:enterprise-contracts": "node --test test/procurement-fiscal.fail-closed.contract.test.mjs test/enterprise-transactional-journeys.synthetic.test.mjs test/enterprise-accounting-link-gates.contract.test.mjs test/enterprise-governance-ui.contract.test.mjs test/enterprise-finance-close-ui.contract.test.mjs test/enterprise-finance-tier1-global.contract.test.mjs test/enterprise-process-dossier.contract.test.mjs",
