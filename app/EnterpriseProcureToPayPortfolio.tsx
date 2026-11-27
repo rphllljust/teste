@@ -1,11 +1,13 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {ArrowRight,CheckCircle2,RefreshCw,Search,ShieldAlert} from 'lucide-react';
+import {ArrowRight,CheckCircle2,FileDown,RefreshCw,Search,ShieldAlert} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
 
 type Phase='draft'|'cancelled'|'receiving'|'document'|'accounting'|'payment'|'bank'|'exception'|'verified';
 type Row={
  id:string;reference:string;supplier:string;status:string;expectedOn:string|null;
+ payableDueOn:string|null;severity:'overdue'|'today'|'soon'|'none';
+ alerts:string[];delivery:{state:string;daysUntil:number|null};payment:{state:string;daysUntil:number|null};
  payableId:string|null;invoiceId:string|null;phase:Phase;flags:string[];
  orderScaled:string;payableScaled:string;paidScaled:string;outstandingScaled:string;
  attributedScaled:string;orderedQuantity:string;acceptedQuantity:string;
@@ -13,7 +15,8 @@ type Row={
 };
 type Response={
  items:Row[];pageInfo:{page:number;pageSize:number;total:number;hasMore:boolean};
- summary:{pageOrders:number;pageDocumentExceptions:number;pagePurchaseScaled:string;
+ summary:{pageOrders:number;pageDocumentExceptions:number;pageDeliveryOverdue:number;
+ pagePaymentOverdue:number;pagePurchaseScaled:string;
  pageOutstandingScaled:string;pageAttributedScaled:string};
  warnings:string[];generatedAt:string;error?:string
 };
@@ -35,13 +38,20 @@ const flags:Record<string,string>={
  BANK_MATCH_UNVERIFIED:'Pagamento sem correspondência bancária vigente',
  PAYABLE_OVERSETTLED:'Pagamentos líquidos superiores ao título'
 };
+const dueAlerts:Record<string,string>={
+ DELIVERY_OVERDUE:'Entrega vencida',DELIVERY_DUE_TODAY:'Entrega prevista hoje',
+ DELIVERY_DUE_SOON:'Entrega nos próximos sete dias',
+ PAYMENT_OVERDUE:'Título vencido',PAYMENT_DUE_TODAY:'Título vence hoje',
+ PAYMENT_DUE_SOON:'Título vence nos próximos sete dias'
+};
 const date=(raw:string|null)=>{
  if(!raw)return '—';
  const d=new Date(raw.slice(0,10)+'T12:00:00Z');
  return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(d);
 };
-export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}:{
- onOpenOrder:(orderId:string)=>void;onNavigate:(module:string)=>void;
+export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onOpenPayable,onNavigate}:{
+ onOpenOrder:(orderId:string)=>void;onOpenPayable:(payableId:string)=>void;
+ onNavigate:(module:string)=>void;
 }){
  const [search,setSearch]=useState(''),[query,setQuery]=useState('');
  const [status,setStatus]=useState('all'),[page,setPage]=useState(1);
@@ -69,7 +79,8 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
   void run();
   return()=>ctrl.abort();
  },[query,status,page,reload]);
- const visible=(result?.items??[]).filter(r=>!attentionOnly||r.flags.length>0);
+ const visible=(result?.items??[]).filter(r=>!attentionOnly||r.flags.length>0||r.alerts.length>0);
+ const exportParams=new URLSearchParams({q:query,status,page:String(page),format:'csv'});
  return <section className="enterprise-procure-portfolio" aria-label="Carteira de compras até pagamento">
   <header className="enterprise-procure-portfolio-heading">
    <div><span className="eyebrow">CONTROLES TRANSVERSAIS · PROCURE TO PAY</span>
@@ -77,6 +88,9 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
     <p>Pedidos, recebimento, título, escrituração e conciliação bancária sob o mesmo contexto autenticado.</p>
    </div>
    <div className="enterprise-procure-portfolio-head-actions">
+    <a className="secondary enterprise-procure-portfolio-export" href={'/api/enterprise/procure-to-pay/portfolio?'+exportParams.toString()}
+     download title="Exportar somente os pedidos desta página com valores escalados exatos">
+     <FileDown size={13}/> Exportar página CSV</a>
     <button className="secondary" type="button" onClick={()=>onNavigate('Contas a pagar')}>
      Abrir contas a pagar <ArrowRight size={13}/></button>
     <button className="secondary" type="button" aria-label="Atualizar carteira de compras"
@@ -95,7 +109,7 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
    </select></label>
    <label className="enterprise-procure-portfolio-check">
     <input type="checkbox" checked={attentionOnly} onChange={e=>setAttentionOnly(e.target.checked)}/>
-    Apenas pendências da página</label>
+    Ressalvas e prazos da página</label>
   </div>
   {error&&<div className="form-error" role="alert">{error}<button type="button"
    onClick={()=>setReload(r=>r+1)}>Repetir consulta</button></div>}
@@ -110,11 +124,16 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
       <small>Soma da página · sem caixa presumido</small></div>
      <div><span>Pendências documentais</span><strong>{result.summary.pageDocumentExceptions}</strong>
       <small>Pedidos com uma ou mais ressalvas</small></div>
+     <div><span>Entregas atrasadas</span><strong>{result.summary.pageDeliveryOverdue}</strong>
+      <small>Somente da página atual</small></div>
+     <div><span>Títulos vencidos</span><strong>{result.summary.pagePaymentOverdue}</strong>
+      <small>Sem pressupor encargos</small></div>
     </div>
     <div className="enterprise-procure-portfolio-tablewrap">
      <table><thead><tr>
       <th>Pedido / fornecedor</th><th>Etapa verificada</th><th>Pedido</th>
-      <th>Obrigação</th><th>Saldo em aberto</th><th>Custo atribuído à OS</th><th>Entrega prevista</th><th>Origem</th>
+      <th>Obrigação</th><th>Saldo em aberto</th><th>Custo atribuído à OS</th>
+      <th>Entrega prevista</th><th>Vencimento AP</th><th>Prazo / risco</th><th>Origem</th>
      </tr></thead><tbody>
      {visible.map(item=><tr key={item.id}>
       <td><strong>{item.reference}</strong><small>{item.supplier}</small></td>
@@ -128,12 +147,20 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
       <td className="amount">{item.payableId?money(item.outstandingScaled):'Não apurado'}</td>
       <td className="amount">{item.payableId?money(item.attributedScaled):'—'}</td>
       <td>{date(item.expectedOn)}</td>
-      <td><button type="button" className="row-link" onClick={()=>onOpenOrder(item.id)}>
-       Abrir pedido <ArrowRight size={12}/></button></td>
+      <td>{item.payableId?date(item.payableDueOn):'—'}</td>
+      <td>{item.alerts.length?<span className={'enterprise-procure-portfolio-urgency '+item.severity}
+       title={item.alerts.map(x=>dueAlerts[x]??x).join(' · ')}>
+       {item.alerts.map(x=>dueAlerts[x]??x).join(' · ')}</span>:'Sem alerta de prazo'}</td>
+      <td><div className="enterprise-procure-portfolio-source-actions">
+       <button type="button" className="row-link" onClick={()=>onOpenOrder(item.id)}>
+        Abrir pedido <ArrowRight size={12}/></button>
+       {item.payableId&&<button type="button" className="row-link"
+        onClick={()=>onOpenPayable(item.payableId!)}>Abrir título AP <ArrowRight size={12}/></button>}
+      </div></td>
      </tr>)}
      </tbody></table>
      {!visible.length&&<div className="enterprise-procure-portfolio-empty">
-      {result.items.length&&attentionOnly?'Nenhuma ressalva nesta página. Desmarque o filtro para ver os pedidos.':
+      {result.items.length&&attentionOnly?'Nenhuma ressalva ou prazo crítico nesta página. Desmarque o filtro para ver os pedidos.':
        'Nenhum pedido recuperado para os critérios.'}</div>}
     </div>
     <footer className="enterprise-procure-portfolio-footer">

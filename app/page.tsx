@@ -2696,7 +2696,8 @@ function HomeView() {
             <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)}
               onLedgerAccount={(id,from,to)=>{navigate('Razão contábil');setLedgerDrilldown({id,from,to});}}
               onProjectOrder={id=>navigate('Dossiês empresariais',id)}
-              onProcurementOrder={id=>{navigate('Compras');setProcurementDrilldown(id);}} />
+              onProcurementOrder={id=>{navigate('Compras');setProcurementDrilldown(id);}}
+              onProcurementPayable={id=>{navigate('Contas a pagar');setPayableDrilldown(id);}} />
           ) : page === "Fluxo de caixa" ? (
             <CashFlowWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Tesouraria" ? (
