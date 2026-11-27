@@ -98,8 +98,8 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
   const report=await database().transaction(async q=>{
    await q('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
    const orderStatus=await lockOrder(q,id,actor,false);
-   const [summary,costs,rows,history,people]=await Promise.all([
-    q(`SELECT COUNT(*)::int AS total,
+   const [summary,costs,rows,history,people]=await (async()=>{ return [
+    await q(`SELECT COUNT(*)::int AS total,
      COUNT(*) FILTER(WHERE state='done')::int AS done,
      COUNT(*) FILTER(WHERE state='in_progress')::int AS running,
      COUNT(*) FILTER(WHERE state='draft')::int AS drafts,
@@ -108,9 +108,9 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
      COALESCE(SUM(planned_cost_scaled) FILTER(WHERE state<>'cancelled'),0)::text AS budget,
      COALESCE(SUM(planned_hours_scaled) FILTER(WHERE state<>'cancelled'),0)::text AS hours
      FROM enterprise_os_work_packages WHERE order_id=$1 AND owner_id=$2`,[id,actor]),
-    q(`SELECT COALESCE(SUM(CASE WHEN kind='allocate' THEN amount::bigint ELSE -amount::bigint END),0)::text AS actual
+    await q(`SELECT COALESCE(SUM(CASE WHEN kind='allocate' THEN amount::bigint ELSE -amount::bigint END),0)::text AS actual
      FROM enterprise_project_cost_allocations WHERE service_order_id=$1 AND actor_id=$2`,[id,actor]),
-    q(`SELECT p.*,d.title AS dependency_title,d.state AS dependency_state,prof.name AS responsible_name,
+    await q(`SELECT p.*,d.title AS dependency_title,d.state AS dependency_state,prof.name AS responsible_name,
      (p.state NOT IN ('done','cancelled') AND p.planned_end_on<to_char(CURRENT_DATE,'YYYY-MM-DD')) AS overdue,
      (p.depends_on_id IS NOT NULL AND d.state<>'done' AND p.state NOT IN ('done','cancelled')) AS blocked
      FROM enterprise_os_work_packages p
@@ -119,11 +119,11 @@ export async function GET(request:Request,{params}:{params:Promise<{id:string}>}
      WHERE p.owner_id=$2 AND p.order_id=$1 AND ($3='all' OR p.state=$3)
      ORDER BY p.planned_start_on ASC,p.reference ASC,p.id ASC LIMIT 26 OFFSET $4`,
       [id,actor,f.state,(f.page-1)*25]),
-    q(`SELECT e.command,e.version,e.package_id,e.changed_at,e.receipt
+    await q(`SELECT e.command,e.version,e.package_id,e.changed_at,e.receipt
      FROM enterprise_os_work_package_events e WHERE e.owner_id=$2 AND e.order_id=$1
      ORDER BY e.changed_at DESC,e.id DESC LIMIT 12`,[id,actor]),
-    q("SELECT id,name FROM professionals WHERE owner_id=$1 AND status='active' ORDER BY name,id LIMIT 51",[actor]),
-   ]);
+    await q("SELECT id,name FROM professionals WHERE owner_id=$1 AND status='active' ORDER BY name,id LIMIT 51",[actor]),
+   ]; })();
    const all=summary.rows[0],planned=BigInt(textOf(all?.budget)),actual=BigInt(textOf(costs.rows[0]?.actual));
    const active=numberOf(all?.total)-numberOf(all?.cancelled);
    return {
