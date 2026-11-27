@@ -103,6 +103,15 @@ test('assisted matching requires exact real payment source and commits two match
  const key=randomUUID(),payload={id:key,statementId:stmt,matches:data.suggestions.map(s=>({
   lineId:s.lineId,targetType:s.targetType,targetId:s.targetId,
  }))};
+
+ const invalid={id:randomUUID(),statementId:stmt,matches:[
+  ...payload.matches.slice(0,1),{...payload.matches[1],targetId:randomUUID()},
+ ]};
+ const blocked=await bankMatch(post('/api/bank/assisted-match',invalid));
+ assert.equal(blocked.status,409);
+ const noPartial=await pool.query(
+  "SELECT COUNT(*)::int AS n FROM bank_reconciliation_events WHERE line_id=ANY($1::text[]) AND kind='match'",[lineIds]);
+ assert.equal(noPartial.rows[0].n,0,'atomic batch must roll back first match after later invalid target');
  const attempt=await bankMatch(post('/api/bank/assisted-match',payload));
  assert.equal(attempt.status,201,JSON.stringify(await json<MatchingResult>(attempt.clone())));
  assert.equal((await json<MatchingResult>(attempt)).matched,2);
@@ -145,4 +154,30 @@ test('collections audit does not claim a promise is cash and refuses early resol
  }),{params:Promise.resolve({id:caseId})});
  assert.equal(completed.status,201,JSON.stringify(await json<CaseResult>(completed.clone())));
  assert.equal((await json<CaseResult>(completed)).status,'settled');
+});
+
+test('payment run rejects changed balances and does not post any title from a stale batch',async()=>{
+ const extra=[randomUUID(),randomUUID()],run=randomUUID(),date='2026-12-09';
+ for(const id of extra)
+  await pool.query('INSERT INTO payables(id,supplier,source_reference,description,amount,due_date,created_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+   [id,'CI Stale Supplier','CI RUN','Stale batch fixture',80000,'2026-12-31',now,owner,'fixture','ci']);
+ const prepared=await prepareRun(post('/api/finance/payment-runs',{
+  id:run,reference:'CI stale owner batch',effectiveDate:date,
+  items:extra.map(payableId=>({payableId,amount:'8'})),
+ }));
+ assert.equal(prepared.status,201);
+ await registerPayablePayment({actorId:owner,correlationId:randomUUID()},{
+  payableId:extra[1],amount:10000,effectiveDate:date,reference:'CI concurrent settlement',
+  commandKey:randomUUID(),requestHash:'ci-external-'+randomUUID(),
+ });
+ const response=await runCommand(post('/api/finance/payment-runs/'+run+'/commands',{
+  key:randomUUID(),action:'execute',expectedVersion:1,
+ }),{params:Promise.resolve({id:run})});
+ assert.equal(response.status,409);
+ const payments=await pool.query('SELECT payable_id FROM payable_payments WHERE payable_id=ANY($1::text[])',[extra]);
+ assert.equal(payments.rows.length,1,'the unmodified first title must not be paid at all');
+ assert.equal(payments.rows[0].payable_id,extra[1]);
+ const status=await json<{run:{status:string}}>(await inspectRun(get('/api/finance/payment-runs/'+run),
+  {params:Promise.resolve({id:run})}));
+ assert.equal(status.run.status,'prepared','failed commit may not mutate run state');
 });
