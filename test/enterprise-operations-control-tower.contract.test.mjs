@@ -38,7 +38,7 @@ test('center of operations is a real List Report with filtered/total distinction
  assert.match(workbench,/summary\?\.draft/);
  assert.match(workbench,/onClick=\{\(\)=>selectQueue\(item\.key\)\}/);
  assert.match(workbench,/aria-pressed=\{queue===item\.key\}/);
- assert.match(workbench,/Não existe|Nenhum comando de transição disponível/);
+ assert.match(workbench,/Nenhum comando disponível no estado atual/);
  assert.doesNotMatch(workbench,/faker|mockOrders|Math\.random\(/i);
 });
 
@@ -47,9 +47,10 @@ test('Object Page fetches owner-scoped detail and exposes only real allowed comm
  assert.match(workbench,/<EnterpriseObjectSummary type="Ordem de serviço"/);
  assert.match(workbench,/detail\.order\.availableCommands/);
  assert.match(workbench,/onClick=\{\(\)=>onOpenOrder\(selected\.id\)\}/);
- assert.match(workbench,/navigate\('Dossiês empresariais'\)/);
+ assert.match(workbench,/navigate\('Dossiês empresariais',selected\.id\)/);
  assert.match(workbench,/navigate\('Resource Planning Board'\)/);
- assert.match(workbench,/detail\.order\.sublists\?\.history/);
+ assert.match(workbench,/<EnterpriseOrderAuditTimeline/);
+ assert.match(workbench,/onCommandOrder\?\.\(selected\.id,command\.id\)/);
  assert.doesNotMatch(workbench,/fetch\('\/api\/commands'\)|method:'POST'/);
 });
 

@@ -2,7 +2,7 @@
 import {useState} from 'react';
 import {ArrowRight, Map as MapIcon} from 'lucide-react';
 import EnterpriseOperationsWorkbench from './EnterpriseOperationsWorkbench';
-type Props={summary:{total:number;drafts:number;planned:number;pendingMeasurements:number};navigate:(name:string)=>void;onCreate:()=>void;onOpenOrder:(id:string)=>void};
+type Props={summary:{total:number;drafts:number;planned:number;pendingMeasurements:number};navigate:(name:string,orderId?:string)=>void;onCreate:()=>void;onOpenOrder:(id:string)=>void;onCommandOrder?:(id:string,commandId:string)=>void};
 
 const enterpriseJourney = [
  {module:'Clientes e propostas',label:'Clientes e propostas',detail:'origem comercial'},
@@ -23,10 +23,10 @@ const enterpriseContinuityActions = [
  {module:'Dossiês empresariais',label:'Rastrear processo completo'},
 ] as const;
 
-export default function EnterpriseCommandCenter({navigate,onCreate,onOpenOrder}:Props){
+export default function EnterpriseCommandCenter({navigate,onCreate,onOpenOrder,onCommandOrder}:Props){
  const [showMap,setShowMap]=useState(false);
  return <section className="enterprise-command-center enterprise-command-center-v2" aria-label="Centro de comando empresarial">
-  <EnterpriseOperationsWorkbench navigate={navigate} onCreate={onCreate} onOpenOrder={onOpenOrder}/>
+  <EnterpriseOperationsWorkbench navigate={navigate} onCreate={onCreate} onOpenOrder={onOpenOrder} onCommandOrder={onCommandOrder}/>
   <section className="enterprise-command-navigation" aria-labelledby="enterprise-command-map-title">
    <div className="enterprise-command-navigation-heading">
     <div><span className="eyebrow">PROCESSOS EMPRESARIAIS</span>

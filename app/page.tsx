@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
+import EnterpriseOrderContextRibbon from "./components/enterprise/EnterpriseOrderContextRibbon";
 import PayablesWorkspace from "./PayablesWorkspace";
 import ClientsWorkspace, { type Client } from "./ClientsWorkspace";
 import ProposalsWorkspace from "./ProposalsWorkspace";
@@ -804,6 +805,7 @@ function HomeView() {
     setDueTo("");
     setLinkedLoading(["Medições", "Faturamento", "Financeiro"].includes(name));
     setBusinessOrder(orderId);
+    if(name==='Execução')setExecutionOrder(orderId);
     setLinkedNumber(1);
     setPage(name);
     window.history.pushState(null, "", objectHash(name, orderId || undefined));
@@ -827,6 +829,13 @@ function HomeView() {
       const name = parsed.module;
       if (modules.some((g) => g.items.some(([n]) => n === name))) {
         setPage(name);
+        // A deep link or browser Back/Forward must recover the same scoped
+        // transaction context. Modules without an OS filter do not inherit it.
+        if (["Dossiês empresariais", "Medições", "Faturamento", "Financeiro"].includes(name)) {
+          setBusinessOrder(parsed.objectId ?? "");
+          setLinkedNumber(1);
+        }
+        if (name === "Execução") setExecutionOrder(parsed.objectId ?? "");
         if (parsed.objectId && name === "Ordens de serviço") void openOrigin(parsed.objectId);
       } else if (!window.location.hash) {
         window.history.replaceState(null, "", objectHash(name));
@@ -1132,6 +1141,23 @@ function HomeView() {
       });
     }
   }
+  async function openAuthorizedContextCommand(id:string,commandId:string){
+    if(!['authorize','start','complete','cancel'].includes(commandId))return;
+    try{
+      const response=await fetch('/api/orders/'+encodeURIComponent(id),{cache:'no-store',credentials:'same-origin'});
+      const value=await response.json() as {order?:Order;error?:string};
+      if(!response.ok||!value.order||value.order.id!==id)
+        throw new Error(value.error??'Ordem não autorizada.');
+      const allowed=value.order.availableCommands?.find(item=>item.id===commandId);
+      if(!allowed||allowed.requiredInputs?.length)
+        throw new Error('Comando não liberado no estado atual. Atualize a OS.');
+      navigate('Ordens de serviço',id);
+      command(commandId,value.order);
+    }catch(error){
+      setNoticeTone('error');
+      setNotice(error instanceof Error?error.message:'Comando indisponível.');
+    }
+  }
   async function openOrigin(id: string) {
     try {
       const r = await fetch("/api/orders/" + encodeURIComponent(id));
@@ -1279,7 +1305,10 @@ function HomeView() {
       "Controle de materiais, saldo e retiradas vinculadas às ordens de serviço.",
   };
   return (
-    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}>
+    <div className="app" data-density={density} data-navigation={navigationCollapsed ? "collapsed" : "expanded"}
+      data-workspace={page === "Visão operacional" ? "operations" : page === "Field Service Cockpit" ? "field" :
+        ["Visão financeira","Faturamento","Financeiro","Fluxo de caixa","Tesouraria","Contas a pagar",
+         "Caixa e conciliação","Razão contábil","Contabilidade","Fiscal e tributos","Fechamentos"].includes(page) ? "finance" : "standard"}>
       {sidebar && (
         <button
           className="sidebar-scrim"
@@ -1416,6 +1445,16 @@ function HomeView() {
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
         >
+          {["Dossiês empresariais","Execução","Medições","Faturamento","Financeiro"].includes(page)&&
+           (page==="Execução"?executionOrder:businessOrder)&&
+            <EnterpriseOrderContextRibbon
+              key={page+"-"+(page==="Execução"?executionOrder:businessOrder)}
+              orderId={page==="Execução"?executionOrder:businessOrder}
+              currentPage={page}
+              navigate={navigate}
+              openOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}}
+              clear={()=>navigate(page)}
+            />}
           {!creating &&
             !["measure", "invoice"].includes(action?.command ?? "") &&
             ![
@@ -1651,9 +1690,10 @@ function HomeView() {
               navigate={navigate}
               onCreate={newOrder}
               onOpenOrder={(id) => {
-                navigate("Ordens de serviço");
+                navigate("Ordens de serviço",id);
                 void openOrigin(id);
               }}
+              onCommandOrder={(id,commandId)=>{void openAuthorizedContextCommand(id,commandId);}}
             />
           ) : isWork ? (
             <>
@@ -2581,7 +2621,8 @@ function HomeView() {
               </footer>
             </section>
           ) : page === "Dossiês empresariais" ? (
-            <EnterpriseDossierWorkspace navigate={navigate} onOpenOrder={id=>{navigate("Ordens de serviço");void openOrigin(id);}} />
+            <EnterpriseDossierWorkspace key={businessOrder||'dossier-list'} navigate={navigate} initialOrderId={businessOrder||null}
+             onOpenOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}} />
           ) : page === "CRM e Vendas" ? (
             <CRMWorkspace
               onClients={() => navigate("Clientes e propostas")}
@@ -2642,11 +2683,12 @@ function HomeView() {
           ) : page === "Propostas e PO" ? (
             <ProposalsWorkspace initialId={commercialOrigin} />
           ) : page === "Visão financeira" ? (
-            <FinanceOverviewWorkspace onDrilldown={drillFinance} />
+            <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)} />
           ) : page === "Fluxo de caixa" ? (
-            <CashFlowWorkspace />
+            <CashFlowWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Tesouraria" ? (
             <TreasuryWorkspace
+              onImport={()=>navigate('Caixa e conciliação')}
               onAccount={(account) => {
                 navigate("Caixa e conciliação");
                 setBankAccount(account);
@@ -2659,13 +2701,13 @@ function HomeView() {
               initialAccountReference={bankAccount}
             />
           ) : page === "Razão contábil" ? (
-            <LedgerWorkspace />
+            <LedgerWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Contabilidade" ? (
             <AccountingWorkspace />
           ) : page === "Fiscal e tributos" ? (
             <FiscalWorkspace />
           ) : page === "Fechamentos" ? (
-            <CloseCenterWorkspace />
+            <CloseCenterWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Compras" ? (
             <ProcurementWorkspace initialOrderId={mrpOrderId} />
           ) : page === "Estoque e compras" ? (

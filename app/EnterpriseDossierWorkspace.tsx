@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { ArrowRight, BookOpenText, ChevronLeft, ChevronRight, CircleAlert, ClipboardList, DatabaseZap, RefreshCw, Search, ShieldCheck, X } from 'lucide-react';
 import { EnterpriseObjectSectionNavigation, EnterprisePageHeader } from './components/enterprise/EnterprisePrimitives';
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
+import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
 
 type DossierListItem = {
   id: string; title: string; client: string; state: string; createdAt: string;
@@ -35,7 +36,7 @@ type Dossier = {
   history: Array<{ id: string; command: string; createdAt: string }>;
   provenance: { source: string; ownerScoped: boolean; consistency: string; warning: string };
 };
-type Props = { navigate: (module: string) => void; onOpenOrder: (id: string) => void };
+type Props = { navigate: (module: string,orderId?:string) => void; onOpenOrder: (id: string) => void; initialOrderId?:string|null };
 type ApiFailure = { error?: string; code?: string };
 const labels: Record<string,string> = {
   draft:'Rascunho',authorized:'Autorizada',executing:'Em execução',
@@ -74,7 +75,7 @@ async function json<T>(response:Response):Promise<T>{
   return value;
 }
 
-export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props){
+export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initialOrderId=null}:Props){
   const [search,setSearch] = useState('');
   const [query,setQuery] = useState('');
   const [status,setStatus] = useState('all');
@@ -85,7 +86,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
   const [error,setError] = useState('');
   const [needsAuth,setNeedsAuth] = useState(false);
   const [loginBusy,setLoginBusy] = useState(false);
-  const [selectedId,setSelectedId] = useState<string|null>(null);
+  const [selectedId,setSelectedId] = useState<string|null>(initialOrderId);
   const [detail,setDetail] = useState<Dossier|null>(null);
   const [detailLoading,setDetailLoading] = useState(false);
   const [detailError,setDetailError] = useState('');
@@ -341,7 +342,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
                 <span className="enterprise-dossier-stage-number">{String(index+1).padStart(2,'0')}</span>
                 <div><h4>{stage.title}</h4>
                   <small>{stage.state==='linked'?'Vínculos recuperados':'Sem vínculo confirmado'}</small></div>
-                <button type="button" className="secondary" onClick={()=>{close();navigate(stage.module);}}
+                <button type="button" className="secondary" onClick={()=>{close();navigate(stage.module,['Execução','Medições','Faturamento','Financeiro'].includes(stage.module)?detail.order.id:undefined);}}
                   aria-label={'Abrir módulo '+stage.module}>Abrir módulo <ArrowRight size={14}/></button>
               </div>
               {stage.items.length>0?<ul className="enterprise-dossier-evidence">
@@ -360,6 +361,7 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder}:Props)
               <strong>{event.command}</strong><span>{dateLabel(event.createdAt)}</span>
             </li>)}</ol>:<p>Nenhum evento de OS disponível.</p>}
           </section>
+          <EnterpriseOrderAuditTimeline key={detail.order.id+'-'+revision} orderId={detail.order.id}/>
           <footer className="enterprise-dossier-provenance">
             <DatabaseZap size={16} aria-hidden="true"/>
             <p>Consulta autenticada com leitura consistente no banco de dados.

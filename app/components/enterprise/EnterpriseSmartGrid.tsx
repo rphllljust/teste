@@ -21,6 +21,7 @@ export type EnterpriseSmartGridProps<T> = {
  onOpen?:(row:T)=>void;
  openLabel?:(row:T)=>string;
  currentPageLabel?:string;
+ activeKey?:Key|null;
 };
 
 /** Table configuration persists only column IDs, never tenant records or credentials.
@@ -42,7 +43,7 @@ function savePageCsv(filename:string,headers:string[],rows:string[][]){
 }
 
 export function EnterpriseSmartGrid<T>({
- viewId,caption,rows,columns,getRowKey,onOpen,openLabel,currentPageLabel="Página atual",
+ viewId,caption,rows,columns,getRowKey,onOpen,openLabel,currentPageLabel="Página atual",activeKey,
 }:EnterpriseSmartGridProps<T>){
  const storageKey="cisne:table:columns:"+viewId;
  const [hidden,setHidden]=useState<string[]>([]);
@@ -120,7 +121,7 @@ export function EnterpriseSmartGrid<T>({
     <strong>{caption}</strong><span>{currentPageLabel} · {rows.length} registro(s)</span>
    </div>
    <div className="enterprise-smart-controls">
-    <span className="enterprise-smart-selected" aria-live="polite">{displayedSelected.length?displayedSelected.length+" selecionados":"Sem seleção"}</span>
+    <span className="enterprise-smart-selected" aria-live="polite">{displayedSelected.length?displayedSelected.length+" marcados na página":activeKey!=null?"OS em inspeção · nenhuma marcada":"Nenhuma seleção em lote"}</span>
     <button type="button" className="secondary" disabled={!exportRows.length} onClick={exportPage}>
      <Download size={15} aria-hidden="true"/> Exportar página
     </button>
@@ -162,7 +163,9 @@ export function EnterpriseSmartGrid<T>({
      {onOpen&&<th scope="col">Documento</th>}
     </tr></thead>
     <tbody>
-     {ordered.length?ordered.map(row=><tr key={getRowKey(row)}>
+     {ordered.length?ordered.map(row=><tr key={getRowKey(row)}
+      aria-selected={activeKey!=null?getRowKey(row)===activeKey:undefined}
+      className={activeKey!=null&&getRowKey(row)===activeKey?'cisne-workstation-selected-row':undefined}>
       <td><input type="checkbox" checked={selected.has(getRowKey(row))}
        onChange={()=>toggleRow(getRowKey(row))}
        aria-label={"Selecionar registro "+String(getRowKey(row))}/></td>
