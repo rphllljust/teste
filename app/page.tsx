@@ -31,6 +31,7 @@ import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
 import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
+import ServiceOrderControlPanel from "./ServiceOrderControlPanel";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import { EnterpriseObjectSectionNavigation, EnterpriseObjectSummary, EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
@@ -3264,12 +3265,16 @@ function HomeView() {
                ]}/>
              <EnterpriseObjectSectionNavigation label="Seções da ordem de serviço"
                sections={[
+                 {id:"order-control",label:"Controle da OS"},
                  {id:"order-scope",label:"Escopo"},
                  {id:"order-next",label:"Comandos"},
                  {id:"order-commercial",label:"Origem comercial"},
                  {id:"order-related",label:"Registros relacionados"},
                  {id:"order-history",label:"Histórico"},
                ]}/>
+             <div id="order-control"><ServiceOrderControlPanel orderId={selected.id}
+                onNavigate={name=>navigate(name,selected.id)}
+                onExecuteOrder={()=>navigate("Execução",selected.id)}/></div>
              <h3 id="order-scope" className="drawer-section-title">Escopo da operação</h3>
             <p className="description drawer-scope">
               {selected.description || "Escopo não informado."}
