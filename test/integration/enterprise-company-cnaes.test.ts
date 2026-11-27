@@ -5,6 +5,7 @@ import { Pool } from 'pg';
 import { closeDatabase } from '../../db/raw';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 import { POST as createTenant } from '../../app/api/enterprise/tenants/route';
+import { GET as listDeclaredCatalog } from '../../app/api/enterprise/cnaes/route';
 import { POST as createEntity } from '../../app/api/enterprise/tenants/[id]/legal-entities/route';
 import { GET as listCnaes, POST as registerCnaes } from '../../app/api/enterprise/tenants/[id]/legal-entities/[entityId]/cnaes/route';
 
@@ -36,6 +37,21 @@ after(async()=>{
       [owner],
     );
   }finally{await closeDatabase();await pool.end();}
+});
+
+test('authenticated CNAE catalog is visible before an organization or CNPJ exists',async()=>{
+  const anonymous=await listDeclaredCatalog(new Request('http://localhost/api/enterprise/cnaes'));
+  assert.equal(anonymous.status,403);
+  const tenantRows=await pool.query('SELECT COUNT(*)::integer AS count FROM enterprise_tenant_memberships WHERE actor_id=$1',[owner]);
+  assert.equal(tenantRows.rows[0].count,0);
+  const result=await listDeclaredCatalog(request(owner,'/api/enterprise/cnaes'));
+  assert.equal(result.status,200);
+  const catalog=await result.json() as {items:Array<{code:string;isPrimary:boolean}>;total:number};
+  assert.equal(catalog.total,49);
+  assert.equal(catalog.items.length,49);
+  assert.equal(catalog.items[0].code,'46.19-2-00');
+  assert.equal(catalog.items.filter(item=>item.isPrimary).length,1);
+  assert.equal(catalog.items.at(-1)?.code,'50.30-1-01');
 });
 
 test('CNAE profile is durable, company-scoped, auditable, authorized and idempotent',async()=>{
