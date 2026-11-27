@@ -24,7 +24,7 @@ main[data-os-mode="list"] .metrics small svg{height:11px;width:11px}
 .os-tier1-exceptions-actions{display:flex;gap:4px;align-items:center;flex:none}
 .os-tier1-exceptions-actions .secondary{min-height:27px;padding:4px 7px;gap:4px;font-size:10px;border-radius:4px}
 .os-tier1-exceptions-actions .icon-button{height:28px;width:28px}
-.os-tier1-exceptions-stats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;margin:9px 0 6px;border:1px solid #e7edf1;border-radius:4px;background:#f8fafb}
+.os-tier1-exceptions-stats{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;margin:9px 0 6px;border:1px solid #e7edf1;border-radius:4px;background:#f8fafb}
 .os-tier1-exceptions-stats>div{display:flex;align-items:center;gap:6px;padding:6px 9px;min-width:0;border-right:1px solid #e1eaf0}
 .os-tier1-exceptions-stats>div:last-child{border-right:0}
 .os-tier1-exceptions-stats svg{color:#687f8b;flex:none}
@@ -65,7 +65,7 @@ main[data-os-mode="list"] .worklist .table-wrap th{padding:8px 11px;font-size:10
 main[data-os-mode="list"] .worklist .table-footer{padding:9px 14px}
 .os-agenda-disclosure>summary:focus-visible,.os-tier1-exceptions button:focus-visible{outline:2px solid #267c97;outline-offset:2px}
 @media(min-width:1450px){main[data-os-mode="list"] .worklist .queue-table{max-height:calc(100dvh - 440px);min-height:200px;overflow:auto}}
-@media(max-width:1100px){.os-tier1-exceptions-worklist{grid-template-columns:1fr 1fr}.os-agenda-disclosure .agenda-list{grid-template-columns:1fr 1fr}}
+@media(max-width:1100px){.os-tier1-exceptions-stats{grid-template-columns:repeat(3,minmax(0,1fr))}.os-tier1-exceptions-worklist{grid-template-columns:1fr 1fr}.os-agenda-disclosure .agenda-list{grid-template-columns:1fr 1fr}}
 @media(max-width:800px){main[data-os-mode="list"]{padding:12px 14px!important}main[data-os-mode="list"] .metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  .os-tier1-exceptions-heading{align-items:flex-start}.os-tier1-exceptions-worklist{grid-template-columns:1fr}.os-tier1-exceptions-stats span{font-size:9px}.os-tier1-exceptions-stats>div{padding:6px 4px;gap:3px}
  .os-agenda-disclosure .agenda-list{grid-template-columns:1fr}.os-agenda-disclosure>summary span{display:none}
