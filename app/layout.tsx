@@ -15,6 +15,7 @@ import "./components/enterprise/enterprise-finance-tier1.css";
 import "./components/enterprise/enterprise-finance-command.css";
 import "./components/enterprise/enterprise-finance-compact.css";
 import "./components/enterprise/enterprise-finance-report.css";
+import "./components/enterprise/enterprise-project-costs.css";
 import "./components/enterprise/enterprise-finance-preflight.css";
 
 export const metadata: Metadata = {
