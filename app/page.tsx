@@ -344,6 +344,7 @@ function HomeView() {
     [linkedGeneratedAt, setLinkedGeneratedAt] = useState("");
   const [drillFilters, setDrillFilters] = useState<Record<string, string>>({}),
     [bankAccount, setBankAccount] = useState("");
+  const [ledgerDrilldown,setLedgerDrilldown]=useState<{id:string;from:string;to:string}|null>(null);
   const [orderClient, setOrderClient] = useState<Client | null>(null),
     [businessClient, setBusinessClient] = useState("");
   const [orderContract, setOrderContract] = useState<Contract | null>(null),
@@ -796,6 +797,7 @@ function HomeView() {
     setCommercialOrigin("");
     setDrillFilters({});
     setBankAccount("");
+    setLedgerDrilldown(null);
     operationGeneration.current++;
     setLinkedViews([]);
     setLinkedMetrics([]);
@@ -2687,7 +2689,8 @@ function HomeView() {
           ) : page === "Propostas e PO" ? (
             <ProposalsWorkspace initialId={commercialOrigin} />
           ) : page === "Visão financeira" ? (
-            <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)} />
+            <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)}
+              onLedgerAccount={(id,from,to)=>{navigate('Razão contábil');setLedgerDrilldown({id,from,to});}} />
           ) : page === "Fluxo de caixa" ? (
             <CashFlowWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Tesouraria" ? (
@@ -2709,7 +2712,8 @@ function HomeView() {
               initialAccountReference={bankAccount}
             />
           ) : page === "Razão contábil" ? (
-            <LedgerWorkspace onNavigate={name=>navigate(name)} />
+            <LedgerWorkspace onNavigate={name=>navigate(name)}
+              initialAccountId={ledgerDrilldown?.id} initialFrom={ledgerDrilldown?.from} initialTo={ledgerDrilldown?.to} />
           ) : page === "Contabilidade" ? (
             <AccountingWorkspace />
           ) : page === "Fiscal e tributos" ? (
