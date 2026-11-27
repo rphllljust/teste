@@ -77,6 +77,12 @@ test('every business module uses the same page frame rather than custom max widt
  'ProfessionalsWorkspace','AssetsWorkspace','ResourcePlanningBoard','EnterpriseCommandCenter'];
  for(const name of modules)assert.ok(app.includes('<'+name),name+' must remain mounted in ERP shell');
  assert.ok(css.includes('.cisne-crm, .field-service-cockpit, .mrp-workspace'));
+ for(const name of ['.cisne-crm-heading', '.procurement-hero', '.inventory-hero',
+  '.mrp-header', '.assets-workspace', '.procurement-command-center',
+  '.inventory-command-center', '.finance-enterprise']){
+  assert.ok(css.includes(name),'Legacy module must follow Tier1 dimensions: '+name);
+ }
+
  assert.ok(css.includes('.enterprise-dossier, .module-workspace'));
  assert.ok(css.includes('.app.enterprise-governance'));
  assert.ok(css.includes('.enterprise-app-shell .enterprise-page-layout'));
