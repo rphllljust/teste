@@ -75,8 +75,31 @@ test('linked supplier obligation enters accounting verification; no cash assumed
  assert.equal(body.summary.pageOutstandingScaled,'100000');
  assert.ok(entry.flags.includes('ACCOUNTING_UNVERIFIED'));
 });
+test('CSV export obeys owner boundary, quote safety and page scope',async()=>{
+ const denied=await read(other,'?format=csv');
+ assert.equal(denied.status,200);
+ const forbidden=await denied.text();
+ assert.ok(!forbidden.includes('CI Portfolio Vendor'));
+ const exported=await read(actor,'?format=csv&q=PORT-');
+ assert.equal(exported.status,200);
+ assert.match(exported.headers.get('content-type')??'',/text\/csv/);
+ assert.match(exported.headers.get('content-disposition')??'',/attachment/);
+ const body=await exported.text();
+ assert.ok(body.includes('CI Portfolio Vendor'));
+ assert.ok(body.includes('100000'));
+ assert.ok(body.includes('Vencimento financeiro'));
+});
+test('documentary obligations expose independent due dates and avoid false cash claims',async()=>{
+ const response=await read(actor);
+ const data=await response.json() as {items:Array<Entry & {payableDueOn:string|null;alerts:string[]}>};
+ const row=data.items.find(x=>x.id===order);
+ assert.ok(row);
+ assert.equal(row.payableDueOn,'2029-09-30');
+ assert.deepEqual(row.alerts,[]);
+});
 test('rejects invalid portfolio filters without cross-tenant fallback',async()=>{
  assert.equal((await read(actor,'?status=invalid')).status,400);
  assert.equal((await read(actor,'?page=0')).status,400);
  assert.equal((await read(actor,'?unexpected=1')).status,400);
+ assert.equal((await read(actor,'?format=pdf')).status,400);
 });
