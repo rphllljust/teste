@@ -4,7 +4,7 @@
 .service-milestones-header h4{font-size:13px;color:#25475a;margin:3px 0}
 .service-milestones-header p{font-size:10px;line-height:1.5;color:#718493;margin:0}
 .service-milestones-count{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:10px;color:#527587}
-.service-milestones-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.service-milestones-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,145px),1fr));gap:6px}
 .service-milestone{min-width:0;display:grid;align-content:start;gap:5px;padding:10px;background:#fff;border:1px solid #e0e8ee;border-radius:6px}
 .service-milestone.is-recorded{border-color:#c6dad3;background:#fbfefd}
 .service-milestone-title{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#304f60}
