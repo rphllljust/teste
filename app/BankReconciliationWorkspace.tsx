@@ -62,6 +62,8 @@ export default function BankReconciliationWorkspace({initialAccountReference=''}
   setMessage('');
   setBatch(before=>[...before,{lineId:line.id,targetType:candidate.kind,targetId:candidate.id,
    description:line.description,amountScaled:line.amountScaled}]);
+  // Return to the full worklist so that the operator can select another line.
+  setLineId('');setPage(1);
  }
  const selected=workspace?.items.find(x=>x.id===lineId);
  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Conciliação bancária</h2><p>Extratos informados, linhas pendentes e correspondências explícitas com pagamentos registrados.</p></div><button className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato</button></div>
