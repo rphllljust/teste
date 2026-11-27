@@ -3,11 +3,11 @@ import {readFile} from 'node:fs/promises';
 import test from 'node:test';
 
 const [page,shell]=await Promise.all([
- readFile(new URL('../app/enterprise/page.tsx',import.meta.url),'utf8'),
+ readFile(new URL('../app/EnterpriseGovernanceWorkspace.tsx',import.meta.url),'utf8'),
  readFile(new URL('../app/page.tsx',import.meta.url),'utf8'),
 ]);
 test('business governance is reachable from ERP and exposes only native authenticated routes',()=>{
- assert.match(shell,/href="\/enterprise"/);
+ assert.match(shell,/EnterpriseGovernanceWorkspace/);
  for(const endpoint of ['/api/enterprise/tenants','/legal-entities','/members']){
   assert.ok(page.includes(endpoint),'Missing endpoint '+endpoint);
  }
@@ -105,4 +105,24 @@ test('stale company and role responses cannot leak across rapid tenant switches'
  assert.match(page,/if\(request===detailRequest\.current\)setError/);
  assert.match(page,/if\(request===detailRequest\.current\)setLoadingDetail\(false\)/);
  assert.match(page,/setCompanies\(\[\]\);setMembers\(\[\]\);setTenantId\(e\.target\.value\)/);
+});
+
+
+test('governance and company CNAEs live inside the ERP module shell',async()=>{
+ const [catalog,domains,legacy,styles]=await Promise.all([
+  'lib/navigation/catalog.ts',
+  'app/components/enterprise/EnterpriseGlobalDomainNav.tsx',
+  'app/enterprise/page.tsx',
+  'app/components/enterprise/enterprise-governance.css',
+ ].map(path=>readFile(new URL('../'+path,import.meta.url),'utf8')));
+ assert.ok(catalog.includes('item("enterprise-governance","Governança empresarial","building")'));
+ assert.ok(domains.includes("label:'Administração',items:['Governança empresarial'"));
+ assert.ok(shell.includes('page === "Governança empresarial"'));
+ assert.ok(shell.includes('<EnterpriseGovernanceWorkspace />'));
+ assert.ok(!shell.includes('href="/enterprise"'));
+ assert.ok(page.includes('enterprise-governance-embedded'));
+ assert.ok(page.includes('LegalEntityCnaes'));
+ assert.ok(!page.includes('Voltar ao ERP'));
+ assert.ok(legacy.includes("redirect('/#Governan%C3%A7a%20empresarial')"));
+ assert.ok(styles.includes('.enterprise-governance-embedded'));
 });

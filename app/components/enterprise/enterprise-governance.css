@@ -137,3 +137,15 @@
   .enterprise-cnaes-facts span { flex: 1 1 150px; }
   .enterprise-cnaes-table { padding: 12px; }
 }
+
+/* ERP-native governance uses the same Tier 1 content frame as the other modules. */
+.app[data-layout-system="tier1"] .enterprise-governance-embedded {
+  min-height: 0; width: 100%; min-width: 0; max-width: 100%;
+  padding: 0; margin: 0; box-sizing: border-box; background: transparent; color: inherit;
+}
+.app[data-layout-system="tier1"] .enterprise-governance-embedded .enterprise-governance-layout {
+  max-width: none; width: 100%; min-width: 0; margin: 0;
+}
+.app[data-layout-system="tier1"] .enterprise-governance-embedded .enterprise-governance-anchors {
+  position: relative; top: auto;
+}
