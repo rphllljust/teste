@@ -166,6 +166,11 @@ test('receiving is versioned, idempotent, and posts accepted quantities to inven
     assert.equal(Number(payload.lines[0]?.receivedQuantity), 3000);
     assert.equal(payload.receipts.length, 1);
     assert.equal(payload.reconciled, false, 'partial receipt must not report the order as fully reconciled');
+    const partialStock = await pool.query(`SELECT COALESCE(SUM(delta),0)::int AS balance, COUNT(*)::int AS movements,
+      COUNT(*) FILTER (WHERE procurement_receipt_line_id IS NOT NULL)::int AS linked
+      FROM inventory_movements WHERE owner_id=$1 AND procurement_order_id=$2`, [owner, orderId]);
+    assert.deepEqual(partialStock.rows[0], { balance: 3000, movements: 1, linked: 1 },
+      'replaying the partial receipt must not duplicate the stock movement');
     const finalReceipt = await receivePurchaseOrder(req(`/api/procurement/${orderId}/receipts`, 'POST', {
       key: randomUUID(), version: 3, reference: 'REC-CI-002', lines: [{ lineId, accepted: '2', rejected: '0' }],
     }, owner), { params: Promise.resolve({ id: orderId }) });
@@ -178,7 +183,8 @@ test('receiving is versioned, idempotent, and posts accepted quantities to inven
     const stored = await pool.query(`SELECT COALESCE(SUM(delta),0)::int AS balance, COUNT(*)::int AS movements,
       COUNT(*) FILTER (WHERE procurement_receipt_line_id IS NOT NULL)::int AS linked
       FROM inventory_movements WHERE owner_id=$1 AND procurement_order_id=$2`, [owner, orderId]);
-    assert.deepEqual(stored.rows[0], { balance: 3000, movements: 1, linked: 1 });
+    assert.deepEqual(stored.rows[0], { balance: 5000, movements: 2, linked: 2 },
+      'both accepted receipts must produce exactly one linked inventory movement each');
   } finally { await clean(owner); }
 });
 
