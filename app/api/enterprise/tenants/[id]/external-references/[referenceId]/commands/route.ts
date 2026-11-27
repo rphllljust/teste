@@ -47,6 +47,6 @@ export async function POST(request:Request,route:Route){
     VALUES($1,$2,'enterpriseExternalReferenceReview',$3,$4,$5,$6,$7,$8)`,[command.commandKey,ctx!.actorId,referenceId,command.action,hash,JSON.stringify(receipt),ctx!.correlationId,now]);
    return {...receipt,replayed:false};
   });
-  return respond(result,ctx,result.replayed?200:200);
+  return respond(result,ctx,200);
  }catch(error){return failure(error,ctx);}
 }
