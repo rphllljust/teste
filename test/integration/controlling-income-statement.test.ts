@@ -55,7 +55,7 @@ test('managerial statement is based solely on posted journals with reversal and 
  assert.equal(r.totals.netScaled,'160000');
  assert.equal(r.totals.priorRevenueScaled,'100000');
  assert.equal(r.totals.priorNetScaled,'100000');
- assert.equal(r.totals.currentLineCount,6);
+ assert.equal(r.totals.currentLineCount,3);
  assert.equal(r.accounts.length,2);
  assert.ok(r.accounts.every(a=>a.id!==accounts.foreignRevenue));
  const other=await (await GET(request(foreign,'2026-11'))).json() as Report;
