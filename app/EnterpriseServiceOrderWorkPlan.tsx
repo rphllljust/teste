@@ -54,7 +54,7 @@ export default function EnterpriseServiceOrderWorkPlan({orderId}:{orderId:string
  const [data,setData]=useState<WorkPlan|null>(null),[loading,setLoading]=useState(true);
  const [error,setError]=useState(''),[notice,setNotice]=useState('');
  const [form,setForm]=useState<EditData>(fresh);
- const [editing,setEditing]=useState<Work|null>(null),[saving,setSaving]=useState(false);
+ const [editing,setEditing]=useState<Work|null>(null),[editorOpen,setEditorOpen]=useState(false),[saving,setSaving]=useState(false);
  const [pending,setPending]=useState<{task:Work;action:'complete'|'cancel'}|null>(null);
  const [reason,setReason]=useState('');
  useEffect(()=>{
@@ -108,10 +108,10 @@ export default function EnterpriseServiceOrderWorkPlan({orderId}:{orderId:string
   const payload=editing?{action:'revise',key:crypto.randomUUID(),packageId:editing.id,
    expectedVersion:editing.rowVersion,data}
    :{action:'create',key:crypto.randomUUID(),packageId:crypto.randomUUID(),data};
-  if(await write(payload)){setEditing(null);setForm(fresh());}
+  if(await write(payload)){setEditing(null);setForm(fresh());setEditorOpen(false);}
  };
  const beginEdit=(p:Work)=>{
-  setEditing(p);
+  setEditing(p);setEditorOpen(true);
   setForm({reference:p.reference,title:p.title,description:p.description,category:p.category,
    plannedStartOn:p.plannedStartOn,plannedEndOn:p.plannedEndOn,
    plannedHours:decimal(p.plannedHoursScaled),plannedCost:decimal(p.plannedCostScaled),
@@ -201,7 +201,7 @@ export default function EnterpriseServiceOrderWorkPlan({orderId}:{orderId:string
      <div><button disabled={saving||reason.trim().length<8} type="submit">Confirmar no servidor</button>
       <button type="button" className="secondary" onClick={()=>setPending(null)}>Voltar</button></div>
     </form>}
-    {allowed&&<details className="enterprise-os-workplan-editor" open={Boolean(editing)}>
+    {allowed&&<details className="enterprise-os-workplan-editor" open={editorOpen} onToggle={e=>setEditorOpen(e.currentTarget.open)}>
      <summary><Plus size={13}/> {editing?'Replanejar atividade '+editing.reference:'Cadastrar pacote de trabalho'}</summary>
      <form onSubmit={e=>void submit(e)}>
       <label>Referência<input required minLength={3} maxLength={60} value={form.reference}
@@ -237,7 +237,7 @@ export default function EnterpriseServiceOrderWorkPlan({orderId}:{orderId:string
         onChange={e=>setField('description',e.target.value)} placeholder="Escopo, entregáveis, critérios de aceite"/></label>
       <div className="enterprise-os-workplan-form-actions">
        <button type="submit" disabled={saving}>{saving?'Salvando…':editing?'Confirmar replanejamento':'Cadastrar atividade'}</button>
-       {editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(fresh());}}>
+       {editing&&<button type="button" className="secondary" onClick={()=>{setEditing(null);setForm(fresh());setEditorOpen(false);}}>
         Sair da edição</button>}
       </div>
      </form>
