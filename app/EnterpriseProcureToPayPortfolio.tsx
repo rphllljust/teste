@@ -104,7 +104,7 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
     <div className="enterprise-procure-portfolio-metrics" aria-label="Indicadores apenas da página atual">
      <div><span>Pedidos nesta página</span><strong>{result.summary.pageOrders}</strong>
       <small>{result.pageInfo.total} no filtro completo</small></div>
-     <div><span>Compras documentadas</span><strong>{money(result.summary.pagePurchaseScaled)}</strong>
+     <div><span>Valor nominal dos pedidos</span><strong>{money(result.summary.pagePurchaseScaled)}</strong>
       <small>Soma da página</small></div>
      <div><span>Saldo a pagar vinculado</span><strong>{money(result.summary.pageOutstandingScaled)}</strong>
       <small>Soma da página · sem caixa presumido</small></div>
@@ -114,7 +114,7 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
     <div className="enterprise-procure-portfolio-tablewrap">
      <table><thead><tr>
       <th>Pedido / fornecedor</th><th>Etapa verificada</th><th>Pedido</th>
-      <th>Obrigação</th><th>Saldo em aberto</th><th>Vencimento previsto</th><th>Origem</th>
+      <th>Obrigação</th><th>Saldo em aberto</th><th>Custo atribuído à OS</th><th>Entrega prevista</th><th>Origem</th>
      </tr></thead><tbody>
      {visible.map(item=><tr key={item.id}>
       <td><strong>{item.reference}</strong><small>{item.supplier}</small></td>
@@ -126,6 +126,7 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
       <td className="amount">{money(item.orderScaled)}</td>
       <td className="amount">{item.payableId?money(item.payableScaled):'Não vinculada'}</td>
       <td className="amount">{item.payableId?money(item.outstandingScaled):'Não apurado'}</td>
+      <td className="amount">{item.payableId?money(item.attributedScaled):'—'}</td>
       <td>{date(item.expectedOn)}</td>
       <td><button type="button" className="row-link" onClick={()=>onOpenOrder(item.id)}>
        Abrir pedido <ArrowRight size={12}/></button></td>
