@@ -51,7 +51,8 @@ export default function ServiceOrderControlPanel({orderId,onNavigate,onExecuteOr
  },[orderId,revision]);
  const open=(module:string)=>{
   if(module==='Execução'&&onExecuteOrder){onExecuteOrder();return;}
-  onNavigate(module);
+  const target=module==='Controladoria'||module==='Financeiro'?'Visão financeira':module;
+  onNavigate(target);
  };
  return <section className="service-order-control" aria-label="Controle transacional da ordem de serviço">
   <header className="service-order-control-heading">
