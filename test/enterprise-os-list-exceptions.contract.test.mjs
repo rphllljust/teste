@@ -17,6 +17,12 @@ test('native OS List Report uses authenticated enterprise risk projection and co
  assert.ok(page.includes('className="os-agenda-disclosure"'));
  assert.equal((page.match(/<ServiceOperationsAgenda\b/g)??[]).length,1,'One agenda, no duplicate');
  assert.ok(api.includes('o.owner_id=$1'));
+ assert.ok(api.includes('enterprise_os_work_packages'));
+ assert.ok(api.includes('planOverdue'));
+ assert.ok(api.includes('planBlocked'));
+ assert.ok(rail.includes('data.summary.planOverdue'));
+ assert.ok(rail.includes('data.summary.planBlocked'));
+
  assert.ok(api.includes("REPEATABLE READ READ ONLY"));
  assert.ok(!rail.includes('Math.random'));
  assert.ok(!rail.includes("method:'POST'"));
