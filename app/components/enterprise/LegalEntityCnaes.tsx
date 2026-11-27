@@ -13,7 +13,7 @@ async function responseData<T>(response: Response): Promise<T> {
   return result;
 }
 
-/** Corporate CNAEs are server-owned records, never localStorage or client-only constants. */
+/** Corporate CNAEs are server-owned records, not browser-only placeholders. */
 export function LegalEntityCnaes({tenantId,companies,canManage}: Props) {
   const [companyId,setCompanyId]=useState(companies[0]?.id ?? '');
   const [result,setResult]=useState<ResponseData>({items:[],declaredProfile:[]});
