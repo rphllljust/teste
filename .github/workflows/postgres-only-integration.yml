@@ -171,6 +171,8 @@ jobs:
             '0027_finance_collection_cases',
             '0028_enterprise_project_cost_allocations',
             '0029_enterprise_os_work_packages',
+            '0030_enterprise_external_references',
+            '0031_enterprise_external_reference_review',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
