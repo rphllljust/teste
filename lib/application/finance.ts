@@ -176,7 +176,10 @@ export async function reverseReceivableSettlement(context: RequestContext, input
 }
 
 export async function registerPayablePayment(context: RequestContext, input: { payableId: string; amount: number; effectiveDate: string; reference: string; commandKey: string; requestHash: string }) {
-  return database().transaction(async query => {
+  return database().transaction(query => registerPayablePaymentWithQuery(query, context, input));
+}
+
+export async function registerPayablePaymentWithQuery(query: Query, context: RequestContext, input: { payableId: string; amount: number; effectiveDate: string; reference: string; commandKey: string; requestHash: string }) {
     if (!Number.isSafeInteger(input.amount) || input.amount <= 0) throw new ApiError(400, 'VALIDATION_FAILED', 'O valor do pagamento deve ser positivo.');
     if (!/^\d{4}-\d{2}-\d{2}$/.test(input.effectiveDate)) throw new ApiError(400, 'VALIDATION_FAILED', 'A data do pagamento é inválida.');
     await assertFinancePeriodOpen(query, context.actorId, input.effectiveDate);
@@ -204,7 +207,6 @@ export async function registerPayablePayment(context: RequestContext, input: { p
       paymentId:input.commandKey,amount:input.amount,effectiveDate:input.effectiveDate,requestHash:input.requestHash});
     await audit(query, context, 'payable', input.payableId, 'payment_registered', input.requestHash, { paymentId: input.commandKey, amount: input.amount, reference: input.reference });
     return { ok: true, replayed: false, resource: { type: 'payablePayment', id: input.commandKey, payableId: input.payableId, amount: String(input.amount), balance: String(balance - input.amount),accounting } };
-  });
 }
 
 export async function reversePayablePayment(context: RequestContext, input: { paymentId: string; commandKey: string; requestHash: string; effectiveDate: string; reference: string }) {
