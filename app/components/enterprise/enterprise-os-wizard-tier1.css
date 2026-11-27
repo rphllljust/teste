@@ -1,0 +1,79 @@
+/* CISNE ERP Tier1 — single-path native OS Object Page wizard.
+ * Does not alter other form, service or financial pages. */
+.order-preparation{--os-wizard-border:#dce6ec;--os-wizard-ink:#25465b;min-width:0;border-top:0}
+.order-preparation>.order-preparation-form,.order-preparation>form{min-width:0}
+.order-preparation .preparation-object-header{position:relative;top:auto;z-index:2;align-items:center;gap:12px;
+ padding:11px 2px 10px;margin-bottom:0;background:transparent;border-bottom:1px solid var(--os-wizard-border)}
+.order-preparation .preparation-object-header>.command-buttons{margin-left:auto;flex:none}
+.order-preparation .preparation-object-header .eyebrow{font-size:9px;letter-spacing:.9px;color:#547b90}
+.order-preparation .preparation-title{gap:8px;align-items:center}
+.order-preparation .preparation-title h1{font-size:23px;letter-spacing:-.5px;font-weight:660;margin:2px 0 5px;line-height:1.2}
+.order-preparation .preparation-title .badge{margin:0 0 4px;font-size:10px;padding:2px 6px}
+.order-preparation .preparation-facts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;border:0;padding:2px 0 0;margin:0;max-width:740px}
+.order-preparation .preparation-facts>div{min-width:0}
+.order-preparation .preparation-facts dt{font-size:10px;line-height:1.2;color:#758a99;margin:0}
+.order-preparation .preparation-facts dd{font-size:11px;font-weight:620;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--os-wizard-ink);margin-top:3px}
+.order-preparation .preparation-progress{position:relative;top:auto;z-index:1;gap:5px;background:transparent;padding:3px 0 0;border-bottom:1px solid var(--os-wizard-border);margin:0}
+.order-preparation .preparation-progress button{padding:9px 12px;min-width:0;gap:7px;font-size:11px;min-height:35px;border-bottom-width:2px}
+.order-preparation .preparation-progress button>span{width:18px;height:18px;font-size:9px;flex:none}
+.order-preparation .preparation-progress svg{width:12px;height:12px;flex:none}
+.order-preparation .preparation-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(240px,275px);gap:14px;align-items:start;padding-top:12px}
+.order-preparation .preparation-work-surface{padding:15px 16px;min-width:0;border:1px solid var(--os-wizard-border);border-radius:6px}
+.order-preparation .preparation-section-title{margin:0 0 10px}
+.order-preparation .preparation-section-title .eyebrow{font-size:9px;letter-spacing:.85px}
+.order-preparation .preparation-section-title h2{font-size:17px;letter-spacing:-.25px;font-weight:650;margin:5px 0 0}
+.order-preparation .preparation-work-surface .search-input{padding:7px 9px;min-height:35px;border-color:#d3e0e7}
+.order-preparation .preparation-work-surface .search-input input{font-size:12px}
+.order-preparation .preparation-candidates{max-height:255px;overflow-y:auto;overscroll-behavior:contain;border:1px solid #e6edf1;border-radius:5px;margin-top:9px;scrollbar-color:#cadbe4 transparent}
+.order-preparation .preparation-candidates>button{min-height:43px;padding:7px 10px;gap:10px}
+.order-preparation .preparation-candidates strong{font-size:11px;font-weight:650;line-height:1.3}
+.order-preparation .preparation-candidates small{font-size:10px;margin:2px 0 0}
+.order-preparation .preparation-candidates .badge{font-size:9px;padding:2px 5px;flex:none}
+.order-preparation .preparation-list-footer{padding:8px 0;font-size:10px}
+.order-preparation .preparation-selected{padding:9px;background:#f7fafb;border:1px solid #e0e8ee;border-radius:4px;margin-top:9px}
+.order-preparation .preparation-selected strong{font-size:11px}
+.order-preparation .preparation-selected .secondary{min-height:28px;padding:5px 7px;font-size:10px}
+.order-preparation .preparation-origin{padding-top:7px;margin-top:6px}
+.order-preparation .preparation-origin>summary{font-size:11px}
+.order-preparation .preparation-step-actions{margin-top:10px;padding-top:9px}
+.order-preparation .preparation-step-actions button{font-size:11px;min-height:34px;padding:7px 10px}
+.order-preparation .preparation-fields{gap:11px}
+.order-preparation .preparation-fields label{font-size:11px}
+.order-preparation .preparation-fields input,.order-preparation .preparation-fields select,.order-preparation .preparation-fields textarea{min-height:36px;padding:8px 10px;font-size:12px}
+.order-preparation .preparation-fields textarea{min-height:94px}
+.order-preparation .preparation-business-context{position:sticky;top:12px;max-height:calc(100dvh - 40px);overflow:auto;min-width:0;
+ padding:12px;background:#fff;border:1px solid var(--os-wizard-border);border-radius:6px;overscroll-behavior:contain}
+.order-preparation .preparation-business-context>.eyebrow{font-size:9px;letter-spacing:.85px}
+.order-preparation .preparation-business-context>h3{font-size:12px;line-height:1.35;margin:4px 0 9px;overflow-wrap:anywhere}
+.order-preparation .preparation-business-context dl{margin:7px 0;padding:8px 0;gap:6px}
+.order-preparation .preparation-business-chain{gap:4px;margin:8px 0}
+.order-preparation .preparation-business-chain button,.order-preparation .preparation-unpersisted{padding:7px 8px}
+.order-preparation .preparation-business-context .muted{font-size:10px;line-height:1.5}
+.order-preparation .preparation-relations{margin-top:10px}
+.order-preparation .preparation-relations h3{font-size:11px}
+.order-preparation .preparation-relations button{padding:6px}
+.order-preparation .preparation-readiness{border:1px solid #dfe8ed;border-radius:5px;padding:8px 9px;background:#f8fafc;display:grid;gap:5px;margin:9px 0}
+.order-preparation .preparation-readiness>strong{font-size:10px;color:#36596a}
+.order-preparation .preparation-readiness-row{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding-bottom:4px;border-bottom:1px solid #e7eff2}
+.order-preparation .preparation-readiness-row>span{font-size:10px;color:#587484;line-height:1.35}
+.order-preparation .preparation-readiness-row>small{font-size:9px;color:#8d806a;white-space:nowrap}
+.order-preparation .preparation-readiness-row>small[data-ready="true"]{color:#346c54;font-weight:650}
+.order-preparation .preparation-readiness>p{font-size:9px;line-height:1.4;color:#81919a;margin:2px 0}
+.order-preparation button:focus-visible,.order-preparation select:focus-visible,.order-preparation input:focus-visible{outline:2px solid #287e99;outline-offset:2px}
+@media(max-width:1050px){.order-preparation .preparation-grid{grid-template-columns:minmax(0,1fr) 230px;gap:10px}
+ .order-preparation .preparation-work-surface{padding:12px}}
+@media(max-width:850px){.order-preparation .preparation-grid{grid-template-columns:minmax(0,1fr)}
+ .order-preparation .preparation-business-context{position:static;max-height:none}
+ .order-preparation .preparation-object-header{flex-wrap:wrap}
+ .order-preparation .preparation-facts{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .order-preparation .preparation-progress{overflow-x:auto;white-space:nowrap}
+ .order-preparation .preparation-progress button{padding:9px 8px;font-size:10px}
+ .order-preparation .preparation-grid{padding-top:10px}}
+@media(max-width:460px){.order-preparation .preparation-title h1{font-size:21px}
+ .order-preparation .preparation-facts{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+ .order-preparation .preparation-candidates{max-height:215px}
+ .order-preparation .preparation-progress button{gap:4px;padding:8px 6px;font-size:10px}
+ .order-preparation .preparation-progress button svg{display:none}}
+@media(forced-colors:active){.order-preparation .preparation-work-surface,.order-preparation .preparation-business-context{border:1px solid CanvasText}
+ .order-preparation .preparation-candidates>button[aria-pressed="true"]{outline:2px solid Highlight}}
+@media(prefers-reduced-motion:reduce){.order-preparation *{scroll-behavior:auto;transition:none!important}}
