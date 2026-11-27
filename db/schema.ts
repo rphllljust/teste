@@ -417,3 +417,17 @@ export const procurementSupplierInvoiceReceipts=pgTable('procurement_supplier_in
 },t=>[index('procurement_supplier_invoice_receipts_invoice_idx').on(t.supplierInvoiceId,t.receiptLineId)]);
 
 export const controllingBudgets=pgTable('controlling_budgets',{id:text('id').primaryKey(),actorId:text('actor_id').notNull(),accountId:text('account_id').notNull().references(()=>chartAccounts.id),periodMonth:text('period_month').notNull(),plannedScaled:bigint('planned_scaled',{mode:'bigint'}).notNull(),state:text('state').notNull().default('draft'),rowVersion:integer('row_version').notNull().default(1),reference:text('reference').notNull(),requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull(),updatedAt:text('updated_at').notNull(),approvedAt:text('approved_at')},t=>[uniqueIndex('controlling_budget_owner_account_month').on(t.actorId,t.accountId,t.periodMonth),index('controlling_budgets_actor_month_idx').on(t.actorId,t.periodMonth,t.state,t.accountId)]);
+
+export const enterpriseProjectCostAllocations=pgTable('enterprise_project_cost_allocations',{
+ id:text('id').primaryKey(),actorId:text('actor_id').notNull(),
+ serviceOrderId:text('service_order_id').notNull().references(()=>orders.id),
+ payableId:text('payable_id').notNull().references(()=>payables.id),
+ kind:text('kind').notNull(),amount:integer('amount').notNull(),
+ reversesId:text('reverses_id').unique(),reference:text('reference').notNull(),
+ requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ check('project_cost_kind_reversal',sql`(\${t.kind}='allocate' AND \${t.reversesId} IS NULL) OR (\${t.kind}='reverse' AND \${t.reversesId} IS NOT NULL)`),
+ index('enterprise_project_costs_order_idx').on(t.actorId,t.serviceOrderId,t.createdAt,t.id),
+ index('enterprise_project_costs_payable_idx').on(t.actorId,t.payableId,t.createdAt,t.id),
+]);
