@@ -9,6 +9,10 @@ type Run={id:string;reference:string;effectiveDate:string;status:'prepared'|'pos
 type Item={id:string;payableId:string;supplier:string;sourceReference:string;amountScaled:string;
  baselineOutstandingScaled:string;currentOutstandingScaled:string;paymentId:string|null};
 type Detail={run:Run;items:Item[];history:{action:string;createdAt:string;correlationId:string}[];warnings:string[]};
+type Preflight={runId:string;rowVersion:number;status:string;canExecute:boolean;advisoryOnly:true;
+ blockers:{code:string;message:string}[];warnings:string[];
+ summary:{itemCount:number;missingCount:number;staleCount:number;collisionCount:number;
+ totalScaled:string;accountingPosting:'enabled'|'invalid'|'not_enabled'};generatedAt:string;error?:string};
 const money=(s:string)=>moneyScaled(s);
 const currentDate=()=>new Date().toISOString().slice(0,10);
 const stateLabel:Record<string,string>={prepared:'Preparado',posted:'Lançado',cancelled:'Cancelado'};
@@ -25,6 +29,9 @@ export default function PaymentRunsWorkspace(){
  const [key,setKey]=useState(()=>crypto.randomUUID());
  const [executeKey,setExecuteKey]=useState(()=>crypto.randomUUID());
  const [confirm,setConfirm]=useState(false);
+ const [preflight,setPreflight]=useState<Preflight|null>(null);
+ const [preflightLoading,setPreflightLoading]=useState(false);
+ const [preflightError,setPreflightError]=useState('');
  const load=useCallback(async()=>{
   setLoading(true);setError('');
   try{
@@ -40,12 +47,25 @@ export default function PaymentRunsWorkspace(){
   finally{setLoading(false);}
  },[]);
  useEffect(()=>{const timer=setTimeout(()=>void load(),0);return()=>clearTimeout(timer);},[load]);
+ const inspectPreflight=useCallback(async(id:string)=>{
+  setPreflight(null);setPreflightError('');setPreflightLoading(true);
+  try{
+   const response=await fetch('/api/finance/payment-runs/'+encodeURIComponent(id)+'/preflight',
+    {cache:'no-store',credentials:'same-origin'});
+   const body=await response.json() as Preflight;
+   if(!response.ok||typeof body.canExecute!=='boolean')
+    throw Error(body.error??'Pré-validação indisponível.');
+   setPreflight(body);
+  }catch(e){setPreflightError(e instanceof Error?e.message:'Pré-validação indisponível.');}
+  finally{setPreflightLoading(false);}
+ },[]);
  const open=useCallback(async(id:string)=>{
   const response=await fetch('/api/finance/payment-runs/'+encodeURIComponent(id),{cache:'no-store'});
   const data=await response.json() as Detail&{error?:string};
   if(!response.ok)throw Error(data.error??'Lote indisponível.');
   setDetail(data);setConfirm(false);setExecuteKey(crypto.randomUUID());
- },[]);
+  await inspectPreflight(id);
+ },[inspectPreflight]);
  const draft=useMemo(()=>payables.filter(p=>selected[p.id]).map(p=>({
   payableId:p.id,amount:amounts[p.id]??(Number(p.outstandingScaled)/10000).toFixed(4),
  })),[payables,selected,amounts]);
@@ -65,7 +85,8 @@ export default function PaymentRunsWorkspace(){
  }
  async function command(action:'execute'|'cancel'){
   if(!detail||saving)return;
-  if(action==='execute'&&!confirm)return;
+  if(action==='execute'&&(!confirm||!preflight?.canExecute||
+  preflight.runId!==detail.run.id||preflight.rowVersion!==detail.run.rowVersion))return;
   setSaving(true);setError('');setMessage('');
   try{
    const response=await fetch('/api/finance/payment-runs/'+encodeURIComponent(detail.run.id)+'/commands',{
@@ -148,6 +169,30 @@ export default function PaymentRunsWorkspace(){
      <td>{money(item.amountScaled)}</td><td>{money(item.baselineOutstandingScaled)}</td>
      <td>{money(item.currentOutstandingScaled)}</td>
      <td>{item.paymentId?'Lançado · '+item.paymentId.slice(0,8):'Pendente'}</td></tr>)}</tbody></table></div>
+   {detail.run.status==='prepared'&&<section className="cisne-run-preflight" aria-label="Pré-validação de execução">
+    <div className="cisne-run-preflight-header">
+     <div><strong>Pré-validação transacional</strong>
+      <small>Saldos, competência, origem contábil e possíveis colisões.</small></div>
+     <button type="button" className="secondary" disabled={preflightLoading||saving}
+      onClick={()=>void inspectPreflight(detail.run.id)}>Revalidar lote</button>
+    </div>
+    {preflightLoading?<p role="status">Conferindo origem e saldo de cada obrigação…</p>:
+     preflightError?<p role="alert" className="form-error">{preflightError}</p>:
+     preflight?.runId===detail.run.id&&preflight.rowVersion===detail.run.rowVersion?
+     <><p className={preflight.canExecute?'cisne-preflight-eligible':'cisne-preflight-blocked'} role="status">
+       {preflight.canExecute?'Prévia sem bloqueios detectados':'Execução bloqueada pela pré-validação'}
+       {' · '+preflight.summary.itemCount+' título(s) · '+money(preflight.summary.totalScaled)}
+      </p>
+      {preflight.blockers.length>0&&<ul className="cisne-run-preflight-blockers">
+       {preflight.blockers.map(block=><li key={block.code}><strong>{block.code}</strong> — {block.message}</li>)}
+      </ul>}
+      <details className="finance-source-disclosure"><summary>Escrituração e ressalvas</summary>
+       <p>Política de diário: {preflight.summary.accountingPosting==='enabled'?
+        'ativa e compatível':preflight.summary.accountingPosting==='invalid'?'inválida':'não habilitada'}.</p>
+       {preflight.warnings.map(w=><p key={w}>{w}</p>)}
+      </details>
+     </>:<p>O lote ainda não tem prévia atual para esta versão.</p>}
+   </section>}
    {detail.run.status==='prepared'&&<div className="cisne-payment-run-confirm">
     <p><ShieldAlert size={16}/> A confirmação revalida os saldos atuais e a competência.
      Se qualquer título mudar ou falhar, nenhum pagamento do lote será registrado.</p>
@@ -155,7 +200,8 @@ export default function PaymentRunsWorkspace(){
      Confirmo que revisei os documentos e autorizo o registro interno deste lote.</label>
     <div><button type="button" className="secondary" disabled={saving}
      onClick={()=>void command('cancel')}>Cancelar lote</button>
-     <button type="button" className="primary" disabled={saving||!confirm}
+     <button type="button" className="primary" disabled={saving||!confirm||!preflight?.canExecute||
+       preflight.runId!==detail.run.id||preflight.rowVersion!==detail.run.rowVersion}
       onClick={()=>void command('execute')}>Registrar lote integralmente</button></div>
    </div>}
    <footer>Eventos de auditoria: {detail.history.map(h=>h.action+' · '+h.createdAt).join(' | ')}</footer>
