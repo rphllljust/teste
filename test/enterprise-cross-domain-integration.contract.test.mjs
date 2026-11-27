@@ -99,4 +99,8 @@ test('P2P financial portfolio is an owner-scoped read-only worklist integrated w
  assert.ok(overview.includes('<EnterpriseProcureToPayPortfolio onOpenOrder={onProcurementOrder}'));
  assert.ok(page.includes('setProcurementDrilldown(id)'));
  assert.ok(layout.includes('enterprise-procure-portfolio.css'));
+ assert.ok(route.includes('assessProcureDeadlines'));
+ assert.ok(route.includes('serializeProcurePortfolioCsv'));
+ assert.ok(board.includes('Vencimento AP'));
+ assert.ok(board.includes('Exportar página CSV'));
 });
