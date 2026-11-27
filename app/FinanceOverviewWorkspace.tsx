@@ -110,12 +110,12 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
        <small>{m.count} título(s) · abrir fila autorizada <ArrowRight size={12}/></small>
       </button>)}
     </section>}
-   <nav className="finance-decision-tabs" role="tablist" aria-label="Área de gestão financeira">
-    <button role="tab" type="button" aria-selected={activeArea==='tasks'} className={activeArea==='tasks'?'is-selected':''}
+   <nav className="finance-decision-tabs" aria-label="Área de gestão financeira">
+    <button type="button" aria-pressed={activeArea==='tasks'} className={activeArea==='tasks'?'is-selected':''}
      onClick={()=>setActiveArea('tasks')}>Fila de decisões <span>{knownIssues} exceção(ões)</span></button>
-    <button role="tab" type="button" aria-selected={activeArea==='budget'} className={activeArea==='budget'?'is-selected':''}
+    <button type="button" aria-pressed={activeArea==='budget'} className={activeArea==='budget'?'is-selected':''}
      onClick={()=>setActiveArea('budget')}>Orçamento e desvios <span>Planejar · aprovar · acompanhar</span></button>
-    <button role="tab" type="button" aria-selected={activeArea==='aging'} className={activeArea==='aging'?'is-selected':''}
+    <button type="button" aria-pressed={activeArea==='aging'} className={activeArea==='aging'?'is-selected':''}
      onClick={()=>setActiveArea('aging')}>Exposição e liquidez <span>Vencimentos · carteira · cobertura</span></button>
    </nav>
    {activeArea==='budget'&&<ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>}

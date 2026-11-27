@@ -107,3 +107,7 @@
  .finance-stress-metrics > div {padding:10px 13px;}
 }
 @media(prefers-reduced-motion:reduce){.finance-budget-empty *{scroll-behavior:auto;}}
+
+.finance-row-actions {display:flex;align-items:center;justify-content:flex-start;gap:7px;flex-wrap:wrap;}
+.finance-row-actions > button {white-space:nowrap;min-height:29px;font-size:11px;font-weight:650;}
+.finance-row-actions > button + button {border-left:1px solid #d8e4e9;padding-left:9px;}
