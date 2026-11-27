@@ -29,6 +29,9 @@ export async function POST(request:Request){let context:RequestContext|undefined
     const today=commercialToday();
     if(contract.starts_on>today||(contract.ends_on!==null&&contract.ends_on<today))
       throw new ApiError(409,'OUTSIDE_CONTRACT_TERM','A OS deve respeitar a vigência contratual.');
+    if(p.dueDate&&(p.dueDate<contract.starts_on||
+      (contract.ends_on!==null&&p.dueDate>contract.ends_on)))
+      throw new ApiError(409,'OUTSIDE_CONTRACT_TERM','A data prevista da OS deve respeitar a vigência contratual.');
     const clientRows=await query(
       `SELECT legal_name,row_version,status FROM clients
        WHERE id=$1 AND owner_id=$2 FOR SHARE`,

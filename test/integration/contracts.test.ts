@@ -125,6 +125,14 @@ test('contract activation requires signed evidence; linked OS is created only af
   assert.equal((await command(activation)).status,200);
   const stale=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:2}));
   assert.equal(stale.status,409);
+  const outsideBefore=await createOrder(post('/api/orders',actor,{...orderBody,
+    id:randomUUID(),dueDate:'1999-12-31',contractVersion:3}));
+  assert.equal(outsideBefore.status,409);
+  assert.equal((await read(outsideBefore)).code,'OUTSIDE_CONTRACT_TERM');
+  const outsideAfter=await createOrder(post('/api/orders',actor,{...orderBody,
+    id:randomUUID(),dueDate:'2100-01-01',contractVersion:3}));
+  assert.equal(outsideAfter.status,409);
+  assert.equal((await read(outsideAfter)).code,'OUTSIDE_CONTRACT_TERM');
   const created=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:3}));
   assert.equal(created.status,201,JSON.stringify(await read(created)));
   const replay=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:3}));

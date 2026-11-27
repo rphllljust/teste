@@ -22,11 +22,14 @@ export async function POST(request: Request) {
       if (!line.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Linha de extrato indisponível.');
       await assertFinancePeriodOpen(query,context!.actorId,String(line.rows[0].booked_date));
       if (data.command === 'match') {
-        const expectedKind = Number(line.rows[0].amount) >= 0 ? 'receipt' : 'payment';
+        const lineAmount = BigInt(String(line.rows[0].amount));
+        if (lineAmount === 0n) throw new ApiError(409, 'RECONCILIATION_ZERO_AMOUNT', 'Linha bancária sem valor não pode ser conciliada.');
+        const expectedKind = lineAmount > 0n ? 'receipt' : 'payment';
         if (data.targetType !== expectedKind) throw new ApiError(409, 'RECONCILIATION_SIGN_CONFLICT', 'O sinal da linha não corresponde ao tipo de lançamento.');
         const table = expectedKind === 'receipt' ? 'receivable_settlements' : 'payable_payments';
         const target = await query(`SELECT id,amount FROM ${table} WHERE id=$1 AND actor_id=$2 AND kind=$3 AND NOT EXISTS (SELECT 1 FROM ${table} rev WHERE rev.reverses_id=${table}.id) FOR UPDATE`, [data.targetId, context!.actorId, expectedKind]);
-        if (!target.rowCount || BigInt(String(line.rows[0].amount).replace('-','')) !== BigInt(String(target.rows[0].amount))) throw new ApiError(409, 'RECONCILIATION_AMOUNT_CONFLICT', 'O valor do lançamento não corresponde ao extrato.');
+        const absoluteLineAmount = lineAmount < 0n ? -lineAmount : lineAmount;
+        if (!target.rowCount || absoluteLineAmount !== BigInt(String(target.rows[0].amount))) throw new ApiError(409, 'RECONCILIATION_AMOUNT_CONFLICT', 'O valor do lançamento não corresponde ao extrato.');
         const active = await query("SELECT 1 FROM bank_reconciliation_events WHERE line_id=$1 AND kind='match' AND NOT EXISTS (SELECT 1 FROM bank_reconciliation_events u WHERE u.reverses_id=bank_reconciliation_events.id)", [data.lineId]);
         if (active.rowCount) throw new ApiError(409, 'RECONCILIATION_ALREADY_MATCHED', 'A linha já está conciliada.');
         const targetColumn=expectedKind==='receipt'?'receipt_id':'payment_id';

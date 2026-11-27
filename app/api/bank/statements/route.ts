@@ -3,7 +3,8 @@ import { database } from '../../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
 import { assertFinancePeriodOpen } from '../../../../lib/application/finance';
 
-const money = z.string().trim().regex(/^-?\d{1,12}(?:[,.]\d{1,4})?$/).transform(value => { const negative = value.startsWith('-'); const [whole, fraction = ''] = value.replace('-', '').split(/[,.]/); const cents = Number(whole) * 10000 + Number(fraction.padEnd(4, '0')); return negative ? -cents : cents; });
+const postgresIntegerMin = -2147483648n, postgresIntegerMax = 2147483647n;
+const money = z.string().trim().regex(/^-?\d{1,12}(?:[,.]\d{1,4})?$/).transform(value => { const negative = value.startsWith('-'); const [whole, fraction = ''] = (negative ? value.slice(1) : value).split(/[,.]/); const scaled = BigInt(whole) * 10000n + BigInt(fraction.padEnd(4, '0')); return negative ? -scaled : scaled; }).refine(value => value >= postgresIntegerMin && value <= postgresIntegerMax, 'Valor excede a capacidade do livro bancário.').transform(Number);
 const command = z.object({ id: z.string().uuid(), accountReference: z.string().trim().min(3).max(160), sourceReference: z.string().trim().min(3).max(160), periodStart: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodEnd: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), openingBalance: money, closingBalance: money, lines: z.array(z.object({ id: z.string().uuid(), externalKey: z.string().trim().min(1).max(160), bookedDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), amount: money, description: z.string().trim().min(1).max(500) }).strict()).min(1).max(100) }).strict();
 
 export async function GET(request: Request) {
@@ -24,8 +25,8 @@ export async function saveBankStatement(context: RequestContext, body: unknown) 
     if (!parsed.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Extrato ou linhas inválidas.');
     const data = parsed.data;
     if (data.periodEnd < data.periodStart) throw new ApiError(400, 'VALIDATION_FAILED', 'O período do extrato é inválido.');
-    const movementTotal = data.lines.reduce((sum, line) => sum + line.amount, 0);
-    if (data.openingBalance + movementTotal !== data.closingBalance) throw new ApiError(409, 'STATEMENT_BALANCE_CONFLICT', 'As linhas não fecham o saldo final informado.');
+    const movementTotal = data.lines.reduce((sum, line) => sum + BigInt(line.amount), 0n);
+    if (BigInt(data.openingBalance) + movementTotal !== BigInt(data.closingBalance)) throw new ApiError(409, 'STATEMENT_BALANCE_CONFLICT', 'As linhas não fecham o saldo final informado.');
     const hash = await fingerprint({ actor: context.actorId, data });
     const db = database();
     const existing = await db.prepare('SELECT actor_id,request_hash FROM bank_statements WHERE id=?').bind(data.id).first<{ actor_id: string; request_hash: string }>();
