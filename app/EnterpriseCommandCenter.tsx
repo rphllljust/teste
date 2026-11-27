@@ -2,6 +2,7 @@
 import {useState} from 'react';
 import {ArrowRight, Map as MapIcon} from 'lucide-react';
 import EnterpriseOperationsWorkbench from './EnterpriseOperationsWorkbench';
+import EnterpriseExceptionCenter from './EnterpriseExceptionCenter';
 type Props={summary:{total:number;drafts:number;planned:number;pendingMeasurements:number};navigate:(name:string,orderId?:string)=>void;onCreate:()=>void;onOpenOrder:(id:string)=>void;onCommandOrder?:(id:string,commandId:string)=>void};
 
 const enterpriseJourney = [
@@ -27,6 +28,7 @@ export default function EnterpriseCommandCenter({navigate,onCreate,onOpenOrder,o
  const [showMap,setShowMap]=useState(false);
  return <section className="enterprise-command-center enterprise-command-center-v2" aria-label="Centro de comando empresarial">
   <EnterpriseOperationsWorkbench navigate={navigate} onCreate={onCreate} onOpenOrder={onOpenOrder} onCommandOrder={onCommandOrder}/>
+  <EnterpriseExceptionCenter navigate={navigate} onOpenOrder={onOpenOrder}/>
   <section className="enterprise-command-navigation" aria-labelledby="enterprise-command-map-title">
    <div className="enterprise-command-navigation-heading">
     <div><span className="eyebrow">PROCESSOS EMPRESARIAIS</span>
