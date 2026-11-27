@@ -160,11 +160,21 @@ test('receiving is versioned, idempotent, and posts accepted quantities to inven
     assert.equal((await json(replay)).replayed, true);
     const detail = await getPurchaseOrder(req(`/api/procurement/${orderId}`, 'GET', undefined, owner), { params: Promise.resolve({ id: orderId }) });
     assert.equal(detail.status, 200);
-    const payload = await json(detail) as unknown as { order: { status: string; rowVersion: number }; lines: Array<{ receivedQuantity: number }>; receipts: Array<{ acceptedQuantity: number }> };
+    const payload = await json(detail) as unknown as { order: { status: string; rowVersion: number }; lines: Array<{ receivedQuantity: number }>; receipts: Array<{ acceptedQuantity: number }>; reconciled: boolean };
     assert.equal(payload.order.status, 'approved');
     assert.equal(Number(payload.order.rowVersion), 3);
     assert.equal(Number(payload.lines[0]?.receivedQuantity), 3000);
     assert.equal(payload.receipts.length, 1);
+    assert.equal(payload.reconciled, false, 'partial receipt must not report the order as fully reconciled');
+    const finalReceipt = await receivePurchaseOrder(req(`/api/procurement/${orderId}/receipts`, 'POST', {
+      key: randomUUID(), version: 3, reference: 'REC-CI-002', lines: [{ lineId, accepted: '2', rejected: '0' }],
+    }, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(finalReceipt.status, 201, JSON.stringify(await json(finalReceipt.clone())));
+    const completeDetail = await getPurchaseOrder(req(`/api/procurement/${orderId}`, 'GET', undefined, owner), { params: Promise.resolve({ id: orderId }) });
+    assert.equal(completeDetail.status, 200);
+    const completePayload = await json(completeDetail) as unknown as { order: { status: string }; reconciled: boolean };
+    assert.equal(completePayload.order.status, 'received');
+    assert.equal(completePayload.reconciled, true, 'full accepted receipt and matching inventory movements must reconcile');
     const stored = await pool.query(`SELECT COALESCE(SUM(delta),0)::int AS balance, COUNT(*)::int AS movements,
       COUNT(*) FILTER (WHERE procurement_receipt_line_id IS NOT NULL)::int AS linked
       FROM inventory_movements WHERE owner_id=$1 AND procurement_order_id=$2`, [owner, orderId]);
