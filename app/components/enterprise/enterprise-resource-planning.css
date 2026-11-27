@@ -74,3 +74,149 @@
 .planning-preflight p { margin:5px 0 0;color:#61798a;max-width:720px;line-height:1.6; }
 .planning-preflight-actions { display:flex;gap:6px;flex-wrap:wrap;align-items:center; }
 @media(max-width:620px){ .planning-preflight-actions { width:100%; } .planning-preflight-actions button { flex:1 1 auto; } }
+
+/* Tier 1 spatial alignment — the module is a SECTION inside the ERP page main.
+ * Avoid a second page frame; preserve the full calendar and command semantics. */
+.enterprise-scheduling-workspace {
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  padding:0;
+  margin:0;
+}
+.enterprise-scheduling-workspace > .enterprise-page-header {
+  margin-bottom:12px;
+}
+.enterprise-scheduling-workspace .planning-ledger-note {
+  min-height:36px;
+  padding:8px 11px;
+  gap:8px;
+  margin:0 0 9px;
+  border-radius:6px;
+  font-size:11px;
+  line-height:1.45;
+}
+.enterprise-scheduling-workspace .planning-preflight {
+  margin:0 0 10px;
+  padding:11px 13px;
+  gap:10px;
+  border-radius:6px;
+}
+.enterprise-scheduling-workspace .planning-preflight p {
+  margin-top:3px;
+  line-height:1.45;
+}
+.enterprise-scheduling-workspace .planning-summary {
+  gap:10px;
+  margin:0 0 12px;
+}
+.enterprise-scheduling-workspace .planning-summary > div {
+  min-height:83px;
+  padding:10px 13px;
+  gap:3px;
+  border-radius:6px;
+}
+.enterprise-scheduling-workspace .planning-summary small {
+  font-size:10px;
+  line-height:1.35;
+}
+.enterprise-scheduling-workspace .planning-summary strong {
+  font-size:clamp(20px,1.6vw,25px);
+  line-height:1.15;
+}
+.enterprise-scheduling-workspace .planning-summary span {
+  font-size:10px;
+  line-height:1.35;
+}
+.enterprise-scheduling-workspace :is(.planning-calendar-panel,.planning-transactions-panel) {
+  border-radius:6px;
+}
+.enterprise-scheduling-workspace .planning-calendar-head {
+  padding:12px 15px;
+  gap:10px;
+  min-height:74px;
+}
+.enterprise-scheduling-workspace .planning-calendar-head h2 {
+  font-size:16px;
+  font-weight:690;
+  margin:3px 0 3px;
+}
+.enterprise-scheduling-workspace .planning-week-actions button {
+  min-height:var(--cisne-tier1-control,36px);
+}
+.enterprise-scheduling-workspace .planning-filters {
+  min-height:52px;
+  padding:8px 13px;
+  gap:9px;
+}
+.enterprise-scheduling-workspace .planning-filters > label {
+  flex:1 1 320px;
+  min-width:min(100%,260px);
+  max-width:540px;
+}
+.enterprise-scheduling-workspace .planning-filters > label input {
+  display:block;
+  width:100%;
+  min-width:0;
+  height:var(--cisne-tier1-control,36px);
+}
+.enterprise-scheduling-workspace .planning-filters > select {
+  min-width:180px;
+  max-width:230px;
+  height:var(--cisne-tier1-control,36px);
+  margin-left:auto;
+}
+.enterprise-scheduling-workspace .planning-filters > span {
+  font-size:11px;
+  white-space:nowrap;
+}
+.enterprise-scheduling-workspace .planning-transactions-grid {
+  gap:12px;
+  margin-top:12px;
+}
+.enterprise-scheduling-workspace .planning-transactions-panel > header {
+  padding:12px 14px;
+  min-height:49px;
+}
+.enterprise-scheduling-workspace .planning-transactions-panel > header h2 {
+  font-size:15px;
+}
+@media (max-width: 1100px) {
+  .enterprise-scheduling-workspace .planning-summary > div { min-height:80px; }
+  .enterprise-scheduling-workspace .planning-filters > label {
+    flex-basis:270px;
+    max-width:none;
+  }
+}
+@media (max-width: 800px) {
+  .enterprise-scheduling-workspace .planning-calendar-head {
+    align-items:flex-start;
+    padding:11px 12px;
+  }
+  .enterprise-scheduling-workspace .planning-filters {
+    padding:9px 12px;
+    align-items:stretch;
+  }
+  .enterprise-scheduling-workspace .planning-filters > label {
+    flex:1 1 100%;
+    min-width:0;
+  }
+  .enterprise-scheduling-workspace .planning-filters > select {
+    flex:1 1 180px;
+    max-width:none;
+    min-width:0;
+    margin-left:0;
+  }
+  .enterprise-scheduling-workspace .planning-filters > span {
+    align-self:center;
+  }
+}
+@media (max-width: 480px) {
+  .enterprise-scheduling-workspace .planning-summary { gap:7px; }
+  .enterprise-scheduling-workspace .planning-summary > div { padding:9px 10px; }
+  .enterprise-scheduling-workspace .planning-summary strong { font-size:21px; }
+  .enterprise-scheduling-workspace .planning-week-actions { width:100%; }
+  .enterprise-scheduling-workspace .planning-filters > select {
+    flex-basis:100%;
+  }
+}
