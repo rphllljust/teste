@@ -3,9 +3,9 @@ import {useEffect,useState} from 'react';
 import {AlertTriangle,ArrowRight,CalendarClock,ClipboardCheck,RefreshCw,ShieldAlert} from 'lucide-react';
 
 type ExceptionRow={id:string;title:string;client:string;status:string;dueDate:string|null;
- overdue:boolean;unmeasured:boolean;attentionRank:number;
+ overdue:boolean;unmeasured:boolean;planOverdue:boolean;planBlocked:boolean;attentionRank:number;
  evidence:{measurements:number;invoices:number;executions:number}};
-type ResponseData={items:ExceptionRow[];summary:{total:number;draft:number;executing:number;overdue:number;unmeasured:number;authorized:number};
+type ResponseData={items:ExceptionRow[];summary:{total:number;draft:number;executing:number;overdue:number;unmeasured:number;authorized:number;planOverdue:number;planBlocked:number};
  pageInfo:{total:number;hasMore:boolean};generatedAt:string;
  source:'postgres_owner_scoped_operations';note:string};
 const date=(raw:string|null)=>{
@@ -15,7 +15,8 @@ const date=(raw:string|null)=>{
   {timeZone:'UTC',day:'2-digit',month:'short'}).format(value);
 };
 const situation=(item:ExceptionRow)=>item.overdue?'Prazo vencido':
- item.unmeasured?'Medição pendente':
+ item.unmeasured?'Medição pendente':item.planOverdue?'Atividade vencida':
+ item.planBlocked?'Atividade bloqueada':
  ['draft','prepared'].includes(item.status)?'Rascunho para preparação':'Revisar próxima etapa';
 
 /**
@@ -34,7 +35,7 @@ export default function EnterpriseServiceOrderExceptionQueue({sourceVersion,onOp
   const run=async()=>{
    try{
     const res=await fetch('/api/enterprise/operations?'+new URLSearchParams({
-     queue:'attention',sort:'priority',page:'1',pageSize:'6'}),{
+     queue:'attention',sort:'priority',page:'1',pageSize:'3'}),{
       credentials:'same-origin',cache:'no-store',signal:controller.signal});
     const body=await res.json() as ResponseData&{error?:string};
     if(!res.ok||body.source!=='postgres_owner_scoped_operations')
@@ -50,6 +51,8 @@ export default function EnterpriseServiceOrderExceptionQueue({sourceVersion,onOp
  const indicators=data?[
   {name:'Em atraso',value:data.summary.overdue,icon:CalendarClock},
   {name:'Medição pendente',value:data.summary.unmeasured,icon:ClipboardCheck},
+  {name:'Plano em atraso',value:data.summary.planOverdue,icon:CalendarClock},
+  {name:'Plano bloqueado',value:data.summary.planBlocked,icon:ShieldAlert},
   {name:'Preparação',value:data.summary.draft,icon:ShieldAlert},
  ]:[];
  return <section className="os-tier1-exceptions" aria-label="Exceções operacionais da ordem de serviço">
@@ -71,7 +74,7 @@ export default function EnterpriseServiceOrderExceptionQueue({sourceVersion,onOp
      <strong tabIndex={0} aria-label={k.name+': '+k.value}>{k.value}</strong></div>)}
    </div>
    {data.pageInfo.total>0?
-    <div className="os-tier1-exceptions-worklist" aria-label="Seis primeiras exceções priorizadas">
+    <div className="os-tier1-exceptions-worklist" aria-label="Três primeiras exceções priorizadas">
      {data.items.map(item=><button type="button" key={item.id} onClick={()=>onOpenOrder(item.id)}
        title={'Abrir ordem '+item.title}>
        <span><strong>{item.title}</strong><small>{item.client} · {date(item.dueDate)}</small></span>
@@ -79,7 +82,7 @@ export default function EnterpriseServiceOrderExceptionQueue({sourceVersion,onOp
         {situation(item)} <ArrowRight size={12}/></span>
       </button>)}
     </div>:<p className="os-tier1-exceptions-clear">Nenhuma exceção classificada pelas regras atuais. Isso não substitui homologação operacional.</p>}
-   {data.pageInfo.hasMore&&<p className="os-tier1-exceptions-more">Exibindo seis de {data.pageInfo.total} registros; abra a central para consultar os demais.</p>}
+   {data.pageInfo.hasMore&&<p className="os-tier1-exceptions-more">Exibindo três de {data.pageInfo.total} registros; abra a central para consultar os demais.</p>}
   </>}
  </section>;
 }
