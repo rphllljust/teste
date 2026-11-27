@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {database} from '../../../../../../../db/raw';
-import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../../../../lib/api/http';
+import {database} from '../../../../../../db/raw';
+import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../../../lib/api/http';
 
 export const dynamic='force-dynamic';
 type Route={params:Promise<{id:string;referenceId:string}>};
