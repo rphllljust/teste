@@ -201,7 +201,7 @@ async function run() {
     });
     const canonical=[
       ...preexisting,'0003_finance_audit','0004_cash_transfers','0005_finance_period_closes',
-      '0006_professionals','0007_assets','0008_inventory_ledger','0009_workflow_approvals','0010_resource_allocations','0011_inventory_consumption','0012_field_service_measurements','0013_workflow_business_commands','0014_manual_fiscal_documents','0015_fiscal_bigint_integrity','0016_field_service_measurement_lifecycle','0017_enterprise_tenancy_foundation','0018_accounting_invoice_links','0019_native_invoice_posting_rules','0020_receivable_cash_ledger','0021_chart_accounts_tenant_unique','0022_native_payable_accounting','0023_procurement_supplier_three_way_match','0024_enterprise_owner_query_indexes','0025_controlling_budgets','0025_finance_payment_runs','0026_bank_assisted_match_batches','0027_finance_collection_cases',
+      '0006_professionals','0007_assets','0008_inventory_ledger','0009_workflow_approvals','0010_resource_allocations','0011_inventory_consumption','0012_field_service_measurements','0013_workflow_business_commands','0014_manual_fiscal_documents','0015_fiscal_bigint_integrity','0016_field_service_measurement_lifecycle','0017_enterprise_tenancy_foundation','0018_accounting_invoice_links','0019_native_invoice_posting_rules','0020_receivable_cash_ledger','0021_chart_accounts_tenant_unique','0022_native_payable_accounting','0023_procurement_supplier_three_way_match','0024_enterprise_owner_query_indexes','0025_controlling_budgets','0025_finance_payment_runs','0026_bank_assisted_match_batches','0027_finance_collection_cases','0028_enterprise_project_cost_allocations',
     ];
     await assertPreserved(scoped,canonical);
     await guardImmutableAudit(scoped);
