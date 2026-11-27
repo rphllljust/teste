@@ -31,6 +31,8 @@
 .enterprise-procure-portfolio-phase.verified{color:#22624f;border-color:#b3d6c7}
 .enterprise-procure-portfolio-empty,.enterprise-procure-portfolio-wait{padding:16px;font-size:12px;color:#6b8290}
 .enterprise-procure-portfolio-export{display:inline-flex;align-items:center;gap:5px;text-decoration:none;border:1px solid #d5e0e6;border-radius:4px;color:#22566d;padding:6px 10px;font-size:11px;font-weight:600}
+.enterprise-procure-portfolio-source-actions{display:flex;flex-direction:column;gap:4px;align-items:flex-start;min-width:120px}
+.enterprise-procure-portfolio-source-actions .row-link{font-size:10px;white-space:nowrap}
 .enterprise-procure-portfolio-urgency{display:inline-block;max-width:240px;font-size:10px;line-height:1.4;color:#667c89}
 .enterprise-procure-portfolio-urgency.overdue{color:#8c332b;font-weight:700}
 .enterprise-procure-portfolio-urgency.today{color:#8b5926;font-weight:700}
