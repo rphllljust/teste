@@ -76,3 +76,15 @@ test('authenticated Tier1 UAT proves 14-stage dossier and correlated audit per o
  assert.match(browser,/trace\.source,'postgres_owned_event_trace'/);
  assert.match(browser,/invalidAudit\.status\(\),400/);
 });
+
+test('finance Tier1 acceptance covers five real modules, three viewports, without private artifacts',()=>{
+ const src=read('test/hml-live-acceptance.mjs');
+ for(const name of ['Visão financeira','Contas a pagar','Caixa e conciliação','Fiscal e tributos','Fechamentos'])
+  assert.ok(src.includes("label:'"+name+"'"),'missing visual UAT for '+name);
+ assert.ok(src.includes('HML_FINANCE_TIER1_PUBLIC'));
+ assert.ok(src.includes("base.origin+'/api/finance/workspace'"));
+ assert.ok(src.includes('publicFinance.status(),403'));
+ assert.ok(src.includes("'.app[data-workspace=\"finance\"]'"));
+ assert.ok(src.includes('limits.root-limits.viewport<=24'));
+ assert.ok(src.includes('unauthenticated-finance-'));
+});

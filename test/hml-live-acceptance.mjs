@@ -143,6 +143,49 @@ try {
           anonymousApi:'DENIED',
         }));
       }
+      // Tier 1 finance public acceptance is strictly READ-ONLY. The UI must
+      // render before sign-in without leaking financial records or creating fixtures.
+      const publicFinance=await context.request.get(
+        base.origin+'/api/finance/workspace',time);
+      assert.equal(publicFinance.status(),403,profile.name+' anonymous finance scope denied');
+      const financePages=[
+        {label:'Visão financeira',heading:'Centro financeiro'},
+        {label:'Contas a pagar',heading:'Contas a pagar'},
+        {label:'Caixa e conciliação',heading:'Conciliação bancária'},
+        {label:'Fiscal e tributos',heading:'Fiscal manual'},
+        {label:'Fechamentos',heading:'Fechamento financeiro'},
+      ];
+      for(const finance of financePages){
+        const live=await page.goto(base.origin+'/#'+encodeURIComponent(finance.label),
+          {waitUntil:'domcontentloaded',...time});
+        if(live)assert.equal(live.status(),200,profile.name+' '+finance.label+' shell');
+        await page.getByRole('heading',{name:finance.heading,exact:true}).first()
+          .waitFor({state:'visible',...time});
+        await page.locator('.app[data-workspace="finance"]')
+          .waitFor({state:'visible',...time});
+        // Overflow is confined to an internal table, never the entire app.
+        const limits=await page.evaluate(()=>({
+          viewport:document.documentElement.clientWidth,
+          root:document.documentElement.scrollWidth,
+        }));
+        assert.ok(limits.root-limits.viewport<=24,
+          profile.name+' '+finance.label+' unexpected page-width overflow');
+        if(finance.label==='Visão financeira'){
+          await page.getByRole('region',{name:'Filas de exceção e encaminhamento'})
+            .waitFor({state:'visible',...time});
+          await page.screenshot({
+            path:join(artifactDir,'unauthenticated-finance-'+profile.name+'.png'),
+            fullPage:false,
+          });
+        }
+        if(finance.label==='Fechamentos')
+          assert.equal(await page.getByRole('button',{name:'Fechar período'}).isVisible(),true);
+        console.log('HML_FINANCE_TIER1_PUBLIC '+JSON.stringify({
+          module:finance.label,profile:profile.name,
+          heading:'PASS',scopedLayout:'PASS',anonymousApi:'DENIED',
+          rootOverflowPx:Math.max(0,limits.root-limits.viewport),
+        }));
+      }
       // Return to the dossier before optional signed-session acceptance.
       await page.goto(pageHref,{waitUntil:'domcontentloaded',...time});
 
