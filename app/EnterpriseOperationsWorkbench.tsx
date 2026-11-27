@@ -6,6 +6,7 @@ import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
+import EnterpriseServiceOrderControlPanel from './EnterpriseServiceOrderControlPanel';
 import EnterpriseAccountingExceptionRibbon from './components/enterprise/EnterpriseAccountingExceptionRibbon';
 import EnterpriseProcessJourneyInspector from './components/enterprise/EnterpriseProcessJourneyInspector';
 import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
@@ -345,6 +346,8 @@ export default function EnterpriseOperationsWorkbench({
       <EnterpriseProcessJourneyInspector
        orderId={selected.id} revision={revision} navigate={navigate}
        onOpenOrder={onOpenOrder} onDossier={id=>navigate('Dossiês empresariais',id)}/>
+      <EnterpriseServiceOrderControlPanel key={selected.id+'-control-'+revision} orderId={selected.id}
+       onOpenOrder={onOpenOrder} navigate={navigate}/>
       <EnterpriseOrderAuditTimeline key={selected.id+'-'+revision} orderId={selected.id}/>
       <div className="enterprise-operations-commands cisne-contextual-command-panel">
        <h3>Comandos contextuais autorizados</h3>
