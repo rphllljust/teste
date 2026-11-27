@@ -103,7 +103,7 @@ export default function BankReconciliationWorkspace({initialAccountReference=''}
   setLineId('');setPage(1);
  }
  const selected=workspace?.items.find(x=>x.id===lineId);
- return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Conciliação bancária</h2><p>Extratos informados, linhas pendentes e correspondências explícitas com pagamentos registrados.</p></div><button className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato</button></div>
+ return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO E CONTROLADORIA · BANCOS" title="Caixa e conciliação" description="Extratos, importação OFX, conciliação assistida, individual e em lote auditável."/><div className="list-title"><div><h2>Fila bancária e correspondências</h2><p>Extratos informados, linhas pendentes e correspondências explícitas com pagamentos registrados.</p></div><button className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato</button></div>
  {statementId&&<section className="cisne-assist-match" aria-label="Conciliação bancária assistida">
   <header><div><strong>Conciliação assistida · múltiplas linhas</strong>
    <p>Identifica pares únicos por valor, sinal e data (até três dias). Nenhuma correspondência é gravada sem revisão.</p></div>
