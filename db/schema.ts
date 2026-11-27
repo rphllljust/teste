@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, bigint, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, boolean, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
 export const orders = pgTable('service_orders', {
  contractId:text('contract_id'),clientId:text('client_id'),ownerId:text('owner_id'),id: text('id').primaryKey(), title: text('title').notNull(), client: text('client').notNull(),
  category: text('category').notNull(), description: text('description').notNull(),
@@ -302,6 +302,34 @@ export const enterpriseLegalEntities = pgTable('enterprise_legal_entities', {
   uniqueIndex('enterprise_entity_tenant_code_uq').on(t.tenantId,t.code),
   uniqueIndex('enterprise_entity_tenant_id_uq').on(t.tenantId,t.id),
 ]);
+/** Operator-supplied corporate activity reference (not an official Receita lookup). */
+export const enterpriseDeclaredCnaes = pgTable('enterprise_declared_cnaes', {
+  code:text('code').primaryKey(),
+  description:text('description').notNull(),
+  displayOrder:integer('display_order').notNull(),
+  isPrimary:boolean('is_primary').notNull().default(false),
+},t=>[
+  uniqueIndex('enterprise_declared_cnaes_order_uq').on(t.displayOrder),
+  uniqueIndex('enterprise_declared_cnaes_single_primary_idx').on(t.isPrimary).where(sql`${t.isPrimary} = true`),
+  check('enterprise_declared_cnaes_code_format',sql`${t.code} ~ '^[0-9]{2}[.][0-9]{2}-[0-9]-[0-9]{2}$'`),
+]);
+/** Persistent CNAE membership scoped to an authorized legal entity and its tenant. */
+export const enterpriseLegalEntityCnaes = pgTable('enterprise_legal_entity_cnaes', {
+  tenantId:text('tenant_id').notNull(),
+  legalEntityId:text('legal_entity_id').notNull(),
+  cnaeCode:text('cnae_code').notNull().references(()=>enterpriseDeclaredCnaes.code),
+  isPrimary:boolean('is_primary').notNull().default(false),
+  createdBy:text('created_by').notNull(),
+  createdAt:text('created_at').notNull(),
+},t=>[
+  primaryKey({columns:[t.tenantId,t.legalEntityId,t.cnaeCode]}),
+  foreignKey({columns:[t.tenantId,t.legalEntityId],
+    foreignColumns:[enterpriseLegalEntities.tenantId,enterpriseLegalEntities.id],
+    name:'enterprise_entity_cnaes_company_fk'}),
+  uniqueIndex('enterprise_entity_cnaes_single_primary_idx').on(t.legalEntityId).where(sql`${t.isPrimary} = true`),
+  index('enterprise_entity_cnaes_tenant_idx').on(t.tenantId,t.legalEntityId),
+]);
+
 export const enterprisePermissionEvents = pgTable('enterprise_permission_events', {
   id:text('id').primaryKey(),
   tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
