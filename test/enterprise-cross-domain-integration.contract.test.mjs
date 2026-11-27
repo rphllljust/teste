@@ -12,7 +12,7 @@ test('cross-domain costing ledger is additive, owner-scoped, event immutable and
   assert.ok(migration.includes(s),s);
  assert.ok(manifest.includes('0028_enterprise_project_cost_allocations'));
  for(const s of ['lockFinancePeriodScope','assertFinancePeriodOpen','COST_ALLOCATION_EXCEEDS_PAYABLE',
-  'service_orders','payables','procurement_supplier_invoices','accounting'])
+  'service_orders','payables','procurement_supplier_invoices','finance_audit_events'])
   assert.ok(api.includes(s),'source invariant '+s);
  for(const s of ['/api/controlling/project-costs','onOrder(selectedId)','action:\'allocate\'','action:\'reverse\''])
   assert.ok(ui.includes(s),'controller action '+s);
