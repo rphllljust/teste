@@ -120,3 +120,33 @@ test('finance compact layout is isolated, balanced and responsive without hiding
  }
  assert.equal(depth,0);
 });
+
+
+test('controller decision tab is live, traceable to ledger account and owner-scoped posted journal API',()=>{
+ const overview=read('app/FinanceOverviewWorkspace.tsx');
+ const statement=read('app/ControllingIncomeStatement.tsx');
+ const ledger=read('app/LedgerWorkspace.tsx');
+ const route=read('app/api/controlling/income-statement/route.ts');
+ assert.ok(overview.includes("<ControllingIncomeStatement"));
+ assert.ok(overview.includes("activeArea==='income'"));
+ assert.ok(overview.includes('onLedgerAccount={onLedgerAccount}'));
+ assert.ok(statement.includes('onLedgerAccount(a.id,data.periodMonth'));
+ assert.ok(ledger.includes('initialAccountId'));
+ for(const marker of ['REPEATABLE READ READ ONLY',"j.status='posted'",'j.actor_id=$1',
+   "c.type IN ('revenue','expense')",'assembleIncomeStatement'])
+  assert.ok(route.includes(marker),'missing DRE trust boundary '+marker);
+});
+test('AP run readiness never bypasses locked posting and requires a fresh authorized preflight',()=>{
+ const review=read('app/api/finance/payment-runs/[id]/preflight/route.ts');
+ const execute=read('app/api/finance/payment-runs/[id]/commands/route.ts');
+ const workspace=read('app/PaymentRunsWorkspace.tsx');
+ assert.ok(review.includes('REPEATABLE READ READ ONLY'));
+ assert.ok(review.includes('ctx!.actorId'));
+ assert.ok(review.includes('payableBalance'));
+ assert.ok(review.includes('assessPaymentRunReadiness'));
+ assert.ok(workspace.includes('preflight.rowVersion!==detail.run.rowVersion'));
+ assert.ok(workspace.includes('cisne-run-preflight'));
+ assert.ok(execute.includes('lockFinancePeriodScope'));
+ assert.ok(execute.includes('assertFinancePeriodOpen'));
+ assert.ok(execute.includes('registerPayablePaymentWithQuery'));
+});
