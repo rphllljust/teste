@@ -77,3 +77,26 @@ test('bidirectional native navigation preserves owned P2P document identifiers',
  assert.ok(page.includes('procurementDrilldown||mrpOrderId'));
  assert.ok(page.includes('initialPayableId={payableDrilldown}'));
 });
+
+test('P2P financial portfolio is an owner-scoped read-only worklist integrated with the compact controller',()=>{
+ const route=read('app/api/enterprise/procure-to-pay/portfolio/route.ts');
+ const board=read('app/EnterpriseProcureToPayPortfolio.tsx');
+ const domain=read('lib/domain/procure-portfolio.mjs');
+ const overview=read('app/FinanceOverviewWorkspace.tsx');
+ const page=read('app/page.tsx');
+ const layout=read('app/layout.tsx');
+ for(const marker of ['REPEATABLE READ READ ONLY','ctx.actorId','po.owner_id=$1',
+  'p.actor_id=$1','bank_reconciliation_events','procurement_supplier_invoices',
+  'accounting_payable_links','enterprise_project_cost_allocations',
+  'classifyProcurePortfolio','pageSize:25']){
+  assert.ok(route.includes(marker),'P2P portfolio source gate: '+marker);
+ }
+ assert.ok(route.includes("status:z.enum(['all','draft','approved','received','cancelled'])"));
+ assert.ok(!route.includes('export async function POST'));
+ assert.ok(domain.includes('BigInt(raw)'));
+ assert.ok(board.includes('/api/enterprise/procure-to-pay/portfolio?'));
+ assert.ok(board.includes('onOpenOrder(item.id)'));
+ assert.ok(overview.includes('<EnterpriseProcureToPayPortfolio onOpenOrder={onProcurementOrder}'));
+ assert.ok(page.includes('setProcurementDrilldown(id)'));
+ assert.ok(layout.includes('enterprise-procure-portfolio.css'));
+});
