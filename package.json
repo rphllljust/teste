@@ -28,7 +28,7 @@
     "test:governed-actions": "node --experimental-strip-types --test test/enterprise-governed-actions.contract.test.mjs",
     "test:object-routes": "node --experimental-strip-types --test test/enterprise-object-routes.contract.test.mjs",
     "test:measurement-lifecycle": "node --test test/measurement-lifecycle.contract.test.mjs",
-    "test:external-reference-contract": "node --test test/enterprise-external-reference.contract.test.mjs"
+    "test:external-reference-contract": "node --test test/enterprise-external-reference.contract.test.mjs test/enterprise-external-reference-review.contract.test.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.7.0",
