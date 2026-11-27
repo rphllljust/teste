@@ -38,6 +38,7 @@ const migrations = [
   { id: '0026_bank_assisted_match_batches', file: '../drizzle-pg/0026_bank_assisted_match_batches.sql' },
   { id: '0027_finance_collection_cases', file: '../drizzle-pg/0027_finance_collection_cases.sql' },
   { id: '0028_enterprise_project_cost_allocations', file: '../drizzle-pg/0028_enterprise_project_cost_allocations.sql' },
+  { id: '0029_service_order_milestones', file: '../drizzle-pg/0029_service_order_milestones.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
