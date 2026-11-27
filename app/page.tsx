@@ -27,6 +27,7 @@ import ProcurementWorkspace from "./ProcurementWorkspace";
 import EnterpriseCommandCenter from "./EnterpriseCommandCenter";
 import EnterpriseGlobalDomainNav from "./components/enterprise/EnterpriseGlobalDomainNav";
 import EnterpriseDossierWorkspace from "./EnterpriseDossierWorkspace";
+import EnterpriseGovernanceWorkspace from "./EnterpriseGovernanceWorkspace";
 import CRMWorkspace from "./CRMWorkspace";
 import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
@@ -103,7 +104,7 @@ type Order = {
   due_date: string | null;
   created_at: string;
 };
-const iconByKey = { activity: Activity, dashboard: LayoutDashboard, orders: ClipboardList, people: Users, assets: Truck, finance: Wallet, billing: Receipt, accounting: BookOpen, inventory: Package, file: FileText, procurement: Package, field: HardHat, calendar: CalendarDays } as const;
+const iconByKey = { activity: Activity, building: Building2, dashboard: LayoutDashboard, orders: ClipboardList, people: Users, assets: Truck, finance: Wallet, billing: Receipt, accounting: BookOpen, inventory: Package, file: FileText, procurement: Package, field: HardHat, calendar: CalendarDays } as const;
 function normalizeEnterpriseSearch(value: string): string {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("pt-BR").trim();
 }
@@ -1368,7 +1369,7 @@ function HomeView() {
           ))}
         </nav>
         <div className="sidebar-bottom">
-          <Link prefetch={false} href="/enterprise" className="enterprise-structure-link" style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px"}}><Building2 size={17}/> Gestão de empresas</Link>
+          <button type="button" onClick={() => navigate("Governança empresarial")} className="enterprise-structure-link" style={{display:"flex",alignItems:"center",gap:8,padding:"10px 12px"}}><Building2 size={17}/> Governança e empresas</button>
           <span className="version">
             <span />
             Cisne · Plataforma empresarial
@@ -1440,7 +1441,7 @@ function HomeView() {
           </div>
           {shortcutsOpen && <nav id="cisne-workbench-shortcuts" className="enterprise-quick-access" aria-label="Atalhos de trabalho">
             <span>Acesso rápido aos módulos</span>
-            {["Visão operacional", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
+            {["Visão operacional", "Governança empresarial", "Dossiês empresariais", "CRM e Vendas", "Contratos", "Compras", "Contas a pagar", "Contabilidade"].map((module) => (
               <button
                 type="button"
                 key={module}
@@ -1495,6 +1496,7 @@ function HomeView() {
               "Field Service Cockpit",
               "Resource Planning Board",
               "Dossiês empresariais",
+              "Governança empresarial",
               "Visão operacional",
             ].includes(page) && (
               <>
@@ -2640,6 +2642,8 @@ function HomeView() {
                 </span>
               </footer>
             </section>
+          ) : page === "Governança empresarial" ? (
+            <EnterpriseGovernanceWorkspace />
           ) : page === "Dossiês empresariais" ? (
             <EnterpriseDossierWorkspace key={businessOrder||'dossier-list'} navigate={navigate} initialOrderId={businessOrder||null}
              onOpenOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}} />

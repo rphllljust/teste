@@ -7,7 +7,7 @@ const files=await Promise.all([
   'drizzle-pg/0032_enterprise_cnae_activities.sql',
   'app/api/enterprise/tenants/[id]/legal-entities/[entityId]/cnaes/route.ts',
   'app/components/enterprise/LegalEntityCnaes.tsx',
-  'app/enterprise/page.tsx',
+  'app/EnterpriseGovernanceWorkspace.tsx',
   'scripts/migrate-postgres.mjs',
 ].map(path=>readFile(new URL(path,root),'utf8')));
 const [migration,api,panel,page,migrator]=files;

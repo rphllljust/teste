@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
-const page=read('app/enterprise/page.tsx');
+const page=read('app/EnterpriseGovernanceWorkspace.tsx');
 const api=read('app/api/enterprise/tenants/[id]/audit/route.ts');
 
 test('enterprise audit uses authenticated member role, active tenant and owner-scoped records',()=>{
