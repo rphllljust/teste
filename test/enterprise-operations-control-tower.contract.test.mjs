@@ -24,6 +24,9 @@ test('operational API denies unowned objects and uses a repeatable-read snapshot
  assert.match(api,/EXISTS \(SELECT 1 FROM measurements done/);
  assert.match(api,/COUNT\(\*\)::int AS total/);
  assert.match(api,/to_char\(CURRENT_DATE,'YYYY-MM-DD'\)/);
+ assert.match(api,/pending\.id/);
+ assert.match(api,/done\.status<>'cancelled'/);
+ assert.match(api,/requires_measurement/);
 });
 
 test('center of operations is a real List Report with filtered/total distinction',()=>{
