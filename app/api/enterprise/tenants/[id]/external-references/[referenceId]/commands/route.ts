@@ -1,6 +1,6 @@
 import {z} from 'zod';
-import {database} from '../../../../../../../db/raw';
-import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../../../../lib/api/http';
+import {database} from '../../../../../../../../db/raw';
+import {ApiError,failure,fingerprint,jsonBody,requestContext,respond,type RequestContext} from '../../../../../../../../lib/api/http';
 
 export const dynamic='force-dynamic';
 type Route={params:Promise<{id:string;referenceId:string}>};
@@ -47,6 +47,6 @@ export async function POST(request:Request,route:Route){
     VALUES($1,$2,'enterpriseExternalReferenceReview',$3,$4,$5,$6,$7,$8)`,[command.commandKey,ctx!.actorId,referenceId,command.action,hash,JSON.stringify(receipt),ctx!.correlationId,now]);
    return {...receipt,replayed:false};
   });
-  return respond(result,ctx,result.replayed?200:200);
+  return respond(result,ctx,200);
  }catch(error){return failure(error,ctx);}
 }
