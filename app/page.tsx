@@ -32,6 +32,7 @@ import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
 import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
+import EnterpriseServiceOrderExceptionQueue from "./EnterpriseServiceOrderExceptionQueue";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
 import { EnterpriseObjectSectionNavigation, EnterpriseObjectSummary, EnterprisePageHeader } from "./components/enterprise/EnterprisePrimitives";
@@ -1453,6 +1454,7 @@ function HomeView() {
         <EnterpriseGlobalDomainNav currentPage={page} navigate={navigate}/>
         <main
           className={isWork ? "operational-workspace" : "business-workspace"}
+          data-os-mode={page === "Ordens de serviço" ? (creating ? "create" : "list") : undefined}
         >
           {["Dossiês empresariais","Execução","Medições","Faturamento","Financeiro"].includes(page)&&
            (page==="Execução"?executionOrder:businessOrder)&&
@@ -1708,14 +1710,6 @@ function HomeView() {
             />
           ) : isWork ? (
             <>
-              <ServiceOperationsAgenda
-                orders={orders}
-                onSelect={(id) => {
-                  const order = orders.find((item) => item.id === id);
-                  if (order) setSelected(order);
-                }}
-                onShowScheduled={() => applyView("Com data prevista")}
-              />
               <section
                 className="metrics"
                 aria-label="Resumo das ordens; agregados de todas as ordens"
@@ -1795,6 +1789,20 @@ function HomeView() {
                   </small>
                 </button>
               </section>
+              <EnterpriseServiceOrderExceptionQueue
+                sourceVersion={generatedAt ?? ''}
+                onOpenOrder={id => {void openOrigin(id);}}
+                onOpenControlTower={() => navigate("Visão operacional")}
+              />
+              <details className="os-agenda-disclosure">
+                <summary>Agenda operacional <span>Próximos compromissos e datas previstas</span></summary>
+                <ServiceOperationsAgenda
+                  key={generatedAt ?? 'agenda'}
+                  orders={orders}
+                  onSelect={id => {void openOrigin(id);}}
+                  onShowScheduled={() => applyView("Com data prevista")}
+                />
+              </details>
               <div className="work-layout">
                 <section
                   className="worklist"
