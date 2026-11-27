@@ -44,8 +44,9 @@ export function LegalEntityCnaes({tenantId,companies,canManage}: Props) {
   },[]);
   useEffect(()=>{
     if(!endpoint){sequence.current+=1;return;}
-    void refresh(endpoint);
-    return ()=>{sequence.current+=1;};
+    // Start async synchronization after React commits; cleanup rejects stale responses.
+    const timer=setTimeout(()=>void refresh(endpoint),0);
+    return ()=>{clearTimeout(timer);sequence.current+=1;};
   },[endpoint,refresh]);
 
   const persisted=result.items.length>0;
