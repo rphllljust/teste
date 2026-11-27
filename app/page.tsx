@@ -344,6 +344,8 @@ function HomeView() {
     [linkedGeneratedAt, setLinkedGeneratedAt] = useState("");
   const [drillFilters, setDrillFilters] = useState<Record<string, string>>({}),
     [bankAccount, setBankAccount] = useState("");
+  const [payableDrilldown,setPayableDrilldown]=useState<string|null>(null);
+  const [procurementDrilldown,setProcurementDrilldown]=useState<string|null>(null);
   const [ledgerDrilldown,setLedgerDrilldown]=useState<{id:string;from:string;to:string}|null>(null);
   const [orderClient, setOrderClient] = useState<Client | null>(null),
     [businessClient, setBusinessClient] = useState("");
@@ -797,6 +799,8 @@ function HomeView() {
     setCommercialOrigin("");
     setDrillFilters({});
     setBankAccount("");
+    setPayableDrilldown(null);
+    setProcurementDrilldown(null);
     setLedgerDrilldown(null);
     operationGeneration.current++;
     setLinkedViews([]);
@@ -2703,7 +2707,8 @@ function HomeView() {
               }}
             />
           ) : page === "Contas a pagar" ? (
-            <PayablesWorkspace initialFilters={drillFilters} />
+            <PayablesWorkspace initialFilters={drillFilters} initialPayableId={payableDrilldown}
+              onOpenProcurement={id=>{navigate("Compras");setProcurementDrilldown(id);}} />
           ) : page === "Lotes de pagamentos" ? (
             <PaymentRunsWorkspace />
           ) : page === "Cobrança e inadimplência" ? (
@@ -2722,7 +2727,9 @@ function HomeView() {
           ) : page === "Fechamentos" ? (
             <CloseCenterWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Compras" ? (
-            <ProcurementWorkspace initialOrderId={mrpOrderId} />
+            <ProcurementWorkspace initialOrderId={procurementDrilldown||mrpOrderId}
+              onOpenPayable={id=>{navigate("Contas a pagar");setPayableDrilldown(id);}}
+              onNavigate={navigate} />
           ) : page === "Estoque e compras" ? (
             <section className="supply-workspace" aria-label="Suprimentos">
               <div
