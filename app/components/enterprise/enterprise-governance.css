@@ -118,3 +118,22 @@
 #governance-audit > button.secondary{margin-top:14px;min-height:36px}
 #governance-audit .enterprise-governance-empty{margin-bottom:12px}
 @media(max-width:720px){#governance-audit .enterprise-governance-panel-heading > button{width:100%}}
+/* Company activity register: same legal-entity scope as the CNPJ. */
+.enterprise-cnaes { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--cisne-color-border, #dfe6ee); }
+.enterprise-cnaes .primary { min-height: 40px; margin-top: 12px; }
+.enterprise-cnaes-facts { display:flex; flex-wrap:wrap; gap: 9px; margin: 14px 0; }
+.enterprise-cnaes-facts span {
+  border: 1px solid #dfe8f0; background: #f8fafc; border-radius: 8px;
+  padding: 9px 12px; color: #34536a; font-size: 12px;
+}
+.enterprise-cnaes-table { padding: 16px; display:grid; gap: 14px; min-width:0; }
+.enterprise-cnaes-table label { display:grid; gap:6px; max-width:440px; font-size:12px; font-weight:650; }
+.enterprise-cnaes-table input {
+  min-height: 40px; width:100%; min-width:0; border:1px solid #ccdbe6;
+  border-radius:6px; padding:9px 12px;
+}
+.enterprise-cnaes-table td:first-child { white-space: nowrap; }
+@media (max-width: 480px) {
+  .enterprise-cnaes-facts span { flex: 1 1 150px; }
+  .enterprise-cnaes-table { padding: 12px; }
+}

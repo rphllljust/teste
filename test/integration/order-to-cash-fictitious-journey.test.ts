@@ -146,4 +146,332 @@ async () => {
     await registerExecution(req(owner, '/api/orders/' + orderId + '/execution', {
       command: 'report', key: randomUUID(), version: 3,
       resourceKind: 'labor', description: 'Apontamento fictÃ­cio da equipe CI',
-      quantituç®-¢G§²ÚîÆ­yÖÆR‡&W†÷væW"À¢rö’öf–ææ6R÷&V6V—f&ÆW2÷6WGFÆVÖVçG2rÂ°¢&V6V—f&ÆT–C¢&–ÆÆ–ærç&W6÷W&6Rç&V6V—f&ÆT–BÂÖ÷VçC¢7G&–ær‡66ÆVDÖ÷VçB’À¢VffV7F—fTFFS¢FöF’Â&VfW&Væ6S¢u$T4T$”ÔTåDòÔd”5D”4”òÔ4’rÀ¢6öÖÖæD¶W“¢6WGFÆVÖVçD¶W’À¢Ò’’Âs‚L:×GVÆò&V6V&–FòR6ÆFò¦W&FòrÂ#“°¢76W'BæWVÂ‡&V6V—Bç&W6÷W&6Ræ&Ææ6RÂsr“°¢76W'BæWVÂ‡&V6V—Bç&W6÷W&6Ræ–BÂ6WGFÆVÖVçD¶W’“°¢76W'BæWVÂ‡&V6V—Bç&W6÷W&6Ræ66÷VçF–ærç7FGW2ÂvWFõ÷÷7FVBr“°¢76W'Bæö²‡&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B“°¢6öç7B&WÆ•&V6V—BÒv—B&V6÷&CÇ²&W6÷W&6S¢²66÷VçF–æs¢²¦÷W&æÄ–C¢7G&–ærÒÒÓâ€¢v—B6WGFÆU&V6V—f&ÆR‡&W†÷væW"Ârö’öf–ææ6R÷&V6V—f&ÆW2÷6WGFÆVÖVçG2rÂ°¢&V6V—f&ÆT–C¢&–ÆÆ–ærç&W6÷W&6Rç&V6V—f&ÆT–BÂÖ÷VçC¢7G&–ær‡66ÆVDÖ÷VçB’À¢VffV7F—fTFFS¢FöF’Â&VfW&Væ6S¢u$T4T$”ÔTåDòÔd”5D”4”òÔ4’rÀ¢6öÖÖæD¶W“¢6WGFÆVÖVçD¶W’À¢Ò’’Âs†&—†–FV×÷FVçFR6VÒFœ:&–òGWÆ–6FòrÂ#À¢“°¢76W'BæWVÂ‡&WÆ•&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–BÂ&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B“° ¢òò’âÖçVÆÇ’–×÷'FVB¦f'&–6FVB¢&æ²7FFVÖVçBÂæ÷B&æ¶–ær6öææV7F÷"à¢v—B&V6÷&B†v—B&Vv—7FW%7FFVÖVçB‡&W†÷væW"Ârö’ö&æ²÷7FFVÖVçG2rÂ°¢–C¢7FFVÖVçD–BÂ66÷VçE&VfW&Væ6S¢t$ä4òÔd”5D”4”òÕ4TÒÔ4ôåDÕ$TÂrÀ¢6÷W&6U&VfW&Væ6S¢tU…E$DòÔd”5D”4”òÔ4’rÂW&–öE7F'C¢f—'7DF’À¢W&–öDVæC¢Æ7DF’Â÷Væ–æt&Ææ6S¢srÂ6Æ÷6–æt&Ææ6S¢s#SÃrÀ¢Æ–æW3¢·°¢–C¢&æ´Æ–æT–BÂW‡FW&æÄ¶W“¢tÔõd”ÔTåDòÔ4’Õ4TÒÕE$å4dU$Tä4”rÀ¢&öö¶VDFFS¢FöF’ÂÖ÷VçC¢s#SÃrÀ¢FW67&—F–öã¢t7,:–F—Fò&æ<:&–òf–7L:Ö6–ò&6öæ6–Æ–:|:6ò4’rÀ¢ÕÒÀ¢Ò’’Âs’W‡G&Fò&æ<:&–ò6–×VÆFò–×÷'FFòrÂ#“°¢v—B&V6÷&B†v—B&V6öæ6–ÆT&æ²‡&W†÷væW"Ârö’ö&æ²ö6öÖÖæG2rÂ°¢¶W“¢&æFöÕUT”B‚’Â7FFVÖVçD–BÂÆ–æT–C¢&æ´Æ–æT–BÀ¢6öÖÖæC¢vÖF6‚rÂfW'6–öã¢ÂF&vWEG—S¢w&V6V—BrÀ¢F&vWD–C¢6WGFÆVÖVçD¶W’À¢Ò’’Âs&V6V&–ÖVçFò76ö6–Fò:Æ–æ†&æ<:&–rÂ#“°¢6öç7B&æ²Òv—B&V6÷&CÇ²7VÖÖ'“¢°¢F÷FÃ¢çVÖ&W#²ÖF6†VC¢çVÖ&W#²VæÖF6†VC¢çVÖ&W#°¢×Óâ†v—B&æ´FWF–Ç2‡&W†÷væW"À¢rö’ö&æ²÷7FFVÖVçG2òr²7FFVÖVçD–B²s÷7FFSÖÖF6†VBr’ÂF‡2‡7FFVÖVçD–B’’À¢s6öæ6–Æ–:|:6ò&æ<:&–6öç7VÇFFrÂ#“°¢76W'BæFVWWVÂ†&æ²ç7VÖÖ'’Â²F÷FÃ¢ÂÖF6†VC¢ÂVæÖF6†VC¢Ò“°¢76W'BæWVÂ‚†v—B&æ´FWF–Ç2‡&W†÷WG6–FW"À¢rö’ö&æ²÷7FFVÖVçG2òr²7FFVÖVçD–B’ÂF‡2‡7FFVÖVçD–B’’’ç7FGW2ÂCB“° ¢òòâ&÷F‚6÷W&6R¦÷W&æÇ2×W7BV"–âF†R&VÂ÷væW"×66÷VBÆVFvW'2à¢6öç7B76WDÆVFvW"Òv—B&V6÷&CÇ²—FV×3¢'&“Ç²¦÷W&æÄ–C¢7G&–ærÓã°¢F÷FÇ3¢²FV&—E66ÆVC¢7G&–æs²7&VF—E66ÆVC¢7G&–ærÒÓâ€¢v—BÆVFvW"‡&W†÷væW"Ârö’ö66÷VçF–æröÆVFvW#ö66÷VçD–CÒr²FV&—D66÷VçD–B’’À¢s&¬:6ò6öçL:&–ÂFRF—fò&V6V&W"rÂ#À¢“°¢6öç7B&WfVçVTÆVFvW"Òv—B&V6÷&CÇ²—FV×3¢'&“Ç²¦÷W&æÄ–C¢7G&–ærÓã°¢F÷FÇ3¢²FV&—E66ÆVC¢7G&–æs²7&VF—E66ÆVC¢7G&–ærÒÓâ€¢v—BÆVFvW"‡&W†÷væW"Ârö’ö66÷VçF–æröÆVFvW#ö66÷VçD–CÒr²&WfVçVT66÷VçD–B’’À¢s&¬:6ò6öçL:&–ÂFR&V6V—FrÂ#À¢“°¢76W'Bæö²†76WDÆVFvW"æ—FV×2ç6öÖR†—FVÒÓâ—FVÒæ¦÷W&æÄ–BÓÓÒ&–ÆÆ–ærç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B’“°¢76W'Bæö²†76WDÆVFvW"æ—FV×2ç6öÖR†—FVÒÓâ—FVÒæ¦÷W&æÄ–BÓÓÒ&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B’“°¢76W'BæWVÂ†76WDÆVFvW"çF÷FÇ2æFV&—E66ÆVBÂ7G&–ær‡66ÆVDÖ÷VçB’“°¢76W'BæWVÂ†76WDÆVFvW"çF÷FÇ2æ7&VF—E66ÆVBÂ7G&–ær‡66ÆVDÖ÷VçB’“°¢76W'BæWVÂ‡&WfVçVTÆVFvW"çF÷FÇ2æ7&VF—E66ÆVBÂ7G&–ær‡66ÆVDÖ÷VçB’“°¢6öç7B&æ´ÆVFvW"Òv—B&V6÷&CÇ²—FV×3¢'&“Ç²¦÷W&æÄ–C¢7G&–ærÓã°¢F÷FÇ3¢²FV&—E66ÆVC¢7G&–æs²7&VF—E66ÆVC¢7G&–ærÒÓâ€¢v—BÆVFvW"‡&W†÷væW"Ârö’ö66÷VçF–æröÆVFvW#ö66÷VçD–CÒr²&æ´66÷VçD–B’’À¢s"&¬:6ò&æ<:&–òFV&—FFòVÆ&—†f–7L:Ö6–rÂ#À¢“°¢76W'Bæö²†&æ´ÆVFvW"æ—FV×2ç6öÖR†—FVÒÓâ—FVÒæ¦÷W&æÄ–BÓÓÒ&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B’“°¢76W'BæWVÂ†&æ´ÆVFvW"çF÷FÇ2æFV&—E66ÆVBÂ7G&–ær‡66ÆVDÖ÷VçB’“°¢76W'BæWVÂ†&æ´ÆVFvW"çF÷FÇ2æ7&VF—E66ÆVBÂsr“°¢6öç7BW†—7F–æt¦÷W&æÇ2Òv—BF"çVW'’€¢u4TÄT5B4õTåB‚¢“£¦–çB26÷VçBe$ôÒ¦÷W&æÅöVçG&–W2t„U$R7F÷%ö–CÒCrÂ¶÷væW%Ò“°¢76W'BæWVÂ†W†—7F–æt¦÷W&æÇ2ç&÷w5³Òæ6÷VçBÂ"À¢tfGW&ÖVçFòR&—†vW&ÒFœ:&–÷2F—7F–çF÷2Â6VÒGWÆ–6:|:6òæò&WÆ’r“° ¢òò"âfW&–g’&÷F‚¦÷W&æÇ2æB66‚&V6öæ6–Æ–F–öâ&Vf÷&RW&–öB6Æ÷6Rà¢6öç7B&Wf–WuF‚Òrö’öf–ææ6R÷W&–öG2÷&VfÆ–v‡C÷W&–öE7F'CÒp¢²f—'7DF’²rgW&–öDVæCÒr²Æ7DF“°¢6öç7B&Wf–WrÒv—B&V6÷&CÇ²6ä6Æ÷6S¢&ööÆVã²&Æö6¶–æt–çfö–6W3¢çVÖ&W#°¢–çfÆ–D66„Æ–æ·3¢çVÖ&W#²Vç÷7FVD66„WfVçG3¢çVÖ&W#°¢F–W#&VF–æW73¢²&VG“¢&ööÆVã²7FGW3¢w&VG’rÂv&Æö6¶VBs°¢&Æö6¶W'3¢'&“Ç²6öFS¢7G&–æs²6÷VçC¢çVÖ&W"ÓâÒÓâ€¢v—B6Æ÷6U&VfÆ–v‡B‡&W†÷væW"Â&Wf–WuF‚’’À¢s",:’ÖfV6†ÖVçFò6öÒ&V6öæ†V6–ÖVçFò6öçL:&–ÂfW&–f–6FòrÂ#À¢“°¢76W'BæWVÂ‡&Wf–Wræ6ä6Æ÷6RÂG'VR“°¢76W'BæWVÂ‡&Wf–Wræ&Æö6¶–æt–çfö–6W2Â“°¢76W'BæWVÂ‡&Wf–Wræ–çfÆ–D66„Æ–æ·2Â“°¢76W'BæWVÂ‡&Wf–WrçVç÷7FVD66„WfVçG2Â“°¢76W'BæFVWWVÂ‡&Wf–WrçF–W#&VF–æW72Â²&VG“¢G'VRÂ7FGW3¢w&VG’rÂ&Æö6¶W'3¢µÒÒ“°¢v—B&V6÷&B†v—B6Æ÷6UW&–öB‡&W†÷væW"Ârö’öf–ææ6R÷W&–öG2ö6Æ÷6RrÂ°¢–C¢6Æ÷6T–BÂW&–öE7F'C¢f—'7DF’ÂW&–öDVæC¢Æ7DF’À¢&VfW&Væ6S¢tdT4„ÔTåDòÕDU5DRÔd”5D”4”òÔ4’rÀ¢Ò’’Âs&W,:ÖöFòf–ææ6V—&òfV6†FòrÂ#“° ¢òòF—&V7B&VÆF–öæÂWf–FVæ6S¢V6‚7FvR&VfW'2FòF†R6ÖRW'6—7FVB6†–âà¢6öç7B6†–âÒv—BF"çVW'’€¢u4TÄT5B2æ–B26Æ–VçEö–BÂæ–B2&÷÷6Åö–BÂ7Bæ–B26öçG&7Eö–BÂr°¢vòæ–B2÷&FW%ö–BÂW‚æ–B2W†V7WF–öåö–BÂÒæ–B2ÖV7W&VÖVçEö–BÂr°¢v’æ–B2–çfö–6Uö–BÂ"æ–B2&V6V—f&ÆUö–BÂ7Bæ–B26WGFÆVÖVçEö–BÂr°¢v"æ–B27FFVÖVçEö–BÂ¦Âæ–B2¦÷W&æÅö–BÂ6¢æ–B2&V6V—Eö¦÷W&æÅö–BÂf2æ–B26Æ÷6Uö–BÂr°¢v’æÖ÷VçB2Ö÷VçBÂ7BæÖ÷VçB2&V6V—fVEöÖ÷VçBÂÂæÖ÷VçB2Æ–æ¶VEöÖ÷VçBÂr°¢v¦ÂæVffV7F—fUöFFR2–çfö–6Uö¦÷W&æÅöFFRÂ6¢æVffV7F—fUöFFR2&V6V—Eö¦÷W&æÅöFFRÂr°¢w7BæVffV7F—fUöFFR2&V6V—EöFFRÂf2çW&–öE÷7F'BÂf2çW&–öEöVæBr°¢te$ôÒ6Æ–VçG22r°¢t¤ô”â&÷÷6Ç2ôâæ6Æ–VçEö–CÖ2æ–BäBæ÷væW%ö–CÖ2æ÷væW%ö–Br°¢t¤ô”â6öçG&7G27Bôâ7Bç&÷÷6Åö–C×æ–BäB7Bæ6Æ–VçEö–CÖ2æ–Br°¢t¤ô”â6W'f–6Uö÷&FW'2òôâòæ6öçG&7Eö–CÖ7Bæ–BäBòæ6Æ–VçEö–CÖ2æ–Br°¢t¤ô”âW†V7WF–öåöVçG&–W2W‚ôâW‚æ÷&FW%ö–CÖòæ–Br°¢t¤ô”âÖV7W&VÖVçG2ÒôâÒæW†V7WF–öåöVçG'•ö–CÖW‚æ–BäBÒæ÷&FW%ö–CÖòæ–Br°¢t¤ô”â–çfö–6W2’ôâ’æÖV7W&VÖVçEö–CÖÒæ–BäB’æ÷&FW%ö–CÖòæ–Br°¢t¤ô”â&V6V—f&ÆW2"ôâ"æ–çfö–6Uö–CÖ’æ–Br°¢$¤ô”â&V6V—f&ÆU÷6WGFÆVÖVçG27Bôâ7Bç&V6V—f&ÆUö–C×"æ–BäB7Bæ¶–æCÒw&V6V—Br"°¢$¤ô”â&æµ÷&V6öæ6–Æ–F–öåöWfVçG2'"ôâ'"ç&V6V—Eö–C×7Bæ–BäB'"æ¶–æCÒvÖF6‚r"°¢t¤ô”â&æµ÷7FFVÖVçEöÆ–æW2&Âôâ&Âæ–CÖ'"æÆ–æUö–Br°¢t¤ô”â&æµ÷7FFVÖVçG2"ôâ"æ–CÖ&Âç7FFVÖVçEö–BäB"æ7F÷%ö–CÖòæ÷væW%ö–Br°¢t¤ô”â66÷VçF–æuö–çfö–6UöÆ–æ·2ÂôâÂæ–çfö–6Uö–CÖ’æ–Br°¢t¤ô”â¦÷W&æÅöVçG&–W2¦Âôâ¦Âæ–CÖÂæ¦÷W&æÅö–BäB¦Âæ7F÷%ö–CÖòæ÷væW%ö–Br°¢$¤ô”â66÷VçF–æu÷6WGFÆVÖVçEöÆ–æ·26Âôâ6Âç6WGFÆVÖVçEö–C×7Bæ–BäB6Âæ7F÷%ö–CÖòæ÷væW%ö–BäB6Âæ¶–æCÒw&V6V—Br"°¢$¤ô”â¦÷W&æÅöVçG&–W26¢ôâ6¢æ–C×6Âæ¦÷W&æÅö–BäB6¢æ7F÷%ö–CÖòæ÷væW%ö–BäB6¢ç7FGW3Òw÷7FVBr"°¢$¤ô”âf–ææ6U÷W&–öEö6Æ÷6W2f2ôâf2æ7F÷%ö–CÖòæ÷væW%ö–BäBf2ç7FGW3Òv6Æ÷6VBr"°¢täB¦ÂæVffV7F—fUöFFR$UEtTTâf2çW&–öE÷7F'BäBf2çW&–öEöVæBr°¢ut„U$R2æ–CÒCäBòæ÷væW%ö–CÒC"rÂ¶6Æ–VçD–BÂ÷væW%ÒÀ¢“°¢76W'BæWVÂ†6†–âç&÷w2æÆVæwF‚ÂÂtVæB×FòÖVæBf÷&V–vâÖ¶W’ö÷&–v–â6†–â×W7B&RVæ—VRâr“°¢6öç7BÆ–æ¶VBÒ6†–âç&÷w5³Ó°¢76W'BæFVWWVÂ‡°¢6Æ–VçC¢Æ–æ¶VBæ6Æ–VçEö–BÂ&÷÷6Ã¢Æ–æ¶VBç&÷÷6Åö–BÀ¢6öçG&7C¢Æ–æ¶VBæ6öçG&7Eö–BÂ÷&FW#¢Æ–æ¶VBæ÷&FW%ö–BÀ¢W†V7WF–öã¢Æ–æ¶VBæW†V7WF–öåö–BÂÖV7W&VÖVçC¢Æ–æ¶VBæÖV7W&VÖVçEö–BÀ¢–çfö–6S¢Æ–æ¶VBæ–çfö–6Uö–BÂ&V6V—f&ÆS¢Æ–æ¶VBç&V6V—f&ÆUö–BÀ¢6WGFÆVÖVçC¢Æ–æ¶VBç6WGFÆVÖVçEö–BÂ&æ³¢Æ–æ¶VBç7FFVÖVçEö–BÀ¢¦÷W&æÃ¢Æ–æ¶VBæ¦÷W&æÅö–BÂ&V6V—D¦÷W&æÃ¢Æ–æ¶VBç&V6V—Eö¦÷W&æÅö–BÀ¢W&–öD6Æ÷6S¢Æ–æ¶VBæ6Æ÷6Uö–BÀ¢–çfö–6T¦÷W&æÄFFS¢7G&–ær†Æ–æ¶VBæ–çfö–6Uö¦÷W&æÅöFFR’ç6Æ–6RƒÂ’À¢&V6V—D¦÷W&æÄFFS¢7G&–ær†Æ–æ¶VBç&V6V—Eö¦÷W&æÅöFFR’ç6Æ–6RƒÂ’À¢&V6V—DFFS¢7G&–ær†Æ–æ¶VBç&V6V—EöFFR’ç6Æ–6RƒÂ’À¢W&–öE7F'C¢Æ–æ¶VBçW&–öE÷7F'BÀ¢W&–öDVæC¢Æ–æ¶VBçW&–öEöVæBÀ¢–çfö–6TÖ÷VçC¢çVÖ&W"†Æ–æ¶VBæÖ÷VçB’À¢6WGFÆVDÖ÷VçC¢çVÖ&W"†Æ–æ¶VBç&V6V—fVEöÖ÷VçB’À¢¦÷W&æÄÖ÷VçC¢çVÖ&W"†Æ–æ¶VBæÆ–æ¶VEöÖ÷VçB’À¢ÒÂ°¢6Æ–VçC¢6Æ–VçD–BÂ&÷÷6Ã¢&÷÷6Ä–BÂ6öçG&7C¢6öçG&7D–BÀ¢÷&FW#¢÷&FW$–BÂW†V7WF–öã¢W†V7WF–öâç&W6÷W&6Ræ–BÀ¢ÖV7W&VÖVçC¢ÖV7W&VÖVçBç&W6÷W&6Ræ–BÂ–çfö–6S¢&–ÆÆ–ærç&W6÷W&6Ræ–çfö–6T–BÀ¢&V6V—f&ÆS¢&–ÆÆ–ærç&W6÷W&6Rç&V6V—f&ÆT–BÂ6WGFÆVÖVçC¢6WGFÆVÖVçD¶W’À¢&æ³¢7FFVÖVçD–BÂ¦÷W&æÃ¢&–ÆÆ–ærç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–BÀ¢&V6V—D¦÷W&æÃ¢&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–BÀ¢W&–öD6Æ÷6S¢6Æ÷6T–BÀ¢–çfö–6T¦÷W&æÄFFS¢FöF’À¢&V6V—D¦÷W&æÄFFS¢FöF’À¢&V6V—DFFS¢FöF’À¢W&–öE7F'C¢f—'7DF’À¢W&–öDVæC¢Æ7DF’À¢–çfö–6TÖ÷VçC¢66ÆVDÖ÷VçBÂ6WGFÆVDÖ÷VçC¢66ÆVDÖ÷VçBÀ¢¦÷W&æÄÖ÷VçC¢66ÆVDÖ÷VçBÀ¢Ò“° ¢òò2âæWrVçFW'&—6RF÷76–W"—2æ÷BFV6÷&F—fS¢—B×W7B&V6öç7G'V7BF†P¢òò–FVçF–6ÂVF—FVB÷7Fw&U5Âw&‚æB7F’–æ66W76–&ÆRFò÷WG6–FW'2à¢6öç7BF÷76–W%F‚Òrö’öVçFW'&—6Rö¦÷W&æW—2òr²÷&FW$–C°¢6öç7BF÷76–W"Òv—B&V6÷&CÇ°¢÷&FW#¢²–C¢7G&–æs²F—FÆS¢7G&–æs²7FGW3¢7G&–ærÓ°¢7FvW3¢'&“Ç²¶W“¢7G&–æs²7FFS¢7G&–æs²—FV×3¢'&“Ç²–C¢7G&–ærÓâÓã°¢f–ææ6–Ç3¢²&–ÆÆVE66ÆVC¢7G&–æs²6WGFÆVE66ÆVC¢7G&–æs²÷WG7FæF–æu66ÆVC¢7G&–ærÓ°¢&÷fVææ6S¢²÷væW%66÷VC¢&ööÆVã²6öç6—7FVæ7“¢7G&–ærÓ°¢Óâ†v—B&VDVçFW'&—6TF÷76–W"‡&W†÷væW"ÆF÷76–W%F‚’ÇF‡2†÷&FW$–B’’À¢s2F÷76œ:¢V×&W6&–ÂG&ç7fW'6Âæò÷7Fw&U5Â&VÂrÃ#“°¢76W'BæWVÂ†F÷76–W"æ÷&FW"æ–BÆ÷&FW$–B“°¢76W'BæWVÂ†F÷76–W"æ÷&FW"ç7FGW2Âv6ö×ÆWFVBr“°¢76W'BæWVÂ†F÷76–W"ç&÷fVææ6Ræ÷væW%66÷VBÇG'VR“°¢76W'BæWVÂ†F÷76–W"ç&÷fVææ6Ræ6öç6—7FVæ7’Âw&WVF&ÆU÷&VBr“°¢76W'BæWVÂ†F÷76–W"æf–ææ6–Ç2æ&–ÆÆVE66ÆVBÅ7G&–ær‡66ÆVDÖ÷VçB’“°¢76W'BæWVÂ†F÷76–W"æf–ææ6–Ç2ç6WGFÆVE66ÆVBÅ7G&–ær‡66ÆVDÖ÷VçB’“°¢76W'BæWVÂ†F÷76–W"æf–ææ6–Ç2æ÷WG7FæF–æu66ÆVBÂsr“°¢6öç7BFö7VÖVçG2ÒæWrÖ†F÷76–W"ç7FvW2æÖ‡7FvSÓå·7FvRæ¶W’Ç7FvUÒ’“°¢6öç7BW†7DFö7VÖVçG2Ò°¢²v6Æ–VçBrÆ6Æ–VçD–EÒÅ²w&÷÷6ÂrÇ&÷÷6Ä–EÒÅ²v6öçG&7BrÆ6öçG&7D–EÒÀ¢²v÷&FW"rÆ÷&FW$–EÒÅ²vW†V7WF–öârÆW†V7WF–öâç&W6÷W&6Ræ–EÒÅ²vÖV7W&VÖVçBrÆÖV7W&VÖVçBç&W6÷W&6Ræ–EÒÀ¢²v&–ÆÆ–ærrÆ&–ÆÆ–ærç&W6÷W&6Ræ–çfö–6T–EÒÅ²w&V6V—f&ÆRrÆ&–ÆÆ–ærç&W6÷W&6Rç&V6V—f&ÆT–EÒÀ¢²w&V6V—BrÇ6WGFÆVÖVçD¶W•ÒÅ²v66÷VçF–ærrÆ&–ÆÆ–ærç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–EÒÀ¢²v6Æ÷6RrÆ6Æ÷6T–EÒÀ¢Ò26öç7C°¢f÷"†6öç7B·7FvRÆ–EÒöbW†7DFö7VÖVçG2—°¢6öç7B—FVÓÖFö7VÖVçG2ævWB‡7FvR“°¢76W'BæWVÂ†—FVÓòç7FFRÂvÆ–æ¶VBrÇ7FvR²rÖ—76–ærg&öÒW'6—7FVB÷væW"×66÷VBF÷76–W"r“°¢76W'Bæö²†—FVÓòæ—FV×2ç6öÖR†Wf–FVæ6SÓæWf–FVæ6Ræ–CÓÓÖ–B’Ç7FvR²r”Bv2æ÷BF†RW†7B7F÷&VBFö7VÖVçBr“°¢Ğ¢76W'Bæö²†Fö7VÖVçG2ævWB‚v66÷VçF–ærr“òæ—FV×2ç6öÖR‡&÷sÓç&÷ræ–CÓÓ×&V6V—Bç&W6÷W&6Ræ66÷VçF–æræ¦÷W&æÄ–B’À¢v&÷F‚f–ææ6–Â¦÷W&æÇ2×W7B&R–æFWVæFVçFÇ’Æ–æ¶VBr“°¢76W'BæWVÂ†Fö7VÖVçG2ævWB‚v&æ²r“òç7FFRÂvÆ–æ¶VBr“°¢76W'BæWVÂ†Fö7VÖVçG2ævWB‚v7&Òr“òç7FFRÂvæ÷EöÆ–æ¶VBrÀ¢væòf–7F—F–÷W25$Ò÷÷'GVæ—G’×W7B&RÖçVf7GW&VBr“°¢76W'BæWVÂ†Fö7VÖVçG2ævWB‚wW&6†6T÷&FW"r“òç7FFRÂvæ÷EöÆ–æ¶VBrÀ¢væòf–7F—F–÷W27W7FöÖW"ò×W7B&RÖçVf7GW&VBr“° ¢6öç7B÷væW$Æ—7BÒv—B&V6÷&CÇ°¢—FV×3¢'&“Ç²–C¢7G&–æs²&–ÆÆVE66ÆVC¢7G&–æs²6WGFÆVE66ÆVC¢7G&–ærÓã°¢vT–æfó¢²F÷FÃ¢çVÖ&W#²†4Ö÷&S¢&ööÆVâÓ°¢Óâ†v—BÆ—7DVçFW'&—6TF÷76–W'2‡&W†÷væW"À¢rö’öVçFW'&—6Rö¦÷W&æW—3÷7FGW3Ö6ö×ÆWFVBgÔVF—F÷&–gvU6—¦SÓ#r’’À¢s6f–Æv–æFFR&ö6W76÷26öÒfÆ÷&W2W'6—7F–F÷2rÃ#“°¢76W'Bæö²†÷væW$Æ—7Bæ—FV×2ç6öÖR†—FVÓÓæ—FVÒæ–CÓÓÖ÷&FW$–@¢bb—FVÒæ&–ÆÆVE66ÆVCÓÓÕ7G&–ær‡66ÆVDÖ÷VçB¢bb—FVÒç6WGFÆVE66ÆVCÓÓÕ7G&–ær‡66ÆVDÖ÷VçB’’“°¢6öç7B'”÷&FW$çVÖ&W"Òv—B&V6÷&CÇ¶—FV×3¤'&“Ç¶–C§7G&–æwÓçÓâ€¢v—BÆ—7DVçFW'&—6TF÷76–W'2‡&W†÷væW"Ârö’öVçFW'&—6Rö¦÷W&æW—3÷Òr¶÷&FW$–Bç6Æ–6RƒÃ‚’’’À¢s62'W66V×&W6&–ÂVÆò–FVçF–f–6F÷"W'6—7F–FòFõ2rÃ#“°¢76W'Bæö²†'”÷&FW$çVÖ&W"æ—FV×2ç6öÖR†—FVÓÓæ—FVÒæ–CÓÓÖ÷&FW$–B’“°¢76W'BæWVÂ‚†v—B&VDVçFW'&—6TF÷76–W"‡&W†÷WG6–FW"ÆF÷76–W%F‚’ÇF‡2†÷&FW$–B’’’ç7FGW2ÃCBÀ¢v÷WG6–FW"×W7BæWfW"&V6V—fRF÷76–W"Fö7VÖVçG2r“°¢6öç7B÷WG6–FW$Æ—7BÒv—B&V6÷&CÇ²—FV×3¢'&“Ç²–C¢7G&–ærÓâÓâ€¢v—BÆ—7DVçFW'&—6TF÷76–W'2‡&W†÷WG6–FW"Ârö’öVçFW'&—6Rö¦÷W&æW—2r’’À¢s6"W7\:&–òW‡FW&æò6VÒ6W76ò:6FV–rÃ#“°¢76W'Bæö²‚÷WG6–FW$Æ—7Bæ—FV×2ç6öÖR†—FVÓÓæ—FVÒæ–CÓÓÖ÷&FW$–B’“°¢76W'BæWVÂ‚†v—B&VDVçFW'&—6TF÷76–W"‡&W†÷væW"Ârö’öVçFW'&—6Rö¦÷W&æW—2òr·&æFöÕUT”B‚’’À¢F‡2‡&æFöÕUT”B‚’’’’ç7FGW2ÃCB“°¢76W'BæWVÂ‚†v—B&VDVçFW'&—6TF÷76–W"‡&W†÷væW"Ârö’öVçFW'&—6Rö¦÷W&æW—2ö–çfÆ–Br’À¢F‡2‚v–çfÆ–Br’’’ç7FGW2ÃC“°¢76W'BæWVÂ‚†v—BÆ—7DVçFW'&—6TF÷76–W'2‡&W†÷væW"Ârö’öVçFW'&—6Rö¦÷W&æW—3÷vU6—¦SÓ#r’’’ç7FGW2ÃCÀ¢wVæ&÷VæFVBVW'’×W7B&R&V¦V7FVBÂæWfW"6W6RgVÆÂ×F&ÆRW‡G&7F–öâr“° ¢òòBâ6öçG&öÂF÷vW"×W7B&VBF†R6ÖRW'6—7FVB÷væW"×66÷VB÷&FW"À¢òòæWfW"G&VF–æræöç–Ö÷W2öÆVv7’&V6÷&G22WF†÷&—¦VBFö7VÖVçG2à¢6öç7B6öçG&öÅF÷vW#Öv—B&V6÷&CÇ°¢—FV×3¤'&“Ç¶–C§7G&–æs·7FGW3§7G&–æs¶Wf–FVæ6S§¶ÖV7W&VÖVçG3¦çVÖ&W#¶–çfö–6W3¦çVÖ&W'×Óã°¢7VÖÖ'“§·F÷FÃ¦çVÖ&W#·VæÖV7W&VC¦çVÖ&W'Ó°¢vT–æfó§·F÷FÃ¦çVÖ&W#¶†4Ö÷&S¦&ööÆVçÓ°¢6÷W&6S§7G&–æs°¢Óâ†v—B&VD÷W&F–öæÄ6VçFW"‡&W†÷væW"À¢rö’öVçFW'&—6Rö÷W&F–öç3÷VWVSÖÆÂgÒr¶÷&FW$–Bç6Æ–6RƒÃ‚’’’À¢sB6VçG&òFR6öÖæFò6öÒFö7VÖVçF÷2W'6—7F–F÷2rÃ#“°¢76W'BæWVÂ†6öçG&öÅF÷vW"ç6÷W&6RÂw÷7Fw&W5ö÷væW%÷66÷VEö÷W&F–öç2r“°¢76W'BæWVÂ†6öçG&öÅF÷vW"çvT–æfòçF÷FÂÃ“°¢76W'Bæö²†6öçG&öÅF÷vW"æ—FV×2ç6öÖR†—FVÓÓæ—FVÒæ–CÓÓÖ÷&FW$–Bbb—FVÒç7FGW3ÓÓÒv6ö×ÆWFVBp¢bb—FVÒæWf–FVæ6RæÖV7W&VÖVçG3ÓÓÓbb—FVÒæWf–FVæ6Ræ–çfö–6W3ÓÓÓ’“°¢76W'BæWVÂ†6öçG&öÅF÷vW"ç7VÖÖ'’çVæÖV7W&VBÃ“°¢6öç7BVæWF†÷&—¦VEF÷vW#Öv—B&V6÷&CÇ°¢—FV×3¤'&“Ç¶–C§7G&–æwÓã·7VÖÖ'“§·F÷FÃ¦çVÖ&W'Ó°¢Óâ†v—B&VD÷W&F–öæÄ6VçFW"‡&W†÷WG6–FW"À¢rö’öVçFW'&—6Rö÷W&F–öç3÷VWVSÖÆÂr’’À¢sF6VçG&ò÷W&6–öæÂì:6òW‡;VRõ2FR÷WG&òW7\:&–òrÃ#“°¢76W'BæWVÂ‡VæWF†÷&—¦VEF÷vW"ç7VÖÖ'’çF÷FÂÃ“°¢76W'BæFVWWVÂ‡VæWF†÷&—¦VEF÷vW"æ—FV×2ÅµÒ“°¢76W'BæWVÂ‚†v—B&VD÷W&F–öæÄ6VçFW"‡&W†÷væW"À¢rö’öVçFW'&—6Rö÷W&F–öç3÷vU6—¦SÓ““’r’’’ç7FGW2ÃC“°¢76W'BæWVÂ‚†v—B&VD÷W&F–öæÄ6VçFW"‡&W†÷væW"À¢rö’öVçFW'&—6Rö÷W&F–öç3÷VWVSÖ–çfÆ–Br’’’ç7FGW2ÃC“° ¢6öç6öÆRæÆör„¥4ôâç7G&–æv–g’‡°¢WfVçC¢t4•4äUôõ$DU%õDõô44…ôd”5D•D”õU5ô4’rÀ¢7FFS¢t4„”åôÄ”äµ5õdU$”d”TEõt•D…ô44…ôÄTDtU"rÀ¢&VÄ7W7FöÖW%&V6÷&G47&VFVC¢Â&VÄ&æ´÷W&F–öç3¢À¢f–7F–öæÄÖ÷VçE66ÆVC¢7G&–ær‡66ÆVDÖ÷VçB’À¢Æ–æ¶VE7FvW3¢"À¢&æ´ÖF6†W3¢&æ²ç7VÖÖ'’æÖF6†VBÀ¢¦÷W&æÄ6÷VçC¢W†—7F–æt¦÷W&æÇ2ç&÷w5³Òæ6÷VçBÀ¢6fVC¢u7–çF†WF–2&æ²ÖF6†–æræBW‡Æ–6—B66÷VçF–ær'VÆW2öæÇ“²æò&VÂG&ç6fW"÷"f—66ÂG&ç6Ö—76–öâârÀ¢Ò’“°§Ò“° 
+      quantity: '2', unit: 'hora',
+      resourceReference: 'CI-TESTE-NAO-REAL',
+      effectiveDate: today, reference: 'EXECUCAO-CI-FAKE',
+    }), paths(orderId)),
+    '05 ExecuÃ§Ã£o operacional registrada', 201,
+  );
+  await record(await orderAction(req(owner, '/api/commands', {
+    id: orderId, version: 3, key: randomUUID(), command: 'complete',
+  })), '05a OS concluÃ­da', 201);
+
+  // 6. Workflow approval is intentionally initiated from DRAFT, as this
+  // existing API does not support approve-after-submission.
+  const measurement = await record<{ resource: { id: string } }>(
+    await registerMeasurement(req(owner, '/api/orders/' + orderId + '/measurements', {
+      key: randomUUID(), executionId: execution.resource.id,
+      description: 'MediÃ§Ã£o fictÃ­cia vinculada ao apontamento CI',
+      amount: '250,00',
+    }), paths(orderId)),
+    '06 MediÃ§Ã£o originada de execuÃ§Ã£o concluÃ­da', 201,
+  );
+  const approvalId = randomUUID();
+  await record(await requestApproval(req(owner, '/api/workflow/approvals', {
+    id: approvalId, entityId: measurement.resource.id, expectedVersion: 1,
+    approverId: approver, entityType: 'measurement',
+    command: 'approve_measurement', payload: {},
+  })), '06a AprovaÃ§Ã£o solicitada para outro ator fictÃ­cio', 201);
+  await record(await decideApproval(req(approver,
+    '/api/workflow/approvals/' + approvalId + '/commands', {
+      key: randomUUID(), version: 1, command: 'approve',
+    }), paths(approvalId)), '06b MediÃ§Ã£o aprovada com segregaÃ§Ã£o de funÃ§Ãµes', 200);
+  const rowMeasurement = await db.query(
+    'SELECT status,amount,version,execution_entry_id FROM measurements WHERE id=$1',
+    [measurement.resource.id],
+  );
+  assert.deepEqual({
+    status: rowMeasurement.rows[0].status,
+    amount: rowMeasurement.rows[0].amount,
+    executionId: rowMeasurement.rows[0].execution_entry_id,
+  }, { status: 'approved', amount: scaledAmount, executionId: execution.resource.id });
+
+  // 7. Deliberately configure ledger recognition; production rules remain
+  // untouched because the whole DB is a disposable local CI container.
+  await record(await registerAccount(req(owner, '/api/accounting/accounts', {
+    id: debitAccountId, code: 'AR-FAKE', name: 'RecebÃ­veis - Teste CI',
+    type: 'asset', active: true,
+  })), '07a Conta de ativo fictÃ­cia cadastrada', 201);
+  await record(await registerAccount(req(owner, '/api/accounting/accounts', {
+    id: revenueAccountId, code: 'REV-FAKE', name: 'Receitas - Teste CI',
+    type: 'revenue', active: true,
+  })), '07b Conta de receita fictÃ­cia cadastrada', 201);
+  await record(await registerAccount(req(owner, '/api/accounting/accounts', {
+    id: bankAccountId, code: 'BANK-FAKE', name: 'Banco fictÃ­cio - Teste CI',
+    type: 'asset', active: true,
+  })), '07c Conta bancÃ¡ria fictÃ­cia cadastrada', 201);
+  await record(await configureRule(req(owner, '/api/accounting/posting-rules', {
+    sourceType: 'invoice_billing', commandKey: randomUUID(), expectedVersion: 0,
+    debitAccountId, creditAccountId: revenueAccountId, active: true,
+  })), '07d Regra de reconhecimento de faturamento ativada', 201);
+  const billingKey = randomUUID();
+  const billing = await record<{ resource: {
+    invoiceId: string; receivableId: string; amount: string;
+    accounting: { status: string; journalId: string };
+  }}>(await invoiceMeasurement(req(owner, '/api/finance/billing', {
+    measurementId: measurement.resource.id, dueDate: '2099-01-01', commandKey: billingKey,
+  })), '07 Fatura + recebÃ­vel + diÃ¡rio atÃ´micos', 201);
+  assert.equal(billing.resource.accounting.status, 'auto_posted');
+  assert.equal(billing.resource.amount, String(scaledAmount));
+  assert.equal((await invoiceMeasurement(req(owner, '/api/finance/billing', {
+    measurementId: measurement.resource.id, dueDate: '2099-01-01', commandKey: billingKey,
+  }))).status, 200);
+
+  // 8. Activate explicit cash/A/R posting rule; no real payment takes place.
+  await record(await configureRule(req(owner, '/api/accounting/posting-rules', {
+    sourceType: 'receivable_receipt', commandKey: randomUUID(), expectedVersion: 0,
+    debitAccountId: bankAccountId, creditAccountId: debitAccountId, active: true,
+  })), '07e Regra de baixa contÃ¡bil ativada', 201);
+  assert.equal((await settleReceivable(req(outsider,
+    '/api/finance/receivables/settlements', {
+      receivableId: billing.resource.receivableId, amount: String(scaledAmount),
+      effectiveDate: today, reference: 'TENTATIVA-NAO-AUTORIZADA',
+      commandKey: randomUUID(),
+    }))).status, 404);
+  const receipt = await record<{ resource: {
+    id: string; balance: string; amount: string;
+    accounting: { status: string; journalId: string };
+  }}>(await settleReceivable(req(owner,
+    '/api/finance/receivables/settlements', {
+      receivableId: billing.resource.receivableId, amount: String(scaledAmount),
+      effectiveDate: today, reference: 'RECEBIMENTO-FICTICIO-CI',
+      commandKey: settlementKey,
+    })), '08 TÃ­tulo recebido e saldo zerado', 201);
+  assert.equal(receipt.resource.balance, '0');
+  assert.equal(receipt.resource.id, settlementKey);
+  assert.equal(receipt.resource.accounting.status, 'auto_posted');
+  assert.ok(receipt.resource.accounting.journalId);
+  const replayReceipt = await record<{ resource: { accounting: { journalId: string } } }>(
+    await settleReceivable(req(owner, '/api/finance/receivables/settlements', {
+      receivableId: billing.resource.receivableId, amount: String(scaledAmount),
+      effectiveDate: today, reference: 'RECEBIMENTO-FICTICIO-CI',
+      commandKey: settlementKey,
+    })), '08a Baixa idempotente sem diÃ¡rio duplicado', 200,
+  );
+  assert.equal(replayReceipt.resource.accounting.journalId, receipt.resource.accounting.journalId);
+
+  // 9. Manually imported *fabricated* bank statement, not a banking connector.
+  await record(await registerStatement(req(owner, '/api/bank/statements', {
+    id: statementId, accountReference: 'BANCO-FICTICIO-SEM-CONTA-REAL',
+    sourceReference: 'EXTRATO-FICTICIO-CI', periodStart: firstDay,
+    periodEnd: lastDay, openingBalance: '0', closingBalance: '250,00',
+    lines: [{
+      id: bankLineId, externalKey: 'MOVIMENTO-CI-SEM-TRANSFERENCIA',
+      bookedDate: today, amount: '250,00',
+      description: 'CrÃ©dito bancÃ¡rio fictÃ­cio para conciliaÃ§Ã£o CI',
+    }],
+  })), '09 Extrato bancÃ¡rio simulado importado', 201);
+  await record(await reconcileBank(req(owner, '/api/bank/commands', {
+    key: randomUUID(), statementId, lineId: bankLineId,
+    command: 'match', version: 1, targetType: 'receipt',
+    targetId: settlementKey,
+  })), '10 Recebimento associado Ã  linha bancÃ¡ria', 201);
+  const bank = await record<{ summary: {
+    total: number; matched: number; unmatched: number;
+  }}>(await bankDetails(req(owner,
+    '/api/bank/statements/' + statementId + '?state=matched'), paths(statementId)),
+  '10a ConciliaÃ§Ã£o bancÃ¡ria consultada', 200);
+  assert.deepEqual(bank.summary, { total: 1, matched: 1, unmatched: 0 });
+  assert.equal((await bankDetails(req(outsider,
+    '/api/bank/statements/' + statementId), paths(statementId))).status, 404);
+
+  // 11. Both source journals must appear in the real owner-scoped ledgers.
+  const assetLedger = await record<{ items: Array<{ journalId: string }>;
+    totals: { debitScaled: string; creditScaled: string } }>(
+    await ledger(req(owner, '/api/accounting/ledger?accountId=' + debitAccountId)),
+    '11 RazÃ£o contÃ¡bil de ativo a receber', 200,
+  );
+  const revenueLedger = await record<{ items: Array<{ journalId: string }>;
+    totals: { debitScaled: string; creditScaled: string } }>(
+    await ledger(req(owner, '/api/accounting/ledger?accountId=' + revenueAccountId)),
+    '11a RazÃ£o contÃ¡bil de receita', 200,
+  );
+  assert.ok(assetLedger.items.some(item => item.journalId === billing.resource.accounting.journalId));
+  assert.ok(assetLedger.items.some(item => item.journalId === receipt.resource.accounting.journalId));
+  assert.equal(assetLedger.totals.debitScaled, String(scaledAmount));
+  assert.equal(assetLedger.totals.creditScaled, String(scaledAmount));
+  assert.equal(revenueLedger.totals.creditScaled, String(scaledAmount));
+  const bankLedger = await record<{ items: Array<{ journalId: string }>;
+    totals: { debitScaled: string; creditScaled: string } }>(
+    await ledger(req(owner, '/api/accounting/ledger?accountId=' + bankAccountId)),
+    '11b RazÃ£o bancÃ¡rio debitado pela baixa fictÃ­cia', 200,
+  );
+  assert.ok(bankLedger.items.some(item => item.journalId === receipt.resource.accounting.journalId));
+  assert.equal(bankLedger.totals.debitScaled, String(scaledAmount));
+  assert.equal(bankLedger.totals.creditScaled, '0');
+  const existingJournals = await db.query(
+    'SELECT COUNT(*)::int AS count FROM journal_entries WHERE actor_id=$1', [owner]);
+  assert.equal(existingJournals.rows[0].count, 2,
+    'Faturamento e baixa geram diÃ¡rios distintos, sem duplicaÃ§Ã£o no replay');
+
+  // 12. Verify both journals and cash reconciliation before period close.
+  const previewPath = '/api/finance/periods/preflight?periodStart='
+    + firstDay + '&periodEnd=' + lastDay;
+  const preview = await record<{ canClose: boolean; blockingInvoices: number;
+    invalidCashLinks: number; unpostedCashEvents: number }>(
+    await closePreflight(req(owner, previewPath)),
+    '12 PrÃ©-fechamento com reconhecimento contÃ¡bil verificado', 200,
+  );
+  assert.equal(preview.canClose, true);
+  assert.equal(preview.blockingInvoices, 0);
+  assert.equal(preview.invalidCashLinks, 0);
+  assert.equal(preview.unpostedCashEvents, 0);
+  await record(await closePeriod(req(owner, '/api/finance/periods/close', {
+    id: closeId, periodStart: firstDay, periodEnd: lastDay,
+    reference: 'FECHAMENTO-TESTE-FICTICIO-CI',
+  })), '12a PerÃ­odo financeiro fechado', 201);
+
+  // Direct relational evidence: each stage refers to the same persisted chain.
+  const chain = await db.query(
+    'SELECT c.id AS client_id, p.id AS proposal_id, ct.id AS contract_id, ' +
+    'o.id AS order_id, ex.id AS execution_id, m.id AS measurement_id, ' +
+    'i.id AS invoice_id, r.id AS receivable_id, st.id AS settlement_id, ' +
+    'b.id AS statement_id, jl.id AS journal_id, sj.id AS receipt_journal_id, fc.id AS close_id, ' +
+    'i.amount AS amount, st.amount AS received_amount, l.amount AS linked_amount ' +
+    'FROM clients c ' +
+    'JOIN proposals p ON p.client_id=c.id AND p.owner_id=c.owner_id ' +
+    'JOIN contracts ct ON ct.proposal_id=p.id AND ct.client_id=c.id ' +
+    'JOIN service_orders o ON o.contract_id=ct.id AND o.client_id=c.id ' +
+    'JOIN execution_entries ex ON ex.order_id=o.id ' +
+    'JOIN measurements m ON m.execution_entry_id=ex.id AND m.order_id=o.id ' +
+    'JOIN invoices i ON i.measurement_id=m.id AND i.order_id=o.id ' +
+    'JOIN receivables r ON r.invoice_id=i.id ' +
+    "JOIN receivable_settlements st ON st.receivable_id=r.id AND st.kind='receipt' " +
+    "JOIN bank_reconciliation_events br ON br.receipt_id=st.id AND br.kind='match' " +
+    'JOIN bank_statement_lines bl ON bl.id=br.line_id ' +
+    'JOIN bank_statements b ON b.id=bl.statement_id AND b.actor_id=o.owner_id ' +
+    'JOIN accounting_invoice_links l ON l.invoice_id=i.id ' +
+    'JOIN journal_entries jl ON jl.id=l.journal_id AND jl.actor_id=o.owner_id ' +
+    "JOIN accounting_settlement_links sl ON sl.settlement_id=st.id AND sl.actor_id=o.owner_id AND sl.kind='receipt' " +
+    "JOIN journal_entries sj ON sj.id=sl.journal_id AND sj.actor_id=o.owner_id AND sj.status='posted' " +
+    "JOIN finance_period_closes fc ON fc.actor_id=o.owner_id AND fc.status='closed' " +
+    'AND jl.effective_date BETWEEN fc.period_start AND fc.period_end ' +
+    'WHERE c.id=$1 AND o.owner_id=$2', [clientId, owner],
+  );
+  assert.equal(chain.rows.length, 1, 'End-to-end foreign-key/origin chain must be unique.');
+  const linked = chain.rows[0];
+  assert.deepEqual({
+    client: linked.client_id, proposal: linked.proposal_id,
+    contract: linked.contract_id, order: linked.order_id,
+    execution: linked.execution_id, measurement: linked.measurement_id,
+    invoice: linked.invoice_id, receivable: linked.receivable_id,
+    settlement: linked.settlement_id, bank: linked.statement_id,
+    journal: linked.journal_id, receiptJournal: linked.receipt_journal_id,
+    periodClose: linked.close_id,
+    invoiceAmount: Number(linked.amount),
+    settledAmount: Number(linked.received_amount),
+    journalAmount: Number(linked.linked_amount),
+  }, {
+    client: clientId, proposal: proposalId, contract: contractId,
+    order: orderId, execution: execution.resource.id,
+    measurement: measurement.resource.id, invoice: billing.resource.invoiceId,
+    receivable: billing.resource.receivableId, settlement: settlementKey,
+    bank: statementId, journal: billing.resource.accounting.journalId,
+    receiptJournal: receipt.resource.accounting.journalId,
+    periodClose: closeId,
+    invoiceAmount: scaledAmount, settledAmount: scaledAmount,
+    journalAmount: scaledAmount,
+  });
+
+  // 13. New enterprise dossier is not decorative: it must reconstruct the
+  // identical audited PostgreSQL graph and stay inaccessible to outsiders.
+  const dossierPath = '/api/enterprise/journeys/' + orderId;
+  const dossier = await record<{
+    order: { id: string; title: string; status: string };
+    stages: Array<{ key: string; state: string; items: Array<{ id: string }> }>;
+    financials: { billedScaled: string; settledScaled: string; outstandingScaled: string };
+    provenance: { ownerScoped: boolean; consistency: string };
+  }>(await readEnterpriseDossier(req(owner,dossierPath),paths(orderId)),
+    '13 DossiÃª empresarial transversal no PostgreSQL real',200);
+  assert.equal(dossier.order.id,orderId);
+  assert.equal(dossier.order.status,'completed');
+  assert.equal(dossier.provenance.ownerScoped,true);
+  assert.equal(dossier.provenance.consistency,'repeatable_read');
+  assert.equal(dossier.financials.billedScaled,String(scaledAmount));
+  assert.equal(dossier.financials.settledScaled,String(scaledAmount));
+  assert.equal(dossier.financials.outstandingScaled,'0');
+  const documents = new Map(dossier.stages.map(stage=>[stage.key,stage]));
+  const exactDocuments = [
+    ['client',clientId],['proposal',proposalId],['contract',contractId],
+    ['order',orderId],['execution',execution.resource.id],['measurement',measurement.resource.id],
+    ['billing',billing.resource.invoiceId],['receivable',billing.resource.receivableId],
+    ['receipt',settlementKey],['accounting',billing.resource.accounting.journalId],
+    ['close',closeId],
+  ] as const;
+  for(const [stage,id] of exactDocuments){
+    const item=documents.get(stage);
+    assert.equal(item?.state,'linked',stage+' missing from persisted owner-scoped dossier');
+    assert.ok(item?.items.some(evidence=>evidence.id===id),stage+' ID was not the exact stored document');
+  }
+  assert.ok(documents.get('accounting')?.items.some(row=>row.id===receipt.resource.accounting.journalId),
+    'both financial journals must be independently linked');
+  assert.equal(documents.get('bank')?.state,'linked');
+  assert.equal(documents.get('crm')?.state,'not_linked',
+    'no fictitious CRM opportunity must be manufactured');
+  assert.equal(documents.get('purchaseOrder')?.state,'not_linked',
+    'no fictitious customer PO must be manufactured');
+
+  const ownerList = await record<{
+    items: Array<{ id: string; billedScaled: string; settledScaled: string }>;
+    pageInfo: { total: number; hasMore: boolean };
+  }>(await listEnterpriseDossiers(req(owner,
+    '/api/enterprise/journeys?status=completed&q=Auditoria&pageSize=20')),
+    '13a Fila paginada de processos com valores persistidos',200);
+  assert.ok(ownerList.items.some(item=>item.id===orderId
+    && item.billedScaled===String(scaledAmount)
+    && item.settledScaled===String(scaledAmount)));
+  const byOrderNumber = await record<{items:Array<{id:string}>}>(
+    await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?q='+orderId.slice(0,8))),
+    '13c Busca empresarial pelo identificador persistido da OS',200);
+  assert.ok(byOrderNumber.items.some(item=>item.id===orderId));
+  assert.equal((await readEnterpriseDossier(req(outsider,dossierPath),paths(orderId))).status,404,
+    'outsider must never receive dossier documents');
+  const outsiderList = await record<{ items: Array<{ id: string }> }>(
+    await listEnterpriseDossiers(req(outsider,'/api/enterprise/journeys')),
+    '13b UsuÃ¡rio externo sem acesso Ã  cadeia',200);
+  assert.ok(!outsiderList.items.some(item=>item.id===orderId));
+  assert.equal((await readEnterpriseDossier(req(owner,'/api/enterprise/journeys/'+randomUUID()),
+    paths(randomUUID()))).status,404);
+  assert.equal((await readEnterpriseDossier(req(owner,'/api/enterprise/journeys/invalid'),
+    paths('invalid'))).status,400);
+  assert.equal((await listEnterpriseDossiers(req(owner,'/api/enterprise/journeys?pageSize=200'))).status,400,
+    'unbounded query must be rejected, never cause full-table extraction');
+
+  // 14. Control Tower must read the same persisted owner-scoped order,
+  // never treating anonymous/legacy records as authorized documents.
+  const controlTower=await record<{
+    items:Array<{id:string;status:string;evidence:{measurements:number;invoices:number}}>;
+    summary:{total:number;unmeasured:number};
+    pageInfo:{total:number;hasMore:boolean};
+    source:string;
+  }>(await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?queue=all&q='+orderId.slice(0,8))),
+    '14 Centro de comando com documentos persistidos',200);
+  assert.equal(controlTower.source,'postgres_owner_scoped_operations');
+  assert.equal(controlTower.pageInfo.total,1);
+  assert.ok(controlTower.items.some(item=>item.id===orderId && item.status==='completed'
+    && item.evidence.measurements===1 && item.evidence.invoices===1));
+  assert.equal(controlTower.summary.unmeasured,0);
+  const unauthorizedTower=await record<{
+    items:Array<{id:string}>;summary:{total:number};
+  }>(await readOperationalCenter(req(outsider,
+    '/api/enterprise/operations?queue=all')),
+    '14a Centro operacional nÃ£o expÃµe OS de outro usuÃ¡rio',200);
+  assert.equal(unauthorizedTower.summary.total,0);
+  assert.deepEqual(unauthorizedTower.items,[]);
+  assert.equal((await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?pageSize=999'))).status,400);
+  assert.equal((await readOperationalCenter(req(owner,
+    '/api/enterprise/operations?queue=invalid'))).status,400);
+
+  console.log(JSON.stringify({
+    event: 'CISNE_ORDER_TO_CASH_FICTITIOUS_CI',
+    state: 'CHAIN_LINKS_VERIFIED_WITH_CASH_LEDGER',
+    realCustomerRecordsCreated: 0, realBankOperations: 0,
+    fictionalAmountScaled: String(scaledAmount),
+    linkedStages: 12,
+    bankMatches: bank.summary.matched,
+    journalCount: existingJournals.rows[0].count,
+    caveat: 'Synthetic bank matching and explicit accounting rules only; no real transfer or fiscal transmission.',
+  }));
+});

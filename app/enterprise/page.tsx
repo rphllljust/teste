@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { LegalEntityCnaes } from '../components/enterprise/LegalEntityCnaes';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Tenant={id:string;slug:string;name:string;role:string;status:string};
@@ -228,12 +229,13 @@ export default function EnterpriseStructurePage(){
     {loadingDetail?<p role="status">Consultando estrutura…</p>:companies.length?
      <div className="table-wrap enterprise-governance-table"><table>
       <caption className="sr-only">Empresas jurídicas da organização ativa</caption>
-      <thead><tr><th scope="col">Código</th><th scope="col">Nome</th><th scope="col">Situação</th></tr></thead>
+      <thead><tr><th scope="col">Código</th><th scope="col">Nome</th><th scope="col">CNPJ</th><th scope="col">Situação</th></tr></thead>
       <tbody>{companies.map(company=><tr key={company.id}>
-       <td><strong>{company.code}</strong></td><td>{company.name}</td>
+       <td><strong>{company.code}</strong></td><td>{company.name}</td><td>{company.taxId??'—'}</td>
        <td><span className="enterprise-governance-state">{company.status}</span></td>
       </tr>)}</tbody>
      </table></div>:<p className="enterprise-governance-empty">Nenhuma empresa jurídica registrada nesta organização.</p>}
+    {companies.length>0&&<LegalEntityCnaes key={tenantId} tenantId={tenantId} companies={companies} canManage={canManage}/>}
     {canManage&&<details className="enterprise-governance-disclosure">
      <summary>Registrar empresa jurídica</summary>
      <form onSubmit={createCompany}>
