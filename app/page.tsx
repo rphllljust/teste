@@ -316,6 +316,7 @@ function HomeView() {
     key: string;
     reversesId?: string;
   } | null>(null);
+  const [osDetailExpanded,setOsDetailExpanded]=useState(true);
   const [docked, setDocked] = useState(false),
     [paletteResult, setPaletteResult] = useState<{
       items: Order[];
@@ -3236,21 +3237,27 @@ function HomeView() {
       {selected && (
         <div
           className={
-            "overlay context-overlay " + (docked ? "context-docked" : "")
+            "overlay context-overlay " + (docked ? "context-docked " : "") + (osDetailExpanded ? "os-detail-expanded" : "")
           }
           onClick={() => {
             if (!docked) setSelected(null);
           }}
         >
           <aside
-            className="drawer"
+            className="drawer os-tier1-object-page"
             role="dialog"
-            aria-modal={!docked}
-            aria-label="Contexto da ordem"
+            aria-modal={!docked||osDetailExpanded}
+            aria-label="Página de detalhe da ordem de serviço"
             onClick={(e) => e.stopPropagation()}
           >
             <header>
-              <span className="eyebrow">CONTEXTO DA ORDEM</span>
+              <span className="eyebrow">ORDEM DE SERVIÇO · OBJECT PAGE</span>
+              <div className="os-tier1-object-header-actions">
+                <button type="button" className="secondary" aria-pressed={osDetailExpanded}
+                  aria-label={osDetailExpanded?'Recolher página ao inspetor lateral':'Ampliar página da ordem de serviço'}
+                  onClick={()=>setOsDetailExpanded(v=>!v)}>
+                  {osDetailExpanded?'Recolher painel':'Expandir página'}
+                </button>
               <button
                 className="icon-button"
                 aria-label="Fechar contexto"
@@ -3259,6 +3266,7 @@ function HomeView() {
               >
                 <X size={21} />
               </button>
+              </div>
             </header>
             <EnterpriseObjectSummary
                type="Ordem de serviço" reference={selected.id.slice(0,8).toUpperCase()}
