@@ -157,6 +157,62 @@
   justify-content: flex-end;
   gap: 8px;
 }
+/* Legacy domain entry points have their own headings; align them too. */
+.app[data-layout-system="tier1"] .main > main :is(
+  .cisne-crm-heading, .procurement-hero, .inventory-hero, .mrp-header
+) {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-bottom: 1px solid var(--cisne-color-border);
+  padding-bottom: 12px;
+  margin: 0 0 12px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .cisne-crm-heading, .procurement-hero, .inventory-hero, .mrp-header
+) :is(h1,h2) {
+  margin: 2px 0 4px;
+  font-size: var(--cisne-tier1-page-heading) !important;
+  font-weight: 670;
+  line-height: 1.22;
+  letter-spacing: -.025em;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .cisne-crm-heading, .procurement-hero, .inventory-hero, .mrp-header
+) p {
+  font-size: var(--cisne-tier1-detail);
+  line-height: 1.45;
+  margin: 0;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .cisne-crm-actions, .hero-actions, .inventory-hero .command-buttons,
+  .mrp-actions
+) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .cisne-crm-actions, .hero-actions, .inventory-hero .command-buttons,
+  .mrp-actions
+) :is(button,a) { min-height: var(--cisne-tier1-control); }
+
+/* Shared first-level surfaces must never impose a private content width. */
+.app[data-layout-system="tier1"] .main > main > :is(
+  .assets-workspace, .procurement-command-center, .inventory-command-center,
+  .finance-enterprise, .finance-tier1-control-tower,
+  .enterprise-module, .planning-board
+) {
+  min-width: 0;
+  width: 100%;
+  max-width: 100% !important;
+  margin-inline: 0;
+}
+
 /* Consistent List Report furniture, but retain domain-specific columns/actions. */
 .app[data-layout-system="tier1"] .main > main :is(
   .worklist, .enterprise-panel, .enterprise-work-queue,
