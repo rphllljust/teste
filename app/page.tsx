@@ -2690,7 +2690,8 @@ function HomeView() {
             <ProposalsWorkspace initialId={commercialOrigin} />
           ) : page === "Visão financeira" ? (
             <FinanceOverviewWorkspace onDrilldown={drillFinance} onNavigate={name=>navigate(name)}
-              onLedgerAccount={(id,from,to)=>{navigate('Razão contábil');setLedgerDrilldown({id,from,to});}} />
+              onLedgerAccount={(id,from,to)=>{navigate('Razão contábil');setLedgerDrilldown({id,from,to});}}
+              onProjectOrder={id=>navigate('Dossiês empresariais',id)} />
           ) : page === "Fluxo de caixa" ? (
             <CashFlowWorkspace onNavigate={name=>navigate(name)} />
           ) : page === "Tesouraria" ? (
