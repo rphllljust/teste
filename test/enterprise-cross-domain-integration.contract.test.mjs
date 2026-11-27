@@ -48,3 +48,23 @@ test('transversal wave keeps compact financial shell and both controller context
   assert.equal(depth,0);
  }
 });
+
+test('procurement P2P object navigates to owner-scoped AP and never fabricates bank/GL postings',()=>{
+ const procurement=read('app/ProcurementWorkspace.tsx');
+ const board=read('app/ProcureToPayDossierBoard.tsx');
+ const payables=read('app/PayablesWorkspace.tsx');
+ const page=read('app/page.tsx');
+ const route=read('app/api/enterprise/procure-to-pay/[id]/route.ts');
+ const source=read('lib/application/procure-to-pay-dossier.ts');
+ assert.ok(procurement.includes("activeTab==='chain'"));
+ assert.ok(procurement.includes('<ProcureToPayDossierBoard'));
+ assert.ok(board.includes('/api/enterprise/procure-to-pay/'));
+ assert.ok(board.includes('onOpenPayable(data.payableId!'));
+ assert.ok(page.includes('setPayableDrilldown(id)'));
+ assert.ok(payables.includes('initialPayableId'));
+ for(const marker of ['REPEATABLE READ READ ONLY','po.owner_id=$2',
+   'si.owner_id=$2','p.actor_id=$2',"e.kind='match'",'enterprise_project_cost_allocations'])
+  assert.ok(source.includes(marker),'P2P tenant/evidence boundary missing: '+marker);
+ assert.ok(route.includes('requestContext(request)'));
+ assert.ok(route.includes('getProcureToPayDossier(context.actorId,id)'));
+});
