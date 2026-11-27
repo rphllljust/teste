@@ -117,7 +117,10 @@ export default function ServiceOrderControlPanel({orderId,onNavigate,onExecuteOr
     {data.warnings.map(text=><p key={text}>{text}</p>)}
     <p>Referência UTC: {data.asOf}. *Contribuição parcial não é margem nem lucro.</p>
    </details>
-   <ServiceOrderMilestonesPanel orderId={orderId}/>
+   <details className="service-order-control-milestones-fold">
+    <summary>Marcos operacionais auditáveis · registrar e corrigir evidências</summary>
+    <ServiceOrderMilestonesPanel orderId={orderId}/>
+   </details>
    <div className="service-order-control-actions">
     <span>Continuidade documental recomendada: <strong>{data.focus}</strong></span>
     <div>{modules.map(module=><button className="secondary" type="button" key={module}
