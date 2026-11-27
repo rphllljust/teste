@@ -63,8 +63,9 @@ export async function getProcureToPayDossier(actorId:string,orderId:string){
    'WHERE al.payable_id=$1 AND al.actor_id=$2 LIMIT 1',[payable.id,actorId]))[0]:undefined;
   const paymentPostings=payable?await read(
    'SELECT l.payment_id,j.id AS journal_id,j.status,'+
-   '(j.status=\'posted\' AND (j.reversal_of IS NOT NULL OR NOT EXISTS('+
-    'SELECT 1 FROM journal_entries undo WHERE undo.reversal_of=j.id))) AS verified '+
+   // A posted original remains verifiable history even after a valid reversal.
+   // Only the ACCRUAL stage requires a currently active unreversed journal.
+   "(j.status='posted') AS verified "+
    'FROM accounting_payable_payment_links l '+
    'JOIN payable_payments p ON p.id=l.payment_id AND p.actor_id=l.actor_id '+
    'JOIN journal_entries j ON j.id=l.journal_id AND j.actor_id=l.actor_id '+
