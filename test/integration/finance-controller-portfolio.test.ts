@@ -76,14 +76,14 @@ test('portfolio is protected, owner isolated and uses actual unpaid amounts',asy
  const result=await aging(r(owners[0],'/api/finance/aging?asOf=2026-11-26'));
  assert.equal(result.status,200,JSON.stringify(await data(result.clone())));
  const owner=await data(result);
- assert.equal(owner.receivables.buckets.find((b)=>b.bucket==='overdue_1_30').valueScaled,'125000');
- assert.equal(owner.payables.buckets.find((b)=>b.bucket==='overdue_61_90').valueScaled,'75000');
+ assert.equal(owner.receivables.buckets.find((b)=>b.bucket==='overdue_1_30')?.valueScaled,'125000');
+ assert.equal(owner.payables.buckets.find((b)=>b.bucket==='overdue_61_90')?.valueScaled,'75000');
  assert.equal(owner.bankCoverage.accountCount,0);
  assert.equal(owner.bankCoverage.reportedBalanceScaled,null);
  assert.equal(owner.bankCoverage.availableCashScaled,null);
  const foreign=await data(await aging(r(owners[1],'/api/finance/aging?asOf=2026-11-26')));
- assert.equal(foreign.receivables.buckets.find((b)=>b.bucket==='overdue_91_plus').valueScaled,'91000');
- assert.equal(foreign.receivables.buckets.find((b)=>b.bucket==='overdue_1_30').count,0);
+ assert.equal(foreign.receivables.buckets.find((b)=>b.bucket==='overdue_91_plus')?.valueScaled,'91000');
+ assert.equal(foreign.receivables.buckets.find((b)=>b.bucket==='overdue_1_30')?.count,0);
 });
 test('ledger computes true opening and period movement for debit and credit-normal accounts',async()=>{
  for(const [id,type] of [[asset,'asset'],[revenue,'revenue']] as const){
