@@ -297,7 +297,7 @@ function InventoryWorkspaceView({
             )}
           </div>
         </aside>
-        <main className="inventory-object">
+        <section className="inventory-object" aria-label="Detalhes do material">
           {item ? (
             <>
               <div className="object-head">
@@ -382,7 +382,7 @@ function InventoryWorkspaceView({
               </p>
             </div>
           )}
-        </main>
+        </section>
         <aside className="inventory-inspector">
           <section>
             <div className="context-title">
