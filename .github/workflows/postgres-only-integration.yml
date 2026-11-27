@@ -173,6 +173,7 @@ jobs:
             '0029_enterprise_os_work_packages',
             '0030_enterprise_external_references',
             '0031_enterprise_external_reference_review',
+            '0032_enterprise_cnae_activities',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
