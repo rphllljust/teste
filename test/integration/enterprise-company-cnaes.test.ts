@@ -41,7 +41,7 @@ after(async()=>{
 
 test('authenticated CNAE catalog is visible before an organization or CNPJ exists',async()=>{
   const anonymous=await listDeclaredCatalog(new Request('http://localhost/api/enterprise/cnaes'));
-  assert.equal(anonymous.status,403);
+  assert.equal(anonymous.status,401);
   const tenantRows=await pool.query('SELECT COUNT(*)::integer AS count FROM enterprise_tenant_memberships WHERE actor_id=$1',[owner]);
   assert.equal(tenantRows.rows[0].count,0);
   const result=await listDeclaredCatalog(request(owner,'/api/enterprise/cnaes'));
