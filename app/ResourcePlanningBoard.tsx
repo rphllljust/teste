@@ -128,7 +128,7 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
   }catch(cause){setError(cause instanceof Error?cause.message:"Comando indisponível.");}
   finally{setSaving(false);}
  }
- return <main className="erp-experience-page planning-board enterprise-scheduling-workspace" aria-label="Planejamento empresarial de recursos">
+ return <section className="erp-experience-page planning-board enterprise-scheduling-workspace" aria-label="Planejamento empresarial de recursos">
   <EnterprisePageHeader eyebrow="OPERAÇÕES · RECURSOS E CAPACIDADE" breadcrumb="Recursos e logística / Planejamento"
    title="Planejamento de recursos" description="Agenda semanal de alocações persistidas, recursos cadastrados e OS autorizadas. Alterações validadas no servidor."
    actions={<>
@@ -249,5 +249,5 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
     </form>
    </section>
   </div>}
- </main>;
+ </section>;
 }
