@@ -27,7 +27,8 @@ test('native OS Object Page and operational workbench share precise source links
  assert.ok(panel.includes("+'/control'"));
  assert.ok(panel.includes("navigate('Execução',orderId)"));
  assert.ok(panel.includes("navigate('Dossiês empresariais',orderId)"));
- assert.ok(panel.includes('partialContributionScaled')===false);
+ assert.ok(panel.includes('receivableOutstandingScaled'));
+ assert.ok(panel.includes('attributedCostScaled'));
  assert.ok(layout.includes('enterprise-service-order-control.css'));
  const css=read('app/components/enterprise/enterprise-service-order-control.css');
  assert.ok(css.includes('@media(max-width:720px)'));
