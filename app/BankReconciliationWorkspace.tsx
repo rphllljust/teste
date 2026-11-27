@@ -54,13 +54,15 @@ export default function BankReconciliationWorkspace({initialAccountReference=''}
   }catch(err){setMessage(err instanceof Error?err.message:'Arquivo OFX inválido.');}
  }
  async function command(line:Line,candidate?:Candidate){setSaving(true);setMessage('');try{const r=await fetch('/api/bank/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),statementId,lineId:line.id,command:candidate?'match':'unmatch',version:line.rowVersion,...(candidate?{targetType:candidate.kind,targetId:candidate.id}:{matchId:line.matchId})})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);setLineId('');await Promise.all([loadStatements(),loadWorkspace()]);setMessage(candidate?'Correspondência registrada.':'Correspondência desfeita.');}catch(e){setMessage(e instanceof Error?e.message:'Comando indisponível.');}finally{setSaving(false);}}
- function addToBatch(line:Line,candidate:Candidate){setMessage('');setBatch(before=>{
-  if(before.some(x=>x.lineId===line.id||x.targetId===candidate.id)){
-   setMessage('Linha ou lançamento já presente no lote. Remova o vínculo anterior.');return before;
+ function addToBatch(line:Line,candidate:Candidate){
+  if(batch.some(x=>x.lineId===line.id||x.targetId===candidate.id)){
+   setMessage('Linha ou lançamento já presente no lote. Remova o vínculo anterior.');return;
   }
-  if(before.length>=25){setMessage('Máximo de 25 correspondências por lote.');return before;}
-  return [...before,{lineId:line.id,targetType:candidate.kind,targetId:candidate.id,description:line.description,amountScaled:line.amountScaled}];
- });}
+  if(batch.length>=25){setMessage('Máximo de 25 correspondências por lote.');return;}
+  setMessage('');
+  setBatch(before=>[...before,{lineId:line.id,targetType:candidate.kind,targetId:candidate.id,
+   description:line.description,amountScaled:line.amountScaled}]);
+ }
  const selected=workspace?.items.find(x=>x.id===lineId);
  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Conciliação bancária</h2><p>Extratos informados, linhas pendentes e correspondências explícitas com pagamentos registrados.</p></div><button className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato</button></div>
  <div className="table-footer"><span>Extratos · página {statementPage}</span><div className="pagination"><button disabled={statementLoading||statementPage===1} onClick={()=>setStatementPage(n=>n-1)}>Extratos anteriores</button><button disabled={statementLoading||!statementHasMore} onClick={()=>setStatementPage(n=>n+1)}>Próximos extratos</button></div></div><nav className="object-anchors" aria-label="Seções da conciliação"><a href="#reconciliation-summary">Resumo</a><a href="#reconciliation-lines">Linhas</a><a href="#reconciliation-governance">Governança</a></nav><div className="filters linked-filters">{initialAccountReference&&<span className="filter-context">Conta: {initialAccountReference}</span>}<label className="select-filter">Extrato<select aria-label="Escolher extrato" value={statementId} onChange={e=>selectStatement(e.target.value)}><option value="">Selecione</option>{workspace&&!statements.some(s=>s.id===statementId)&&<option value={statementId}>{workspace.statement.accountReference} · {workspace.statement.sourceReference}</option>}{statements.map(s=><option key={s.id} value={s.id}>{s.accountReference} · {s.sourceReference} · {s.unmatchedCount} pendentes</option>)}</select></label>{statementId&&<label className="select-filter">Fila<select aria-label="Filtrar linhas do extrato" value={state} onChange={e=>{setState(e.target.value);setPage(1);setLineId('');}}><option value="unmatched">Pendentes</option><option value="matched">Conciliadas</option><option value="">Todas</option></select></label>}</div>
