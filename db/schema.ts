@@ -427,7 +427,7 @@ export const enterpriseProjectCostAllocations=pgTable('enterprise_project_cost_a
  requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),
  createdAt:text('created_at').notNull(),
 },t=>[
- check('project_cost_kind_reversal',sql`(\${t.kind}='allocate' AND \${t.reversesId} IS NULL) OR (\${t.kind}='reverse' AND \${t.reversesId} IS NOT NULL)`),
+ check('project_cost_kind_reversal',sql`(${t.kind}='allocate' AND ${t.reversesId} IS NULL) OR (${t.kind}='reverse' AND ${t.reversesId} IS NOT NULL)`),
  index('enterprise_project_costs_order_idx').on(t.actorId,t.serviceOrderId,t.createdAt,t.id),
  index('enterprise_project_costs_payable_idx').on(t.actorId,t.payableId,t.createdAt,t.id),
 ]);
