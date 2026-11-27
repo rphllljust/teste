@@ -3,6 +3,7 @@ import {useEffect,useState} from 'react';
 import {ArrowRight,BookOpenCheck,Building2,CalendarClock,Landmark,RefreshCw,ShieldCheck,TriangleAlert,Wallet} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
+import FinancialAgingBoard from './FinancialAgingBoard';
 
 type Drilldown={viewKey:string;filters:Record<string,string>};
 type Metric={metricId:string;label:string;value:string|null;count:number;status:string;authority:string;drilldown:Drilldown};
@@ -100,6 +101,7 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
        <small>{m.count} título(s) · abrir fila autorizada <ArrowRight size={12}/></small>
       </button>)}
     </section>}
+   <FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>
    <div className="finance-tier1-grid">
     <section className="finance-tier1-worklist" aria-label="Filas de exceção e encaminhamento">
      <header><div><h3>Filas de exceção</h3>
