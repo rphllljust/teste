@@ -163,6 +163,9 @@ jobs:
             '0022_native_payable_accounting',
             '0023_procurement_supplier_three_way_match',
             '0024_enterprise_owner_query_indexes',
+            '0025_finance_payment_runs',
+            '0026_bank_assisted_match_batches',
+            '0027_finance_collection_cases',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
