@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {ArrowRight,CheckCircle2,ClipboardCheck,RefreshCw,ShieldAlert} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
+import ServiceOrderMilestonesPanel from './ServiceOrderMilestonesPanel';
 
 type Alert={code:string;severity:'warning'|'info';module:string;message:string};
 type Control={
@@ -116,6 +117,7 @@ export default function ServiceOrderControlPanel({orderId,onNavigate,onExecuteOr
     {data.warnings.map(text=><p key={text}>{text}</p>)}
     <p>Referência UTC: {data.asOf}. *Contribuição parcial não é margem nem lucro.</p>
    </details>
+   <ServiceOrderMilestonesPanel orderId={orderId}/>
    <div className="service-order-control-actions">
     <span>Continuidade documental recomendada: <strong>{data.focus}</strong></span>
     <div>{modules.map(module=><button className="secondary" type="button" key={module}
