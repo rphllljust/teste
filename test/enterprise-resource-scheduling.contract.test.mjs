@@ -46,3 +46,39 @@ test('CI runs real owner-scoped allocation, calendar and release on disposable P
  assert.match(integrated,/assert\.equal\(outsideBook\.status,404\)/);
  assert.match(integrated,/assert\.equal\(release\.status,201\)/);
 });
+
+test('Resource Planning mounts as a section inside the one global ERP main landmark',()=>{
+ const globalCss=read('app/components/enterprise/enterprise-global-sizing-tier1.css');
+ const page=read('app/page.tsx');
+ assert.ok(page.includes('<main\n          className={isWork ? "operational-workspace" : "business-workspace"}'),
+  'ERP shell is responsible for the only page main landmark');
+ assert.match(board,/return <section className="erp-experience-page planning-board enterprise-scheduling-workspace"/);
+ assert.doesNotMatch(board,/<main\b|<\/main>/,
+  'Nested main reactivates legacy .app .main main padding and shifts the board');
+ assert.match(board,/<\/section>;\s*\}/);
+ assert.match(globalCss,/--cisne-tier1-header: 56px;/);
+ assert.match(globalCss,/--cisne-tier1-navigation: 248px;/);
+ assert.match(globalCss,/--cisne-tier1-content-gutter: 24px;/);
+ assert.match(globalCss,/--cisne-tier1-content-max: 1760px;/);
+ assert.match(globalCss,/\.app\[data-layout-system="tier1"\] > \.main > main/);
+ assert.ok(page.includes('data-layout-system="tier1"'));
+});
+test('Resource Planning controls follow the same dimensions on desktop tablet and mobile',()=>{
+ for(const token of [
+  '.enterprise-scheduling-workspace .planning-ledger-note',
+  '.enterprise-scheduling-workspace .planning-summary > div',
+  '.enterprise-scheduling-workspace .planning-calendar-head',
+  '.enterprise-scheduling-workspace .planning-filters > label input',
+  '.enterprise-scheduling-workspace .planning-filters > select',
+  '.enterprise-scheduling-workspace .planning-transactions-grid',
+  'height:var(--cisne-tier1-control,36px)',
+  '@media (max-width: 800px)',
+  '@media (max-width: 480px)',
+ ]){
+  assert.ok(css.includes(token),'Missing page-aligned control: '+token);
+ }
+ assert.ok(board.includes('role="table"'),'resource calendar still presents real bookings');
+ assert.ok(board.includes('onNavigate("Profissionais")'));
+ assert.ok(board.includes('onNavigate("Frota e ativos")'));
+ assert.ok(board.includes('onNavigate("Ordens de serviço")'));
+});
