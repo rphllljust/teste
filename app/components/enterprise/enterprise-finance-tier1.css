@@ -222,3 +222,39 @@
 @media(max-width:1150px){.finance-tier1-aging-bank {grid-template-columns:repeat(2,minmax(0,1fr));}.finance-tier1-aging-bank>button {justify-self:start;}}
 @media(max-width:750px){.finance-tier1-aging-columns {grid-template-columns:minmax(0,1fr);}.finance-tier1-aging-bank {grid-template-columns:minmax(0,1fr);}.finance-tier1-aging-card > header {padding:12px;}}
 @media(prefers-reduced-motion:reduce){.finance-tier1-aging-track>span {transition:none;}}
+
+/* CISNE Tier 1 native AP payment runs: source-backed, responsive and audit-friendly. */
+.cisne-payment-runs{min-width:0;}
+.cisne-payment-run-sections{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(280px,1fr);gap:12px;padding:12px;}
+.cisne-payment-run-panel,.cisne-payment-run-detail{min-width:0;background:#fff;border:1px solid #d7e6ed;border-radius:7px;overflow:hidden;}
+.cisne-payment-run-panel>h3{display:flex;gap:9px;align-items:center;padding:14px 16px;border-bottom:1px solid #e0eaf0;font-size:14px;color:#203d50;}
+.cisne-payment-run-fields{display:grid;grid-template-columns:1fr 190px;gap:10px;padding:12px;}
+.cisne-payment-run-fields label,.cisne-payment-run-source-row label:last-child{display:grid;gap:5px;font-size:11px;color:#5e7b8a;}
+.cisne-payment-run-fields input,.cisne-payment-run-source-row input:not([type=checkbox]){min-width:0;width:100%;min-height:35px;border:1px solid #c8dbe4;border-radius:5px;padding:7px;font-size:12px;}
+.cisne-payment-run-source{padding:0 12px;}
+.cisne-payment-run-source>strong{display:block;padding:10px 3px;font-size:11px;color:#345b6d;}
+.cisne-payment-run-items{max-height:430px;overflow:auto;border:1px solid #dce8ee;border-radius:6px;}
+.cisne-payment-run-source-row{display:grid;grid-template-columns:minmax(200px,1fr) 145px 160px;align-items:center;gap:10px;border-bottom:1px solid #e7edf1;padding:9px;}
+.cisne-payment-run-source-row>label:first-child{display:flex;align-items:center;gap:8px;font-size:11px;}
+.cisne-payment-run-source-row>label:first-child span{display:grid;gap:3px;}
+.cisne-payment-run-source-row small{font-size:10px;color:#678494;}
+.cisne-payment-run-source-row>span{font-size:10px;color:#648091;}
+.cisne-payment-run-foot{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;padding:13px;font-size:11px;color:#5a798a;}
+.cisne-payment-run-history{display:grid;gap:0;max-height:650px;overflow:auto;}
+.cisne-payment-run-history>button{display:grid;grid-template-columns:minmax(0,1fr) auto 18px;gap:10px;align-items:center;padding:12px;border:0;border-bottom:1px solid #e1eaed;background:#fff;text-align:left;cursor:pointer;color:#2c566a;}
+.cisne-payment-run-history>button:hover,.cisne-payment-run-history>button[aria-current=true]{background:#eff7f8;}
+.cisne-payment-run-history>button span{display:grid;gap:5px;min-width:0;}
+.cisne-payment-run-history>button strong{font-size:11px;overflow-wrap:anywhere;}
+.cisne-payment-run-history>button small{font-size:10px;color:#657e8e;}
+.cisne-payment-run-detail{margin:0 12px 12px;}
+.cisne-payment-run-detail>header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px;border-bottom:1px solid #dae6ec;}
+.cisne-payment-run-detail>header h3{font-size:15px;color:#203e52;}
+.cisne-payment-run-detail>header p{font-size:11px;color:#718592;}
+.cisne-payment-run-detail td small{display:block;font-size:10px;color:#6c8192;}
+.cisne-payment-run-confirm{display:grid;gap:12px;padding:16px;border-top:1px solid #dbe7ed;background:#f5f9fa;}
+.cisne-payment-run-confirm p{display:flex;align-items:center;gap:8px;font-size:11px;line-height:1.55;color:#4d7183;}
+.cisne-payment-run-confirm>label{display:flex;gap:8px;align-items:center;font-size:12px;font-weight:600;}
+.cisne-payment-run-confirm>div{display:flex;justify-content:flex-end;gap:9px;}
+.cisne-payment-run-detail>footer{padding:10px 14px;border-top:1px solid #dbe7ed;font-size:10px;color:#668191;}
+@media(max-width:1100px){.cisne-payment-run-sections{grid-template-columns:minmax(0,1fr);}}
+@media(max-width:720px){.cisne-payment-run-fields{grid-template-columns:minmax(0,1fr);}.cisne-payment-run-source-row{grid-template-columns:minmax(0,1fr);}.cisne-payment-run-history>button{grid-template-columns:minmax(0,1fr) auto 14px;}}
