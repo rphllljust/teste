@@ -111,3 +111,12 @@
 .finance-row-actions {display:flex;align-items:center;justify-content:flex-start;gap:7px;flex-wrap:wrap;}
 .finance-row-actions > button {white-space:nowrap;min-height:29px;font-size:11px;font-weight:650;}
 .finance-row-actions > button + button {border-left:1px solid #d8e4e9;padding-left:9px;}
+
+/* The domain bar remains available when operators scroll long financial worklists.
+   Main global search retains a higher stacking order. */
+.app[data-workspace="finance"] .cisne-enterprise-global-domains {
+ position:sticky;top:62px;z-index:21;
+ box-shadow:0 3px 10px rgb(8 25 40 / 9%);
+}
+.app[data-workspace="finance"] .cisne-enterprise-global-domains .cisne-enterprise-domain-dropdown {z-index:25;}
+@media(max-width:700px){.app[data-workspace="finance"] .cisne-enterprise-global-domains {top:56px;}}

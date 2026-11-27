@@ -6,10 +6,13 @@ import {moneyScaled} from '../lib/domain/orders';
 
 const amount=(scaled:string)=>{const neg=scaled.startsWith('-');return (neg?'−':'')+moneyScaled(neg?scaled.slice(1):scaled);};
 const date=(iso:string)=>new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(new Date(iso+'T12:00:00Z'));
-const path=(values:bigint[],min:bigint,max:bigint)=>{
+const path=(events:ReadonlyArray<{date:string}>,values:bigint[],min:bigint,max:bigint)=>{
  if(!values.length)return '';
- const spread=max-min||1n;
- return values.map((value,i)=>(i?'L':'M')+(values.length===1?480:(40+i*880/(values.length-1)).toFixed(1))+','+
+ const spread=max-min||1n,first=Date.parse(events[0].date+'T00:00:00Z');
+ const last=Date.parse(events[events.length-1].date+'T00:00:00Z');
+ const timeSpan=last-first||1;
+ return values.map((value,i)=>(i?'L':'M')+
+  (events.length===1?480:(40+(Date.parse(events[i].date+'T00:00:00Z')-first)*880/timeSpan).toFixed(1))+','+
   (175-Number((value-min)*130n/spread)).toFixed(1)).join(' ');
 };
 export default function CashFlowScenarioWorkbench({rows,to}:{rows:CashScenarioSource[];to:string}){
@@ -46,8 +49,8 @@ export default function CashFlowScenarioWorkbench({rows,to}:{rows:CashScenarioSo
       <line x1="34" x2="935" y1="175" y2="175" stroke="#d4e1e7" strokeWidth="1"/>
       <line x1="34" x2="935" y1="110" y2="110" stroke="#e4edf1" strokeDasharray="5 7"/>
       <line x1="34" x2="935" y1="45" y2="45" stroke="#e4edf1" strokeDasharray="5 7"/>
-      <path d={path(first,low,high)} fill="none" stroke="#186c81" strokeWidth="3" strokeLinejoin="round"/>
-      {delay!==0&&<path d={path(second,low,high)} fill="none" stroke="#b77638" strokeWidth="3" strokeLinejoin="round" strokeDasharray="8 5"/>}
+      <path d={path(result.rows,first,low,high)} fill="none" stroke="#186c81" strokeWidth="3" strokeLinejoin="round"/>
+      {delay!==0&&<path d={path(result.rows,second,low,high)} fill="none" stroke="#b77638" strokeWidth="3" strokeLinejoin="round" strokeDasharray="8 5"/>}
     </svg>
     <div className="finance-stress-legend"><span><i className="finance-legend-original"/>Base documentada</span>
      {delay!==0&&<span><i className="finance-legend-scenario"/>Atraso hipotético</span>}
