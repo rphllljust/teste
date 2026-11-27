@@ -63,6 +63,8 @@ export async function POST(request:Request,route:Route){
   const parsed=createCommand.safeParse(await jsonBody(request));
   if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Dados da referência externa inválidos.');
   const data=parsed.data;
+  if(data.entityType!=='legal_entity'&&!data.legalEntityId)
+    throw new ApiError(400,'VALIDATION_FAILED','Uma unidade empresarial é obrigatória para referências de objetos transacionais.');
   const hash=await fingerprint({scope:'enterprise.externalReference.create',tenantId,data});
   const result=await database().transaction(async query=>{
    await guardMember(query,tenantId,ctx!.actorId,true);
