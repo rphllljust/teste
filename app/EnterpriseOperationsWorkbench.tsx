@@ -15,12 +15,12 @@ type Queue='all'|'attention'|'overdue'|'unmeasured'|'draft'|'authorized'|'execut
 type Sort='priority'|'deadline'|'recent'|'client';
 type Row={
  id:string;title:string;client:string;category:string;status:string;description:string;
- createdAt:string;dueDate:string|null;overdue:boolean;unmeasured:boolean;attentionRank:number;
+ createdAt:string;dueDate:string|null;overdue:boolean;unmeasured:boolean;planOverdue:boolean;planBlocked:boolean;attentionRank:number;
  evidence:{measurements:number;invoices:number;executions:number};
 };
 type ResponseData={
  items:Row[];
- summary:{total:number;draft:number;executing:number;overdue:number;unmeasured:number;authorized:number};
+ summary:{total:number;draft:number;executing:number;overdue:number;unmeasured:number;authorized:number;planOverdue:number;planBlocked:number};
  pageInfo:{page:number;pageSize:number;total:number;hasMore:boolean};
  analytics:OperationsAnalytics;
  source:'postgres_owner_scoped_operations';generatedAt:string;note:string;
@@ -49,6 +49,10 @@ const states:Record<Queue,string>={
  unmeasured:'Concluídas com medição pendente',draft:'Rascunhos',
  authorized:'Autorizadas',executing:'Em execução',completed:'Concluídas',
 };
+const priorityReason=(row:Row)=>row.overdue?'Prazo vencido':
+ row.unmeasured?'Medição pendente':row.planOverdue?'Plano em atraso':
+ row.planBlocked?'Atividade bloqueada':
+ row.status==='draft'||row.status==='prepared'?'Em preparação':'Acompanhar';
 const date=(value:string|null)=>{
  if(!value)return 'Sem prazo';
  const parsed=new Date(value.length===10?value+'T12:00:00Z':value);
@@ -183,9 +187,9 @@ export default function EnterpriseOperationsWorkbench({
    text:row=>'Execuções '+row.evidence.executions+' · Medições '+row.evidence.measurements+' · Faturas '+row.evidence.invoices},
   {key:'attention',title:'Prioridade',
    render:row=><span className={row.overdue?'operation-overdue':'cisne-workstation-priority'}>
-     {row.overdue?'Prazo vencido':row.unmeasured?'Medição pendente':row.status==='draft'?'Em preparação':'Regular'}
+     {priorityReason(row)}
     </span>,
-   text:row=>row.overdue?'Prazo vencido':row.unmeasured?'Medição pendente':row.status==='draft'?'Em preparação':'Regular',
+   text:row=>priorityReason(row),
    sortValue:row=>row.attentionRank},
  ],[]);
  const inspectOrder=(row:Row)=>{
@@ -250,6 +254,10 @@ export default function EnterpriseOperationsWorkbench({
       <CalendarClock size={14}/>{summary.overdue} prazo(s) vencido(s)</button>:null}
     {summary?.unmeasured?<button type="button" onClick={()=>selectQueue('unmeasured')}>
       <CircleAlert size={14}/>{summary.unmeasured} medição(ões) pendente(s)</button>:null}
+    {summary?.planOverdue?<button type="button" onClick={()=>selectQueue('attention')}>
+      <CalendarClock size={14}/>{summary.planOverdue} OS com atividades atrasadas</button>:null}
+    {summary?.planBlocked?<button type="button" onClick={()=>selectQueue('attention')}>
+      <CircleAlert size={14}/>{summary.planBlocked} OS com predecessoras abertas</button>:null}
     <span>{loading?'Atualizando registros autorizados…':data?.generatedAt?'Atualizado '+new Date(data.generatedAt).toLocaleString('pt-BR'):'Consulta protegida'}</span>
    </div>
   <div className="enterprise-operations-toolbar">
