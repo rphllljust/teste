@@ -49,8 +49,9 @@ const date=(raw:string|null)=>{
  const d=new Date(raw.slice(0,10)+'T12:00:00Z');
  return Number.isNaN(d.getTime())?'—':new Intl.DateTimeFormat('pt-BR',{timeZone:'UTC'}).format(d);
 };
-export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}:{
- onOpenOrder:(orderId:string)=>void;onNavigate:(module:string)=>void;
+export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onOpenPayable,onNavigate}:{
+ onOpenOrder:(orderId:string)=>void;onOpenPayable:(payableId:string)=>void;
+ onNavigate:(module:string)=>void;
 }){
  const [search,setSearch]=useState(''),[query,setQuery]=useState('');
  const [status,setStatus]=useState('all'),[page,setPage]=useState(1);
@@ -150,8 +151,12 @@ export default function EnterpriseProcureToPayPortfolio({onOpenOrder,onNavigate}
       <td>{item.alerts.length?<span className={'enterprise-procure-portfolio-urgency '+item.severity}
        title={item.alerts.map(x=>dueAlerts[x]??x).join(' · ')}>
        {item.alerts.map(x=>dueAlerts[x]??x).join(' · ')}</span>:'Sem alerta de prazo'}</td>
-      <td><button type="button" className="row-link" onClick={()=>onOpenOrder(item.id)}>
-       Abrir pedido <ArrowRight size={12}/></button></td>
+      <td><div className="enterprise-procure-portfolio-source-actions">
+       <button type="button" className="row-link" onClick={()=>onOpenOrder(item.id)}>
+        Abrir pedido <ArrowRight size={12}/></button>
+       {item.payableId&&<button type="button" className="row-link"
+        onClick={()=>onOpenPayable(item.payableId!)}>Abrir título AP <ArrowRight size={12}/></button>}
+      </div></td>
      </tr>)}
      </tbody></table>
      {!visible.length&&<div className="enterprise-procure-portfolio-empty">
