@@ -30,25 +30,28 @@ const moduleNames:Record<string,string>={
 export default function ServiceOrderControlPanel({orderId,onNavigate,onExecuteOrder}:{
  orderId:string;onNavigate:(module:string)=>void;onExecuteOrder?:()=>void;
 }){
- const [data,setData]=useState<Control|null>(null);
- const [error,setError]=useState('');
- const [loading,setLoading]=useState(true);
  const [revision,setRevision]=useState(0);
+ const [snapshot,setSnapshot]=useState<{
+  orderId:string;revision:number;result:Control|null;error:string
+ }|null>(null);
  useEffect(()=>{
   const controller=new AbortController();
-  setData(null);setLoading(true);setError('');
   void(async()=>{
    try{
     const response=await fetch('/api/orders/'+encodeURIComponent(orderId)+'/control',{
      cache:'no-store',credentials:'same-origin',signal:controller.signal});
     const body=await response.json() as Control&{error?:string};
     if(!response.ok)throw Error(body.error??'Controles da OS indisponíveis.');
-    if(!controller.signal.aborted)setData(body);
-   }catch(e){if(!controller.signal.aborted)setError(e instanceof Error?e.message:'Evidências indisponíveis.');}
-   finally{if(!controller.signal.aborted)setLoading(false);}
+    if(!controller.signal.aborted)setSnapshot({orderId,revision,result:body,error:''});
+   }catch(e){if(!controller.signal.aborted)setSnapshot({
+    orderId,revision,result:null,
+    error:e instanceof Error?e.message:'Evidências indisponíveis.'
+   });}
   })();
   return()=>controller.abort();
  },[orderId,revision]);
+ const current=snapshot?.orderId===orderId&&snapshot.revision===revision?snapshot:null;
+ const loading=!current,data=current?.result??null,error=current?.error??'';
  const open=(module:string)=>{
   if(module==='Execução'&&onExecuteOrder){onExecuteOrder();return;}
   const target=module==='Controladoria'||module==='Financeiro'?'Visão financeira':module;
