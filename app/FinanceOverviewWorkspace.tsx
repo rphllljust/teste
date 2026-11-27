@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {ArrowRight,BookOpenCheck,Building2,CalendarClock,ChevronDown,Landmark,RefreshCw,TriangleAlert,Wallet} from 'lucide-react';
+import {ArrowRight,Building2,CalendarClock,ChevronDown,Landmark,RefreshCw,TriangleAlert,Wallet} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 import FinancialAgingBoard from './FinancialAgingBoard';
