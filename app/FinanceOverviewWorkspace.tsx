@@ -132,6 +132,10 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
      <p>Os valores de contas a receber e pagar representam os títulos persistidos. A posição de caixa depende de extratos e conciliação.</p>
      <button type="button" onClick={()=>onNavigate('Fechamentos')}>
       Verificar competência contábil <ArrowRight size={14}/></button>
+     <button type="button" onClick={()=>onNavigate('Lotes de pagamentos')}>
+      Preparar lotes de fornecedores <ArrowRight size={14}/></button>
+     <button type="button" onClick={()=>onNavigate('Cobrança e inadimplência')}>
+      Acompanhar cobrança de recebíveis <ArrowRight size={14}/></button>
      <button type="button" onClick={()=>onNavigate('Fluxo de caixa')}>
       Projetado × realizado <ArrowRight size={14}/></button>
      <button type="button" onClick={()=>onNavigate('Razão contábil')}>
