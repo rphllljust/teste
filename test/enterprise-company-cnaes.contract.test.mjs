@@ -42,3 +42,24 @@ test('CNAEs are not client-only placeholders and require explicit legal entity s
   assert.match(panel,/credentials:'same-origin'/);
   assert.doesNotMatch(panel,/localStorage|sessionStorage/);
 });
+
+
+test('CNAE catalog is always available in ERP governance without organization or company',async()=>{
+  const [route,catalog,workspace]=await Promise.all([
+    'app/api/enterprise/cnaes/route.ts',
+    'app/components/enterprise/EnterpriseCnaeCatalog.tsx',
+    'app/EnterpriseGovernanceWorkspace.tsx',
+  ].map(path=>readFile(new URL(path,root),'utf8')));
+  assert.match(route,/requestContext\(request\)/);
+  assert.match(route,/FROM enterprise_declared_cnaes ORDER BY display_order/);
+  assert.doesNotMatch(route,/JOIN enterprise_tenant_memberships|enterprise_legal_entity_cnaes/);
+  assert.match(catalog,/fetch\('\/api\/enterprise\/cnaes'/);
+  assert.match(catalog,/CNAEs cadastrados no ERP/);
+  assert.match(catalog,/governance-cnaes/);
+  assert.match(catalog,/!hasOrganization/);
+  assert.match(catalog,/Catálogo informado pelo usuário/);
+  assert.match(workspace,/<EnterpriseCnaeCatalog hasOrganization=\{Boolean\(current\)\} \/>/);
+  assert.ok(workspace.indexOf('<EnterpriseCnaeCatalog')<workspace.indexOf('id="governance-organizations"'));
+  assert.match(workspace,/href="#governance-cnaes"/);
+  assert.match(workspace,/companies\.length>0&&<LegalEntityCnaes/);
+});
