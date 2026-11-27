@@ -57,7 +57,6 @@ export default function EnterpriseServiceOrderControlPanel({orderId,onOpenOrder,
  const [error,setError]=useState(''),[revision,setRevision]=useState(0);
  useEffect(()=>{
   const controller=new AbortController();
-  setLoading(true);setData(null);setError('');
   const run=async()=>{
    try{
     const response=await fetch('/api/orders/'+encodeURIComponent(orderId)+'/control',{
@@ -70,8 +69,11 @@ export default function EnterpriseServiceOrderControlPanel({orderId,onOpenOrder,
     if(!controller.signal.aborted)setError(cause instanceof Error?cause.message:'Controle indisponível.');
    }finally{if(!controller.signal.aborted)setLoading(false);}
   };
-  void run();
-  return()=>controller.abort();
+  const timer=window.setTimeout(()=>{
+   setLoading(true);setData(null);setError('');
+   void run();
+  },0);
+  return()=>{window.clearTimeout(timer);controller.abort();};
  },[orderId,revision]);
  return <section className="enterprise-os-control" aria-label="Controle transacional da ordem">
   <header className="enterprise-os-control-title">
