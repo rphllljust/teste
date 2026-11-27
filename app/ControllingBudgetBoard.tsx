@@ -15,6 +15,7 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
  const [report,setReport]=useState<Report|null>(null),[accounts,setAccounts]=useState<Account[]>([]);
  const [account,setAccount]=useState(''),[value,setValue]=useState(''),[reason,setReason]=useState('');
  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [editing,setEditing]=useState<Item|null>(null),[editValue,setEditValue]=useState(''),[editReason,setEditReason]=useState('');
  const [revision,setRevision]=useState(0),refresh=useCallback(()=>setRevision(x=>x+1),[]);
  useEffect(()=>{
   const ctl=new AbortController();const load=async()=>{
@@ -44,6 +45,24 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
    const d=await r.json() as {error?:string};if(!r.ok)throw Error(d.error??'Falha ao aprovar.');
    setNotice('Dotação aprovada e auditada.');refresh();
   }catch(e){setError(e instanceof Error?e.message:'Falha ao aprovar.');}finally{setSaving(false);}}
+ function edit(b:Item){
+  const scaled=BigInt(b.plannedScaled);
+  setEditing(b);setEditValue((scaled/10000n).toString()+','+(scaled%10000n).toString().padStart(4,'0'));
+  setEditReason(b.reference);setNotice('');setError('');
+ }
+ async function revise(event:React.FormEvent<HTMLFormElement>){
+  event.preventDefault();if(!editing)return;
+  setSaving(true);setError('');setNotice('');
+  try{
+   const r=await fetch('/api/controlling/budgets/commands',{method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({key:crypto.randomUUID(),budgetId:editing.id,expectedVersion:editing.rowVersion,
+     command:'revise',plannedScaled:scale(editValue),reference:editReason})});
+   const data=await r.json() as {error?:string};
+   if(!r.ok)throw Error(data.error??'Não foi possível revisar a dotação.');
+   setEditing(null);setNotice('Dotação revisada com versão e auditoria atualizadas.');refresh();
+  }catch(cause){setError(cause instanceof Error?cause.message:'Falha ao revisar orçamento.');}
+  finally{setSaving(false);}
+ }
  return <section className="worklist" aria-label="Orçamento gerencial x realizado" aria-busy={loading}>
   <header className="list-title"><div><h2>Controladoria · orçamento x realizado</h2><p>Dotações por conta e competência confrontadas com débitos/créditos efetivamente publicados no razão.</p></div>
    <label>Competência <input type="month" aria-label="Competência orçamentária" value={period} onChange={e=>setPeriod(e.target.value)}/></label></header>
@@ -59,9 +78,19 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
    {report.items.map(b=><tr key={b.id}><td><strong>{b.accountCode} · {b.accountName}</strong><small>{b.reference}</small></td>
     <td>{b.state==='approved'?'Aprovado':'Rascunho'}</td><td>{money(b.plannedScaled)}</td>
     <td>{money(b.actualScaled)}</td><td>{money(b.deviationScaled)}</td>
-    <td>{b.state==='draft'?<button disabled={saving} onClick={()=>void approve(b)}>Aprovar</button>:
+    <td>{b.state==='draft'?<div className="worklist-tools"><button disabled={saving} onClick={()=>void approve(b)}>Aprovar</button><button className="secondary" disabled={saving} onClick={()=>edit(b)}>Revisar</button></div>:
      <button className="secondary" onClick={onLedger}>Razão</button>}</td></tr>)}
    </tbody></table></div>:<p className="empty">Nenhuma dotação registrada. Não existe orçamento sintético.</p>}
+   {editing&&<form onSubmit={revise} className="next-block" aria-label="Revisar dotação de orçamento">
+    <h3>Revisar rascunho: {editing.accountCode} · {editing.accountName}</h3>
+    <div className="filters linked-filters">
+     <label>Valor BRL<input required value={editValue} onChange={e=>setEditValue(e.target.value)}/></label>
+     <label>Justificativa<input required minLength={3} maxLength={160} value={editReason} onChange={e=>setEditReason(e.target.value)}/></label>
+     <button type="submit" className="primary" disabled={saving}>{saving?'Salvando…':'Salvar revisão'}</button>
+     <button type="button" className="secondary" disabled={saving} onClick={()=>setEditing(null)}>Cancelar</button>
+    </div>
+    <p className="muted">Somente rascunhos aceitam revisão. Aprovações ficam bloqueadas para alteração retroativa.</p>
+   </form>}
    <form onSubmit={create} className="filters linked-filters">
     <label>Conta<select required value={account} onChange={e=>setAccount(e.target.value)}><option value="">Escolha receita/despesa</option>
      {available.map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}</select></label>
