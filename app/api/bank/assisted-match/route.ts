@@ -44,7 +44,7 @@ export async function GET(request:Request){
   const possibilities=lines.map(line=>{
    const kind=BigInt(line.amount)>0n?'receipt':'payment';
    const candidates=(kind==='receipt'?receipts:payments).filter(target=>
-    abs(target.amount)===abs(line.amount)&&days(line.bookedDate,target.effectiveDate)<=3);
+    abs(target.amount)===abs(line.amount)&&Number.isFinite(days(line.bookedDate,target.effectiveDate))&&days(line.bookedDate,target.effectiveDate)<=3);
    return {line,candidates,kind};
   });
   const counts=new Map<string,number>();
@@ -125,6 +125,7 @@ export async function POST(request:Request){
     if(t.kind!==match.targetType||
       (BigInt(String(line.amount))>0n?'receipt':'payment')!==match.targetType||
       abs(String(line.amount))!==BigInt(String(t.amount))||
+      !Number.isFinite(days(String(line.booked_date),String(t.effective_date)))||
       days(String(line.booked_date),String(t.effective_date))>3)
      throw new ApiError(409,'MATCH_STALE','Valor, sinal ou data não correspondem.');
     const id=crypto.randomUUID(),now=new Date().toISOString();

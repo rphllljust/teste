@@ -31,7 +31,7 @@ export default function CollectionsWorkspace(){
   const r=await fetch('/api/finance/collections/'+encodeURIComponent(id),{cache:'no-store'});
   const d=await r.json() as Detail&{error?:string};
   if(!r.ok)throw Error(d.error??'Caso indisponível.');
-  setDetail(d);setActionKey(crypto.randomUUID());setNote('');
+  setDetail(d);setAction(d.case.status==='settled'||d.case.status==='cancelled'?'reopen':'log_contact');setActionKey(crypto.randomUUID());setNote('');
  },[]);
  async function create(e:React.FormEvent){
   e.preventDefault();setBusy(true);setError('');setMessage('');
