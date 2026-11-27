@@ -5,6 +5,7 @@ import {Pool} from 'pg';
 import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET} from '../../app/api/orders/[id]/control/route';
+import {GET as operationsList} from '../../app/api/enterprise/operations/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
  throw Error('NO-GO: OS control integration requires disposable PostgreSQL');
@@ -66,6 +67,20 @@ test('resource allocation and execution/measurement gates reflect persisted fact
  assert.equal(body.control.phase,'billing');
  assert.equal(body.evidence.approvedUnbilled,1);
  assert.ok(body.control.flags.includes('APPROVED_MEASUREMENT_UNBILLED'));
+});
+test('operational worklist flags partially measured completed OS with additional unmeasured active execution',async()=>{
+ const otherExecution=randomUUID();
+ await db.query("INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,'report','labor','CI unmeasured second entry',1000000,'hour','CI-tech','2026-11-27','CI-OS-SECOND',$3,$4)",
+  [otherExecution,order,owner,now]);
+ const req=setTestIdentity(new Request('http://localhost/api/enterprise/operations?queue=unmeasured&page=1'),owner);
+ const response=await operationsList(req);
+ assert.equal(response.status,200);
+ const body=await response.json() as {items:Array<{id:string;unmeasured:boolean}>;summary:{unmeasured:number}};
+ assert.ok(body.items.some(x=>x.id===order&&x.unmeasured));
+ assert.ok(body.summary.unmeasured>=1);
+ const detail=await (await read(order,owner)).json() as Body;
+ assert.ok(detail.control.flags.includes('EXECUTION_WITHOUT_MEASUREMENT'));
+ assert.equal(detail.control.phase,'measurement');
 });
 test('OS financial ledger includes real invoice and immutable payable allocation but not an inferred bank receipt',async()=>{
  await db.query("INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,75000,'2029-09-30',$4)",
