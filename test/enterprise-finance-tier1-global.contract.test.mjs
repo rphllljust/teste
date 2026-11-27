@@ -111,7 +111,7 @@ test('finance compact layout is isolated, balanced and responsive without hiding
   'max-width:780px','max-width:540px','focus-visible'])
   assert.ok(compact.includes(selector),'compact invariant missing: '+selector);
  assert.ok(!compact.includes('.cisne-enterprise-global-domains { display:none'));
- const stripped=compact.replace(/\\/\\*[\\s\\S]*?\\*\\//g,'');
+ const stripped=compact.replace(/\/\*[\s\S]*?\*\//g,'');
  let depth=0;
  for(const char of stripped){
   if(char==='{')depth++;
