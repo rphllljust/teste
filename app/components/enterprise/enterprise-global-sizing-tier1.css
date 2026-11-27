@@ -407,6 +407,28 @@
 .enterprise-app-shell .enterprise-page-header h1 {
   font-size: var(--cisne-tier1-page-heading);
 }
+.app.enterprise-governance .enterprise-governance-header {
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid var(--cisne-color-border);
+}
+.app.enterprise-governance .enterprise-governance-heading h1 {
+  font-size: var(--cisne-tier1-page-heading);
+  line-height: 1.22;
+  margin: 2px 0 4px;
+  letter-spacing: -.025em;
+  font-weight: 670;
+}
+.app.enterprise-governance .enterprise-governance-heading p {
+  font-size: var(--cisne-tier1-detail);
+  line-height: 1.45;
+}
+.app.enterprise-governance .enterprise-governance-actions :is(button,a) {
+  min-height: var(--cisne-tier1-control);
+}
+
 /* Do not alter the isolation of the production login or business permissions. */
 
 @media (forced-colors: active) {
