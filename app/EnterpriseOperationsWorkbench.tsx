@@ -6,6 +6,7 @@ import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
+import ServiceOrderControlPanel from './ServiceOrderControlPanel';
 import EnterpriseAccountingExceptionRibbon from './components/enterprise/EnterpriseAccountingExceptionRibbon';
 import EnterpriseProcessJourneyInspector from './components/enterprise/EnterpriseProcessJourneyInspector';
 import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
@@ -333,6 +334,9 @@ export default function EnterpriseOperationsWorkbench({
      {detailLoading&&<LoadingState label="Carregando contexto autorizado da OS…"/>}
      {detailError&&<div className="enterprise-operations-object-error" role="alert"><CircleAlert size={15}/>{detailError}</div>}
      {detail?.order.id===selected.id&&<>
+      <ServiceOrderControlPanel orderId={selected.id}
+       onNavigate={module=>navigate(module,selected.id)}
+       onExecuteOrder={()=>navigate('Execução',selected.id)}/>
       <section className="enterprise-operations-object-section" aria-labelledby="operations-document-context">
        <h3 id="operations-document-context">Situação e vínculos</h3>
        <p>{detail.order.description||'Nenhuma descrição registrada.'}</p>
