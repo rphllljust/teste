@@ -1,0 +1,36 @@
+/* Native OS milestone ledger — compact and predictable at every breakpoint. */
+.service-milestones{min-width:0;padding:11px 12px;border-top:1px solid #dfe9ef;background:#fbfcfd}
+.service-milestones-header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-bottom:9px}
+.service-milestones-header h4{font-size:13px;color:#25475a;margin:3px 0}
+.service-milestones-header p{font-size:10px;line-height:1.5;color:#718493;margin:0}
+.service-milestones-count{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;font-size:10px;color:#527587}
+.service-milestones-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.service-milestone{min-width:0;display:grid;align-content:start;gap:5px;padding:10px;background:#fff;border:1px solid #e0e8ee;border-radius:6px}
+.service-milestone.is-recorded{border-color:#c6dad3;background:#fbfefd}
+.service-milestone-title{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#304f60}
+.service-milestone-title strong{font-weight:650;line-height:1.35}
+.service-milestone-title svg{flex:none;margin-top:1px;color:#678899}
+.service-milestone.is-recorded .service-milestone-title svg{color:#3a8066}
+.service-milestone>small{font-size:9px;color:#718894;overflow-wrap:anywhere}
+.service-milestone-actions{display:flex;gap:5px;align-self:end}
+.service-milestone-actions button{display:inline-flex;align-items:center;gap:4px;padding:5px 7px;min-height:27px;border:1px solid #d8e3e9;border-radius:4px;color:#2c6078;background:#f8fbfc;font-size:10px;cursor:pointer}
+.service-milestone-actions button:disabled{opacity:.45;cursor:not-allowed}
+.service-milestones-form{display:grid;gap:9px;margin:10px 0 0;padding:12px;background:#f5f9fb;border:1px solid #d7e5ec;border-radius:6px}
+.service-milestones-form h5{font-size:12px;margin:0;color:#27485d}
+.service-milestones-form p{font-size:10px;margin:0;color:#637c8c}
+.service-milestones-form label{display:grid;gap:5px;font-size:11px;color:#385b6e}
+.service-milestones-form :is(input,textarea){width:100%;min-width:0;padding:8px;border:1px solid #d0dee6;border-radius:5px;background:#fff;color:#2a475b;font-size:12px;resize:vertical}
+.service-milestones-form>div{display:flex;justify-content:flex-end;gap:6px}
+.service-milestones-form button{font-size:11px;min-height:32px}
+.service-milestones-message{padding:10px;color:#6b8390;font-size:11px}
+.service-milestones-history{margin-top:11px;border-top:1px solid #e6edf0;padding-top:9px}
+.service-milestones-history summary{font-size:11px;font-weight:650;color:#476a80;cursor:pointer}
+.service-milestones-history ol{margin:9px 0 0;padding:0;list-style:none;display:grid;gap:5px;max-height:220px;overflow:auto}
+.service-milestones-history li{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #edf1f3;padding:5px 0;font-size:10px;color:#38586a}
+.service-milestones-history li span{min-width:0;overflow-wrap:anywhere}
+.service-milestones-history li small{display:block;font-size:10px;margin-top:3px;color:#7d8f99}
+.service-milestones-history li time{font-size:9px;flex:none;color:#778a96}
+.service-milestones-history p,.service-milestones-note{margin:9px 0 0;font-size:10px;color:#768a95;line-height:1.5}
+.service-milestones :is(button,summary,input,textarea):focus-visible{outline:2px solid #2c7da2;outline-offset:2px}
+@media(max-width:1024px){.service-milestones-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:520px){.service-milestones-header{flex-direction:column;align-items:start}.service-milestones-grid{grid-template-columns:1fr}.service-milestones-history li{flex-direction:column}}
