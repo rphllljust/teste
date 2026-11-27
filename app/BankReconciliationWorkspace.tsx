@@ -6,6 +6,8 @@ import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives
 
 type Statement={id:string;accountReference:string;sourceReference:string;periodStart:string;periodEnd:string;openingBalanceScaled:string;closingBalanceScaled:string;lineCount:number;unmatchedCount:number};
 type Line={id:string;externalKey:string;bookedDate:string;description:string;amountScaled:string;matchId:string|null;receiptId:string|null;paymentId:string|null;rowVersion:number};
+type AssistedSuggestion={lineId:string;bookedDate:string;description:string;targetType:'receipt'|'payment';targetId:string;amountScaled:string;effectiveDate:string;reference:string;criteria:string};
+type AssistedResponse={statementId:string;suggestions:AssistedSuggestion[];considered:number;ambiguous:number;truncated:boolean;warnings:string[];error?:string};
 type Candidate={id:string;kind:'receipt'|'payment';amountScaled:string;counterpart:string;reference:string};
 type Workspace={statement:Statement;items:Line[];pageInfo:{total:number;hasMore:boolean};summary:{total:number;matched:number;unmatched:number};candidates:Candidate[];warnings:string[];error?:string};
 const signedMoney=(amount:string)=>amount.startsWith('-')?'−'+moneyScaled(amount.slice(1)):moneyScaled(amount);
@@ -15,11 +17,15 @@ export default function BankReconciliationWorkspace({initialAccountReference=''}
  const [statementPage,setStatementPage]=useState(1),[statementHasMore,setStatementHasMore]=useState(false),[statementLoading,setStatementLoading]=useState(true);
  const lineIds=useRef(new Map<string,string>());
  const [importFormat,setImportFormat]=useState<'manual'|'ofx'>('manual'),[ofxPreview,setOfxPreview]=useState<OfxStatement|null>(null),[ofxSource,setOfxSource]=useState('');
+ const [assisted,setAssisted]=useState<AssistedResponse|null>(null);
+ const [chosen,setChosen]=useState<Record<string,boolean>>({});
+ const [assistedKey,setAssistedKey]=useState(()=>crypto.randomUUID());
+ const [confirmAssisted,setConfirmAssisted]=useState(false);
  const loadStatements=useCallback(async()=>{setStatementLoading(true);try{const r=await fetch('/api/bank/statements?'+new URLSearchParams({page:String(statementPage),...(initialAccountReference?{accountReference:initialAccountReference}:{})}));const d=await r.json() as {items:Statement[];pageInfo:{hasMore:boolean};error?:string};if(!r.ok)throw new Error(d.error);setStatements(d.items);setStatementHasMore(d.pageInfo.hasMore);}catch(e){setError(e instanceof Error?e.message:'Extratos indisponíveis.');}finally{setStatementLoading(false);}},[statementPage,initialAccountReference]);
  const loadWorkspace=useCallback(async()=>{if(!statementId){setLoading(false);return;}setLoading(true);setError('');try{const r=await fetch('/api/bank/statements/'+encodeURIComponent(statementId)+'?'+new URLSearchParams({page:String(page),pageSize:'25',...(state?{state}:{}),...(lineId?{lineId}:{})}));const d=await r.json() as Workspace;if(!r.ok)throw new Error(d.error);setWorkspace(d);}catch(e){setError(e instanceof Error?e.message:'Conciliação indisponível.');}finally{setLoading(false);}},[statementId,page,state,lineId]);
  useEffect(()=>{const t=setTimeout(()=>void loadStatements(),0);return()=>clearTimeout(t);},[loadStatements]);
  useEffect(()=>{const t=setTimeout(()=>void loadWorkspace(),0);return()=>clearTimeout(t);},[loadWorkspace]);
- function selectStatement(id:string){setStatementId(id);setLineId('');setPage(1);setWorkspace(null);setMessage('');}
+ function selectStatement(id:string){setStatementId(id);setLineId('');setPage(1);setWorkspace(null);setMessage('');setAssisted(null);setChosen({});setConfirmAssisted(false);}
  async function importStatement(e:React.FormEvent<HTMLFormElement>){e.preventDefault();setSaving(true);setMessage('');const f=new FormData(e.currentTarget);try{
   if(importFormat==='ofx'){
    if(!ofxSource||!ofxPreview)throw new Error('Selecione um arquivo OFX válido para importar.');
@@ -52,8 +58,68 @@ export default function BankReconciliationWorkspace({initialAccountReference=''}
   }catch(err){setMessage(err instanceof Error?err.message:'Arquivo OFX inválido.');}
  }
  async function command(line:Line,candidate?:Candidate){setSaving(true);setMessage('');try{const r=await fetch('/api/bank/commands',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({key:crypto.randomUUID(),statementId,lineId:line.id,command:candidate?'match':'unmatch',version:line.rowVersion,...(candidate?{targetType:candidate.kind,targetId:candidate.id}:{matchId:line.matchId})})});const d=await r.json() as {error?:string};if(!r.ok)throw new Error(d.error);setLineId('');await Promise.all([loadStatements(),loadWorkspace()]);setMessage(candidate?'Correspondência registrada.':'Correspondência desfeita.');}catch(e){setMessage(e instanceof Error?e.message:'Comando indisponível.');}finally{setSaving(false);}}
+ async function inspectAssisted(){
+  if(!statementId)return;
+  setSaving(true);setError('');setMessage('');
+  try{
+   const response=await fetch('/api/bank/assisted-match?'+new URLSearchParams({statementId}),{cache:'no-store'});
+   const body=await response.json() as AssistedResponse;
+   if(!response.ok)throw Error(body.error??'Sugestões indisponíveis.');
+   setAssisted(body);setChosen(Object.fromEntries(body.suggestions.slice(0,50).map(s=>[s.lineId,true])));
+   setAssistedKey(crypto.randomUUID());setConfirmAssisted(false);
+  }catch(e){setError(e instanceof Error?e.message:'Sugestões indisponíveis.');}
+  finally{setSaving(false);}
+ }
+ async function commitAssisted(){
+  if(!assisted||!confirmAssisted||saving)return;
+  const rows=assisted.suggestions.filter(s=>chosen[s.lineId]).slice(0,50);
+  if(!rows.length)return;
+  setSaving(true);setError('');setMessage('');
+  try{
+   const response=await fetch('/api/bank/assisted-match',{method:'POST',
+    headers:{'content-type':'application/json'},
+    body:JSON.stringify({id:assistedKey,statementId,matches:rows.map(s=>({
+     lineId:s.lineId,targetType:s.targetType,targetId:s.targetId,
+    }))})});
+   const result=await response.json() as {matched?:number;error?:string;replayed?:boolean};
+   if(!response.ok)throw Error(result.error??'Lote não conciliado.');
+   setAssisted(null);setConfirmAssisted(false);setChosen({});setAssistedKey(crypto.randomUUID());
+   setLineId('');await Promise.all([loadStatements(),loadWorkspace()]);
+   setMessage((result.replayed?'Conciliação reaproveitada: ':'Conciliação confirmada: ')+
+    (result.matched??rows.length)+' correspondência(s) persistida(s).');
+  }catch(e){setError(e instanceof Error?e.message:'Lote não conciliado.');}
+  finally{setSaving(false);}
+ }
  const selected=workspace?.items.find(x=>x.id===lineId);
  return <section className="worklist" aria-busy={loading}><EnterprisePageHeader eyebrow="FINANCEIRO / OPERAÇÕES" title="Workspace financeiro" description="Dados transacionais, indicadores e pendências com origem persistida."/><div className="list-title"><div><h2>Conciliação bancária</h2><p>Extratos informados, linhas pendentes e correspondências explícitas com pagamentos registrados.</p></div><button className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato</button></div>
+ {statementId&&<section className="cisne-assist-match" aria-label="Conciliação bancária assistida">
+  <header><div><strong>Conciliação assistida · múltiplas linhas</strong>
+   <p>Identifica pares únicos por valor, sinal e data (até três dias). Nenhuma correspondência é gravada sem revisão.</p></div>
+   <button type="button" className="secondary" disabled={saving}
+    onClick={()=>void inspectAssisted()}>Analisar correspondências</button></header>
+  {assisted&&<div className="cisne-assist-match-review">
+   <div className="cisne-assist-match-stats"><span>{assisted.suggestions.length} sugestão(ões)</span>
+    <span>{assisted.ambiguous} caso(s) ambíguo(s)</span>
+    {assisted.truncated&&<strong>Resultado limitado: nenhuma conciliação automática proposta</strong>}</div>
+   {assisted.suggestions.length===0?<p>Nenhuma correspondência única foi identificada. Use a conciliação individual para revisão adicional.</p>:
+    <div className="cisne-assist-match-list">
+     {assisted.suggestions.slice(0,50).map(s=><label key={s.lineId}>
+      <input type="checkbox" checked={Boolean(chosen[s.lineId])}
+       onChange={e=>setChosen(q=>({...q,[s.lineId]:e.target.checked}))}/>
+      <span><strong>{s.description}</strong><small>Extrato {s.bookedDate} · lançamento {s.effectiveDate}</small></span>
+      <span><strong>{signedMoney(s.amountScaled)}</strong><small>{s.targetType==='receipt'?'Recebimento':'Pagamento'} · {s.reference}</small></span>
+     </label>)}
+    </div>}
+   {!!assisted.suggestions.length&&<footer>
+    <label><input type="checkbox" checked={confirmAssisted}
+     onChange={e=>setConfirmAssisted(e.target.checked)}/>
+     Revisei cada par e autorizo apenas o vínculo entre extrato e lançamento persistido.</label>
+    <button type="button" className="primary" disabled={saving||!confirmAssisted||
+     !assisted.suggestions.some(s=>chosen[s.lineId])}
+     onClick={()=>void commitAssisted()}>Confirmar correspondências em lote</button>
+   </footer>}
+  </div>}
+ </section>}
  <div className="table-footer"><span>Extratos · página {statementPage}</span><div className="pagination"><button disabled={statementLoading||statementPage===1} onClick={()=>setStatementPage(n=>n-1)}>Extratos anteriores</button><button disabled={statementLoading||!statementHasMore} onClick={()=>setStatementPage(n=>n+1)}>Próximos extratos</button></div></div><nav className="object-anchors" aria-label="Seções da conciliação"><a href="#reconciliation-summary">Resumo</a><a href="#reconciliation-lines">Linhas</a><a href="#reconciliation-governance">Governança</a></nav><div className="filters linked-filters">{initialAccountReference&&<span className="filter-context">Conta: {initialAccountReference}</span>}<label className="select-filter">Extrato<select aria-label="Escolher extrato" value={statementId} onChange={e=>selectStatement(e.target.value)}><option value="">Selecione</option>{workspace&&!statements.some(s=>s.id===statementId)&&<option value={statementId}>{workspace.statement.accountReference} · {workspace.statement.sourceReference}</option>}{statements.map(s=><option key={s.id} value={s.id}>{s.accountReference} · {s.sourceReference} · {s.unmatchedCount} pendentes</option>)}</select></label>{statementId&&<label className="select-filter">Fila<select aria-label="Filtrar linhas do extrato" value={state} onChange={e=>{setState(e.target.value);setPage(1);setLineId('');}}><option value="unmatched">Pendentes</option><option value="matched">Conciliadas</option><option value="">Todas</option></select></label>}</div>
  {error&&<div className="empty" role="alert">{error}<button className="secondary" onClick={()=>void loadWorkspace()}>Tentar novamente</button></div>}
  {!error&&!statementId&&<div className="empty"><h3>{statements.length?'Selecione um extrato':'Nenhum extrato informado'}</h3><p>Importe saldos e movimentos identificados para criar a fila de conciliação. A importação valida a correspondência entre saldos e linhas.</p><div className="finance-tier1-empty-actions"><button type="button" className="primary" onClick={()=>{setImportId(crypto.randomUUID());lineIds.current.clear();setImporting(true);setImportFormat('manual');setOfxSource('');setOfxPreview(null);setMessage('');}}>Importar extrato documentado</button></div></div>}
