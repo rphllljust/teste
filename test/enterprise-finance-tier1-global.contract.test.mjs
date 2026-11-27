@@ -142,7 +142,7 @@ test('AP run readiness never bypasses locked posting and requires a fresh author
  const workspace=read('app/PaymentRunsWorkspace.tsx');
  assert.ok(review.includes('REPEATABLE READ READ ONLY'));
  assert.ok(review.includes('ctx!.actorId'));
- assert.ok(review.includes('PAYABLE'));
+ assert.ok(review.includes('payableBalance'));
  assert.ok(review.includes('assessPaymentRunReadiness'));
  assert.ok(workspace.includes('preflight.rowVersion!==detail.run.rowVersion'));
  assert.ok(workspace.includes('cisne-run-preflight'));
