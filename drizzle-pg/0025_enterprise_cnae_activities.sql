@@ -1,7 +1,7 @@
 -- Permanent company activity reference, copied to a legal entity only by an authorized, explicit command.
 -- This list was supplied by the operator, not independently verified against a Receita Federal CNPJ.
 CREATE TABLE enterprise_declared_cnaes (
- code text PRIMARY KEY CHECK (code ~ '^[0-9]{2}\\.[0-9]{2}-[0-9]-[0-9]{2}$'),
+ code text PRIMARY KEY CHECK (code ~ '^[0-9]{2}[.][0-9]{2}-[0-9]-[0-9]{2}$'),
  description text NOT NULL,
  display_order integer NOT NULL CONSTRAINT enterprise_declared_cnaes_order_uq UNIQUE CHECK(display_order>0),
  is_primary boolean NOT NULL DEFAULT false
