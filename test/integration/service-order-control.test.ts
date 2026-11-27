@@ -52,6 +52,9 @@ test('resource allocation and execution/measurement gates reflect persisted fact
  const start=new Date(Date.now()-3600000).toISOString(),end=new Date(Date.now()+3600000).toISOString();
  await db.query("INSERT INTO resource_allocations(id,owner_id,order_id,resource_type,resource_id,starts_at,ends_at,actor_id,request_hash,correlation_id) VALUES($1,$2,$3,'professional',$4,$5,$6,$2,'ci-os','ci')",
   [allocation,owner,order,professional,start,end]);
+ // Immutable execution fact must be preceded by its same-ID order audit event.
+ await db.query("INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,'report',1,$3,$4,'ci-os-execution',$1,'ci')",
+  [execution,order,now,owner]);
  await db.query("INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,'report','labor','CI performed service',2500000,'hour','CI-tech','2026-11-27','CI-OS-REPORT',$3,$4)",
   [execution,order,owner,now]);
  let body=await (await read(order,owner)).json() as Body;
@@ -70,6 +73,8 @@ test('resource allocation and execution/measurement gates reflect persisted fact
 });
 test('operational worklist flags partially measured completed OS with additional unmeasured active execution',async()=>{
  const otherExecution=randomUUID();
+ await db.query("INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,'report',1,$3,$4,'ci-os-second',$1,'ci')",
+  [otherExecution,order,now,owner]);
  await db.query("INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,'report','labor','CI unmeasured second entry',1000000,'hour','CI-tech','2026-11-27','CI-OS-SECOND',$3,$4)",
   [otherExecution,order,owner,now]);
  const req=setTestIdentity(new Request('http://localhost/api/enterprise/operations?queue=unmeasured&page=1'),owner);
