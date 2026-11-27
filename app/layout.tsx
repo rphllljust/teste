@@ -25,6 +25,7 @@ import "./components/enterprise/enterprise-procure-dossier.css";
 import "./components/enterprise/enterprise-procure-portfolio.css";
 import "./components/enterprise/enterprise-exceptions.css";
 import "./components/enterprise/enterprise-finance-preflight.css";
+import "./components/enterprise/enterprise-global-sizing-tier1.css";
 
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",
