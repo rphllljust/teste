@@ -1,0 +1,365 @@
+/*
+ * CISNE Enterprise | Global Tier 1 sizing contract.
+ *
+ * Last design layer. Applies the same shell, viewport, typography and
+ * information density to EVERY authenticated module, independent of domain.
+ * Page patterns remain distinct (List Report, Object Page, Analytical, Wizard).
+ * Business actions, authorization, data, filters and navigation are untouched.
+ *
+ * Desktop >=1280  : navigation 248/64, topbar 56, gutter 24, content 1760 max.
+ * Tablet 801–1279 : same navigation, gutter 20, responsive document controls.
+ * Mobile <=800    : overlay navigation, topbar 56, gutter 14, full-width content.
+ */
+:root {
+  --cisne-tier1-header: 56px;
+  --cisne-tier1-navigation: 248px;
+  --cisne-tier1-navigation-mini: 64px;
+  --cisne-tier1-content-max: 1760px;
+  --cisne-tier1-content-gutter: 24px;
+  --cisne-tier1-content-top: 20px;
+  --cisne-tier1-page-heading: 24px;
+  --cisne-tier1-section-heading: 16px;
+  --cisne-tier1-body: 14px;
+  --cisne-tier1-detail: 12px;
+  --cisne-tier1-eyebrow: 10px;
+  --cisne-tier1-control: 36px;
+  --cisne-tier1-row: 42px;
+  --cisne-tier1-card-padding: 16px;
+  --cisne-tier1-card-radius: 6px;
+  --cisne-tier1-gap: 12px;
+}
+
+.app[data-layout-system="tier1"] {
+  --cisne-workbench-top: var(--cisne-tier1-header);
+  --cisne-workbench-side: var(--cisne-tier1-navigation);
+  --cisne-control-height: var(--cisne-tier1-control);
+  --cisne-table-row-height: var(--cisne-tier1-row);
+  --control-height: var(--cisne-tier1-control);
+  color: var(--cisne-color-text);
+  font-size: var(--cisne-tier1-body);
+  min-width: 0;
+}
+.app[data-layout-system="tier1"][data-density="compact"] {
+  --cisne-tier1-control: 32px;
+  --cisne-tier1-row: 36px;
+  --cisne-tier1-card-padding: 12px;
+}
+.app[data-layout-system="tier1"][data-density="comfortable"] {
+  --cisne-tier1-control: 40px;
+  --cisne-tier1-row: 48px;
+  --cisne-tier1-card-padding: 20px;
+}
+
+/* The shell has one width everywhere — not 236 / 248 / 230 per module. */
+@media (min-width: 801px) {
+  .app[data-layout-system="tier1"] > .sidebar {
+    width: var(--cisne-tier1-navigation) !important;
+    flex-basis: var(--cisne-tier1-navigation);
+    min-width: 0;
+  }
+  .app[data-layout-system="tier1"] > .main {
+    margin-left: var(--cisne-tier1-navigation) !important;
+    width: calc(100% - var(--cisne-tier1-navigation));
+    max-width: none;
+    min-width: 0;
+  }
+  .app[data-layout-system="tier1"][data-navigation="collapsed"] {
+    --cisne-workbench-side: var(--cisne-tier1-navigation-mini);
+  }
+  .app[data-layout-system="tier1"][data-navigation="collapsed"] > .sidebar {
+    width: var(--cisne-tier1-navigation-mini) !important;
+    flex-basis: var(--cisne-tier1-navigation-mini);
+  }
+  .app[data-layout-system="tier1"][data-navigation="collapsed"] > .main {
+    margin-left: var(--cisne-tier1-navigation-mini) !important;
+    width: calc(100% - var(--cisne-tier1-navigation-mini));
+  }
+  .app[data-layout-system="tier1"][data-navigation="collapsed"] .brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+}
+.app[data-layout-system="tier1"] > .main > .topbar {
+  height: var(--cisne-tier1-header) !important;
+  min-height: var(--cisne-tier1-header) !important;
+  max-height: var(--cisne-tier1-header);
+  padding-inline: var(--cisne-tier1-content-gutter) !important;
+  gap: 12px;
+}
+.app[data-layout-system="tier1"] > .main > .topbar .top-actions,
+.app[data-layout-system="tier1"] > .main > .topbar .crumb {
+  min-width: 0;
+}
+
+/* One content frame. Use percentages, not fixed widths or different max-widths. */
+.app[data-layout-system="tier1"] > .main > main {
+  width: 100% !important;
+  min-width: 0;
+  max-width: var(--cisne-tier1-content-max) !important;
+  box-sizing: border-box;
+  margin-inline: auto !important;
+  padding: var(--cisne-tier1-content-top) var(--cisne-tier1-content-gutter) 36px !important;
+}
+.app[data-layout-system="tier1"] > .main > main > :is(
+  .cisne-crm, .field-service-cockpit, .mrp-workspace, .erp-experience-page,
+  .enterprise-dossier, .module-workspace, .cisne-workstation-tier1,
+  .resource-planning-board, .cisne-workstation-work-surface
+) {
+  min-width: 0;
+  width: 100%;
+  max-width: 100% !important;
+  margin-inline: 0;
+}
+.app[data-layout-system="tier1"] > .main > main > :is(.cisne-crm, .mrp-workspace) {
+  margin-top: 0;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-page-header, .heading
+) {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin: 0 0 12px;
+  border-bottom: 1px solid var(--cisne-color-border);
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-page-header, .heading
+) :is(h1,.page-title) {
+  font-size: var(--cisne-tier1-page-heading) !important;
+  line-height: 1.22;
+  letter-spacing: -.025em;
+  font-weight: 670;
+  margin-block: 2px 4px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-page-header, .heading
+) :is(p,.page-description) {
+  font-size: var(--cisne-tier1-detail);
+  line-height: 1.45;
+  margin: 0;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-page-header, .heading
+) .eyebrow {
+  font-size: var(--cisne-tier1-eyebrow);
+  letter-spacing: .065em;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-page-actions, .heading .command-buttons
+) {
+  flex: 0 1 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* Consistent List Report furniture, but retain domain-specific columns/actions. */
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist, .enterprise-panel, .enterprise-work-queue,
+  .module-workspace, .enterprise-dossier, .erp-experience-page
+) {
+  min-width: 0;
+  max-width: 100%;
+}
+.app[data-layout-system="tier1"] .main > main .worklist {
+  border-radius: var(--cisne-tier1-card-radius);
+  border-color: var(--cisne-color-border);
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist > .list-title, .enterprise-worklist-header
+) {
+  min-width: 0;
+  padding: 10px var(--cisne-tier1-card-padding);
+  gap: 10px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist > .list-title, .enterprise-worklist-header, .module-header
+) :is(h2,h3) {
+  font-size: var(--cisne-tier1-section-heading) !important;
+  line-height: 1.3;
+  letter-spacing: -.015em;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-filter-bar, .worklist > .filters, .enterprise-foundation-filter-bar
+) {
+  min-width: 0;
+  padding: 9px var(--cisne-tier1-card-padding);
+  gap: 8px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist > .filters, .enterprise-filter-bar
+) :is(input:not([type="checkbox"]):not([type="radio"]),select) {
+  min-width: 0;
+  min-height: var(--cisne-tier1-control);
+  box-sizing: border-box;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .enterprise-data-grid,.table-wrap,.enterprise-dossier-table-wrap,
+  .enterprise-smart-scroll,.queue-table
+) {
+  max-width: 100%;
+  min-width: 0;
+  overflow-x: auto;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist .table-wrap, .enterprise-data-grid,
+  .enterprise-smart-scroll, .enterprise-dossier-table-wrap
+) :is(td,th) {
+  box-sizing: border-box;
+  min-height: var(--cisne-tier1-row);
+  padding: 9px 11px;
+  vertical-align: middle;
+  line-height: 1.35;
+  font-size: var(--cisne-tier1-detail);
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist .table-wrap, .enterprise-data-grid,
+  .enterprise-smart-scroll, .enterprise-dossier-table-wrap
+) :is(th) {
+  font-size: 11px;
+  font-weight: 670;
+}
+.app[data-layout-system="tier1"][data-density="compact"] .main > main :is(
+  .worklist .table-wrap, .enterprise-data-grid,
+  .enterprise-smart-scroll, .enterprise-dossier-table-wrap
+) :is(td,th) { padding-block: 6px; height: var(--cisne-tier1-row); }
+.app[data-layout-system="tier1"][data-density="comfortable"] .main > main :is(
+  .worklist .table-wrap, .enterprise-data-grid,
+  .enterprise-smart-scroll, .enterprise-dossier-table-wrap
+) :is(td,th) { padding-block: 12px; height: var(--cisne-tier1-row); }
+.app[data-layout-system="tier1"] .main > main .worklist > .table-footer {
+  padding: 9px var(--cisne-tier1-card-padding);
+  min-height: 38px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .metrics > button,.enterprise-kpi-card,.finance-tier1-metric-grid > button,
+  .enterprise-operations-indicators > button
+) {
+  min-width: 0;
+  border-radius: var(--cisne-tier1-card-radius);
+  box-sizing: border-box;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .primary, .secondary, .enterprise-button
+) {
+  min-height: var(--cisne-tier1-control);
+  box-sizing: border-box;
+  font-size: 12px;
+}
+.app[data-layout-system="tier1"] .main > main :is(
+  .worklist .tabs,.enterprise-object-tabs,.object-anchors
+) {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Keep open documents and overlays inside the current viewport. */
+.app[data-layout-system="tier1"] :is(.context-overlay,.modal-overlay,.palette-overlay) {
+  max-width: 100vw;
+}
+.app[data-layout-system="tier1"] :is(.drawer,.modal,.enterprise-object-detail) {
+  box-sizing: border-box;
+  max-width: 100vw;
+}
+.app[data-layout-system="tier1"] :is(.drawer,.enterprise-object-detail) {
+  overflow-x: hidden;
+}
+@media (min-width: 1440px) {
+  .app[data-layout-system="tier1"] > .main.with-context > main {
+    width: calc(100% - 380px) !important;
+    margin-left: 0 !important;
+    margin-right: 380px !important;
+    max-width: calc(var(--cisne-tier1-content-max) - 380px) !important;
+  }
+}
+
+@media (min-width: 801px) and (max-width: 1279px) {
+  :root {
+    --cisne-tier1-content-gutter: 20px;
+    --cisne-tier1-content-top: 16px;
+  }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-page-header, .heading
+  ) { align-items: flex-start; flex-wrap: wrap; }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-page-actions, .heading .command-buttons
+  ) { justify-content: flex-start; }
+}
+
+@media (max-width: 800px) {
+  :root {
+    --cisne-tier1-content-gutter: 14px;
+    --cisne-tier1-content-top: 14px;
+    --cisne-tier1-page-heading: 21px;
+    --cisne-tier1-section-heading: 15px;
+    --cisne-tier1-card-padding: 12px;
+  }
+  .app[data-layout-system="tier1"] > .sidebar {
+    width: min(86vw, 320px);
+    max-width: 320px;
+  }
+  .app[data-layout-system="tier1"] > .main,
+  .app[data-layout-system="tier1"][data-navigation="collapsed"] > .main {
+    margin-left: 0 !important;
+    width: 100%;
+  }
+  .app[data-layout-system="tier1"] > .main > .topbar {
+    padding-inline: var(--cisne-tier1-content-gutter) !important;
+  }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-page-header, .heading
+  ) { flex-wrap: wrap; align-items: flex-start; gap: 8px; }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-page-actions, .heading .command-buttons
+  ) { width: 100%; justify-content: flex-start; }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-filter-bar, .worklist > .filters
+  ) { gap: 7px; }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-data-grid,.table-wrap,.enterprise-smart-scroll,.queue-table
+  ) { overscroll-behavior-inline: contain; }
+}
+
+@media (max-width: 480px) {
+  :root { --cisne-tier1-content-gutter: 12px; }
+  .app[data-layout-system="tier1"] .main > main :is(
+    .enterprise-page-header, .heading
+  ) :is(h1,.page-title) { overflow-wrap: anywhere; }
+}
+
+/* Standalone enterprise governance and Foundation pages use the same frame. */
+.app.enterprise-governance {
+  padding: var(--cisne-tier1-content-top) var(--cisne-tier1-content-gutter) 32px;
+}
+.app.enterprise-governance > .enterprise-governance-layout,
+.enterprise-app-shell .enterprise-page-layout {
+  width: 100%;
+  max-width: var(--cisne-tier1-content-max);
+  min-width: 0;
+  margin-inline: auto;
+}
+.enterprise-app-shell { grid-template-rows: var(--cisne-tier1-header) 1fr; }
+.enterprise-app-shell .enterprise-workspace {
+  padding: var(--cisne-tier1-content-top) var(--cisne-tier1-content-gutter) 32px;
+}
+.enterprise-app-shell .enterprise-page-header h1 {
+  font-size: var(--cisne-tier1-page-heading);
+}
+/* Do not alter the isolation of the production login or business permissions. */
+
+@media (forced-colors: active) {
+  .app[data-layout-system="tier1"] .main > main :is(
+    .worklist,.enterprise-panel
+  ) { border-color: CanvasText; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app[data-layout-system="tier1"] .main > main * {
+    scroll-behavior: auto;
+  }
+}
