@@ -25,6 +25,7 @@ type Action={label:string;module:string;description:string;count:number|null;cri
 export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
  onDrilldown:(d:Drilldown)=>void;onNavigate:(module:string)=>void;
 }){
+ const [activeArea,setActiveArea]=useState<'tasks'|'budget'|'aging'>('tasks');
  const [asOf,setAsOf]=useState('');
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
  const [assurance,setAssurance]=useState<Assurance>({accounting:null,cash:null,treasury:null});
@@ -75,14 +76,21 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
  ];
  const knownIssues=actions.slice(0,3).filter(a=>(a.count??0)>0).length;
  return <section className="enterprise-module finance-enterprise finance-tier1-control-tower">
-  <EnterprisePageHeader eyebrow="FINANCEIRO E CONTROLADORIA" title="Centro financeiro"
-   description="Posição dos títulos, pendências de escrituração e conciliação com origem persistida."/>
+  <EnterprisePageHeader eyebrow="FINANCEIRO E CONTROLADORIA" title="Centro de decisões financeiras"
+   description="Cockpit transacional: priorização por exceções, controle orçamentário e exposição de caixa documentada."/>
   <section className="worklist" aria-busy={loading}>
-   <header className="list-title"><div><h2>Controle financeiro e integridade</h2>
+   <header className="list-title"><div><h2>Posição consolidada e execução</h2>
     <p>Gestão por exceção: os valores são consultados no escopo autenticado; nenhum saldo é estimado.</p></div>
     <button type="button" className="secondary" disabled={loading}
      onClick={()=>setRevision(n=>n+1)}><RefreshCw size={15}/> Atualizar</button>
    </header>
+   <div className="finance-command-context" aria-label="Ações financeiras relacionadas">
+    <span>EXECUTAR</span>
+    <button type="button" onClick={()=>onNavigate('Contas a pagar')}>Pagar e acompanhar fornecedores <ArrowRight size={13}/></button>
+    <button type="button" onClick={()=>onNavigate('Caixa e conciliação')}>Importar e conciliar banco <ArrowRight size={13}/></button>
+    <button type="button" onClick={()=>setActiveArea('budget')}>Orçamento e aprovação <ArrowRight size={13}/></button>
+    <button type="button" onClick={()=>onNavigate('Fechamentos')}>Revisar fechamento <ArrowRight size={13}/></button>
+   </div>
    <div className="finance-tier1-filter-strip">
     <label>Referência de vencimento
      <input type="date" aria-label="Data de referência financeira" value={asOf}
@@ -102,9 +110,17 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
        <small>{m.count} título(s) · abrir fila autorizada <ArrowRight size={12}/></small>
       </button>)}
     </section>}
-   <ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>
-   <FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>
-   <div className="finance-tier1-grid">
+   <nav className="finance-decision-tabs" role="tablist" aria-label="Área de gestão financeira">
+    <button role="tab" type="button" aria-selected={activeArea==='tasks'} className={activeArea==='tasks'?'is-selected':''}
+     onClick={()=>setActiveArea('tasks')}>Fila de decisões <span>{knownIssues} exceção(ões)</span></button>
+    <button role="tab" type="button" aria-selected={activeArea==='budget'} className={activeArea==='budget'?'is-selected':''}
+     onClick={()=>setActiveArea('budget')}>Orçamento e desvios <span>Planejar · aprovar · acompanhar</span></button>
+    <button role="tab" type="button" aria-selected={activeArea==='aging'} className={activeArea==='aging'?'is-selected':''}
+     onClick={()=>setActiveArea('aging')}>Exposição e liquidez <span>Vencimentos · carteira · cobertura</span></button>
+   </nav>
+   {activeArea==='budget'&&<ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>}
+   {activeArea==='aging'&&<FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>}
+   {activeArea==='tasks'&&<div className="finance-tier1-grid">
     <section className="finance-tier1-worklist" aria-label="Filas de exceção e encaminhamento">
      <header><div><h3>Filas de exceção</h3>
       <p>Regularize os documentos nos módulos de origem, com trilha auditável.</p></div>
@@ -138,7 +154,7 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
       Consultar razão <ArrowRight size={14}/></button>
      <small>Fechamento financeiro e certificação Tier 1 são avaliações diferentes. A ausência de alertas não autoriza transições.</small>
     </aside>
-   </div>
+   </div>}
    <footer className="table-footer">
     <span>{!loading&&snapshot&&!error?'Consulta: '+new Date(snapshot.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Porto_Velho'}):'Consulta financeira indisponível'}</span>
     <span>Moeda BRL · sem saldo bancário presumido</span>

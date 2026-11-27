@@ -65,7 +65,7 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
   finally{setSaving(false);}
  }
  return <section className="worklist" aria-label="Orçamento gerencial x realizado" aria-busy={loading}>
-  <header className="list-title"><div><h2>Controladoria · orçamento x realizado</h2><p>Dotações por conta e competência confrontadas com débitos/créditos efetivamente publicados no razão.</p></div>
+  <header className="list-title"><div><h2>Planejamento orçamentário · execução contábil</h2><p>Dotações por conta e competência confrontadas com débitos/créditos efetivamente publicados no razão.</p></div>
    <label>Competência <input type="month" aria-label="Competência orçamentária" value={period} onChange={e=>setPeriod(e.target.value)}/></label></header>
   {error&&<p className="linked-info" role="alert">{error}</p>}{notice&&<p className="linked-info" role="status">{notice}</p>}
   {loading?<p role="status">Conferindo saldos contábeis…</p>:report&&<>
@@ -81,7 +81,11 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
     <td>{money(b.actualScaled)}</td><td>{money(b.deviationScaled)}</td>
     <td>{b.state==='draft'?<div className="worklist-tools"><button disabled={saving} onClick={()=>void approve(b)}>Aprovar</button><button className="secondary" disabled={saving} onClick={()=>edit(b)}>Revisar</button></div>:
      <button className="secondary" onClick={onLedger}>Razão</button>}</td></tr>)}
-   </tbody></table></div>:<p className="empty">Nenhuma dotação registrada. Não existe orçamento sintético.</p>}
+   </tbody></table></div>:<div className="finance-budget-empty" role="note"><strong>Orçamento não iniciado nesta competência</strong>
+    <p>Escolha uma conta analítica de receita ou despesa ativa, registre a dotação e aprove-a para comparar o planejado com lançamentos publicados.</p>
+    {!accounts.length?<button className="secondary" type="button" onClick={onLedger}>Consultar e configurar plano de contas</button>:
+     <button className="secondary" type="button" onClick={()=>document.getElementById('finance-budget-create')?.scrollIntoView({behavior:'smooth',block:'center'})}>
+      Registrar primeira dotação</button>}</div>}
    {editing&&<form onSubmit={revise} className="next-block" aria-label="Revisar dotação de orçamento">
     <h3>Revisar rascunho: {editing.accountCode} · {editing.accountName}</h3>
     <div className="filters linked-filters">
@@ -92,7 +96,7 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
     </div>
     <p className="muted">Somente rascunhos aceitam revisão. Aprovações ficam bloqueadas para alteração retroativa.</p>
    </form>}
-   <form onSubmit={create} className="filters linked-filters">
+   <form id="finance-budget-create" onSubmit={create} className="filters linked-filters finance-budget-creation">
     <label>Conta<select required value={account} onChange={e=>setAccount(e.target.value)}><option value="">Escolha receita/despesa</option>
      {available.map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}</select></label>
     <label>Valor em BRL<input required value={value} onChange={e=>setValue(e.target.value)} placeholder="15000,00"/></label>

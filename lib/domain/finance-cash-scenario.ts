@@ -8,8 +8,8 @@ export type CashScenario={
  rows:CashScenarioRow[];baselineNetScaled:string;stressedNetScaled:string;
  delayedBeyondHorizonScaled:string;maximumTemporaryGapScaled:string;delayDays:number;
 };
-const money=(v:string)=>{if(!/^-?\\d+$/.test(v))throw new Error('INVALID_CASH_PROJECTION_AMOUNT');return BigInt(v);};
-const day=(value:string)=>{if(!/^\\d{4}-\\d{2}-\\d{2}$/.test(value)||Number.isNaN(Date.parse(value+'T00:00:00Z')))throw new Error('INVALID_CASH_PROJECTION_DATE');return value;};
+const money=(v:string)=>{if(!/^-?\d+$/.test(v))throw new Error('INVALID_CASH_PROJECTION_AMOUNT');return BigInt(v);};
+const day=(value:string)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value)||Number.isNaN(Date.parse(value+'T00:00:00Z')))throw new Error('INVALID_CASH_PROJECTION_DATE');return value;};
 const shifted=(date:string,days:number)=>new Date(Date.parse(date+'T00:00:00Z')+days*86400000).toISOString().slice(0,10);
 /** Reallocate only *projected receivables* by delayDays; payables remain at original due dates.
  * Observed receipts/payments are intentionally excluded: this is not a bank forecast.
