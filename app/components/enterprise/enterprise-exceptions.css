@@ -1,0 +1,27 @@
+/* Unified cross-module operational worklist. Compact collapsed bar by default. */
+.enterprise-exception-center {margin:9px 0;border:1px solid #d5e3e8;border-radius:6px;background:#fff;min-width:0;}
+.enterprise-exception-heading {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:11px 13px;}
+.enterprise-exception-heading h2 {font-size:14px;color:#154455;display:flex;align-items:center;gap:7px;}
+.enterprise-exception-heading h2 small {font-weight:500;font-size:11px;color:#587b88;}
+.enterprise-exception-heading p {font-size:11px;color:#68828e;margin-top:3px;}
+.enterprise-exception-heading > div:last-child {display:flex;gap:6px;}
+.enterprise-exception-heading button {display:inline-flex;align-items:center;gap:6px;font-size:11px;min-height:34px;}
+.enterprise-exception-body {border-top:1px solid #dce8ed;}
+.enterprise-exception-filters {display:flex;align-items:end;flex-wrap:wrap;gap:10px;padding:10px 13px;background:#f9fbfd;}
+.enterprise-exception-filters label {display:grid;gap:4px;font-size:11px;color:#536f7c;}
+.enterprise-exception-filters input,.enterprise-exception-filters select {min-height:34px;border:1px solid #cadbe3;border-radius:5px;padding:6px 8px;}
+.enterprise-exception-filters span {font-size:11px;color:#607e89;padding-bottom:8px;}
+.enterprise-exception-facets {display:flex;gap:5px;padding:8px 12px;flex-wrap:wrap;border-top:1px solid #e5edef;}
+.enterprise-exception-facets button {display:flex;gap:7px;align-items:center;font-size:10px;padding:5px 8px;border-radius:4px;border:1px solid #dbe7ed;}
+.enterprise-exception-facets strong {font-variant-numeric:tabular-nums;color:#116479;}
+.enterprise-exception-center td,.enterprise-exception-center th {font-size:11px!important;padding:8px 12px!important;}
+.enterprise-exception-center td small {display:block;font-size:10px;color:#708591;line-height:1.4;margin-top:4px;}
+.enterprise-exception-center td.amount {white-space:nowrap;font-variant-numeric:tabular-nums;}
+.enterprise-exception-center .row-link {display:inline-flex;align-items:center;gap:4px;font-size:11px;}
+.enterprise-exception-empty {display:flex;gap:8px;align-items:center;padding:14px;color:#5b7b84;font-size:11px;}
+.enterprise-exception-footer {display:flex;justify-content:space-between;gap:9px;align-items:center;padding:9px 12px;border-top:1px solid #e4edf1;font-size:11px;}
+.enterprise-exception-footer button {padding:6px 9px;margin-left:6px;}
+@media(max-width:780px){.enterprise-exception-heading {align-items:stretch;}
+ .enterprise-exception-center .table-wrap {overflow-x:auto;}}
+@media(max-width:540px){.enterprise-exception-heading h2 {flex-wrap:wrap;}
+ .enterprise-exception-filters label {width:100%;}}
