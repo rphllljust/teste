@@ -8,7 +8,7 @@ async function readAccountingJson<T>(response:Response):Promise<T>{
  const body=await response.text();
  try{return JSON.parse(body) as T;}catch{throw new Error(response.status===404?'Contrato da API contábil indisponível no ambiente.':'Resposta inválida da API contábil.');}
 }
-type Data={account:Account;items:Row[];pageInfo:{total:number;hasMore:boolean};totals:{openingScaled:string;debitScaled:string;creditScaled:string;closingScaled:string};emptyState:string|null;warnings:string[];generatedAt:string};
+type Data={account:Account;items:Row[];pageInfo:{total:number;hasMore:boolean};totals:{openingScaled:string;debitScaled:string;creditScaled:string;closingScaled:string;normalSide?:'debit'|'credit'};emptyState:string|null;warnings:string[];generatedAt:string};
 type Entry={identity:{title:string};facts:{effectiveDate:string;sourceReference:string;description:string};lines:{id:string;code:string;name:string;debitScaled:string;creditScaled:string}[]};
 const signed=(v:string)=>v.startsWith('-')?'−'+moneyScaled(v.slice(1)):moneyScaled(v);
 export default function LedgerWorkspace({onNavigate}:{onNavigate:(module:string)=>void}){

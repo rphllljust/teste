@@ -24,7 +24,7 @@ const names:Record<BucketCode,string>={
 const day=(date:string,offset:number)=>new Date(Date.parse(date+'T00:00:00Z')+offset*86400000).toISOString().slice(0,10);
 const display=(scaled:string|null)=>scaled===null?'Indisponível':
  scaled.startsWith('-')?'−'+moneyScaled(scaled.slice(1)):moneyScaled(scaled);
-function bounds(asOf:string,bucket:BucketCode){
+function bounds(asOf:string,bucket:BucketCode):Record<string,string>{
  switch(bucket){
   case 'not_due':return {dueFrom:asOf};
   case 'overdue_1_30':return {dueFrom:day(asOf,-30),dueTo:day(asOf,-1)};
