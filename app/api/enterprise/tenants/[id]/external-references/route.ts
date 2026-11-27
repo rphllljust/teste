@@ -7,7 +7,7 @@ type Route={params:Promise<{id:string}>};
 const entityType=z.enum(['legal_entity','client','proposal','purchase_order','contract','service_order','execution','measurement','invoice','receivable','settlement','journal_entry']);
 const createCommand=z.object({
   id:z.string().uuid(),commandKey:z.string().uuid(),legalEntityId:z.string().uuid().nullable().optional(),
-  entityType,entityId:z.string().uuid(),systemKey:z.string().regex(/^[A-Za-z0-9_-]{3,64}$/),
+  entityType,entityId:z.string().trim().min(1).max(200),systemKey:z.string().regex(/^[A-Za-z0-9_-]{3,64}$/),
   externalId:z.string().trim().min(1).max(200),sourceUrl:z.string().url().refine(v=>/^https?:\/\//.test(v)),
   sourceLabel:z.string().trim().min(3).max(200),ownerDisplayName:z.string().trim().min(3).max(200).nullable().optional(),
   taxId:z.string().regex(/^\d{14}$/).nullable().optional(),
@@ -63,6 +63,8 @@ export async function POST(request:Request,route:Route){
   const parsed=createCommand.safeParse(await jsonBody(request));
   if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Dados da referência externa inválidos.');
   const data=parsed.data;
+  if(data.entityType==='legal_entity'&&data.legalEntityId&&data.legalEntityId!==data.entityId)
+    throw new ApiError(400,'VALIDATION_FAILED','A unidade legal deve corresponder ao objeto referenciado.');
   if(data.entityType!=='legal_entity'&&!data.legalEntityId)
     throw new ApiError(400,'VALIDATION_FAILED','Uma unidade empresarial é obrigatória para referências de objetos transacionais.');
   const hash=await fingerprint({scope:'enterprise.externalReference.create',tenantId,data});
