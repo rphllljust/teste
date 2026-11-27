@@ -105,3 +105,21 @@ test('global design sizing never modifies auth, data model or document permissio
  assert.ok(css.includes('@media (forced-colors: active)'));
  assert.ok(css.includes('@media (prefers-reduced-motion: reduce)'));
 });
+
+test('commercial purchasing, inventory and scheduling preserve a single global main landmark',()=>{
+ const modules=[
+  ['ResourcePlanningBoard.tsx','erp-experience-page planning-board enterprise-scheduling-workspace'],
+  ['ProcurementWorkspace.tsx','procurement-object'],
+  ['InventoryWorkspace.tsx','inventory-object'],
+ ];
+ for(const [filename,klass] of modules){
+  const source=read('app/'+filename);
+  assert.doesNotMatch(source,/<main\b|<\/main>/,
+   filename+' must not cause nested main double padding under the Tier1 shell');
+  assert.ok(source.includes('<section className="'+klass+'"'),
+   filename+' must use a named region instead of a nested page main');
+ }
+ const global=read('app/components/enterprise/enterprise-global-sizing-tier1.css');
+ assert.ok(global.includes('> .main > main'),
+  'Global page geometry applies to exactly the ERP top-level main');
+});
