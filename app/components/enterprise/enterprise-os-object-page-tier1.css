@@ -34,12 +34,12 @@
 .os-tier1-object-page button:focus-visible,.os-tier1-object-page a:focus-visible{outline:2px solid #2f8398;outline-offset:2px}
 /* Expanded desktop: main shell stays visible; detail acts as an enterprise document workspace. */
 @media(min-width:1440px){
- .app .context-overlay.context-docked.os-detail-expanded{position:fixed!important;inset:60px 0 0 236px!important;
-  width:calc(100vw - 236px)!important;height:calc(100dvh - 60px);z-index:39;background:#f5f8fa;
+ .app .context-overlay.context-docked.os-detail-expanded{position:fixed!important;inset:var(--cisne-tier1-header,56px) 0 0 var(--cisne-tier1-navigation,248px)!important;
+  width:calc(100vw - var(--cisne-tier1-navigation,248px))!important;height:calc(100dvh - var(--cisne-tier1-header,56px));z-index:39;background:#f5f8fa;
   border-left:1px solid #b9cdd7;box-shadow:-14px 0 28px #0d2c3920}
  .app[data-navigation="collapsed"] .context-overlay.context-docked.os-detail-expanded{left:64px!important;width:calc(100vw - 64px)!important}
  .app .context-overlay.context-docked.os-detail-expanded>.os-tier1-object-page{height:100%;width:100%;max-width:none;
-  box-shadow:none;padding:17px clamp(22px,4vw,75px);margin:0;background:#f5f8fa}
+  box-shadow:none;padding:var(--cisne-tier1-content-top,20px) var(--cisne-tier1-content-gutter,24px);margin:0 auto;background:#f5f8fa}
  .app .context-overlay.context-docked.os-detail-expanded .enterprise-object-summary{max-width:none}
  .app .context-overlay.context-docked.os-detail-expanded .enterprise-object-facts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
  .app .context-overlay.context-docked:not(.os-detail-expanded)>.os-tier1-object-page{padding:17px;width:100%}
