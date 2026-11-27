@@ -6,6 +6,7 @@ import { EnterprisePageHeader, EnterpriseObjectSummary, ErrorState, LoadingState
 import { EnterpriseSmartGrid, type EnterpriseSmartColumn } from './components/enterprise/EnterpriseSmartGrid';
 import EnterpriseOperationsAnalytics, {type OperationsAnalytics} from './EnterpriseOperationsAnalytics';
 import EnterpriseFinancialAssurance from './components/enterprise/EnterpriseFinancialAssurance';
+import EnterpriseServiceOrderControlPanel from './EnterpriseServiceOrderControlPanel';
 import EnterpriseAccountingExceptionRibbon from './components/enterprise/EnterpriseAccountingExceptionRibbon';
 import EnterpriseProcessJourneyInspector from './components/enterprise/EnterpriseProcessJourneyInspector';
 import EnterpriseOrderAuditTimeline from './components/enterprise/EnterpriseOrderAuditTimeline';
@@ -45,7 +46,7 @@ const statuses:Record<string,string>={
 };
 const states:Record<Queue,string>={
  all:'Todas as ordens',attention:'Exigem atenção',overdue:'Atrasadas',
- unmeasured:'Concluídas sem medição',draft:'Rascunhos',
+ unmeasured:'Concluídas com medição pendente',draft:'Rascunhos',
  authorized:'Autorizadas',executing:'Em execução',completed:'Concluídas',
 };
 const date=(value:string|null)=>{
@@ -194,7 +195,7 @@ export default function EnterpriseOperationsWorkbench({
  const quick=[
   {key:'all' as Queue,label:'OS no contexto',value:summary?.total,icon:ClipboardList},
   {key:'overdue' as Queue,label:'Atrasadas',value:summary?.overdue,icon:CalendarClock},
-  {key:'unmeasured' as Queue,label:'Sem medição',value:summary?.unmeasured,icon:CircleAlert},
+  {key:'unmeasured' as Queue,label:'Medição pendente',value:summary?.unmeasured,icon:CircleAlert},
   {key:'executing' as Queue,label:'Em execução',value:summary?.executing,icon:CheckCircle2},
   {key:'draft' as Queue,label:'Em preparação',value:summary?.draft,icon:Users},
  ];
@@ -345,6 +346,8 @@ export default function EnterpriseOperationsWorkbench({
       <EnterpriseProcessJourneyInspector
        orderId={selected.id} revision={revision} navigate={navigate}
        onOpenOrder={onOpenOrder} onDossier={id=>navigate('Dossiês empresariais',id)}/>
+      <EnterpriseServiceOrderControlPanel key={selected.id+'-control-'+revision} orderId={selected.id}
+       onOpenOrder={onOpenOrder} navigate={navigate}/>
       <EnterpriseOrderAuditTimeline key={selected.id+'-'+revision} orderId={selected.id}/>
       <div className="enterprise-operations-commands cisne-contextual-command-panel">
        <h3>Comandos contextuais autorizados</h3>

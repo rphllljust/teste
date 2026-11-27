@@ -42,8 +42,16 @@ export async function GET(request:Request){
       AND ($3='all' OR o.category=$3)`;
     const overdue=`o.due_date IS NOT NULL AND o.due_date < to_char(CURRENT_DATE,'YYYY-MM-DD')
         AND o.status NOT IN ('completed','cancelled')`;
-    const unmeasured=`o.status='completed'
-        AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id)`;
+    // A completed OS may have some measurements while still leaving active
+    // execution facts unmeasured. Cancelled measurements do not count as coverage.
+    const unmeasured=`o.status='completed' AND (
+      NOT EXISTS (SELECT 1 FROM execution_entries a WHERE a.order_id=o.id AND a.kind='report'
+       AND NOT EXISTS(SELECT 1 FROM execution_entries rev WHERE rev.reverses_id=a.id))
+      OR EXISTS (SELECT 1 FROM execution_entries pending WHERE pending.order_id=o.id AND pending.kind='report'
+       AND NOT EXISTS(SELECT 1 FROM execution_entries rev WHERE rev.reverses_id=pending.id)
+       AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id
+         AND done.execution_entry_id=pending.id AND done.status<>'cancelled'))
+    )`;
     const attention=`((${overdue}) OR (${unmeasured}) OR o.status IN ('draft','prepared'))`;
     const queue=`($4='all'
       OR ($4='attention' AND ${attention})
@@ -74,6 +82,7 @@ export async function GET(request:Request){
       const rows=await client!.query(`SELECT o.id,o.title,o.client,o.category,o.status,
         o.description,o.created_at,o.due_date,
         (${attentionRank}) AS attention_rank,
+        (${unmeasured}) AS requires_measurement,
         (SELECT COUNT(*)::int FROM measurements m WHERE m.order_id=o.id) AS measurements,
         (SELECT COUNT(*)::int FROM invoices i WHERE i.order_id=o.id) AS invoices,
         (SELECT COUNT(*)::int FROM execution_entries ee WHERE ee.order_id=o.id
@@ -110,7 +119,7 @@ export async function GET(request:Request){
       const status=String(row.status);
       const hasDue=row.due_date!=null&&String(row.due_date).length>0;
       const isOverdue=hasDue && Number(row.attention_rank)===0;
-      const isUnmeasured=status==='completed'&&Number(row.measurements)===0;
+      const isUnmeasured=Boolean(row.requires_measurement);
       return {
         id:String(row.id),title:String(row.title),client:String(row.client),
         category:String(row.category),status,
