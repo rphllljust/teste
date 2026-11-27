@@ -68,3 +68,12 @@ test('procurement P2P object navigates to owner-scoped AP and never fabricates b
  assert.ok(route.includes('requestContext(request)'));
  assert.ok(route.includes('getProcureToPayDossier(context.actorId,id)'));
 });
+
+test('bidirectional native navigation preserves owned P2P document identifiers',()=>{
+ const page=read('app/page.tsx'),ap=read('app/PayablesWorkspace.tsx');
+ assert.ok(ap.includes('Abrir pedido original em Compras'));
+ assert.ok(ap.includes('detail.source.procurement!.orderId'));
+ assert.ok(page.includes('setProcurementDrilldown(id)'));
+ assert.ok(page.includes('procurementDrilldown||mrpOrderId'));
+ assert.ok(page.includes('initialPayableId={payableDrilldown}'));
+});
