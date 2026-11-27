@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const result = await database().prepare(
       'SELECT code,description,is_primary AS "isPrimary" ' +
       'FROM enterprise_declared_cnaes ORDER BY display_order',
-    ).all();
+    ).bind().all();
     return respond({ items: result.results, total: result.results.length }, ctx);
   } catch (error) {
     return failure(error, ctx);
