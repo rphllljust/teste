@@ -13,12 +13,12 @@ if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Ext
 const u=new URL(process.env.DATABASE_URL);
 if(!['127.0.0.1','localhost'].includes(u.hostname)||!['/cisne_test','/cisne_ci'].includes(u.pathname))throw new Error('NO-GO: external reference integration refuses non-disposable database');
 const pool=new Pool({connectionString:process.env.DATABASE_URL,max:4});
-const actor=randomUUID(),outsider=randomUUID(),tenantId=randomUUID(),entityId=randomUUID(),referenceId=randomUUID(),externalEntityId=randomUUID();
+const actor=randomUUID(),outsider=randomUUID(),tenantId=randomUUID(),entityId=randomUUID(),referenceId=randomUUID();
 const path='/api/enterprise/tenants/'+tenantId;
 const route={params:Promise.resolve({id:tenantId})};
 function req(who:string,url:string,body:unknown){return setTestIdentity(new Request('http://localhost'+url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),who);}
 async function cleanup(){
- await pool.query('DELETE FROM business_commands WHERE actor_id=ANY($1::text[])',[ [actor,outsider] ]);
+ await pool.query("DELETE FROM business_commands WHERE actor_id=ANY($1::text[])",[ [actor,outsider] ]);
  await pool.query('DELETE FROM enterprise_external_reference_events WHERE tenant_id=$1',[tenantId]);
  await pool.query('DELETE FROM enterprise_external_references WHERE tenant_id=$1',[tenantId]);
  await pool.query('DELETE FROM enterprise_permission_events WHERE tenant_id=$1',[tenantId]);
