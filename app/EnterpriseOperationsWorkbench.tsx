@@ -46,7 +46,7 @@ const statuses:Record<string,string>={
 };
 const states:Record<Queue,string>={
  all:'Todas as ordens',attention:'Exigem atenção',overdue:'Atrasadas',
- unmeasured:'Concluídas sem medição',draft:'Rascunhos',
+ unmeasured:'Concluídas com medição pendente',draft:'Rascunhos',
  authorized:'Autorizadas',executing:'Em execução',completed:'Concluídas',
 };
 const date=(value:string|null)=>{
@@ -195,7 +195,7 @@ export default function EnterpriseOperationsWorkbench({
  const quick=[
   {key:'all' as Queue,label:'OS no contexto',value:summary?.total,icon:ClipboardList},
   {key:'overdue' as Queue,label:'Atrasadas',value:summary?.overdue,icon:CalendarClock},
-  {key:'unmeasured' as Queue,label:'Sem medição',value:summary?.unmeasured,icon:CircleAlert},
+  {key:'unmeasured' as Queue,label:'Medição pendente',value:summary?.unmeasured,icon:CircleAlert},
   {key:'executing' as Queue,label:'Em execução',value:summary?.executing,icon:CheckCircle2},
   {key:'draft' as Queue,label:'Em preparação',value:summary?.draft,icon:Users},
  ];
