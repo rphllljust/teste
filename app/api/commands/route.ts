@@ -53,7 +53,21 @@ export async function POST(request: Request) {
           if (order.status !== 'completed') throw new ApiError(409, 'INVALID_STATE', 'A medição exige uma OS concluída.');
           const measurementId = crypto.randomUUID();
           const now = new Date().toISOString();
-          await query('INSERT INTO measurements(id,order_id,description,amount,status,version,created_at) VALUES($1,$2,$3,$4,\'draft\',1,$5)', [measurementId, p.id, p.description, amount, now]);
+          const evidenceIds=[...new Set(p.evidenceIds??[])];
+          let executionId:string|null=null;
+          if(evidenceIds.length>1)
+            throw new ApiError(400,'VALIDATION_FAILED','Cada medição deve corresponder a um apontamento de execução. Registre medições separadas para evidências distintas.');
+          if(evidenceIds.length){
+            const evidence=await query(`SELECT e.id FROM execution_entries e
+              WHERE e.order_id=$1 AND e.actor_id=$2 AND e.kind='report' AND e.id=ANY($3::text[])
+                AND NOT EXISTS(SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)
+                AND NOT EXISTS(SELECT 1 FROM measurements m WHERE m.execution_entry_id=e.id)
+              ORDER BY e.id FOR UPDATE`,[p.id,context!.actorId,evidenceIds]);
+            if(evidence.rows.length!==evidenceIds.length)
+              throw new ApiError(409,'EXECUTION_INVARIANT','Um ou mais apontamentos não pertencem à OS, foram anulados ou já estão vinculados. Atualize a origem.');
+            executionId=String(evidence.rows[0].id);
+          }
+          await query('INSERT INTO measurements(id,order_id,execution_entry_id,description,amount,status,version,created_at) VALUES($1,$2,$3,$4,$5,\'draft\',1,$6)', [measurementId, p.id, executionId, p.description, amount, now]);
           await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, p.id, p.command, order.version, now, context!.actorId, requestHash, measurementId, JSON.stringify(eventResult(measurementId, 'measurement', 1)), context!.correlationId]);
           return eventResult(measurementId, 'measurement', 1);
         }

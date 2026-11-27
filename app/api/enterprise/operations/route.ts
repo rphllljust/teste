@@ -42,15 +42,17 @@ export async function GET(request:Request){
       AND ($3='all' OR o.category=$3)`;
     const overdue=`o.due_date IS NOT NULL AND o.due_date < to_char(CURRENT_DATE,'YYYY-MM-DD')
         AND o.status NOT IN ('completed','cancelled')`;
-    // A completed OS may have some measurements while still leaving active
-    // execution facts unmeasured. Cancelled measurements do not count as coverage.
+    // Manual measurements are valid. A completed order remains pending only
+    // when it has no active measurement, an unfinished measurement, or active
+    // execution evidence that has not been covered by a measurement.
     const unmeasured=`o.status='completed' AND (
-      NOT EXISTS (SELECT 1 FROM execution_entries a WHERE a.order_id=o.id AND a.kind='report'
-       AND NOT EXISTS(SELECT 1 FROM execution_entries rev WHERE rev.reverses_id=a.id))
+      NOT EXISTS (SELECT 1 FROM measurements m WHERE m.order_id=o.id AND m.status<>'cancelled')
+      OR EXISTS (SELECT 1 FROM measurements pending WHERE pending.order_id=o.id
+        AND pending.status IN ('draft','submitted'))
       OR EXISTS (SELECT 1 FROM execution_entries pending WHERE pending.order_id=o.id AND pending.kind='report'
-       AND NOT EXISTS(SELECT 1 FROM execution_entries rev WHERE rev.reverses_id=pending.id)
-       AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id
-         AND done.execution_entry_id=pending.id AND done.status<>'cancelled'))
+        AND NOT EXISTS(SELECT 1 FROM execution_entries rev WHERE rev.reverses_id=pending.id)
+        AND NOT EXISTS (SELECT 1 FROM measurements done WHERE done.order_id=o.id
+          AND done.execution_entry_id=pending.id AND done.status<>'cancelled'))
     )`;
     // Persistent WBS exceptions are operational facts, independent of invoice/GL state.
     const planOverdue=`EXISTS (SELECT 1 FROM enterprise_os_work_packages wp
