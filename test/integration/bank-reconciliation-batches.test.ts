@@ -57,8 +57,11 @@ test('batch preview is read-only; invalid line aborts all; valid commit is atomi
  assert.equal((await POST(req(owner,{...payload,key:randomUUID(),mode:'commit'}))).status,409);
  const list=(path:string,actor:string)=>setTestIdentity(new Request('http://localhost'+path),actor);
  const beforeUnmatch=await (await listStatements(list('/api/bank/statements?accountReference=CI-bank',owner))).json() as {items:Array<{id:string;unmatchedCount:string|number}>};
+ assert.equal(typeof beforeUnmatch.items.find(x=>x.id===statement)?.unmatchedCount,'number');
  assert.equal(Number(beforeUnmatch.items.find(x=>x.id===statement)?.unmatchedCount),0,'fully matched bank statement has no pending lines');
  const treasuryBefore=await (await listTreasury(list('/api/treasury',owner))).json() as {items:Array<{statementId:string;unmatchedCount:string|number}>};
+ assert.equal(typeof treasuryBefore.items.find(x=>x.statementId===statement)?.unmatchedCount,'number',
+  'pendências devem ser números JSON para métricas de controladoria');
  assert.equal(Number(treasuryBefore.items.find(x=>x.statementId===statement)?.unmatchedCount),1,
   'treasury backlog includes an unresolved older bank statement, even after the latest statement is fully matched');
  const event=(await pool.query("SELECT id FROM bank_reconciliation_events WHERE line_id=$1 AND kind='match'",[line[0]])).rows[0].id as string;
