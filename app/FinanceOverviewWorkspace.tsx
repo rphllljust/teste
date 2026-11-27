@@ -1,6 +1,6 @@
 'use client';
 import {useEffect,useState} from 'react';
-import {ArrowRight,BookOpenCheck,Building2,CalendarClock,Landmark,RefreshCw,ShieldCheck,TriangleAlert,Wallet} from 'lucide-react';
+import {ArrowRight,Building2,CalendarClock,ChevronDown,Landmark,RefreshCw,TriangleAlert,Wallet} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 import FinancialAgingBoard from './FinancialAgingBoard';
@@ -76,27 +76,31 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
  ];
  const knownIssues=actions.slice(0,3).filter(a=>(a.count??0)>0).length;
  return <section className="enterprise-module finance-enterprise finance-tier1-control-tower">
-  <EnterprisePageHeader eyebrow="FINANCEIRO E CONTROLADORIA" title="Centro de decisões financeiras"
-   description="Cockpit transacional: priorização por exceções, controle orçamentário e exposição de caixa documentada."/>
+  <EnterprisePageHeader eyebrow="FINANCEIRO E CONTROLADORIA" title="Visão financeira"
+   description="Posição, exceções e decisões com base nos registros autorizados."/>
   <section className="worklist" aria-busy={loading}>
-   <header className="list-title"><div><h2>Posição consolidada e execução</h2>
-    <p>Gestão por exceção: os valores são consultados no escopo autenticado; nenhum saldo é estimado.</p></div>
-    <button type="button" className="secondary" disabled={loading}
-     onClick={()=>setRevision(n=>n+1)}><RefreshCw size={15}/> Atualizar</button>
-   </header>
-   <div className="finance-command-context" aria-label="Ações financeiras relacionadas">
-    <span>EXECUTAR</span>
-    <button type="button" onClick={()=>onNavigate('Contas a pagar')}>Pagar e acompanhar fornecedores <ArrowRight size={13}/></button>
-    <button type="button" onClick={()=>onNavigate('Caixa e conciliação')}>Importar e conciliar banco <ArrowRight size={13}/></button>
-    <button type="button" onClick={()=>setActiveArea('budget')}>Orçamento e aprovação <ArrowRight size={13}/></button>
-    <button type="button" onClick={()=>onNavigate('Fechamentos')}>Revisar fechamento <ArrowRight size={13}/></button>
-   </div>
-   <div className="finance-tier1-filter-strip">
-    <label>Referência de vencimento
-     <input type="date" aria-label="Data de referência financeira" value={asOf}
+   <div className="finance-compact-toolbar">
+    <div className="finance-compact-toolbar-label"><strong>Posição atual</strong><span>Valores documentados · sem caixa presumido</span></div>
+    <div className="finance-compact-toolbar-actions">
+     <label>Referência <input type="date" aria-label="Data de referência financeira" value={asOf}
       onChange={e=>setAsOf(e.target.value)}/></label>
-    <span><ShieldCheck size={14}/> Corte: {snapshot?.asOf??'não disponível'}</span>
-    <span>Fonte: PostgreSQL · consultas autorizadas</span>
+     <button type="button" className="secondary" disabled={loading} onClick={()=>setRevision(n=>n+1)}>
+      <RefreshCw size={15}/> Atualizar</button>
+    </div>
+   </div>
+   <div className="finance-compact-commands" aria-label="Atalhos financeiros">
+    <button type="button" onClick={()=>onNavigate('Contas a pagar')}>Contas a pagar <ArrowRight size={13}/></button>
+    <button type="button" onClick={()=>onNavigate('Caixa e conciliação')}>Conciliação bancária <ArrowRight size={13}/></button>
+    <details className="finance-compact-more"><summary>Outras operações <ChevronDown size={14}/></summary>
+     <div className="finance-compact-more-menu" role="group" aria-label="Outras operações financeiras">
+      <button type="button" onClick={()=>setActiveArea('budget')}>Orçamento e aprovação</button>
+      <button type="button" onClick={()=>onNavigate('Lotes de pagamentos')}>Lotes de pagamentos</button>
+      <button type="button" onClick={()=>onNavigate('Cobrança e inadimplência')}>Cobrança e inadimplência</button>
+      <button type="button" onClick={()=>onNavigate('Fluxo de caixa')}>Fluxo de caixa</button>
+      <button type="button" onClick={()=>onNavigate('Fechamentos')}>Fechamentos</button>
+      <button type="button" onClick={()=>onNavigate('Razão contábil')}>Razão contábil</button>
+     </div>
+    </details>
    </div>
    {error&&<div className="finance-tier1-unavailable" role="alert">{error}
     <button type="button" onClick={()=>setRevision(n=>n+1)}>Tentar novamente</button></div>}
@@ -112,18 +116,18 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
     </section>}
    <nav className="finance-decision-tabs" aria-label="Área de gestão financeira">
     <button type="button" aria-pressed={activeArea==='tasks'} className={activeArea==='tasks'?'is-selected':''}
-     onClick={()=>setActiveArea('tasks')}>Fila de decisões <span>{knownIssues} exceção(ões)</span></button>
+     onClick={()=>setActiveArea('tasks')}>Pendências <span>{knownIssues} exceção(ões)</span></button>
     <button type="button" aria-pressed={activeArea==='budget'} className={activeArea==='budget'?'is-selected':''}
-     onClick={()=>setActiveArea('budget')}>Orçamento e desvios <span>Planejar · aprovar · acompanhar</span></button>
+     onClick={()=>setActiveArea('budget')}>Orçamento <span>Orçado × realizado</span></button>
     <button type="button" aria-pressed={activeArea==='aging'} className={activeArea==='aging'?'is-selected':''}
-     onClick={()=>setActiveArea('aging')}>Exposição e liquidez <span>Vencimentos · carteira · cobertura</span></button>
+     onClick={()=>setActiveArea('aging')}>Carteira e liquidez <span>Vencimento e cobertura</span></button>
    </nav>
    {activeArea==='budget'&&<ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>}
    {activeArea==='aging'&&<FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>}
-   {activeArea==='tasks'&&<div className="finance-tier1-grid">
+   {activeArea==='tasks'&&<div className="finance-tier1-grid finance-compact-exceptions">
     <section className="finance-tier1-worklist" aria-label="Filas de exceção e encaminhamento">
-     <header><div><h3>Filas de exceção</h3>
-      <p>Regularize os documentos nos módulos de origem, com trilha auditável.</p></div>
+     <header><div><h3>Fila de pendências</h3>
+      <p>Abrir documentos de origem para tratar as ocorrências.</p></div>
       <span>{knownIssues} categoria(s) com ocorrência confirmada</span>
      </header>
      <div className="finance-tier1-task-list">
@@ -143,25 +147,11 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate}:{
       <button type="button" onClick={()=>onNavigate('Caixa e conciliação')}>Importar extrato <ArrowRight size={13}/></button>
      </div>}
     </section>
-    <aside className="finance-tier1-controlrail" aria-label="Governança financeira">
-     <h3><BookOpenCheck size={16}/> Confiabilidade e fechamento</h3>
-     <p>Os valores de contas a receber e pagar representam os títulos persistidos. A posição de caixa depende de extratos e conciliação.</p>
-     <button type="button" onClick={()=>onNavigate('Fechamentos')}>
-      Verificar competência contábil <ArrowRight size={14}/></button>
-     <button type="button" onClick={()=>onNavigate('Lotes de pagamentos')}>
-      Preparar lotes de fornecedores <ArrowRight size={14}/></button>
-     <button type="button" onClick={()=>onNavigate('Cobrança e inadimplência')}>
-      Acompanhar cobrança de recebíveis <ArrowRight size={14}/></button>
-     <button type="button" onClick={()=>onNavigate('Fluxo de caixa')}>
-      Projetado × realizado <ArrowRight size={14}/></button>
-     <button type="button" onClick={()=>onNavigate('Razão contábil')}>
-      Consultar razão <ArrowRight size={14}/></button>
-     <small>Fechamento financeiro e certificação Tier 1 são avaliações diferentes. A ausência de alertas não autoriza transições.</small>
-    </aside>
+
    </div>}
-   <footer className="table-footer">
-    <span>{!loading&&snapshot&&!error?'Consulta: '+new Date(snapshot.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Porto_Velho'}):'Consulta financeira indisponível'}</span>
-    <span>Moeda BRL · sem saldo bancário presumido</span>
+   <footer className="finance-compact-provenance">
+    <span>{!loading&&snapshot&&!error?'Atualizado em '+new Date(snapshot.generatedAt).toLocaleString('pt-BR',{timeZone:'America/Porto_Velho'}):'Consulta financeira indisponível'}</span>
+    <span>Referência {snapshot?.asOf??'não disponível'} · PostgreSQL · BRL · Sem disponibilidade bancária presumida</span>
    </footer>
   </section>
  </section>;

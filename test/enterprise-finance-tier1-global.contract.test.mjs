@@ -74,3 +74,49 @@ test('finance stylesheet braces are balanced',()=>{
  }
  assert.equal(count,0);
 });
+
+
+test('compact finance cockpit keeps single toolbar, authorized actions and three operational contexts',()=>{
+ const view=read('app/FinanceOverviewWorkspace.tsx');
+ assert.ok(view.includes('finance-compact-toolbar'));
+ assert.ok(view.includes('finance-compact-commands'));
+ assert.ok(view.includes('finance-compact-more-menu'));
+ assert.ok(view.includes('finance-compact-exceptions'));
+ assert.ok(view.includes("setActiveArea('budget')"));
+ for(const link of ["onNavigate('Contas a pagar')","onNavigate('Caixa e conciliação')",
+  "onNavigate('Lotes de pagamentos')","onNavigate('Cobrança e inadimplência')",
+  "onNavigate('Fechamentos')","onNavigate('Razão contábil')"])
+  assert.ok(view.includes(link),'command lost: '+link);
+ assert.ok(!view.includes('finance-tier1-controlrail'), 'redundant wide secondary action rail must not return');
+ assert.ok(!view.includes('finance-command-context'), 'second row of duplicate action bands must not return');
+});
+test('financial budgets and cash simulation remain functional but secondary forms are collapsed',()=>{
+ const budget=read('app/ControllingBudgetBoard.tsx');
+ const flow=read('app/CashFlowWorkspace.tsx');
+ assert.ok(budget.includes('<details id="finance-budget-create"'));
+ assert.ok(budget.includes('<form onSubmit={create}'));
+ assert.ok(budget.includes('onClick={()=>void approve(b)}'));
+ assert.ok(budget.includes('onSubmit={revise}'));
+ assert.ok(flow.includes('<details id="cashflow-scenario-wrapper"'));
+ assert.ok(flow.includes('<CashFlowScenarioWorkbench'));
+ assert.ok(flow.includes('data.items.length?'));
+ assert.ok(flow.includes('finance-source-disclosure'));
+});
+test('finance compact layout is isolated, balanced and responsive without hiding real operations',()=>{
+ const compact=read('app/components/enterprise/enterprise-finance-compact.css');
+ assert.ok(layout.indexOf('enterprise-finance-compact.css')>layout.indexOf('enterprise-finance-command.css'));
+ for(const selector of ['.app[data-workspace="finance"]','.finance-tier1-metric-grid',
+  '.finance-decision-tabs','.finance-compact-commands','.finance-budget-entry',
+  '.finance-scenario-disclosure','.finance-tier1-aging-columns','.finance-tier1-task-list',
+  'max-width:780px','max-width:540px','focus-visible'])
+  assert.ok(compact.includes(selector),'compact invariant missing: '+selector);
+ assert.ok(!compact.includes('.cisne-enterprise-global-domains { display:none'));
+ const stripped=compact.replace(/\/\*[\s\S]*?\*\//g,'');
+ let depth=0;
+ for(const char of stripped){
+  if(char==='{')depth++;
+  if(char==='}')depth--;
+  assert.ok(depth>=0,'bad CSS closing brace');
+ }
+ assert.equal(depth,0);
+});

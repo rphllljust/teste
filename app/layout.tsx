@@ -13,6 +13,7 @@ import "./components/enterprise/enterprise-operations-workbench.css";
 import "./components/enterprise/enterprise-operations-tier1.css";
 import "./components/enterprise/enterprise-finance-tier1.css";
 import "./components/enterprise/enterprise-finance-command.css";
+import "./components/enterprise/enterprise-finance-compact.css";
 
 export const metadata: Metadata = {
   title: "Cisne Rondônia | ERP",

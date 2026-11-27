@@ -69,23 +69,26 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
    <label>Competência <input type="month" aria-label="Competência orçamentária" value={period} onChange={e=>setPeriod(e.target.value)}/></label></header>
   {error&&<p className="linked-info" role="alert">{error}</p>}{notice&&<p className="linked-info" role="status">{notice}</p>}
   {loading?<p role="status">Conferindo saldos contábeis…</p>:report&&<>
-   <section className="metrics linked-metrics" aria-label="Orçamento aprovado">
+   {report.items.length>0?<section className="metrics linked-metrics" aria-label="Orçamento aprovado">
     <div><span>Orçado aprovado</span><strong>{money(report.summary.plannedScaled)}</strong></div>
     <div><span>Realizado das contas orçadas</span><strong>{money(report.summary.actualScaled)}</strong></div>
     <div><span>Desvio realizado - orçado</span><strong>{money(report.summary.deviationScaled)}</strong></div>
     <div><span>Dotações</span><strong>{report.summary.approved} aprovadas · {report.summary.drafts} rascunhos</strong></div>
-   </section>
+   </section>:
+    <p className="finance-budget-zero-summary">0 dotações aprovadas · 0 rascunhos · nenhuma execução orçamentária apurada</p>}
    {report.items.length?<div className="table-wrap"><table><thead><tr><th>Conta</th><th>Estado</th><th>Orçado</th><th>Realizado</th><th>Desvio</th><th>Ação</th></tr></thead><tbody>
    {report.items.map(b=><tr key={b.id}><td><strong>{b.accountCode} · {b.accountName}</strong><small>{b.reference}</small></td>
     <td>{b.state==='approved'?'Aprovado':'Rascunho'}</td><td>{money(b.plannedScaled)}</td>
     <td>{money(b.actualScaled)}</td><td>{money(b.deviationScaled)}</td>
     <td>{b.state==='draft'?<div className="worklist-tools"><button disabled={saving} onClick={()=>void approve(b)}>Aprovar</button><button className="secondary" disabled={saving} onClick={()=>edit(b)}>Revisar</button></div>:
      <button className="secondary" onClick={onLedger}>Razão</button>}</td></tr>)}
-   </tbody></table></div>:<div className="finance-budget-empty" role="note"><strong>Orçamento não iniciado nesta competência</strong>
-    <p>Escolha uma conta analítica de receita ou despesa ativa, registre a dotação e aprove-a para comparar o planejado com lançamentos publicados.</p>
-    {!accounts.length?<button className="secondary" type="button" onClick={onLedger}>Consultar e configurar plano de contas</button>:
-     <button className="secondary" type="button" onClick={()=>document.getElementById('finance-budget-create')?.scrollIntoView({behavior:'smooth',block:'center'})}>
-      Registrar primeira dotação</button>}</div>}
+   </tbody></table></div>:<div className="finance-budget-empty" role="note"><strong>Sem dotações nesta competência</strong>
+    <span>Nenhum orçamento sintético foi criado.</span>
+    {!accounts.length?<button className="secondary" type="button" onClick={onLedger}>Consultar plano de contas</button>:
+     <button className="secondary" type="button" onClick={()=>{
+       const el=document.getElementById('finance-budget-create') as HTMLDetailsElement|null;
+       if(el){el.open=true;el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+      }}>Criar primeira dotação</button>}</div>}
    {editing&&<form onSubmit={revise} className="next-block" aria-label="Revisar dotação de orçamento">
     <h3>Revisar rascunho: {editing.accountCode} · {editing.accountName}</h3>
     <div className="filters linked-filters">
@@ -96,14 +99,17 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
     </div>
     <p className="muted">Somente rascunhos aceitam revisão. Aprovações ficam bloqueadas para alteração retroativa.</p>
    </form>}
-   <form id="finance-budget-create" onSubmit={create} className="filters linked-filters finance-budget-creation">
+   <details id="finance-budget-create" className="finance-budget-entry">
+    <summary>Nova dotação <span>Conta · competência · justificativa</span></summary>
+ <form onSubmit={create} className="filters linked-filters finance-budget-creation">
     <label>Conta<select required value={account} onChange={e=>setAccount(e.target.value)}><option value="">Escolha receita/despesa</option>
      {available.map(a=><option key={a.id} value={a.id}>{a.code} · {a.name}</option>)}</select></label>
     <label>Valor em BRL<input required value={value} onChange={e=>setValue(e.target.value)} placeholder="15000,00"/></label>
     <label>Justificativa<input required minLength={3} maxLength={160} value={reason} onChange={e=>setReason(e.target.value)}/></label>
     <button type="submit" disabled={saving||!account||!available.length} className="primary">{saving?'Registrando…':'Criar dotação'}</button>
    </form>
-   <footer className="table-footer"><span>{report.provenance}</span><span>{report.disclaimer}</span></footer>
+   </details>
+   <details className="finance-source-disclosure"><summary>Fonte dos valores e regras de aprovação</summary><p>{report.provenance} · {report.disclaimer}</p></details>
   </>}
  </section>;
 }
