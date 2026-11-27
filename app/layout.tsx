@@ -17,6 +17,7 @@ import "./components/enterprise/enterprise-finance-compact.css";
 import "./components/enterprise/enterprise-finance-report.css";
 import "./components/enterprise/enterprise-project-costs.css";
 import "./components/enterprise/enterprise-procure-dossier.css";
+import "./components/enterprise/enterprise-procure-portfolio.css";
 import "./components/enterprise/enterprise-exceptions.css";
 import "./components/enterprise/enterprise-finance-preflight.css";
 
