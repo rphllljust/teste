@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 type Account={id:string;code:string;name:string;type:string;active:number};
 type Item={id:string;accountId:string;accountCode:string;accountName:string;plannedScaled:string;actualScaled:string;
  deviationScaled:string;state:'draft'|'approved';rowVersion:number;reference:string};
@@ -16,7 +16,8 @@ export default function ControllingBudgetBoard({onLedger}:{onLedger:()=>void}){
  const [account,setAccount]=useState(''),[value,setValue]=useState(''),[reason,setReason]=useState('');
  const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  const [editing,setEditing]=useState<Item|null>(null),[editValue,setEditValue]=useState(''),[editReason,setEditReason]=useState('');
- const [revision,setRevision]=useState(0),refresh=useCallback(()=>setRevision(x=>x+1),[]);
+ const [revision,setRevision]=useState(0);
+ function refresh(){setRevision(x=>x+1);}
  useEffect(()=>{
   const ctl=new AbortController();const load=async()=>{
    setLoading(true);setError('');
