@@ -130,6 +130,8 @@ jobs:
         run: node scripts/verify-resource-allocation-test-fail-closed.mjs
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
+      - name: Verify enterprise external reference registry and review lifecycle
+        run: pnpm test:integration:external-references
       - name: Apply additive NextCRM migration idempotently
         run: |
           pnpm db:migrate
