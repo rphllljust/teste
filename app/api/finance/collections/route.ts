@@ -29,9 +29,15 @@ export async function GET(request:Request){
     'WHERE c.actor_id=? AND o.owner_id=c.actor_id'+where+
     ' ORDER BY c.updated_at DESC,c.id DESC LIMIT 21 OFFSET ?').bind(...values,(page-1)*20),
    db.prepare('SELECT COUNT(*)::int AS count FROM finance_collection_cases c WHERE c.actor_id=?'+where).bind(...values),
+   db.prepare('SELECT r.id AS "receivableId",o.client,o.title AS "orderTitle",r.due_date AS "dueDate",'+
+    '('+outstandingExpression+')::text AS "outstandingScaled" '+
+    'FROM receivables r JOIN invoices i ON i.id=r.invoice_id JOIN service_orders o ON o.id=i.order_id '+
+    'WHERE o.owner_id=? AND ('+outstandingExpression+')>0 '+
+    'AND NOT EXISTS (SELECT 1 FROM finance_collection_cases c WHERE c.actor_id=o.owner_id AND c.receivable_id=r.id) '+
+    'ORDER BY r.due_date,r.id LIMIT 50').bind(context.actorId),
   ]);
   const total=Number((r[2].results[0] as {count?:number})?.count??0);
-  return respond({items:r[1].results.slice(0,20),pageInfo:{page,total,hasMore:total>page*20},
+  return respond({items:r[1].results.slice(0,20),candidates:r[3].results,pageInfo:{page,total,hasMore:total>page*20},
    warnings:['Acompanhamentos registram contatos e compromissos informados; não enviam mensagens nem comprovam liquidação.']},context);
  }catch(error){return failure(error,context);}
 }
