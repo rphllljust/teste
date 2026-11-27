@@ -26,7 +26,7 @@ test('controlling budgets are persisted, isolated and approved exactly once',asy
  const payload={id,accountId:account,periodMonth:'2027-04',plannedScaled:'9007199254741000',reference:'Centro de custo operacao'};
  assert.equal((await POST(request(a,'/api/controlling/budgets',payload))).status,201);
  assert.equal((await POST(request(a,'/api/controlling/budgets',payload))).status,200);
- const before=await (await GET(request(a,'/api/controlling/budgets?periodMonth=2027-04'))).json();
+ const before=await (await GET(request(a,'/api/controlling/budgets?periodMonth=2027-04'))).json() as {summary:{plannedScaled:string};items:Array<{actualScaled:string}>};
  assert.equal(before.summary.plannedScaled,'0');
  assert.equal(before.items[0].actualScaled,'0');
  assert.equal((await POST(request(b,'/api/controlling/budgets',{...payload,id:randomUUID()}))).status,409);
@@ -35,8 +35,8 @@ test('controlling budgets are persisted, isolated and approved exactly once',asy
  assert.equal((await budgetCommand(request(a,'/api/controlling/budgets/commands',cmd))).status,201);
  assert.equal((await budgetCommand(request(a,'/api/controlling/budgets/commands',cmd))).status,200);
  assert.equal((await budgetCommand(request(a,'/api/controlling/budgets/commands',{...cmd,key:randomUUID()}))).status,409);
- const approved=await (await GET(request(a,'/api/controlling/budgets?periodMonth=2027-04'))).json();
+ const approved=await (await GET(request(a,'/api/controlling/budgets?periodMonth=2027-04'))).json() as {summary:{plannedScaled:string;actualScaled:string}};
  assert.equal(approved.summary.plannedScaled,'9007199254741000');
  assert.equal(approved.summary.actualScaled,'0');
- assert.equal((await (await GET(request(b,'/api/controlling/budgets?periodMonth=2027-04'))).json()).items.length,0);
+ assert.equal(((await (await GET(request(b,'/api/controlling/budgets?periodMonth=2027-04'))).json()) as {items:unknown[]}).items.length,0);
 });

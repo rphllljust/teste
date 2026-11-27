@@ -49,5 +49,5 @@ test('batch preview is read-only; invalid line aborts all; valid commit is atomi
  assert.equal((await POST(req(owner,{...payload,key:randomUUID(),mode:'commit'}))).status,409);
  const history=await GET(setTestIdentity(new Request('http://localhost/api/bank/reconciliation-batches?statementId='+statement),owner));
  assert.equal(history.status,200);
- assert.equal((await history.json()).items.length,1);
+ assert.equal(((await history.json()) as {items:unknown[]}).items.length,1);
 });
