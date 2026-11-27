@@ -88,3 +88,14 @@ test('finance Tier1 acceptance covers five real modules, three viewports, withou
  assert.ok(src.includes('limits.root-limits.viewport<=24'));
  assert.ok(src.includes('unauthenticated-finance-'));
 });
+
+test('Tier1 controller staging gate verifies debt aging and source confidentiality on every viewport',()=>{
+ const src=read('test/hml-live-acceptance.mjs');
+ for(const marker of ['/api/finance/aging?asOf=2026-11-26',
+  '/api/finance/cash-flow?from=2026-11-01&to=2026-11-30',
+  '/api/accounting/ledger?accountId=00000000',
+  "name:'Análise de vencimentos e liquidez documental'",
+  "'.finance-tier1-aging-heading'",
+  'denied anonymous financial ledger'])
+ assert.ok(src.includes(marker),marker);
+});
