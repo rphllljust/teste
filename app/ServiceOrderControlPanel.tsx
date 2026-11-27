@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {ArrowRight,CheckCircle2,ClipboardCheck,RefreshCw,ShieldAlert} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
+import ServiceOrderMilestonesPanel from './ServiceOrderMilestonesPanel';
 
 type Alert={code:string;severity:'warning'|'info';module:string;message:string};
 type Control={
@@ -115,6 +116,10 @@ export default function ServiceOrderControlPanel({orderId,onNavigate,onExecuteOr
     </dl>
     {data.warnings.map(text=><p key={text}>{text}</p>)}
     <p>Referência UTC: {data.asOf}. *Contribuição parcial não é margem nem lucro.</p>
+   </details>
+   <details className="service-order-control-milestones-fold">
+    <summary>Marcos operacionais auditáveis · registrar e corrigir evidências</summary>
+    <ServiceOrderMilestonesPanel orderId={orderId}/>
    </details>
    <div className="service-order-control-actions">
     <span>Continuidade documental recomendada: <strong>{data.focus}</strong></span>
