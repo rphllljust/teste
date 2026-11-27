@@ -17,9 +17,9 @@ const actor=randomUUID(),other=randomUUID(),supplier=randomUUID(),item=randomUUI
  line=randomUUID(),receipt=randomUUID(),receiptLine=randomUUID(),movement=randomUUID(),
  payable=randomUUID(),invoice=randomUUID(),payment=randomUUID();
 const now=new Date().toISOString();
-const request=(owner:string,id=po)=>setTestIdentity(
+const request=(owner:string,id:string=po)=>setTestIdentity(
  new Request('http://localhost/api/enterprise/procure-to-pay/'+id),owner);
-const read=(owner:string,id=po)=>GET(request(owner,id),{params:Promise.resolve({id})});
+const read=(owner:string,id:string=po)=>GET(request(owner,id),{params:Promise.resolve({id})});
 type Data={order:{id:string;status:string};
  financials:{orderScaled:string;payableScaled:string;paidScaled:string;outstandingScaled:string};
  alerts:Array<{code:string}>;stages:Array<{key:string;state:string;items:Array<{id:string}>}>;
