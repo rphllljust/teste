@@ -5,6 +5,9 @@ import {Pool} from 'pg';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {closeDatabase} from '../../db/raw';
 import {POST,GET} from '../../app/api/bank/reconciliation-batches/route';
+import {GET as listStatements} from '../../app/api/bank/statements/route';
+import {GET as listTreasury} from '../../app/api/treasury/route';
+import {POST as singleBankCommand} from '../../app/api/bank/commands/route';
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw Error('Disposable PG required');
 const u=new URL(process.env.DATABASE_URL);
 if(!['127.0.0.1','localhost'].includes(u.hostname)||!['/cisne_ci','/cisne_test'].includes(u.pathname))
@@ -47,6 +50,23 @@ test('batch preview is read-only; invalid line aborts all; valid commit is atomi
  assert.equal((await POST(req(owner,{...payload,mode:'commit'}))).status,200);
  assert.equal((await pool.query('SELECT id FROM bank_reconciliation_events WHERE line_id=ANY($1::text[])',[line])).rowCount,2);
  assert.equal((await POST(req(owner,{...payload,key:randomUUID(),mode:'commit'}))).status,409);
+ const list=(path:string,actor:string)=>setTestIdentity(new Request('http://localhost'+path),actor);
+ const beforeUnmatch=await (await listStatements(list('/api/bank/statements?accountReference=CI-bank',owner))).json() as {items:Array<{id:string;unmatchedCount:string|number}>};
+ assert.equal(Number(beforeUnmatch.items.find(x=>x.id===statement)?.unmatchedCount),0,'fully matched bank statement has no pending lines');
+ const treasuryBefore=await (await listTreasury(list('/api/treasury',owner))).json() as {items:Array<{statementId:string;unmatchedCount:string|number}>};
+ assert.equal(Number(treasuryBefore.items.find(x=>x.statementId===statement)?.unmatchedCount),0);
+ const event=(await pool.query("SELECT id FROM bank_reconciliation_events WHERE line_id=$1 AND kind='match'",[line[0]])).rows[0].id as string;
+ const unmatchKey=randomUUID();
+ const unmatch={key:unmatchKey,statementId:statement,lineId:line[0],command:'unmatch',version:1,matchId:event};
+ const unmatched=await singleBankCommand(req(owner,unmatch));
+ assert.equal(unmatched.status,201,JSON.stringify(await unmatched.clone().json()));
+ assert.equal((await singleBankCommand(req(owner,{...unmatch,key:randomUUID()}))).status,404,
+  'a previously reversed match cannot be reversed a second time');
+ const afterUnmatch=await (await listStatements(list('/api/bank/statements?accountReference=CI-bank',owner))).json() as {items:Array<{id:string;unmatchedCount:string|number}>};
+ assert.equal(Number(afterUnmatch.items.find(x=>x.id===statement)?.unmatchedCount),1);
+ const treasuryAfter=await (await listTreasury(list('/api/treasury',owner))).json() as {items:Array<{statementId:string;unmatchedCount:string|number}>};
+ assert.equal(Number(treasuryAfter.items.find(x=>x.statementId===statement)?.unmatchedCount),1);
+
  const history=await GET(setTestIdentity(new Request('http://localhost/api/bank/reconciliation-batches?statementId='+statement),owner));
  assert.equal(history.status,200);
  assert.equal(((await history.json()) as {items:unknown[]}).items.length,1);

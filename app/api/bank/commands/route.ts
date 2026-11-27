@@ -25,7 +25,7 @@ export async function POST(request: Request) {
         const expectedKind = Number(line.rows[0].amount) >= 0 ? 'receipt' : 'payment';
         if (data.targetType !== expectedKind) throw new ApiError(409, 'RECONCILIATION_SIGN_CONFLICT', 'O sinal da linha não corresponde ao tipo de lançamento.');
         const table = expectedKind === 'receipt' ? 'receivable_settlements' : 'payable_payments';
-        const target = await query(`SELECT id,amount FROM ${table} WHERE id=$1 AND actor_id=$2 AND kind=$3`, [data.targetId, context!.actorId, expectedKind]);
+        const target = await query(`SELECT id,amount FROM ${table} WHERE id=$1 AND actor_id=$2 AND kind=$3 AND NOT EXISTS (SELECT 1 FROM ${table} rev WHERE rev.reverses_id=${table}.id) FOR UPDATE`, [data.targetId, context!.actorId, expectedKind]);
         if (!target.rowCount || BigInt(String(line.rows[0].amount).replace('-','')) !== BigInt(String(target.rows[0].amount))) throw new ApiError(409, 'RECONCILIATION_AMOUNT_CONFLICT', 'O valor do lançamento não corresponde ao extrato.');
         const active = await query("SELECT 1 FROM bank_reconciliation_events WHERE line_id=$1 AND kind='match' AND NOT EXISTS (SELECT 1 FROM bank_reconciliation_events u WHERE u.reverses_id=bank_reconciliation_events.id)", [data.lineId]);
         if (active.rowCount) throw new ApiError(409, 'RECONCILIATION_ALREADY_MATCHED', 'A linha já está conciliada.');
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
         if(duplicateTarget.rows.length)throw new ApiError(409,'RECONCILIATION_TARGET_MATCHED','O lançamento já está conciliado em outro extrato.');
         await query(`INSERT INTO bank_reconciliation_events (id,line_id,kind,${expectedKind === 'receipt' ? 'receipt_id' : 'payment_id'},created_at,actor_id,request_hash,correlation_id) VALUES ($1,$2,'match',$3,$4,$5,$6,$7)`, [data.key, data.lineId, data.targetId, new Date().toISOString(), context!.actorId, hash, context!.correlationId]);
       } else {
-        const match = await query("SELECT id FROM bank_reconciliation_events WHERE id=$1 AND line_id=$2 AND kind='match'", [data.matchId, data.lineId]);
+        const match = await query("SELECT id FROM bank_reconciliation_events WHERE id=$1 AND line_id=$2 AND kind='match' AND NOT EXISTS (SELECT 1 FROM bank_reconciliation_events u WHERE u.reverses_id=bank_reconciliation_events.id)", [data.matchId, data.lineId]);
         if (!match.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Conciliação ativa não encontrada.');
         await query('INSERT INTO bank_reconciliation_events (id,line_id,kind,reverses_id,created_at,actor_id,request_hash,correlation_id) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)', [data.key, data.lineId, 'unmatch', data.matchId, new Date().toISOString(), context!.actorId, hash, context!.correlationId]);
       }
