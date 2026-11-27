@@ -222,7 +222,7 @@ export async function POST(request:Request,{params}:{params:Promise<{id:string}>
      const verdict=nextWorkPackageState({current:state,command:command.action,orderState:orderStatus,
       dependencyState:dependency?.rows[0]?.state==null?null:String(dependency.rows[0].state),
       hasActiveDependents:Boolean(downstream?.rowCount)});
-     if(!verdict.ok)throw new ApiError(409,String(verdict.code),'A transição não é permitida neste estado ou possui dependências abertas.');
+     if(!verdict.ok||!verdict.state)throw new ApiError(409,String(verdict.code),'A transição não é permitida neste estado ou possui dependências abertas.');
      state=verdict.state;
      await q(`UPDATE enterprise_os_work_packages SET state=$4,row_version=$5,updated_at=$6,
        started_at=CASE WHEN $4='in_progress' THEN $6 ELSE started_at END,
