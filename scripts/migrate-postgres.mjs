@@ -39,6 +39,7 @@ const migrations = [
   { id: '0027_finance_collection_cases', file: '../drizzle-pg/0027_finance_collection_cases.sql' },
   { id: '0028_enterprise_project_cost_allocations', file: '../drizzle-pg/0028_enterprise_project_cost_allocations.sql' },
   { id: '0029_enterprise_os_work_packages', file: '../drizzle-pg/0029_enterprise_os_work_packages.sql' },
+  { id: '0030_enterprise_external_references', file: '../drizzle-pg/0030_enterprise_external_references.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
