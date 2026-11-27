@@ -2,6 +2,8 @@ import {z} from 'zod';
 import {databasePool} from '../../../../../db/raw';
 import {ApiError,requestContext,respond,failure,type RequestContext} from '../../../../../lib/api/http';
 import {classifyProcurePortfolio,sumScaled} from '../../../../../lib/domain/procure-portfolio.mjs';
+import {assessProcureDeadlines} from '../../../../../lib/domain/procure-deadlines.mjs';
+import {serializeProcurePortfolioCsv} from '../../../../../lib/domain/procure-portfolio-export.mjs';
 import type {PoolClient} from 'pg';
 export const dynamic='force-dynamic';
 
@@ -9,13 +11,14 @@ const filters=z.object({
  q:z.string().trim().max(90).default(''),
  status:z.enum(['all','draft','approved','received','cancelled']).default('all'),
  page:z.coerce.number().int().min(1).max(10000).default(1),
+ format:z.enum(['json','csv']).default('json'),
 }).strict();
 
 type Row={
  id:string;reference:string;status:string;expected_on:string|null;created_at:string;
  supplier:string;order_amount:string;
  line_count:number;ordered_qty:string;accepted_qty:string;
- invoice_id:string|null;invoice_amount:string|null;payable_id:string|null;
+ invoice_id:string|null;invoice_amount:string|null;payable_id:string|null;payable_due_on:string|null;
  payable_amount:string|null;paid_amount:string;attributed_amount:string;
  accrual_verified:boolean;unmatched_payments:number;
 };
@@ -35,7 +38,7 @@ const pageSql=[
  'po.total::text AS order_amount,po.supplier,',
  'COALESCE(li.line_count,0)::int AS line_count,',
  "COALESCE(li.ordered_qty,'0') AS ordered_qty,COALESCE(li.accepted_qty,'0') AS accepted_qty,",
- 'si.id AS invoice_id,si.amount::text AS invoice_amount,p.id AS payable_id,',
+ 'si.id AS invoice_id,si.amount::text AS invoice_amount,p.id AS payable_id,p.due_date AS payable_due_on,',
  'p.amount::text AS payable_amount,COALESCE(pay.paid_amount,0)::text AS paid_amount,',
  'COALESCE(cost.attributed_amount,0)::text AS attributed_amount,',
  'COALESCE(accrual.verified,false) AS accrual_verified,',
@@ -88,7 +91,7 @@ export async function GET(request:Request){
   ctx=requestContext(request);
   const parsed=filters.safeParse(Object.fromEntries(new URL(request.url).searchParams));
   if(!parsed.success)throw new ApiError(400,'VALIDATION_FAILED','Filtros da carteira de compras inválidos.');
-  const {q,status,page}=parsed.data;
+  const {q,status,page,format}=parsed.data;
   connection=await databasePool().connect();
   await connection.query('BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY');
   const values=[ctx.actorId,q,status];
@@ -96,6 +99,7 @@ export async function GET(request:Request){
   const records=await connection.query(pageSql,[...values,(page-1)*25]);
   await connection.query('COMMIT');
   const total=Number(count.rows[0]?.total??0);
+  const asOf=new Date().toISOString().slice(0,10);
   const items=(records.rows as Row[]).map(row=>{
    const proof=classifyProcurePortfolio({
     status:row.status,lineCount:Number(row.line_count),
@@ -106,17 +110,32 @@ export async function GET(request:Request){
     attributedAmount:row.attributed_amount,
     accrualVerified:row.accrual_verified,unmatchedPayments:Number(row.unmatched_payments)
    });
+   const deadlines=assessProcureDeadlines({status:row.status,acceptedQuantity:row.accepted_qty,
+    orderedQuantity:row.ordered_qty,expectedOn:row.expected_on,
+    payableDueOn:row.payable_due_on,hasPayable:!!row.payable_id,
+    outstandingScaled:proof.outstandingScaled},{today:asOf});
    return {id:row.id,reference:row.reference,supplier:row.supplier,
-    status:row.status,expectedOn:row.expected_on,createdAt:row.created_at,
+    status:row.status,expectedOn:row.expected_on,payableDueOn:row.payable_due_on,
+    createdAt:row.created_at,
     invoiceId:row.invoice_id,payableId:row.payable_id,
     orderedQuantity:row.ordered_qty,acceptedQuantity:row.accepted_qty,
     accrualVerified:row.accrual_verified,unmatchedPayments:Number(row.unmatched_payments),
-    ...proof};
+    ...proof,...deadlines};
   });
+  if(format==='csv'){
+   const csv=serializeProcurePortfolioCsv(items);
+   return new Response(csv,{status:200,headers:{
+    'Content-Type':'text/csv; charset=utf-8',
+    'Content-Disposition':`attachment; filename="cisne-carteira-compras-pagina-${page}.csv"`,
+    'Cache-Control':'no-store, private','X-Content-Type-Options':'nosniff'
+   }});
+  }
   return respond({
    items,pageInfo:{page,pageSize:25,total,hasMore:page*25<total},
    summary:{
     pageOrders:items.length,pageDocumentExceptions:items.filter(x=>x.flags.length>0).length,
+    pageDeliveryOverdue:items.filter(x=>x.delivery.state==='overdue').length,
+    pagePaymentOverdue:items.filter(x=>x.payment.state==='overdue').length,
     pagePurchaseScaled:sumScaled(items.map(x=>x.orderScaled)),
     pageOutstandingScaled:sumScaled(items.map(x=>x.outstandingScaled)),
     pageAttributedScaled:sumScaled(items.map(x=>x.attributedScaled))
@@ -124,7 +143,8 @@ export async function GET(request:Request){
    source:'owner_scoped_postgresql_documentary_evidence',
    consistency:'REPEATABLE READ READ ONLY',
    warnings:[
-    'Valores consolidados referem-se apenas aos pedidos exibidos nesta página.',
+    'Valores consolidados e exportação CSV referem-se apenas aos pedidos exibidos nesta página.',
+    'Alertas de entrega e vencimento financeiro são independentes e usam a data civil UTC; não significam juros, liquidação nem lançamento contábil.',
     'Recebimento usa quantidades aceitas; não substitui a conferência individual de estoque.',
     'Reconhecimento contábil e conciliações bancárias só são considerados mediante vínculo persistido e válido.',
     'Não representa caixa disponível, fechamento fiscal, margem total ou transmissão bancária.'
