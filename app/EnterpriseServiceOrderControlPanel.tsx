@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import {Activity,ArrowRight,CalendarClock,FileText,RefreshCw,ShieldAlert,Wallet} from 'lucide-react';
 import {moneyScaled} from '../lib/domain/orders';
+import EnterpriseServiceOrderWorkPlan from './EnterpriseServiceOrderWorkPlan';
 
 type Phase='intake'|'planning'|'execution'|'measurement'|'approval'|'billing'|'collections'|'invoiced'|'review'|'cancelled';
 type Evidence={
@@ -124,6 +125,7 @@ export default function EnterpriseServiceOrderControlPanel({orderId,onOpenOrder,
     <button type="button" onClick={()=>navigate('Dossiês empresariais',orderId)}>Dossiê completo <ArrowRight size={12}/></button>
     <button type="button" onClick={()=>navigate('Visão financeira')}>Controladoria <ArrowRight size={12}/></button>
    </nav>
+   <EnterpriseServiceOrderWorkPlan key={orderId} orderId={orderId}/>
    <details className="enterprise-os-control-trace">
     <summary>Rastreabilidade por documento <span>{data.recent.allocations.length} recursos · {data.recent.execution.length} apontamentos · {data.recent.measurements.length} medições</span></summary>
     <div className="enterprise-os-control-trace-grid">
