@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, bigint, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, boolean, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
 export const orders = pgTable('service_orders', {
  contractId:text('contract_id'),clientId:text('client_id'),ownerId:text('owner_id'),id: text('id').primaryKey(), title: text('title').notNull(), client: text('client').notNull(),
  category: text('category').notNull(), description: text('description').notNull(),
@@ -302,6 +302,147 @@ export const enterpriseLegalEntities = pgTable('enterprise_legal_entities', {
   uniqueIndex('enterprise_entity_tenant_code_uq').on(t.tenantId,t.code),
   uniqueIndex('enterprise_entity_tenant_id_uq').on(t.tenantId,t.id),
 ]);
+/** Operator-supplied corporate activity reference (not an official Receita lookup). */
+export const enterpriseDeclaredCnaes = pgTable('enterprise_declared_cnaes', {
+  code:text('code').primaryKey(),
+  description:text('description').notNull(),
+  displayOrder:integer('display_order').notNull(),
+  isPrimary:boolean('is_primary').notNull().default(false),
+},t=>[
+  uniqueIndex('enterprise_declared_cnaes_order_uq').on(t.displayOrder),
+  uniqueIndex('enterprise_declared_cnaes_single_primary_idx').on(t.isPrimary).where(sql`${t.isPrimary} = true`),
+  check('enterprise_declared_cnaes_code_format',sql`${t.code} ~ '^[0-9]{2}[.][0-9]{2}-[0-9]-[0-9]{2}, {
+  id:text('id').primaryKey(),
+  tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
+  actorId:text('actor_id').notNull(),
+  action:text('action').notNull(),
+  resourceId:text('resource_id').notNull(),
+  correlationId:text('correlation_id').notNull(),
+  createdAt:text('created_at').notNull(),
+},t=>[index('enterprise_permission_events_tenant_created_idx').on(t.tenantId,t.createdAt,t.id)]);
+
+
+/** Audited manual verification links; not automatic accounting posting. */
+export const accountingInvoiceLinks=pgTable('accounting_invoice_links',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ invoiceId:text('invoice_id').notNull().unique().references(()=>invoices.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ amount:integer('amount').notNull(),
+ postingMode:text('posting_mode').notNull().default('manual_verified'),
+ ruleVersion:integer('rule_version'),
+ requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[index('accounting_invoice_link_owner_idx').on(t.actorId,t.invoiceId)]);
+
+/** No implicit ledger rules. The owner explicitly selects A/R and revenue accounts. */
+export const accountingPostingRules=pgTable('accounting_posting_rules',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ sourceType:text('source_type').notNull(),
+ debitAccountId:text('debit_account_id').notNull().references(()=>chartAccounts.id),
+ creditAccountId:text('credit_account_id').notNull().references(()=>chartAccounts.id),
+ active:integer('active').notNull().default(0),
+ rowVersion:integer('row_version').notNull().default(1),
+ createdAt:text('created_at').notNull(),
+ updatedAt:text('updated_at').notNull(),
+},t=>[
+ uniqueIndex('accounting_posting_rule_actor_source_uq').on(t.actorId,t.sourceType),
+ index('accounting_posting_rules_actor_active_idx').on(t.actorId,t.active),
+ check('accounting_posting_rules_source_type_check',sql`${t.sourceType} IN ('invoice_billing','receivable_receipt','payable_accrual','payable_payment')`),
+]);
+
+/** Append-only source facts for automated cash receipt and reversal entries. */
+export const accountingSettlementLinks=pgTable('accounting_settlement_links',{
+ id:text('id').primaryKey(),
+ actorId:text('actor_id').notNull(),
+ settlementId:text('settlement_id').notNull().unique().references(()=>receivableSettlements.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ kind:text('kind').notNull(),
+ amount:integer('amount').notNull(),
+ effectiveDate:text('effective_date').notNull(),
+ ruleVersion:integer('rule_version').notNull(),
+ requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[
+ check('accounting_settlement_links_kind_check',sql`${t.kind} IN ('receipt','reversal')`),
+ check('accounting_settlement_links_amount_check',sql`${t.amount}>0`),
+ check('accounting_settlement_links_version_check',sql`${t.ruleVersion}>0`),
+ index('accounting_settlement_links_owner_date_idx').on(t.actorId,t.effectiveDate,t.settlementId),
+]);
+
+/** Immutable AP accrual and payment source facts. Legacy documents are never backfilled. */
+export const accountingPayableLinks=pgTable('accounting_payable_links',{
+ id:text('id').primaryKey(),actorId:text('actor_id').notNull(),
+ payableId:text('payable_id').notNull().unique().references(()=>payables.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ amount:integer('amount').notNull(),effectiveDate:text('effective_date').notNull(),
+ ruleVersion:integer('rule_version').notNull(),requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull(),
+},t=>[check('accounting_payable_links_amount_check',sql`${t.amount}>0`),
+ index('accounting_payable_links_owner_date_idx').on(t.actorId,t.effectiveDate,t.payableId)]);
+export const accountingPayablePaymentLinks=pgTable('accounting_payable_payment_links',{
+ id:text('id').primaryKey(),actorId:text('actor_id').notNull(),
+ paymentId:text('payment_id').notNull().unique().references(()=>payablePayments.id),
+ journalId:text('journal_id').notNull().unique().references(()=>journalEntries.id),
+ kind:text('kind').notNull(),amount:integer('amount').notNull(),
+ effectiveDate:text('effective_date').notNull(),ruleVersion:integer('rule_version').notNull(),
+ requestHash:text('request_hash').notNull(),correlationId:text('correlation_id').notNull(),
+ createdAt:text('created_at').notNull(),
+},t=>[check('accounting_payable_payment_links_kind_check',sql`${t.kind} IN ('payment','reversal')`),
+ check('accounting_payable_payment_links_amount_check',sql`${t.amount}>0`),
+ index('accounting_payable_payment_links_owner_date_idx').on(t.actorId,t.effectiveDate,t.paymentId)]);
+
+/** Immutable three-way matching facts. Source amounts are scaled integer ten-thousandths. */
+export const procurementSupplierInvoices=pgTable('procurement_supplier_invoices',{
+ id:text('id').primaryKey(),ownerId:text('owner_id').notNull(),
+ orderId:text('order_id').notNull().unique().references(()=>supplierPurchaseOrders.id),
+ supplierId:text('supplier_id').notNull().references(()=>suppliers.id),
+ payableId:text('payable_id').notNull().unique().references(()=>payables.id),
+ documentNumber:text('document_number').notNull(),
+ issueDate:text('issue_date').notNull(),dueDate:text('due_date').notNull(),
+ amount:integer('amount').notNull(),currency:text('currency').notNull().default('BRL'),
+ status:text('status').notNull().default('matched'),requestHash:text('request_hash').notNull(),
+ correlationId:text('correlation_id').notNull(),createdAt:text('created_at').notNull(),
+},t=>[
+ uniqueIndex('procurement_supplier_invoice_owner_supplier_doc_unique').on(t.ownerId,t.supplierId,t.documentNumber),
+ index('procurement_supplier_invoices_owner_created_idx').on(t.ownerId,t.createdAt,t.id),
+ check('procurement_supplier_invoice_amount',sql`${t.amount}>0`),
+]);
+export const procurementSupplierInvoiceLines=pgTable('procurement_supplier_invoice_lines',{
+ id:text('id').primaryKey(),
+ supplierInvoiceId:text('supplier_invoice_id').notNull().references(()=>procurementSupplierInvoices.id),
+ orderLineId:text('order_line_id').notNull().references(()=>supplierPurchaseOrderLines.id),
+ acceptedQuantity:integer('accepted_quantity').notNull(),unitPrice:integer('unit_price').notNull(),
+ subtotal:integer('subtotal').notNull(),
+},t=>[uniqueIndex('procurement_supplier_invoice_line_once').on(t.supplierInvoiceId,t.orderLineId)]);
+export const procurementSupplierInvoiceReceipts=pgTable('procurement_supplier_invoice_receipts',{
+ id:text('id').primaryKey(),
+ supplierInvoiceId:text('supplier_invoice_id').notNull().references(()=>procurementSupplierInvoices.id),
+ receiptLineId:text('receipt_line_id').notNull().unique().references(()=>procurementReceiptLines.id),
+ acceptedQuantity:integer('accepted_quantity').notNull(),
+},t=>[index('procurement_supplier_invoice_receipts_invoice_idx').on(t.supplierInvoiceId,t.receiptLineId)]);
+`),
+]);
+/** Persistent CNAE membership scoped to an authorized legal entity and its tenant. */
+export const enterpriseLegalEntityCnaes = pgTable('enterprise_legal_entity_cnaes', {
+  tenantId:text('tenant_id').notNull(),
+  legalEntityId:text('legal_entity_id').notNull(),
+  cnaeCode:text('cnae_code').notNull().references(()=>enterpriseDeclaredCnaes.code),
+  isPrimary:boolean('is_primary').notNull().default(false),
+  createdBy:text('created_by').notNull(),
+  createdAt:text('created_at').notNull(),
+},t=>[
+  primaryKey({columns:[t.tenantId,t.legalEntityId,t.cnaeCode]}),
+  foreignKey({columns:[t.tenantId,t.legalEntityId],
+    foreignColumns:[enterpriseLegalEntities.tenantId,enterpriseLegalEntities.id],
+    name:'enterprise_entity_cnaes_company_fk'}),
+  uniqueIndex('enterprise_entity_cnaes_single_primary_idx').on(t.legalEntityId).where(sql`${t.isPrimary} = true`),
+  index('enterprise_entity_cnaes_tenant_idx').on(t.tenantId,t.legalEntityId),
+]);
+
 export const enterprisePermissionEvents = pgTable('enterprise_permission_events', {
   id:text('id').primaryKey(),
   tenantId:text('tenant_id').notNull().references(()=>enterpriseTenants.id),
