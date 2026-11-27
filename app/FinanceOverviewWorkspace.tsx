@@ -7,6 +7,7 @@ import FinancialAgingBoard from './FinancialAgingBoard';
 import ControllingBudgetBoard from './ControllingBudgetBoard';
 import ControllingIncomeStatement from './ControllingIncomeStatement';
 import ProjectCostControlBoard from './ProjectCostControlBoard';
+import EnterpriseProcureToPayPortfolio from './EnterpriseProcureToPayPortfolio';
 
 type Drilldown={viewKey:string;filters:Record<string,string>};
 type Metric={metricId:string;label:string;value:string|null;count:number;status:string;authority:string;drilldown:Drilldown};
@@ -24,12 +25,13 @@ async function get<T>(url:string,signal:AbortSignal):Promise<T>{
  return await response.json() as T;
 }
 type Action={label:string;module:string;description:string;count:number|null;critical:boolean};
-export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedgerAccount,onProjectOrder}:{
+export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedgerAccount,onProjectOrder,onProcurementOrder}:{
  onDrilldown:(d:Drilldown)=>void;onNavigate:(module:string)=>void;
  onLedgerAccount:(id:string,from:string,to:string)=>void;
  onProjectOrder:(id:string)=>void;
+ onProcurementOrder:(id:string)=>void;
 }){
- const [activeArea,setActiveArea]=useState<'tasks'|'budget'|'aging'|'income'|'projects'>('tasks');
+ const [activeArea,setActiveArea]=useState<'tasks'|'budget'|'aging'|'income'|'projects'|'procurement'>('tasks');
  const [asOf,setAsOf]=useState('');
  const [snapshot,setSnapshot]=useState<Snapshot|null>(null);
  const [assurance,setAssurance]=useState<Assurance>({accounting:null,cash:null,treasury:null});
@@ -100,6 +102,7 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedge
       <button type="button" onClick={()=>setActiveArea('budget')}>Orçamento e aprovação</button>
       <button type="button" onClick={()=>setActiveArea('income')}>DRE gerencial e resultados</button>
       <button type="button" onClick={()=>setActiveArea('projects')}>Custos por operação e contribuição</button>
+      <button type="button" onClick={()=>setActiveArea('procurement')}>Compras até pagamento · carteira documental</button>
       <button type="button" onClick={()=>onNavigate('Lotes de pagamentos')}>Lotes de pagamentos</button>
       <button type="button" onClick={()=>onNavigate('Cobrança e inadimplência')}>Cobrança e inadimplência</button>
       <button type="button" onClick={()=>onNavigate('Fluxo de caixa')}>Fluxo de caixa</button>
@@ -131,8 +134,11 @@ export default function FinanceOverviewWorkspace({onDrilldown,onNavigate,onLedge
      onClick={()=>setActiveArea('income')}>Resultado gerencial <span>DRE comparativa</span></button>
     <button type="button" aria-pressed={activeArea==='projects'} className={activeArea==='projects'?'is-selected':''}
      onClick={()=>setActiveArea('projects')}>Custos por OS <span>Contribuição parcial</span></button>
+    <button type="button" aria-pressed={activeArea==='procurement'} className={activeArea==='procurement'?'is-selected':''}
+     onClick={()=>setActiveArea('procurement')}>Compras a pagar <span>Rastreabilidade documental</span></button>
    </nav>
    {activeArea==='projects'&&<ProjectCostControlBoard onOrder={onProjectOrder} onNavigate={onNavigate}/>}
+   {activeArea==='procurement'&&<EnterpriseProcureToPayPortfolio onOpenOrder={onProcurementOrder} onNavigate={onNavigate}/>}
    {activeArea==='income'&&<ControllingIncomeStatement onLedgerAccount={onLedgerAccount} onNavigate={onNavigate}/>}
    {activeArea==='budget'&&<ControllingBudgetBoard onLedger={()=>onNavigate('Razão contábil')}/>}
    {activeArea==='aging'&&<FinancialAgingBoard asOf={asOf||snapshot?.asOf||''} onDrilldown={onDrilldown} onNavigate={onNavigate}/>}
