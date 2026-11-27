@@ -4,7 +4,7 @@
 .service-order-control-heading h3{font-size:14px;line-height:1.4;margin:3px 0 0;font-weight:750;color:#1d4057}
 .service-order-control-heading button{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;font-size:11px;flex:none}
 .service-order-control-body{display:grid;gap:0}
-.service-order-control-stages{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid #e3eaf0}
+.service-order-control-stages{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,125px),1fr));border-bottom:1px solid #e3eaf0}
 .service-order-control-stage{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 11px;border:0;border-right:1px solid #e8eef2;border-radius:0;background:#fff;text-align:left;cursor:pointer}
 .service-order-control-stage:last-child{border-right:0}
 .service-order-control-stage:hover{background:#f1f7f9}
@@ -29,6 +29,9 @@
 .service-order-control-alert small{display:block;font-size:10px;color:#6e8391;margin-top:2px}
 .service-order-control-alert button{display:flex;align-items:center;gap:3px;background:transparent;border:0;color:#2c627d;font-size:10px;cursor:pointer}
 .service-order-control-all-clear{display:flex;align-items:center;gap:7px;font-size:11px;color:#3d7662;margin:0}
+.service-order-control-milestones-fold{border-bottom:1px solid #dfe8ee}
+.service-order-control-milestones-fold>summary{padding:10px 13px;color:#365e73;font-size:11px;font-weight:700;cursor:pointer;background:#f7fafc}
+.service-order-control-milestones-fold[open]>summary{border-bottom:1px solid #e1eaf0}
 .service-order-control-evidence{padding:10px 13px;border-bottom:1px solid #e5edf2}
 .service-order-control-evidence summary{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:650;color:#3d5e72;cursor:pointer}
 .service-order-control-evidence dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:10px 0}
