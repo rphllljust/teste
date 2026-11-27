@@ -1,0 +1,47 @@
+/* OS Tier 1: dense, evidence-based transactional control inside existing Object Pages. */
+.service-order-control{min-width:0;width:100%;border:1px solid #dce6ed;border-radius:8px;background:#fff;color:#28465a;overflow:hidden;margin:10px 0 14px}
+.service-order-control-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(110deg,#f7fafc,#f1f6f9);border-bottom:1px solid #e0e8ee}
+.service-order-control-heading h3{font-size:14px;line-height:1.4;margin:3px 0 0;font-weight:750;color:#1d4057}
+.service-order-control-heading button{display:inline-flex;align-items:center;gap:5px;padding:6px 8px;font-size:11px;flex:none}
+.service-order-control-body{display:grid;gap:0}
+.service-order-control-stages{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid #e3eaf0}
+.service-order-control-stage{min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:10px 11px;border:0;border-right:1px solid #e8eef2;border-radius:0;background:#fff;text-align:left;cursor:pointer}
+.service-order-control-stage:last-child{border-right:0}
+.service-order-control-stage:hover{background:#f1f7f9}
+.service-order-control-stage span{color:#687f8c;font-size:10px}
+.service-order-control-stage strong{font-size:17px;line-height:1.2;font-weight:750;color:#1c4960;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.service-order-control-stage small{color:#77909d;font-size:9px;line-height:1.25}
+.service-order-control-finance{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:0;background:#f9fbfc;border-bottom:1px solid #e3eaf0}
+.service-order-control-finance>div{min-width:0;display:grid;gap:5px;padding:12px 11px;border-right:1px solid #e8eef2}
+.service-order-control-finance>div:last-child{border:0}
+.service-order-control-finance small{font-size:10px;color:#627b88}
+.service-order-control-finance strong{font-size:13px;font-variant-numeric:tabular-nums;color:#264b60;overflow-wrap:anywhere}
+.service-order-control-exceptions{padding:10px 13px;border-bottom:1px solid #e5edf2}
+.service-order-control-exceptions header{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:7px}
+.service-order-control-exceptions h4{margin:0;font-size:12px;color:#26495c}
+.service-order-control-exceptions header span{font-size:10px;color:#718493}
+.service-order-control-alerts{display:grid;gap:4px;max-height:280px;overflow-y:auto}
+.service-order-control-alert{display:flex;align-items:center;gap:8px;padding:8px 9px;background:#f9fafc;border:1px solid #e4eaee;border-radius:5px}
+.service-order-control-alert.warning{border-left:3px solid #b77b49}
+.service-order-control-alert.info{border-left:3px solid #6e9aad}
+.service-order-control-alert>span{flex:1;min-width:0}
+.service-order-control-alert strong{display:block;font-size:11px;font-weight:550;line-height:1.45}
+.service-order-control-alert small{display:block;font-size:10px;color:#6e8391;margin-top:2px}
+.service-order-control-alert button{display:flex;align-items:center;gap:3px;background:transparent;border:0;color:#2c627d;font-size:10px;cursor:pointer}
+.service-order-control-all-clear{display:flex;align-items:center;gap:7px;font-size:11px;color:#3d7662;margin:0}
+.service-order-control-evidence{padding:10px 13px;border-bottom:1px solid #e5edf2}
+.service-order-control-evidence summary{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:650;color:#3d5e72;cursor:pointer}
+.service-order-control-evidence dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 12px;margin:10px 0}
+.service-order-control-evidence dl div{display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid #edf0f3;padding:4px 0}
+.service-order-control-evidence dt{font-size:10px;color:#637b8a}
+.service-order-control-evidence dd{margin:0;font-size:11px;font-weight:650;font-variant-numeric:tabular-nums}
+.service-order-control-evidence p{font-size:10px;line-height:1.5;margin:6px 0;color:#718491}
+.service-order-control-actions{padding:11px 13px;display:grid;gap:8px}
+.service-order-control-actions>span{font-size:11px;color:#506d7d}
+.service-order-control-actions>div{display:flex;flex-wrap:wrap;gap:5px}
+.service-order-control-actions button{display:inline-flex;align-items:center;gap:4px;padding:6px 8px;min-height:29px;font-size:10px}
+.service-order-control-message{padding:14px;font-size:11px;color:#607888}
+.service-order-control :is(button,summary):focus-visible{outline:2px solid #347c9e;outline-offset:2px}
+@media(max-width:1050px){.service-order-control-stages,.service-order-control-finance{grid-template-columns:repeat(3,minmax(0,1fr))}.service-order-control-stage:nth-child(3){border-right:0}}
+@media(max-width:620px){.service-order-control-heading{align-items:start;flex-direction:column}.service-order-control-stages,.service-order-control-finance{grid-template-columns:repeat(2,minmax(0,1fr))}.service-order-control-evidence dl{grid-template-columns:1fr}.service-order-control-alert button{white-space:nowrap}}
+@media(prefers-reduced-motion:reduce){.service-order-control *{scroll-behavior:auto}}
