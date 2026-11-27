@@ -68,3 +68,4 @@ export default function CashFlowScenarioWorkbench({rows,to}:{rows:CashScenarioSo
     A janela pode deixar recebimentos deslocados para além do último dia; esse valor é exposto acima.</p>
   </>}
  </section>;
+}
