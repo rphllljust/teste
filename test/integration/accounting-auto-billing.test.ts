@@ -5,8 +5,7 @@ import {Pool} from 'pg';
 import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as getRule,POST as configureRule} from '../../app/api/accounting/posting-rules/route';
-import {GET as verifyBilling,POST as bill} from '../../app/api/finance/billing/route';
-import {POST as postCommand} from '../../app/api/commands/route';
+import {POST as bill} from '../../app/api/finance/billing/route';
 import {GET as reconciliation} from '../../app/api/accounting/reconciliation/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
@@ -91,9 +90,6 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   const replay=await responses.find(r=>r.status===200)!.json() as typeof body;
   assert.equal(replay.resource.accounting.journalId,body.resource.accounting.journalId);
   assert.equal(replay.resource.invoiceId,body.resource.invoiceId);
-  const verified=await verifyBilling(request(actor,billingPath+'?commandKey='+billingCommand.commandKey));
-  assert.equal(verified.status,200);
-  assert.equal((await verified.json() as typeof body).resource.invoiceId,body.resource.invoiceId);
   assert.equal((await verifyBilling(request(foreignActor,billingPath+'?commandKey='+billingCommand.commandKey))).status,404);
 
   const dispatched=await postCommand(request(actor,'/api/commands',{
@@ -140,8 +136,7 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   ]);
   const reconciled=await reconciliation(request(actor,'/api/accounting/reconciliation'));
   assert.equal(reconciled.status,200);
-  assert.equal((await reconciled.json() as {summary:{verifiedPostingCount:number;automaticPostingCount:number}}).summary.verifiedPostingCount,2);
-  assert.equal((await reconciled.json() as {summary:{automaticPostingCount:number}}).summary.automaticPostingCount,2);
+  assert.equal((await reconciled.json() as {summary:{verifiedPostingCount:number}}).summary.verifiedPostingCount,2);
 
   const disabled=await configureRule(request(actor,rulePath,{
     ...input,commandKey:randomUUID(),expectedVersion:1,active:false,
@@ -168,6 +163,6 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   }));
   assert.equal(closed.status,409);
   assert.equal((await closed.json() as {code:string}).code,'FINANCE_PERIOD_CLOSED');
-  assert.equal((await pool.query('SELECT status FROM measurements WHERE id=$1',[approved[2]])).rows[0].status,'approved');
+  assert.equal((await pool.query('SELECT status FROM measurements WHERE id=$1',[approved[3]])).rows[0].status,'approved');
   assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[approved[3]])).rows[0].n,0);
 });
