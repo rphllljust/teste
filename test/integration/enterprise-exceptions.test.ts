@@ -12,7 +12,9 @@ if(!['localhost','127.0.0.1'].includes(uri.hostname)||!['/cisne_ci','/cisne_test
  throw Error('NO-GO: cross-domain fixtures must not touch shared data');
 const pool=new Pool({connectionString:conn,max:3});
 const owner=randomUUID(),outsider=randomUUID(),anonymous=randomUUID();
-const ids={completed:randomUUID(),billed:randomUUID(),foreignOrder:randomUUID(),
+const ids={completed:randomUUID(),completedCancelled:randomUUID(),completedPending:randomUUID(),
+ completedExecution:randomUUID(),cancelledMeasure:randomUUID(),draftMeasure:randomUUID(),
+ unmeasuredExecution:randomUUID(),billed:randomUUID(),foreignOrder:randomUUID(),
  pendingMeasure:randomUUID(),invoiceMeasure:randomUUID(),invoice:randomUUID(),ar:randomUUID(),
  payable:randomUUID(),foreignPayable:randomUUID(),stmt:randomUUID(),line:randomUUID()};
 const now=new Date().toISOString();
@@ -22,11 +24,19 @@ type Result={items:Array<{id:string;code:string;category:string;orderId:string|n
  summary:{allOpen:number;total:number;byCategory:Array<{category:string;total:number}>};pageInfo:{hasMore:boolean};error?:string};
 const json=async(res:Response)=>res.json() as Promise<Result>;
 before(async()=>{
- for(const [id,actor,status] of [[ids.completed,owner,'completed'],[ids.billed,owner,'authorized'],
+ for(const [id,actor,status] of [[ids.completed,owner,'completed'],
+   [ids.completedCancelled,owner,'completed'],[ids.completedPending,owner,'completed'],
+   [ids.completedExecution,owner,'completed'],[ids.billed,owner,'authorized'],
    [ids.foreignOrder,outsider,'completed']]){
   await pool.query("INSERT INTO service_orders(id,owner_id,title,client,category,description,created_at,status) VALUES($1,$2,'CI exception order','CI client','Serviços','CI', $3,$4)",
    [id,actor,now,status]);
  }
+ await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Cancelled CI measurement',10000,'cancelled',$3)",
+  [ids.cancelledMeasure,ids.completedCancelled,now]);
+ await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Approval pending CI',10000,'draft',$3)",
+  [ids.draftMeasure,ids.completedPending,now]);
+ await pool.query("INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,'report','labor','Unmeasured CI execution',10000,'hora','CI-PROF','2027-12-10','CI-EXEC-UNMEASURED',$3,$4)",
+  [ids.unmeasuredExecution,ids.completedExecution,owner,now]);
  await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Pending CI measurement',20000,'approved',$3)",
   [ids.pendingMeasure,ids.billed,now]);
  await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Billed CI measurement',55000,'billed',$3)",
@@ -49,9 +59,18 @@ test('all-domain queue contains only confirmed owner documents with source modul
  const response=await read(owner);
  assert.equal(response.status,200);
  const data=await json(response);
- for(const code of ['COMPLETED_WITHOUT_MEASUREMENT','APPROVED_UNBILLED',
+ for(const code of ['COMPLETED_WITHOUT_MEASUREMENT','MEASUREMENT_PENDING_APPROVAL',
+  'EXECUTION_NOT_MEASURED','APPROVED_UNBILLED',
   'INVOICE_JOURNAL_UNVERIFIED','RECEIVABLE_OVERDUE','PAYABLE_OVERDUE','BANK_LINE_UNMATCHED'])
   assert.ok(data.items.some(v=>v.code===code),'missing '+code);
+ assert.ok(data.items.some(v=>v.id===ids.completedCancelled&&v.code==='COMPLETED_WITHOUT_MEASUREMENT'),
+  'cancelled measurement cannot satisfy completion');
+ assert.ok(data.items.some(v=>v.id===ids.draftMeasure&&v.code==='MEASUREMENT_PENDING_APPROVAL'),
+  'draft measurement must remain actionable');
+ assert.ok(!data.items.some(v=>v.id===ids.completedPending&&v.code==='COMPLETED_WITHOUT_MEASUREMENT'),
+  'draft measurement is a distinct pending-approval exception');
+ assert.ok(data.items.some(v=>v.id===ids.unmeasuredExecution&&v.code==='EXECUTION_NOT_MEASURED'),
+  'unmeasured work must remain visible even without billing');
  assert.equal(data.items.some(v=>v.id===ids.foreignOrder),false);
  assert.equal(data.items.some(v=>v.id===ids.foreignPayable),false);
  assert.equal(data.summary.allOpen,data.summary.byCategory.reduce((s,v)=>s+v.total,0));
