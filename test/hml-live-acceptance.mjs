@@ -110,7 +110,6 @@ try {
           .waitFor({state:'visible',...time});
         const indicators = await page.locator('.enterprise-operations-indicators button').count();
         assert.equal(indicators,5,profile.name+' '+command.key+' factual work queue shortcuts');
-        assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
         // Tier 1 workstation: verify the three genuine work surfaces, not just HTML markers.
         if(command.key==='operations'){
           const tabs=page.getByRole('tablist',{name:'Espaços da estação de trabalho'});
@@ -134,6 +133,8 @@ try {
             base.origin+'/api/accounting/reconciliation',time);
           assert.equal(forbiddenAccounting.status(),403,profile.name+' anonymous accounting denied');
         }
+        // Queue controls are in the Trabalho surface, not the default analytical tab.
+        assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
         await page.screenshot({
           path:join(artifactDir,'unauthenticated-'+command.key+'-'+profile.name+'.png'),
           fullPage:false,
