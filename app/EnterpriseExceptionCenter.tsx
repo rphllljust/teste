@@ -18,6 +18,9 @@ const descriptions:Record<string,string>={
  APPROVED_UNBILLED:'Medição aprovada sem faturamento vinculado',
  INVOICE_WITHOUT_RECEIVABLE:'Fatura registrada sem título a receber vinculado',
  INVOICE_JOURNAL_UNVERIFIED:'Fatura sem diário publicado e não estornado comprovado',
+ PAYABLE_GL_UNVERIFIED:'Obrigação de fornecedor sem reconhecimento contábil comprovado',
+ PAYMENT_GL_UNVERIFIED:'Pagamento ou estorno sem diário contábil compatível com valor, tipo e data',
+ RECEIPT_GL_UNVERIFIED:'Recebimento ou estorno sem diário contábil compatível com valor, tipo e data',
  RECEIVABLE_OVERDUE:'Título a receber com saldo aberto após vencimento',
  PAYABLE_OVERDUE:'Obrigação a pagar com saldo aberto após vencimento',
  BANK_LINE_UNMATCHED:'Linha de extrato importado sem conciliação bancária ativa',
@@ -52,7 +55,7 @@ export default function EnterpriseExceptionCenter({navigate,onOpenOrder}:{
    <div><span className="eyebrow">CONTROLE TRANSVERSAL</span><h2>
     <AlertTriangle size={16}/> Pendências entre módulos
     {data&&<small>{data.summary.allOpen} ocorrência(s) documentada(s)</small>}</h2>
-    <p>Compras → execução → medição → faturamento → financeiro → bancos → contabilidade.</p>
+    <p>Compras → execução → medição → faturamento → financeiro → bancos → contabilidade. Fontes sem escrituração aparecem como exceções, não como fatos concluídos.</p>
    </div>
    <div><button className="secondary" onClick={()=>setOpen(v=>!v)} aria-expanded={open}>
     {open?'Recolher fila':'Inspecionar fila'} <ArrowRight size={14}/></button>
