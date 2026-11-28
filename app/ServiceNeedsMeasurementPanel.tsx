@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
+import {formatServiceCentsBRL} from '../lib/domain/service-money.mjs';
 
 type Snapshot={
  pricingMode:string;baseSaleCents:string;approvedAdditionalSaleCents:string;
@@ -16,7 +17,8 @@ type Measurement={
 };
 type Settlement={id:string;kind:'receipt'|'reversal';amountCents:number;effectiveDate:string;reference:string;createdAt:string;reversesId:string|null;reversed:boolean};
 type Dossier={status:string;orderId:string|null;measurements:Measurement[];canSettleReceivable:boolean;settlements:Settlement[]};
-const money=(cents:number|string)=>Number(cents||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
+/** API uses 1/100 BRL; native AR/GL uses 1/10,000. Never display cents as reais. */
+const money=(cents:number|string)=>formatServiceCentsBRL(cents);
 function cents(text:string){
  const m=text.trim().match(/^(\d{1,10})(?:[,.](\d{1,2}))?$/);
  if(!m)return null;
@@ -117,7 +119,8 @@ export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}
    {current.invoiceId&&<div className="enterprise-governance-panel">
     <p><strong>Documento de cobrança:</strong> {current.invoiceId} · {money(current.invoiceAmountCents??0)} · vencimento {current.dueDate}</p>
     <p><strong>Conta a receber:</strong> {current.receivableId} · total {money(current.receivableAmountCents??0)} · liquidado {money(current.settledCents)}</p>
-    <p>Saldo em aberto: {money(Math.max(0,Number(current.receivableAmountCents??0)-Number(current.settledCents)))}</p>
+    <p>Saldo em aberto: {money(BigInt(String(current.receivableAmountCents??0))-BigInt(current.settledCents)>0n?
+       (BigInt(String(current.receivableAmountCents??0))-BigInt(current.settledCents)).toString():'0')}</p>
     {data?.canSettleReceivable&&current.receivableId&&
      Number(current.receivableAmountCents??0)>Number(current.settledCents)&&
      <form className="enterprise-governance-panel" onSubmit={e=>collect(e,current.receivableId!)}>

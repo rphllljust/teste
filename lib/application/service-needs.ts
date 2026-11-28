@@ -231,6 +231,21 @@ async function ownAssignment(q:Query,c:Ctx,needId:string,assignmentId:string){
  const a=await q('SELECT id FROM svc_assignments WHERE id=$1 AND tenant_id=$2 AND need_id=$3 AND employee_actor_id=$4',[assignmentId,c.tenantId,needId,c.actorId]);
  if(!a.rows.length)throw notFound();
 }
+/** Authenticated read-only field state for one employee assignment. No prices exposed. */
+export async function getServiceFieldState(q:Query,c:Ctx,needId:string,assignmentId:string){
+ await memberRole(q,c.tenantId,c.actorId);
+ await ownAssignment(q,c,needId,assignmentId);
+ const need=await q('SELECT status FROM svc_needs WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId]);
+ if(!need.rows.length)throw notFound();
+ const last=await q("SELECT event_type,created_at FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
+ const paused=last.rows[0]?.event_type==='pause',status=String(need.rows[0].status);
+ return {status,paused,canRecordProduction:status==='executing'&&!paused,
+  canSubmitReport:status==='executing'&&!paused,
+  lastTransition:last.rows[0]?{eventType:String(last.rows[0].event_type),recordedAt:String(last.rows[0].created_at)}:null,
+  source:'postgres_tenant_assignment_scoped_field_state',
+  policy:'Durante paralisação, ocorrências e evidências de segurança continuam permitidas; produção e medidores exigem retomada. A transação final revalida a permissão.'};
+}
+
 async function hasInboxEvent(q:Query,assignmentId:string,event:string){
  return (await q('SELECT 1 FROM svc_inbox_events WHERE assignment_id=$1 AND event=$2',[assignmentId,event])).rows.length>0;
 }
@@ -451,12 +466,11 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    if(['photo','document'].includes(cmd.eventType)&&!cmd.evidenceRef)
     throw new ApiError(400,'VALIDATION_FAILED','Anexe referência verificável à evidência.');
    await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'field',cmd.eventType==='photo');
-   if(['pause','resume'].includes(cmd.eventType)){
-    const last=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
-    const paused=last.rows[0]?.event_type==='pause';
-    if((cmd.eventType==='pause'&&paused)||(cmd.eventType==='resume'&&!paused))
-     throw new ApiError(409,'INVALID_STATE','Transição de paralisação/retomada incompatível com o estado atual.');
-   }
+   const last=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
+   const paused=last.rows[0]?.event_type==='pause';
+   if((cmd.eventType==='pause'&&paused)||(cmd.eventType==='resume'&&!paused))
+    throw new ApiError(409,'INVALID_STATE','Transição de paralisação/retomada incompatível com o estado atual.');
+   if(paused&&meter)throw new ApiError(409,'OPERATION_PAUSED','Retome a operação antes de registrar medidores de execução.');
    if(meter){
     const previous=await q('SELECT quantity_milli FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND assignment_id=$3 AND event_type=$4 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId,cmd.assignmentId,cmd.eventType]);
     if(previous.rows.length&&BigInt(cmd.quantityMilli!)<BigInt(previous.rows[0].quantity_milli))

@@ -1,0 +1,33 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
+test('service-to-cash audit is read-only, tenant-authenticated and does not manufacture facts',()=>{
+ const route=read('app/api/enterprise/tenants/[id]/service-needs/[needId]/finance-assurance/route.ts');
+ const service=read('lib/application/service-finance-assurance.ts');
+ assert.match(route,/requestContext\(request\)/);
+ assert.match(route,/getServiceFinancialAssurance/);
+ assert.doesNotMatch(route,/export async function POST|export async function PUT|INSERT INTO/);
+ assert.match(service,/getServiceMeasurementDossier\(q,c\)/);
+ assert.match(service,/JOIN svc_needs n ON n.order_id=o.id/);
+ assert.match(service,/WHERE n.tenant_id=\$1 AND n.id=\$2 AND o.id=\$3/);
+ assert.match(service,/accounting_invoice_links/);
+ assert.match(service,/accounting_settlement_links/);
+ assert.match(service,/bank_reconciliation_events/);
+ assert.match(service,/journal_lines/);
+ assert.match(service,/receivable_settlements/);
+ assert.match(service,/EVIDENCE_COMPLETE/);
+ assert.match(service,/truncated/);
+ assert.doesNotMatch(service,/INSERT INTO|UPDATE\s+receivables|DELETE FROM|bankApi\./);
+});
+test('source-backed financial assurance is mounted on completed service-needs, never on employee view',()=>{
+ const view=read('app/ServiceNeedsWorkspace.tsx');
+ const panel=read('app/ServiceNeedsFinanceIntegrityPanel.tsx');
+ assert.match(view,/detail.need.status==='completed'&&<ServiceNeedsFinanceIntegrityPanel/);
+ assert.match(panel,/finance-assurance/);
+ assert.match(panel,/credentials:'same-origin'/);
+ assert.match(panel,/moneyScaled\(data.summary.invoiceAmountScaled\)/);
+ assert.match(panel,/bankMatchedReceipts/);
+ assert.match(panel,/data.steps.map/);
+ assert.doesNotMatch(panel,/method:'POST'|method:"POST"/);
+});
