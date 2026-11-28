@@ -177,6 +177,7 @@ jobs:
             '0033_cisne_dual_owner_declarations',
             '0034_service_need_to_execution',
             '0035_service_ops_enterprise_commercial_field',
+            '0036_cisne_individual_auth_and_evidence',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
