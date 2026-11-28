@@ -1,6 +1,7 @@
 'use client';
 import { LegalEntityCnaes } from './components/enterprise/LegalEntityCnaes';
 import EnterpriseCnaeCatalog from './components/enterprise/EnterpriseCnaeCatalog';
+import EnterpriseOwnerDeclarations from './components/enterprise/EnterpriseOwnerDeclarations';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 type Tenant={id:string;slug:string;name:string;role:string;status:string};
@@ -163,6 +164,7 @@ export default function EnterpriseGovernanceWorkspace(){
    </header>
 
    <nav className="enterprise-governance-anchors" aria-label="Seções de governança">
+    <a href="#governance-owners">Proprietários</a>
     <a href="#governance-cnaes">CNAEs / serviços</a>
     <a href="#governance-organizations">Organizações</a>
     {current&&<a href="#governance-companies">Empresas jurídicas</a>}
@@ -170,6 +172,7 @@ export default function EnterpriseGovernanceWorkspace(){
     {current&&canAudit&&<a href="#governance-audit">Auditoria de permissões</a>}
    </nav>
 
+   <EnterpriseOwnerDeclarations />
    <EnterpriseCnaeCatalog hasOrganization={Boolean(current)} />
 
    <aside className="enterprise-governance-warning" role="note">
