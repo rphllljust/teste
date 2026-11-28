@@ -178,7 +178,7 @@ export default function AccountingWorkspace(){
  <section className="linked-info" aria-label="Regra de contabilização automática de faturas">
   <strong>Reconhecimento automático de receita</strong>
   <p>Configuração explícita por proprietário. Ao faturar uma medição aprovada, o ERP registra débito em ativo a receber e crédito em receita na mesma transação da fatura. Nenhuma regra ou conta é presumida.</p>
-  {ruleLoading?<p role="status">Consultando regra contábil…</p>:<form onSubmit={savePostingRule} key={postingRule?.rowVersion??0}>
+  {ruleLoading||loading?<p role="status">Consultando regra contábil…</p>:<form onSubmit={savePostingRule} key={`${postingRule?.rowVersion??0}:${accounts.length}`}>
     <div className="form-row">
       <label>Conta de débito · ativo a receber
         <select name="debitAccountId" defaultValue={postingRule?.debitAccountId??''} required>
@@ -202,7 +202,7 @@ export default function AccountingWorkspace(){
  <section className="linked-info" aria-label="Regra de contabilização automática de recebimentos">
   <strong>Liquidação de clientes · caixa e bancos</strong>
   <p>Regra independente e opcional para novas baixas: débito na conta escolhida de caixa/banco e crédito na conta de clientes a receber. Ambas devem ser contas ativas de ativo. A conta creditada deve coincidir com o débito de reconhecimento da fatura; caso contrário, o ERP recusa a baixa quando a regra está ativa.</p>
-  {cashRuleLoading?<p role="status">Consultando política de recebimentos…</p>:<form onSubmit={saveCashPostingRule} key={cashRule?.rowVersion??0}>
+  {cashRuleLoading||loading?<p role="status">Consultando política de recebimentos…</p>:<form onSubmit={saveCashPostingRule} key={`${cashRule?.rowVersion??0}:${accounts.length}`}>
     <div className="form-row">
       <label>Conta de débito · caixa ou banco
         <select name="debitAccountId" defaultValue={cashRule?.debitAccountId??''} required>
@@ -227,12 +227,12 @@ export default function AccountingWorkspace(){
  <section className="linked-info" aria-label="Políticas de reconhecimento e pagamento de fornecedores">
   <strong>Obrigações a pagar · escrituração do passivo</strong>
   <p>Políticas opcionais e independentes por empresa. O reconhecimento de uma nova obrigação gera débito em despesa ou ativo e crédito em fornecedores. O pagamento exige débito no mesmo passivo reconhecido e crédito em caixa/banco, com vínculo de origem imutável. Sem configuração não há contabilização retroativa.</p>
-  {payablePolicyLoading?<p role="status">Consultando políticas de fornecedores…</p>:
+  {payablePolicyLoading||loading?<p role="status">Consultando políticas de fornecedores…</p>:
    (['payable_accrual','payable_payment'] as const).map(type=>{
     const rule=payablePolicies[type];
     const debitAccounts=accounts.filter(a=>a.active===1&&(type==='payable_accrual'?(a.type==='expense'||a.type==='asset'):a.type==='liability'));
     const creditAccounts=accounts.filter(a=>a.active===1&&(type==='payable_accrual'?a.type==='liability':a.type==='asset'));
-    return <form key={type+'-'+(rule?.rowVersion??0)} onSubmit={e=>void savePayablePolicy(type,e)}>
+    return <form key={type+'-'+(rule?.rowVersion??0)+'-'+accounts.length} onSubmit={e=>void savePayablePolicy(type,e)}>
      <h3>{type==='payable_accrual'?'Reconhecimento da obrigação':'Liquidação de fornecedores'}</h3>
      <div className="form-row">
       <label>{type==='payable_accrual'?'Débito · despesa ou ativo':'Débito · fornecedores a pagar'}
