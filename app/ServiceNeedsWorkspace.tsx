@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
 import ServiceNeedsCommercialPanel,{type Commercial,type Request as AdditionalRequest} from './ServiceNeedsCommercialPanel';
 import ServiceNeedEmployeeFieldPanel from './ServiceNeedEmployeeFieldPanel';
+import ServiceNeedsReadinessPanel from './ServiceNeedsReadinessPanel';
 
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
@@ -132,6 +133,7 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
    </article>)}
   </div>}
   {tenantId&&mode==='needs'&&<>
+   {tenant?.role==='owner'&&<ServiceNeedsReadinessPanel tenantId={tenantId}/>}
    <div className="enterprise-governance-panel">
     <details>
      <summary><strong>Nova necessidade de serviço</strong> · registrar canal, responsável e referências documentais</summary>
