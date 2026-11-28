@@ -6,6 +6,7 @@ import ServiceNeedEmployeeFieldPanel from './ServiceNeedEmployeeFieldPanel';
 import ServiceNeedsReadinessPanel from './ServiceNeedsReadinessPanel';
 import ServiceNeedsPlanBuilder,{type PlanRevision} from './ServiceNeedsPlanBuilder';
 import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkReviewPanel';
+import ServiceNeedsMeasurementPanel from './ServiceNeedsMeasurementPanel';
 
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
@@ -214,6 +215,8 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
       <ServiceNeedsPlanBuilder key={detail.need.id+'-plan-'+(detail.planHistory[0]?.revision??0)} tenantId={tenantId} needId={selected} current={detail.planned} history={detail.planHistory} onRefresh={refresh}/>}
     {detail.workReports&&['executing','review_pending','completed'].includes(detail.need.status)&&
       <ServiceNeedsWorkReviewPanel key={detail.need.id} tenantId={tenantId} needId={selected} status={detail.need.status} reports={detail.workReports} onRefresh={refresh}/>}
+    {detail.need.status==='completed'&&detail.commercial&&<ServiceNeedsMeasurementPanel
+     key={selected} tenantId={tenantId} needId={selected} onRefresh={refresh}/>}
     {detail.need.status==='executing'&&<div className="enterprise-governance-panel">
      <h3>Adicional operacional · imutável</h3>
      <label>Descrição<input value={additional} onChange={e=>setAdditional(e.target.value)}/></label>
