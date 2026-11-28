@@ -313,8 +313,8 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const approve={action:'approve',measurementId:measureId,commandKey:randomUUID(),reason:'Valores e relatório operacional conferidos pelo segundo controlador',expectedVersion:1};
  assert.equal((await measurePost(abrahim,tenantA,needId,approve)).status,403,'maker cannot authorize their measurement');
  assert.equal((await measurePost(admin,tenantA,needId,approve)).status,403,'non-owner cannot approve');
- const approval=await measurePost(rafael,tenantA,needId,approve);
- assert.equal(approval.status,201,JSON.stringify(await approval.clone().json()));
+ const measurementApproval=await measurePost(rafael,tenantA,needId,approve);
+ assert.equal(measurementApproval.status,201,JSON.stringify(await measurementApproval.clone().json()));
  assert.equal((await measurePost(rafael,tenantA,needId,approve)).status,200,'approval idempotency');
  await assert.rejects(()=>pool.query('DELETE FROM svc_measurement_approvals WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
  const billingKey=randomUUID();
