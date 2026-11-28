@@ -70,6 +70,16 @@ async function requireOwner(q:Query,c:Ctx,what:string){
  if(!await isVerifiedOwner(q,c.tenantId,c.actorId))throw forbidden('Somente os owners autorizados podem '+what+'.');
 }
 
+async function validateInternalEvidence(q:Query,c:Ctx,needId:string,reference:string|null|undefined,kind:'commercial'|'field',photo=false){
+ if(!reference?.startsWith('cisne-file:'))return;
+ const id=reference.slice('cisne-file:'.length);
+ if(!uuid.safeParse(id).success)throw new ApiError(409,'EVIDENCE_SCOPE_MISMATCH','Referência interna inválida.');
+ const rows=await q('SELECT mime_type FROM svc_evidence_files WHERE id=$1 AND tenant_id=$2 AND need_id=$3 AND category=$4',
+  [id,c.tenantId,needId,kind]);
+ if(rows.rows.length!==1||(photo&&!String(rows.rows[0].mime_type).startsWith('image/')))
+  throw new ApiError(409,'EVIDENCE_SCOPE_MISMATCH','A evidência não pertence à operação.');
+}
+
 const NEED_COLS=`id,channel,origin_ref AS "originRef",client_name AS "clientName",contact_name AS "contactName",
  contact_phone AS "contactPhone",contact_email AS "contactEmail",service_description AS "serviceDescription",location,
  requested_date AS "requestedDate",priority,proposal_ref AS "proposalRef",contract_ref AS "contractRef",po_ref AS "poRef",
@@ -358,6 +368,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
   case 'register_commercial_document':{
    await requireOwner(q,c,'vincular documentos comerciais');
    state(need,['received','in_analysis','approved','converted'],cmd.command);
+   await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'commercial');
    await q('INSERT INTO svc_commercial_documents(id,tenant_id,need_id,document_type,reference,description,evidence_ref,registered_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[
     cmd.id,c.tenantId,needId,cmd.documentType,cmd.reference,cmd.description,cmd.evidenceRef,c.actorId]);
    await log('commercial_document_registered',null,{documentId:cmd.id,documentType:cmd.documentType,reference:cmd.reference});
@@ -388,6 +399,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     throw new ApiError(400,'VALIDATION_FAILED','Quilometragem e horímetro exigem valor e unidade; outros eventos não aceitam quantidade.');
    if(['photo','document'].includes(cmd.eventType)&&!cmd.evidenceRef)
     throw new ApiError(400,'VALIDATION_FAILED','Anexe referência verificável à evidência.');
+   await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'field',cmd.eventType==='photo');
    if(['pause','resume'].includes(cmd.eventType)){
     const last=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
     const paused=last.rows[0]?.event_type==='pause';
@@ -407,6 +419,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
   case 'request_additional':{
    await ownAssignment(q,c,needId,cmd.assignmentId);
    state(need,['executing'],cmd.command);
+   await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'field');
    await q('INSERT INTO svc_additional_requests(id,tenant_id,need_id,assignment_id,kind,description,reason,quantity_milli,unit,evidence_ref,requested_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[
     cmd.id,c.tenantId,needId,cmd.assignmentId,cmd.kind,cmd.description,cmd.reason,cmd.quantityMilli,cmd.unit,cmd.evidenceRef,c.actorId]);
    await log('additional_requested',cmd.reason,{requestId:cmd.id,kind:cmd.kind});
@@ -437,6 +450,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     const s=await q('SELECT 1 FROM svc_additionals WHERE id=$1 AND tenant_id=$2 AND need_id=$3',[cmd.supersedesId,c.tenantId,needId]);
     if(!s.rows.length)throw notFound();
    }
+   await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'field');
    await q(`INSERT INTO svc_additionals(id,tenant_id,need_id,supersedes_id,description,reason,evidence_ref,authorized_by_actor_id,recorded_by_actor_id)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8)`,[cmd.id,c.tenantId,needId,cmd.supersedesId??null,cmd.description,cmd.reason,cmd.evidenceRef,c.actorId]);
    await log('additional_recorded',cmd.reason,{additionalId:cmd.id});
