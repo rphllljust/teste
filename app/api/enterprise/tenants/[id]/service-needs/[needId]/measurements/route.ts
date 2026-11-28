@@ -34,7 +34,7 @@ export async function POST(request:Request,route:Route){
   ctx=requestContext(request,true);const {id,needId}=await tenantNeed(route);
   const input=bodySchema.safeParse(await jsonBody(request));
   if(!input.success)throw new ApiError(400,'VALIDATION_FAILED','Comando de medição inválido.');
-  const result=await database().transaction(q=>{
+  const result=await database().transaction<{ok:boolean;replayed?:boolean;measurementId:string;status:string;amountCents?:number;authorizedCeilingCents?:string;version?:number}>(async q=>{
    const c={tenantId:id,needId,actorId:ctx!.actorId,correlationId:ctx!.correlationId};
    if(input.data.action==='prepare'){
     const {action:_action,...p}=input.data;void _action;
