@@ -20,7 +20,7 @@ function cents(text:string){
  const m=text.trim().match(/^(\d{1,10})(?:[,.](\d{1,2}))?$/);
  if(!m)return null;
  const amount=Number(m[1])*100+Number((m[2]??'').padEnd(2,'0'));
- return Number.isSafeInteger(amount)&&amount>0&&amount<=2147483647?amount:null;
+ return Number.isSafeInteger(amount)&&amount>0&&amount<=21474836?amount:null;
 }
 const base=(tenantId:string,needId:string)=>'/api/enterprise/tenants/'+encodeURIComponent(tenantId)+'/service-needs/'+encodeURIComponent(needId)+'/measurements';
 export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}:{
@@ -74,7 +74,7 @@ export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}
     onChange={e=>setDescription(e.target.value)} placeholder="Serviços realizados conforme OS e relatório de campo aceito"/></label>
    <label>Valor medido (R$)<input value={amount} required onChange={e=>setAmount(e.target.value)}
     placeholder="1500,00" inputMode="decimal"/></label>
-   <p>O servidor recalcula e valida o teto considerando contrato, PO, itens comerciais e adicionais aprovados.
+   <p>O servidor recalcula e valida o teto considerando contrato, PO, itens comerciais e adicionais aprovados. Medições individuais ficam limitadas a R$ 214.748,36 pelo livro financeiro atual.
     Um valor maior que o autorizado é recusado.</p>
    <button type="submit" disabled={pending||description.trim().length<10||cents(amount)===null}>Preparar medição</button>
   </form>}
