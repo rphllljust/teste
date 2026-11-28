@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic SQL rows and JSON test payloads */
 import {z} from 'zod';
-import {ApiError} from '../api/http';
+import {ApiError,fingerprint} from '../api/http';
 
 export type Query=(sql:string,params?:unknown[])=>Promise<{rows:Array<Record<string,any>>}>;
 type Ctx={tenantId:string;actorId:string;correlationId:string};
@@ -10,6 +10,9 @@ const text=(min:number,max:number)=>z.string().trim().min(min).max(max);
 const opt=(max:number)=>z.string().trim().max(max).nullable().optional().transform(v=>v?v:null);
 const kind=z.enum(['team','vehicle','equipment','material','hours','quantity']);
 const line=z.object({kind,resourceRef:text(1,200),quantityMilli:z.number().int().positive().max(999999999999),unit:text(1,20)}).strict();
+const cents=z.number().int().min(0).max(999999999999);
+const fieldKind=z.enum(['pause','resume','occurrence','photo','document','odometer','hourmeter','observation']);
+const priceKind=z.enum(['labor','vehicle','equipment','material','transport','daily','hour','displacement','service','other']);
 
 export const createNeed=z.object({
  id:uuid,commandKey:uuid,
@@ -37,6 +40,12 @@ export const needCommand=z.discriminatedUnion('command',[
  z.object({...base,command:z.literal('start_execution'),assignmentId:uuid}).strict(),
  z.object({...base,command:z.literal('record_actual'),assignmentId:uuid,id:uuid,line}).strict(),
  z.object({...base,command:z.literal('add_additional'),id:uuid,supersedesId:uuid.nullable().optional(),description:text(3,1000),reason:text(3,1000),evidenceRef:text(3,500)}).strict(),
+ z.object({...base,command:z.literal('set_commercial_terms'),id:uuid,pricingMode:z.enum(['global','itemized','unpriced']),globalSaleCents:cents.nullable().optional(),paymentMethod:opt(100),paymentTerms:opt(500),maxQuantityMilli:z.number().int().positive().max(999999999999).nullable().optional(),maxFinancialCents:cents.nullable().optional(),customerRules:opt(2000)}).strict(),
+ z.object({...base,command:z.literal('register_commercial_document'),id:uuid,documentType:z.enum(['proposal','contract','po','rc','client_order','authorization','client_attachment','other']),reference:text(2,200),description:text(3,500),evidenceRef:opt(500)}).strict(),
+ z.object({...base,command:z.literal('register_price_line'),id:uuid,supersedesId:uuid.nullable().optional(),kind:priceKind,itemRef:text(2,200),quantityMilli:z.number().int().positive().max(999999999999),unit:text(1,20),internalUnitCostCents:cents,saleUnitPriceCents:cents.nullable().optional()}).strict(),
+ z.object({...base,command:z.literal('record_field_event'),id:uuid,assignmentId:uuid,eventType:fieldKind,description:text(3,1000),quantityMilli:z.number().int().min(0).max(999999999999).nullable().optional(),unit:opt(20),evidenceRef:opt(500)}).strict(),
+ z.object({...base,command:z.literal('request_additional'),id:uuid,assignmentId:uuid,kind:priceKind,description:text(3,1000),reason:text(3,1000),quantityMilli:z.number().int().positive().max(999999999999),unit:text(1,20),evidenceRef:text(3,500)}).strict(),
+ z.object({...base,command:z.literal('decide_additional'),requestId:uuid,decision:z.enum(['approved','rejected']),reason:text(3,1000),approvedInternalCostCents:cents.nullable().optional(),approvedSalePriceCents:cents.nullable().optional()}).strict(),
 ]);
 export const linkEmployee=z.object({commandKey:uuid,employeeActorId:text(1,200),professionalId:text(1,200)}).strict();
 
@@ -67,29 +76,30 @@ const NEED_COLS=`id,channel,origin_ref AS "originRef",client_name AS "clientName
  rc_ref AS "rcRef",other_refs AS "otherRefs",commercial_terms AS "commercialTerms",commercial_limit_cents::float8 AS "commercialLimitCents",
  status,order_id AS "orderId",created_by_actor_id AS "createdByActorId",created_at AS "createdAt",row_version AS "rowVersion"`;
 
-async function replay(q:Query,c:Ctx,needId:string,commandKey:string,event?:string){
- const r=await q('SELECT need_id,actor_id,event FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[c.tenantId,commandKey]);
+async function replay(q:Query,c:Ctx,needId:string,commandKey:string,event?:string,requestHash?:string){
+ const r=await q('SELECT need_id,actor_id,event,request_hash FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[c.tenantId,commandKey]);
  if(!r.rows.length)return null;
  const o=r.rows[0];
- if(String(o.need_id)!==needId||o.actor_id!==c.actorId||(event&&o.event!==event))throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave já utilizada com outros dados.');
+ if(String(o.need_id)!==needId||o.actor_id!==c.actorId||(event&&o.event!==event)||(requestHash&&o.request_hash!==requestHash))throw new ApiError(409,'IDEMPOTENCY_CONFLICT','Chave já utilizada com outros dados.');
  return {ok:true,replayed:true,needId};
 }
-async function audit(q:Query,c:Ctx,needId:string,commandKey:string,event:string,reason:string|null,detail:object={}){
- await q(`INSERT INTO svc_need_events(id,tenant_id,need_id,command_key,event,actor_id,reason,detail,correlation_id)
-  VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7::jsonb,$8)`,[c.tenantId,needId,commandKey,event,c.actorId,reason,JSON.stringify(detail),c.correlationId]);
+async function audit(q:Query,c:Ctx,needId:string,commandKey:string,event:string,reason:string|null,detail:object={},requestHash:string|null=null){
+ await q(`INSERT INTO svc_need_events(id,tenant_id,need_id,command_key,event,actor_id,reason,detail,correlation_id,request_hash)
+  VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9)`,[c.tenantId,needId,commandKey,event,c.actorId,reason,JSON.stringify(detail),c.correlationId,requestHash]);
 }
 
 export async function createServiceNeed(q:Query,c:Ctx,d:z.infer<typeof createNeed>){
- const role=await memberRole(q,c.tenantId,c.actorId);
- if(!['owner','admin','operator'].includes(role))throw forbidden('Sua função não permite registrar necessidades.');
- const prior=await replay(q,c,d.id,d.commandKey,'received');
+ await memberRole(q,c.tenantId,c.actorId);
+ await requireOwner(q,c,'registrar necessidades');
+ const requestHash=await fingerprint({scope:'service-need.create',tenantId:c.tenantId,actorId:c.actorId,body:d});
+ const prior=await replay(q,c,d.id,d.commandKey,'received',requestHash);
  if(prior)return prior;
  await q(`INSERT INTO svc_needs(id,tenant_id,channel,origin_ref,client_name,contact_name,contact_phone,contact_email,service_description,location,
   requested_date,priority,proposal_ref,contract_ref,po_ref,rc_ref,other_refs,commercial_terms,commercial_limit_cents,created_by_actor_id)
   VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
   [d.id,c.tenantId,d.channel,d.originRef,d.clientName,d.contactName,d.contactPhone,d.contactEmail,d.serviceDescription,d.location,d.requestedDate,
    d.priority,d.proposalRef,d.contractRef,d.poRef,d.rcRef,d.otherRefs,d.commercialTerms,d.commercialLimitCents??null,c.actorId]);
- await audit(q,c,d.id,d.commandKey,'received',null,{channel:d.channel});
+ await audit(q,c,d.id,d.commandKey,'received',null,{channel:d.channel},requestHash);
  return {ok:true,needId:d.id,status:'received'};
 }
 
@@ -184,22 +194,29 @@ const eventByCommand: Record<z.infer<typeof needCommand>['command'], string> = {
   start_execution: 'execution_started',
   record_actual: 'actual_recorded',
   add_additional: 'additional_recorded',
+  set_commercial_terms: 'commercial_terms_recorded',
+  register_commercial_document: 'commercial_document_registered',
+  register_price_line: 'price_line_registered',
+  record_field_event: 'field_event_recorded',
+  request_additional: 'additional_requested',
+  decide_additional: 'additional_decided',
 };
 
 export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typeof needCommand>){
- const role=await memberRole(q,c.tenantId,c.actorId);
+ await memberRole(q,c.tenantId,c.actorId);
  const locked=await q('SELECT * FROM svc_needs WHERE tenant_id=$1 AND id=$2 FOR UPDATE',[c.tenantId,needId]);
  if(!locked.rows.length)throw notFound();
  const need=locked.rows[0];
- const prior=await replay(q,c,needId,cmd.commandKey,eventByCommand[cmd.command]);
+ const requestHash=await fingerprint({scope:'service-need.command',tenantId:c.tenantId,needId,actorId:c.actorId,command:cmd});
+ const prior=await replay(q,c,needId,cmd.commandKey,eventByCommand[cmd.command],requestHash);
  if(prior)return prior;
+ const log=(event:string,reason:string|null,detail:object={})=>audit(q,c,needId,cmd.commandKey,event,reason,detail,requestHash);
  const setStatus=(s:string)=>q('UPDATE svc_needs SET status=$3,row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId,s]);
- const manager=['owner','admin'].includes(role);
  switch(cmd.command){
   case 'start_analysis':
-   if(!manager)throw forbidden('Sua função não permite analisar necessidades.');
+   await requireOwner(q,c,'analisar necessidades');
    state(need,['received'],cmd.command);
-   await setStatus('in_analysis');await audit(q,c,needId,cmd.commandKey,'analysis_started',null);
+   await setStatus('in_analysis');await log('analysis_started',null);
    return {ok:true,status:'in_analysis'};
   case 'approve':
   case 'reject':{
@@ -209,7 +226,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     await q('INSERT INTO svc_need_financials(need_id,tenant_id,estimated_cost_cents,margin_bps,recorded_by_actor_id) VALUES($1,$2,$3,$4,$5)',
      [needId,c.tenantId,cmd.financials.estimatedCostCents,cmd.financials.marginBps,c.actorId]);
    const to=cmd.command==='approve'?'approved':'rejected';
-   await setStatus(to);await audit(q,c,needId,cmd.commandKey,to,cmd.reason);
+   await setStatus(to);await log(to,cmd.reason);
    return {ok:true,status:to};
   }
   case 'convert':{
@@ -222,17 +239,17 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    await q(`INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id)
     VALUES($1,$1,'create',1,$2,$3,$4,$1,$5,$6)`,[cmd.orderId,new Date().toISOString(),c.actorId,'svc-need:'+needId,JSON.stringify({ok:true,fromServiceNeed:needId}),c.correlationId]);
    await q('UPDATE svc_needs SET status=$3,order_id=$4,row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId,'converted',cmd.orderId]);
-   await audit(q,c,needId,cmd.commandKey,'converted_to_draft_order',null,{orderId:cmd.orderId});
+   await log('converted_to_draft_order',null,{orderId:cmd.orderId});
    return {ok:true,status:'converted',orderId:cmd.orderId,orderStatus:'draft'};
   }
   case 'set_plan':{
-   if(!manager)throw forbidden('Sua função não permite planejar.');
+   await requireOwner(q,c,'planejar a OS');
    state(need,['converted'],cmd.command);
    await q('DELETE FROM svc_plan_lines WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
    for(const l of cmd.lines)
     await q(`INSERT INTO svc_plan_lines(id,tenant_id,need_id,kind,resource_ref,quantity_milli,unit,planned_by_actor_id) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7)`,
      [c.tenantId,needId,l.kind,l.resourceRef,l.quantityMilli,l.unit,c.actorId]);
-   await audit(q,c,needId,cmd.commandKey,'plan_set',null,{lines:cmd.lines.length});
+   await log('plan_set',null,{lines:cmd.lines.length});
    return {ok:true,lines:cmd.lines.length};
   }
   case 'release':{
@@ -243,7 +260,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    const order=await q('SELECT status FROM service_orders WHERE id=$1 FOR SHARE',[need.order_id]);
    if(order.rows[0]?.status!=='authorized')throw new ApiError(409,'INVALID_STATE','Autorize a OS no fluxo operacional antes de liberar a execução.');
    await q('INSERT INTO svc_releases(need_id,tenant_id,released_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
-   await setStatus('released');await audit(q,c,needId,cmd.commandKey,'released',null);
+   await setStatus('released');await log('released',null);
    return {ok:true,status:'released'};
   }
   case 'assign':{
@@ -256,7 +273,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    catch(e){if(/duplicate key/.test(String((e as Error).message)))throw new ApiError(409,'CONFLICT','Empregado já atribuído.');throw e;}
    await q(`INSERT INTO svc_inbox_events(id,tenant_id,assignment_id,employee_actor_id,event,actor_id,correlation_id) VALUES(gen_random_uuid(),$1,$2,$3,'assigned',$4,$5)`,
     [c.tenantId,id,cmd.employeeActorId,c.actorId,c.correlationId]);
-   await audit(q,c,needId,cmd.commandKey,'assigned',null,{assignmentId:id});
+   await log('assigned',null,{assignmentId:id});
    return {ok:true,assignmentId:id};
   }
   case 'mark_viewed':
@@ -265,7 +282,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    const ev=cmd.command==='mark_viewed'?'viewed':'received';
    if(ev==='received'&&!await hasInboxEvent(q,cmd.assignmentId,'viewed'))throw new ApiError(409,'INVALID_STATE','Visualize a atribuição antes de confirmar o recebimento.');
    await inbox(q,c,cmd.assignmentId,ev);
-   await audit(q,c,needId,cmd.commandKey,ev,null,{assignmentId:cmd.assignmentId});
+   await log(ev,null,{assignmentId:cmd.assignmentId});
    return {ok:true,event:ev};
   }
   case 'start_execution':{
@@ -285,7 +302,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     JSON.stringify({ok:true,source:'service_need',assignmentId:cmd.assignmentId}),c.correlationId,
    ]);
    await q('INSERT INTO svc_executions(need_id,tenant_id,started_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
-   await setStatus('executing');await audit(q,c,needId,cmd.commandKey,'execution_started',null,{assignmentId:cmd.assignmentId});
+   await setStatus('executing');await log('execution_started',null,{assignmentId:cmd.assignmentId});
    return {ok:true,status:'executing',orderStatus:'executing',orderVersion:nextVersion};
   }
   case 'record_actual':{
@@ -293,7 +310,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    state(need,['executing'],cmd.command);
    await q(`INSERT INTO svc_actual_lines(id,tenant_id,need_id,kind,resource_ref,quantity_milli,unit,recorded_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
     [cmd.id,c.tenantId,needId,cmd.line.kind,cmd.line.resourceRef,cmd.line.quantityMilli,cmd.line.unit,c.actorId]);
-   await audit(q,c,needId,cmd.commandKey,'actual_recorded',null,{lineId:cmd.id});
+   await log('actual_recorded',null,{lineId:cmd.id});
    return {ok:true};
   }
   case 'add_additional':{
@@ -306,7 +323,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    }
    await q(`INSERT INTO svc_additionals(id,tenant_id,need_id,supersedes_id,description,reason,evidence_ref,authorized_by_actor_id,recorded_by_actor_id)
     VALUES($1,$2,$3,$4,$5,$6,$7,$8,$8)`,[cmd.id,c.tenantId,needId,cmd.supersedesId??null,cmd.description,cmd.reason,cmd.evidenceRef,c.actorId]);
-   await audit(q,c,needId,cmd.commandKey,'additional_recorded',cmd.reason,{additionalId:cmd.id});
+   await log('additional_recorded',cmd.reason,{additionalId:cmd.id});
    return {ok:true};
   }
  }
