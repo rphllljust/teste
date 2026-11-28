@@ -12,7 +12,9 @@ const labels:Record<Category,string>={all:'Todos os domínios',procurement:'Comp
  billing:'Faturamento',accounting:'Contabilidade',receivables:'Recebíveis',payables:'Contas a pagar',treasury:'Bancos'};
 const descriptions:Record<string,string>={
  PURCHASE_ORDER_LATE:'Pedido aprovado com prazo previsto ultrapassado e recebimento não concluído',
- COMPLETED_WITHOUT_MEASUREMENT:'Ordem concluída sem medição documentada',
+ COMPLETED_WITHOUT_MEASUREMENT:'Ordem concluída sem medição ativa (medições canceladas não encerram a pendência)',
+ MEASUREMENT_PENDING_APPROVAL:'Medição em rascunho ou submetida, aguardando aprovação formal',
+ EXECUTION_NOT_MEASURED:'Apontamento de execução ativo sem medição válida vinculada',
  APPROVED_UNBILLED:'Medição aprovada sem faturamento vinculado',
  INVOICE_WITHOUT_RECEIVABLE:'Fatura registrada sem título a receber vinculado',
  INVOICE_JOURNAL_UNVERIFIED:'Fatura sem diário publicado e não estornado comprovado',
