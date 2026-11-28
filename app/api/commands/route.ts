@@ -79,6 +79,9 @@ export async function POST(request: Request) {
             'Esta OS tem fluxo próprio de recebimento, execução e aceite. Use o dossiê da necessidade.');
         }
         if (p.command === 'measure') {
+          const delegated=await query('SELECT 1 FROM svc_needs WHERE order_id=$1 LIMIT 1',[p.id]);
+          if(delegated.rows.length)throw new ApiError(409,'INVALID_STATE',
+            'Esta OS exige medição vinculada ao relatório aceito e ao limite comercial da necessidade.');
           if (order.status !== 'completed') throw new ApiError(409, 'INVALID_STATE', 'A medição exige uma OS concluída.');
           const measurementId = crypto.randomUUID();
           const now = new Date().toISOString();
@@ -116,6 +119,9 @@ export async function POST(request: Request) {
       if (measurement.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A medição mudou. Atualize o contexto.');
       const now = new Date().toISOString();
       if (p.command === 'approve_measurement') {
+        const linked=await query('SELECT 1 FROM svc_measurement_links WHERE measurement_id=$1',[p.id]);
+        if(linked.rows.length)throw new ApiError(409,'INVALID_STATE',
+          'A medição desta necessidade requer aprovação independente de outro controlador no dossiê.');
         if (measurement.status !== 'draft') throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição em rascunho pode ser aprovada.');
         await query('UPDATE measurements SET status=\'approved\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
         const result = eventResult(p.id, 'measurement', p.version + 1);

@@ -116,3 +116,64 @@ report and returns it with a reason to continue execution, or accepts it:
 OS `complete` and `cancel` commands are denied for linked needs.
 Only a separately governed measurement can follow an accepted report;
 there is no automatic billing or fiscal integration.
+
+
+## Large Tier 1 extension: 0038, from approved field work to cash
+
+**Status**: implementation and synthetic CI acceptance do not constitute
+production GO or permission to post real customer invoices. All testing uses
+disposable PostgreSQL, synthetic actors, and fictional financial facts.
+
+1. Native accepted service report (`svc_work_reports`, verified
+   `svc_work_report_reviews.decision='accepted'`) is a mandatory prerequisite.
+   The canonical OS must be completed in the same immutable business journey.
+2. The first verified owner prepares exactly one measurement linked by
+   `svc_measurement_links` (migration `0038_service_measurement_finance_bridge`).
+   Historical or unlinked OS measurements prevent duplicate service billing.
+   Snapshot captures the accepted report, plan revision, PO/RC/contract,
+   price global or active itemized lines and approved commercial additionals.
+3. The price ceiling is the lower of the signed commercial authorization and
+   the need's customer amount. It cannot be silently increased by a later
+   operation or a rejected additional.
+4. **Four-eyes control**: a different declared and verified owner must approve
+   the draft measurement, recorded immutably in `svc_measurement_approvals`.
+   The original owner cannot approve their own proposal. Legacy generic
+   `measure`/`approve_measurement` commands cannot bypass this invariant.
+5. Only an approved measurement can be invoiced using the existing
+   `invoice` lifecycle. The invoice and receivable share a transaction;
+   when the canonical financial owner has an active `invoice_billing`
+   rule, the transaction also posts a balanced asset/revenue journal.
+   The actual initiating actor remains in the audit record.
+6. Receipts and reversals use the canonical financial ledger principal;
+   another verified owner may review the status but cannot divert cash
+   postings into a separate personal ledger. Receipts are not equivalent
+   to bank reconciliation or fiscal transmission.
+7. Monetary unit contract: commercial UI, pricing and measurement API use
+   **cents (1/100 BRL)**; finance tables, journal lines, invoice and
+   settlement amounts use **1/10,000 BRL**. Native amounts are exactly
+   `commercialCents * 100`; never round-trip through binary floats or
+   write cents directly into a native money integer. Current native
+   signed-32-bit amount limits an individual measurement to R$ 214.748,36.
+8. The operational control tower is read-only, tenant-bound to verified
+   owners, and distinguishes open, released, executing, review-pending,
+   measurement-unprepared, approved-unbilled, billed, partially received,
+   open and overdue. It never derives cash collected from invoices alone.
+9. One integrated disposable CI scenario must check two verified owners,
+   assigned employee, report acceptance/return, record preservation,
+   independent measurement approval, idempotency, native money scaling,
+   invoice, receivable, double-entry journal, partial receipt, amount
+   ceiling, financial period preflight, and outsider/employee denial.
+10. Final go/no-go: quality, TS, Postgres 16/18 integration, Postgres-only
+    gate, backup/restore, HML browser ACL, Railway deployment SHA/health,
+    and distinct real owner/employee authentication. **No real user
+    provisioning or production merge is authorized by synthetic tests.**
+
+### Release blocking evidence
+
+| Item | Required | Non-equivalence |
+|---|---|---|
+| Built and typechecked | All quality jobs green for the exact final SHA | No real-world permission proof |
+| Database integration | 0038 applies idempotently and all real SQL handlers pass on disposable PG | Not live customer transactions |
+| Accounting | Canonical ledger owner, correct money scale, balanced journals, period close | Not fiscal issuance or bank match |
+| Railway staging | Exact final commit deploy SUCCESS and /api/health/ready passes | Not production |
+| Functional UAT | Abrahim, Rafael and employee use real distinct sessions and approve end-to-end | Synthetic actors are insufficient |

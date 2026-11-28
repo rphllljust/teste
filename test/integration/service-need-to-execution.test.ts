@@ -16,8 +16,12 @@ import {POST as orderCommand} from '../../app/api/commands/route';
 import {GET as orderDetail} from '../../app/api/orders/[id]/route';
 import {GET as orderList} from '../../app/api/orders/route';
 import {serviceGoReadiness} from '../../lib/application/service-go-readiness';
+import {getPeriodCloseReadiness} from '../../lib/application/finance';
 import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
+import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
+import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/service-needs/control-tower/route';
+import {POST as recordReceipt} from '../../app/api/finance/receivables/settlements/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -39,6 +43,7 @@ const putEvidence=(who:string,tenant:string,need:string,category:'field'|'commer
   body:new Uint8Array(bytes)
  }),who),np(tenant,need));
 const evidenceParams=(tenant:string,need:string,fileId:string)=>({params:Promise.resolve({id:tenant,needId:need,fileId})});
+const measurePost=(who:string,t:string,n:string,body:Record<string,unknown>)=>measurementPost(post(who,body),np(t,n));
 const cmd=async(who:string,t:string,n:string,body:Record<string,unknown>)=>{const r=await command(post(who,{commandKey:randomUUID(),...body}),np(t,n));return {status:r.status,body:await r.json() as Record<string,any>};};
 const needBody=(id:string)=>({id,commandKey:randomUUID(),channel:'whatsapp',originRef:'ficticio-0001',clientName:'Cliente Ficticio Ltda',contactName:'Contato Ficticio',
  contactEmail:'contato@exemplo.invalid',serviceDescription:'Manutenção preventiva fictícia',location:'Local ficticio A',requestedDate:'2026-12-10',priority:'high',
@@ -53,6 +58,22 @@ async function seed(){
  await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=$1,identity_state='verified' WHERE owner_key='rafael'",[rafael]);
  for(const [p,reg] of [[professional,'F-1'],[professional2,'F-2']])
   await pool.query("INSERT INTO professionals(id,owner_id,name,registration,specialty,department,status,created_at,updated_at) VALUES($1,$2,'Profissional Ficticio',$3,'Field','Ops','active',$4,$4)",[p,abrahim,reg+p.slice(0,6),now]);
+ // Completely synthetic but fully posted AR/revenue chart rules for both controllers.
+ for(const actor of [abrahim,rafael]){
+  const debit=randomUUID(),credit=randomUUID();
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Accounts receivable','asset',1,$3,$4,$5)",
+   [debit,'AR-'+actor.slice(0,8),now,actor,'synthetic-gl-ar']);
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Service revenue','revenue',1,$3,$4,$5)",
+   [credit,'RV-'+actor.slice(0,8),now,actor,'synthetic-gl-revenue']);
+  await pool.query("INSERT INTO accounting_posting_rules(id,actor_id,source_type,debit_account_id,credit_account_id,active,row_version,created_at,updated_at) VALUES($1,$2,'invoice_billing',$3,$4,1,1,$5,$5)",
+   [randomUUID(),actor,debit,credit,now]);
+  const bank=randomUUID();
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Operating bank','asset',1,$3,$4,$5)",
+   [bank,'BANK-'+actor.slice(0,8),now,actor,'synthetic-gl-bank']);
+  await pool.query("INSERT INTO accounting_posting_rules(id,actor_id,source_type,debit_account_id,credit_account_id,active,row_version,created_at,updated_at) VALUES($1,$2,'receivable_receipt',$3,$4,1,1,$5,$5)",
+   [randomUUID(),actor,bank,debit,now]);
+ }
+
 }
 after(async()=>{
  await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=NULL,identity_state='unlinked'");
@@ -60,8 +81,8 @@ after(async()=>{
 });
 
 test('migration 0034 is registered and recorded',async()=>{
- const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance') ORDER BY id");
- assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance']);
+ const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance','0038_service_measurement_finance_bridge') ORDER BY id");
+ assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance','0038_service_measurement_finance_bridge']);
 });
 
 test('full journey: intake, owner decision, draft OS, plan, release, assignment, receipt, execution, additionals',async()=>{
@@ -130,7 +151,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await putEvidence(abrahim,tenantA,needId,'commercial',Buffer.from('not-a-pdf'))).status,415,'reject MIME spoofing');
  await assert.rejects(()=>pool.query('DELETE FROM svc_evidence_files WHERE id=$1',[commercialId]),/APPEND_ONLY/);
  const termsId=randomUUID();
- const commercial={command:'set_commercial_terms',id:termsId,pricingMode:'global',globalSaleCents:600000,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:280000,customerRules:'Escopo global com transporte e material'};
+ const commercial={command:'set_commercial_terms',id:termsId,pricingMode:'global',globalSaleCents:495000,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:280000,customerRules:'Escopo global com transporte e material'};
  assert.equal((await cmd(abrahim,tenantA,needId,commercial)).status,200);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'register_commercial_document',id:randomUUID(),documentType:'po',reference:'PO-EX-001',description:'Pedido de compra de exemplo',evidenceRef:'arquivo-po-ficticio'})).status,200);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'register_commercial_document',id:randomUUID(),documentType:'rc',reference:'RC-EX-001',description:'Requisição vinculada de exemplo'})).status,200);
@@ -278,6 +299,108 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const finish=await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Conferido e aceito mediante evidência operacional'});
  assert.equal(finish.status,200);assert.equal(finish.body.status,'completed');assert.equal(finish.body.readyForMeasurement,true);
  assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'completed',version:4});
+
+ // Tier 1 vertical slice: accepted report -> linked measurement -> independent approval -> billing -> A/R.
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:4,key:randomUUID(),command:'measure',description:'Medição genérica sem relatório',amount:'4500,00'}))).status,409,'generic endpoint cannot bypass accepted field report');
+ const measureId=randomUUID(),measureKey=randomUUID();
+ const prepare={action:'prepare',id:measureId,commandKey:measureKey,description:'Medição das horas e materiais conferidos na OS fictícia',amountCents:450000};
+ assert.equal((await measurePost(admin,tenantA,needId,prepare)).status,403,'admin without verified dual ownership cannot measure');
+ assert.equal((await measurePost(otherOwner,tenantA,needId,prepare)).status,404,'different tenant denied');
+ assert.equal((await measurePost(abrahim,tenantA,needId,{...prepare,id:randomUUID(),commandKey:randomUUID(),amountCents:510000})).status,409,'commercial limit from original need is enforced');
+ const measured=await measurePost(abrahim,tenantA,needId,prepare);
+ assert.equal(measured.status,201,JSON.stringify(await measured.clone().json()));
+ assert.equal((await measurePost(abrahim,tenantA,needId,prepare)).status,200,'same measurement command idempotent');
+ assert.equal((await measurePost(abrahim,tenantA,needId,{...prepare,id:randomUUID(),commandKey:randomUUID()})).status,409,'one accepted report never gets duplicate measurement');
+ assert.equal((await measurementGet(get(employee),np(tenantA,needId))).status,403,'commercial dossier inaccessible to employee');
+ const draftMeas=await (await measurementGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(draftMeas.measurements[0].status,'draft');
+ assert.equal(draftMeas.measurements[0].commercialSnapshot.authorizedCeilingCents,'499900');
+ assert.equal(draftMeas.measurements[0].commercialSnapshot.reportId,report2);
+ assert.equal(draftMeas.measurements[0].executedSnapshot.length,2);
+ assert.equal((await orderCommand(post(abrahim,{id:measureId,version:1,key:randomUUID(),command:'approve_measurement'}))).status,409,'generic approval never bypasses four eyes');
+ const approve={action:'approve',measurementId:measureId,commandKey:randomUUID(),reason:'Valores e relatório operacional conferidos pelo segundo controlador',expectedVersion:1};
+ assert.equal((await measurePost(abrahim,tenantA,needId,approve)).status,403,'maker cannot authorize their measurement');
+ assert.equal((await measurePost(admin,tenantA,needId,approve)).status,403,'non-owner cannot approve');
+ const measurementApproval=await measurePost(rafael,tenantA,needId,approve);
+ assert.equal(measurementApproval.status,201,JSON.stringify(await measurementApproval.clone().json()));
+ assert.equal((await measurePost(rafael,tenantA,needId,approve)).status,200,'approval idempotency');
+ await assert.rejects(()=>pool.query('DELETE FROM svc_measurement_approvals WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
+ const billingKey=randomUUID();
+ const invoiceCommand={id:measureId,version:2,key:billingKey,command:'invoice',dueDate:'2026-12-20'};
+ const billed=await orderCommand(post(rafael,invoiceCommand));
+ assert.equal(billed.status,201,JSON.stringify(await billed.clone().json()));
+ const billingBody=await billed.json() as any;
+ assert.ok(billingBody.resource?.invoiceId,'invoice identity must exist');
+ assert.ok(billingBody.resource?.receivableId,'receivable identity must exist');
+ assert.equal(billingBody.resource.amount,'45000000','native financial book stores R$ 4.500,00 as units of 1/10,000');
+ assert.equal(billingBody.resource.accounting.status,'auto_posted','real configured dual-control AR/revenue rule must post the journal atomically');
+ assert.ok(billingBody.resource.accounting.journalId,'journal must be linked in billing transaction');
+ const journal=await pool.query('SELECT actor_id,status FROM journal_entries WHERE id=$1',[billingBody.resource.accounting.journalId]);
+ assert.equal(journal.rows[0].actor_id,abrahim,'canonical OS financial ledger owns posted accounting, not the personal clicking identity');
+ assert.equal(journal.rows[0].status,'posted');
+ const invoiceLink=await pool.query('SELECT actor_id FROM accounting_invoice_links WHERE invoice_id=$1',[billingBody.resource.invoiceId]);
+ assert.equal(invoiceLink.rows[0].actor_id,abrahim,'invoice origin links preserve canonical ledger ownership');
+ const billAudit=await pool.query("SELECT actor_id,metadata FROM finance_audit_events WHERE entity_type='invoice' AND entity_id=$1 AND action='invoice_auto_posted'",[billingBody.resource.invoiceId]);
+ assert.equal(billAudit.rows[0].actor_id,rafael,'audit preserves who actually initiated the invoice');
+ assert.equal(billAudit.rows[0].metadata.ledgerOwnerId,abrahim);
+ const postingToday=new Date().toISOString().slice(0,10);
+ const currentMonthStart=postingToday.slice(0,8)+'01';
+ const nextMonthStart=new Date(Date.UTC(Number(postingToday.slice(0,4)),Number(postingToday.slice(5,7)),1)).toISOString().slice(0,10);
+ const closing=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
+ assert.equal(closing.blockingInvoices,0,'financial closure must recognize a verified co-owner posting into the canonical GL');
+
+ assert.equal((await orderCommand(post(rafael,invoiceCommand))).status,200,'same controller invoice replay');
+ const dossier=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(dossier.measurements[0].status,'billed');
+ assert.equal(dossier.measurements[0].invoiceId,billingBody.resource.invoiceId);
+ assert.equal(dossier.measurements[0].receivableId,billingBody.resource.receivableId);
+ assert.equal(dossier.measurements[0].amountCents,450000);
+ assert.equal(dossier.measurements[0].settledCents,'0');
+ assert.equal((await controlTowerGet(get(employee),tp(tenantA))).status,403,'employees cannot access enterprise KPIs');
+ assert.equal((await controlTowerGet(get(admin),tp(tenantA))).status,403,'admins without declaration cannot access owner financial indicators');
+ assert.equal((await controlTowerGet(get(otherOwner),tp(tenantA))).status,404,'tenants must be invisible to outsiders');
+ const tower=await (await controlTowerGet(get(abrahim),tp(tenantA))).json() as any;
+ assert.equal(tower.kpis.completed,1);
+ assert.equal(tower.finance.not_measured,0);
+ assert.equal(tower.finance.awaiting_invoice,0);
+ assert.equal(tower.finance.billed,1);
+ assert.equal(tower.finance.billed_cents,'450000');
+ // The canonical financial owner receives the cash in the same originating GL.
+ const cashKey=randomUUID();
+ const receiptCommand={receivableId:billingBody.resource.receivableId,amount:'10000000',
+  effectiveDate:postingToday,reference:'Synthetic transfer - first installment',commandKey:cashKey};
+ const payment=await recordReceipt(post(abrahim,receiptCommand));
+ assert.equal(payment.status,201,JSON.stringify(await payment.clone().json()));
+ const paymentResult=await payment.json() as any;
+ assert.equal(paymentResult.resource.accounting.status,'auto_posted');
+ assert.ok(paymentResult.resource.accounting.journalId);
+ assert.equal((await recordReceipt(post(abrahim,receiptCommand))).status,200,'receipt retry cannot double-post cash');
+ assert.equal((await recordReceipt(post(rafael,{...receiptCommand,commandKey:randomUUID()}))).status,404,'secondary administrator cannot post cash into the canonical financial ledger');
+ assert.equal((await recordReceipt(post(abrahim,{...receiptCommand,commandKey:randomUUID(),amount:'40000000'}))).status,409,'cannot settle more than remaining balance');
+ const afterCash=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(afterCash.measurements[0].settledCents,'100000','native settlement converts back to cents exactly');
+ assert.equal(afterCash.canSettleReceivable,true);
+ assert.equal(afterCash.settlements.length,1);
+ assert.equal(afterCash.settlements[0].kind,'receipt');
+ assert.equal(afterCash.settlements[0].amountCents,100000);
+ const secondaryDossier=await (await measurementGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(secondaryDossier.canSettleReceivable,false,'secondary controller sees amounts but cannot book cash in wrong ledger');
+ assert.equal(secondaryDossier.settlements.length,0);
+ const afterCashTower=await (await controlTowerGet(get(rafael),tp(tenantA))).json() as any;
+ assert.equal(afterCashTower.finance.billed_cents,'450000','cash settlement does not rewrite original revenue');
+ assert.equal(afterCashTower.finance.received_cents,'100000');
+ assert.equal(afterCashTower.finance.open_receivables,1);
+ assert.equal(afterCashTower.finance.overdue_receivables,0);
+ const closeAfterCash=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
+ assert.equal(closeAfterCash.blockingInvoices,0,'invoice and receipt remain auditable during financial period close');
+ assert.equal(closeAfterCash.invalidCashLinks,0,'receipt GL must link to the originating AR ledger');
+
+ assert.equal(tower.pendingAdditionals,0);
+
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measureId])).rows[0].n,1);
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM receivables WHERE invoice_id=$1',[billingBody.resource.invoiceId])).rows[0].n,1);
+ await assert.rejects(()=>pool.query('UPDATE svc_measurement_links SET proposed_amount_cents=1 WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
+
  assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='complete'",[orderId])).rows[0].n,1);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Duplicar aceite'})).status,409);
  assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',id:randomUUID(),assignmentId,line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409);
@@ -353,6 +476,25 @@ test('each plan revision freezes the full prior set with reason, actor and disti
  assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,200);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'set_plan',reason:'Alteração tardia',lines:first})).status,409);
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_plan_revisions WHERE need_id=$1',[needId])).rows[0].n,2,'no post-release revision');
+});
+
+
+
+test('global release cannot exceed registered customer budget even when a contract version allows more',async()=>{
+ const needId=randomUUID(),orderId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'approve',reason:'Análise prévia concluída'})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'set_plan',lines:[{kind:'hours',resourceRef:'Teste teto cliente',quantityMilli:8000,unit:'h'}]})).status,200);
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}))).status,201);
+ const terms=(sale:number)=>({command:'set_commercial_terms',id:randomUUID(),pricingMode:'global',globalSaleCents:sale,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:200000});
+ assert.equal((await cmd(abrahim,tenantA,needId,terms(600000))).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,409,'higher contract ceiling cannot bypass lower customer limit');
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM svc_releases WHERE need_id=$1",[needId])).rows[0].n,0,'failed release must not persist any approval');
+ assert.equal((await cmd(rafael,tenantA,needId,terms(495000))).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM svc_releases WHERE need_id=$1",[needId])).rows[0].n,1);
 });
 
 

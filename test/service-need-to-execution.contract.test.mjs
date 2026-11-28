@@ -69,3 +69,43 @@ test('0037 preserves every plan revision and only accepts employee work after ow
  assert.match(integration,/reportSnapshots/);
  assert.doesNotMatch(employeeUi,/approvedInternalCostCents|approvedSalePriceCents|marginBps/);
 });
+
+test('0038 closes the audited service-to-cash loop without a billing authorization bypass',async()=>{
+ const [sql,manifest,domain,handlers,generic,billing,ui,board,endpoint,readiness,integration]=await Promise.all([
+  r('drizzle-pg/0038_service_measurement_finance_bridge.sql'),
+  r('scripts/migrate-postgres.mjs'),
+  r('lib/application/service-measurements.ts'),
+  r('app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route.ts'),
+  r('app/api/commands/route.ts'),
+  r('lib/application/billing.ts'),
+  r('app/ServiceNeedsMeasurementPanel.tsx'),
+  r('app/ServiceNeedsControlTower.tsx'),
+  r('app/api/enterprise/tenants/[id]/service-needs/control-tower/route.ts'),
+  r('lib/application/service-go-readiness.ts'),
+  r('test/integration/service-need-to-execution.test.ts'),
+ ]);
+ for(const tab of ['svc_measurement_links','svc_measurement_approvals'])
+  assert.match(sql,new RegExp('CREATE TABLE '+tab));
+ assert.match(sql,/UNIQUE\(tenant_id,need_id\)/);
+ assert.match(sql,/svc_measurement_links_immutable/);
+ assert.match(sql,/svc_measurement_approvals_immutable/);
+ assert.match(sql,/CISNE_FOUR_EYES/);
+ assert.match(manifest,/0038_service_measurement_finance_bridge/);
+ assert.match(domain,/accepted report required|Nenhum relatório de campo foi aceito/);
+ assert.match(domain,/FOUR_EYES_REQUIRED/);
+ assert.match(domain,/commercial_snapshot/);
+ assert.match(domain,/COMMERCIAL_LIMIT/);
+ assert.match(handlers,/requestContext\(request,true\)/);
+ assert.match(handlers,/getServiceMeasurementDossier/);
+ assert.match(generic,/medição vinculada ao relatório aceito/);
+ assert.match(generic,/aprovação independente de outro controlador/);
+ assert.match(billing,/svc_measurement_approvals/);
+ assert.match(billing,/svc_measurement_links/);
+ assert.match(ui,/Faturar medição aprovada/);
+ assert.match(ui,/Conta a receber/);
+ assert.match(board,/Centro de controle/);
+ assert.match(endpoint,/getServiceControlTower/);
+ assert.match(readiness,/measurement_finance_link/);
+ for(const pattern of [/measurementPost/,/invoiceCommand/,/four eyes/i,/auto_posted/,/controlTowerGet/])
+  assert.match(integration,pattern);
+});
