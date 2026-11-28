@@ -5,7 +5,8 @@ import {Pool} from 'pg';
 import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as getRule,POST as configureRule} from '../../app/api/accounting/posting-rules/route';
-import {POST as bill} from '../../app/api/finance/billing/route';
+import {GET as verifyBilling,POST as bill} from '../../app/api/finance/billing/route';
+import {POST as postCommand} from '../../app/api/commands/route';
 import {GET as reconciliation} from '../../app/api/accounting/reconciliation/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
