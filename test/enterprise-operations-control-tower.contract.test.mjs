@@ -62,7 +62,7 @@ test('Visão operacional and Field Service share enterprise source, without doub
  assert.match(field,/<EnterpriseOperationsWorkbench mode="field"/);
  assert.match(command,/showMap&&<div className="enterprise-command-navigation-content"/);
  assert.match(command,/<nav className="value-stream" aria-label="Jornada empresarial entre módulos">/);
- assert.match(page,/"Dossiês empresariais",\s*"Visão operacional",\s*\]\.includes\(page\)/);
+ assert.match(page,/"Dossiês empresariais",\s*"Governança empresarial",\s*"Visão operacional",\s*\]\.includes\(page\)/);
  assert.match(page,/\[\s*"Ordens de serviço",\s*"Execução",\s*"Medições"/);
  assert.ok(layout.includes('enterprise-operations-workbench.css'));
  assert.match(css,/\.enterprise-operations-body/);
