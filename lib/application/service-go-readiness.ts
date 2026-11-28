@@ -25,15 +25,15 @@ export async function serviceGoReadiness(q:Query,tenantId:string,actorId:string,
   JOIN enterprise_tenant_memberships m ON m.tenant_id=l.tenant_id AND m.actor_id=l.employee_actor_id
   JOIN cisne_login_accounts a ON a.actor_id=l.employee_actor_id AND a.enabled
   WHERE l.tenant_id=$1 AND m.status='active' AND m.role='operator'`,[tenantId]);
- const migrations=await q("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence')",[ ]);
+ const migrations=await q("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance')",[ ]);
  const ledger=new Set(migrations.rows.map(x=>String(x.id)));
- const schema=['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence'].every(x=>ledger.has(x));
+ const schema=['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance'].every(x=>ledger.has(x));
  const evidence=await q("SELECT to_regclass('public.svc_evidence_files') IS NOT NULL AS installed",[]);
  const results:Finding[]=[
   {code:'staging_personal_auth',ok:authMode==='individual',detail:'Autenticação individual ativada, sem identidade compartilhada'},
   {code:'dual_verified_owners',ok:controllers,detail:'Abrahim e Rafael vinculados a atores distintos, verificados e com credenciais pessoais'},
   {code:'assigned_employee_identity',ok:Number(employees.rows[0]?.n??0)>0,detail:'Pelo menos um empregado ativo e vinculado possui credencial individual'},
-  {code:'schema_0034_0036',ok:schema,detail:'Migrações de processo, comercial e evidências estão registradas'},
+  {code:'schema_0034_0037',ok:schema,detail:'Migrações de processo, comercial, evidências, planejamento e aceite estão registradas'},
   {code:'evidence_storage',ok:Boolean(evidence.rows[0]?.installed),detail:'Armazenamento binário com escopo empresarial está disponível'},
  ];
  return {
