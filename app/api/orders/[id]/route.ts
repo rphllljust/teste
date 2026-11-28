@@ -22,7 +22,11 @@ export async function GET(request: Request, {params}: RouteContext): Promise<Res
 
     const db = databasePool();
     const orderResult = await db.query<OrderRow>(
-      'SELECT * FROM service_orders WHERE id=$1 AND owner_id=$2 LIMIT 1',
+      `SELECT o.* FROM service_orders o WHERE o.id=$1 AND (o.owner_id=$2 OR EXISTS (SELECT 1 FROM svc_needs n
+ JOIN cisne_erp_owner_declarations d ON d.identity_actor_id=$2 AND d.identity_state='verified'
+ JOIN enterprise_tenant_memberships m ON m.tenant_id=n.tenant_id AND m.actor_id=$2 AND m.role='owner' AND m.status='active'
+ JOIN enterprise_tenants t ON t.id=n.tenant_id AND t.status='active'
+ WHERE n.order_id=o.id)) LIMIT 1`,
       [id, context.actorId],
     );
     const row = orderResult.rows[0];
