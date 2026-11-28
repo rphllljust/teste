@@ -45,9 +45,9 @@ export default function ServiceNeedsLogisticsPanel({tenantId,needId,revision=0,o
      fetch('/api/assets?page=1&pageSize=50',{credentials:'same-origin',signal:ac.signal}),
      fetch('/api/professionals?page=1&pageSize=50',{credentials:'same-origin',signal:ac.signal}),
     ]);
-    const bodies=await Promise.all(rr.map(z=>z.json() as Promise<{items?:Resource[];error?:string}>));
+    const bodies=await Promise.all(rr.map(z=>z.json() as Promise<{items?:unknown[];error?:string}>));
     if(rr.some(z=>!z.ok))throw Error('Listas de materiais e recursos indisponíveis para alocação.');
-    if(!ac.signal.aborted){setItems((bodies[0].items??[]) as Item[]);setAssets(bodies[1].items??[]);setStaff(bodies[2].items??[]);}
+    if(!ac.signal.aborted){setItems((bodies[0].items??[]) as Item[]);setAssets((bodies[1].items??[]) as Resource[]);setStaff((bodies[2].items??[]) as Resource[]);}
    }).catch(e=>{if(!ac.signal.aborted)setError(e instanceof Error?e.message:'Falha ao consultar logística.');});
   return()=>ac.abort();
  },[tenantId,needId,revision,version]);
