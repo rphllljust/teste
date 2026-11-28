@@ -3,7 +3,9 @@ import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import {Pool} from 'pg';
-import {closeDatabase} from '../../db/raw';
+import {closeDatabase,database} from '../../db/raw';
+import {hashPersonalPassword,verifyPersonalLogin} from '../../lib/api/personal-login.mjs';
+import {issuePersonalStagingSession,validateStagingSession,issueStagingSession,CISNE_STAGING_COOKIE} from '../../lib/api/staging-session.mjs';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as listNeeds,POST as postNeed} from '../../app/api/enterprise/tenants/[id]/service-needs/route';
 import {GET as needDetail} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/route';
@@ -13,6 +15,8 @@ import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-in
 import {POST as orderCommand} from '../../app/api/commands/route';
 import {GET as orderDetail} from '../../app/api/orders/[id]/route';
 import {GET as orderList} from '../../app/api/orders/route';
+import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
+import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -26,6 +30,14 @@ const tp=(t:string)=>({params:Promise.resolve({id:t})});
 const np=(t:string,n:string)=>({params:Promise.resolve({id:t,needId:n})});
 const post=(who:string,body:unknown)=>setTestIdentity(new Request('http://localhost/x',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),who);
 const get=(who:string)=>setTestIdentity(new Request('http://localhost/x'),who);
+const pdfEvidence=Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\n%%EOF\n');
+const putEvidence=(who:string,tenant:string,need:string,category:'field'|'commercial',bytes:Buffer=pdfEvidence,mime='application/pdf')=>
+ evidencePost(setTestIdentity(new Request('http://localhost/upload',{
+  method:'POST',
+  headers:{'content-type':mime,'x-cisne-evidence-category':category,'x-cisne-filename':encodeURIComponent('evidence.pdf')},
+  body:new Uint8Array(bytes)
+ }),who),np(tenant,need));
+const evidenceParams=(tenant:string,need:string,fileId:string)=>({params:Promise.resolve({id:tenant,needId:need,fileId})});
 const cmd=async(who:string,t:string,n:string,body:Record<string,unknown>)=>{const r=await command(post(who,{commandKey:randomUUID(),...body}),np(t,n));return {status:r.status,body:await r.json() as Record<string,any>};};
 const needBody=(id:string)=>({id,commandKey:randomUUID(),channel:'whatsapp',originRef:'ficticio-0001',clientName:'Cliente Ficticio Ltda',contactName:'Contato Ficticio',
  contactEmail:'contato@exemplo.invalid',serviceDescription:'Manutenção preventiva fictícia',location:'Local ficticio A',requestedDate:'2026-12-10',priority:'high',
@@ -47,12 +59,30 @@ after(async()=>{
 });
 
 test('migration 0034 is registered and recorded',async()=>{
- const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field') ORDER BY id");
- assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field']);
+ const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence') ORDER BY id");
+ assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence']);
 });
 
 test('full journey: intake, owner decision, draft OS, plan, release, assignment, receipt, execution, additionals',async()=>{
  await seed();
+ // Three distinct personal credentials in disposable PostgreSQL; never provision real actors.
+ const secret='Test-Only-Highly-Random-Session-Key-For-Full-Journey'.repeat(2);
+ const personalEnv={RAILWAY_ENVIRONMENT_NAME:'staging',CISNE_STAGING_AUTH_MODE:'individual',
+  CISNE_STAGING_SESSION_SECRET:secret,CISNE_STAGING_ACTOR_ID:'shared-disabled-actor'};
+ for(const [actor,handle] of [[abrahim,'test-owner-one'],[rafael,'test-owner-two'],[employee,'test-employee']] as const){
+  const phrase='Synthetic-Only-Private-Password-2026-'+handle;
+  const encoded=await hashPersonalPassword(phrase);
+  await pool.query('INSERT INTO cisne_login_accounts(actor_id,login_handle,salt,password_hash) VALUES($1,$2,$3,$4)',[actor,handle,encoded.salt,encoded.hash]);
+  const identified=await database().transaction(q=>verifyPersonalLogin(q,handle,phrase));
+  assert.equal(identified.ok,true,'verified individual must authenticate');
+  assert.equal(identified.actorId,actor,'password must never swap actor identities');
+  const personal=issuePersonalStagingSession(actor,secret);
+  const cookieRequest=new Request('https://cisne-web-staging-staging.up.railway.app/api/crm',{headers:{cookie:CISNE_STAGING_COOKIE+'='+personal}});
+  assert.equal(validateStagingSession(cookieRequest,personalEnv),actor);
+ }
+ const shared=issueStagingSession('shared-disabled-actor',secret);
+ assert.equal(validateStagingSession(new Request('https://cisne-web-staging-staging.up.railway.app',{headers:{cookie:CISNE_STAGING_COOKIE+'='+shared}}),personalEnv),null);
+ assert.equal((await database().transaction(q=>verifyPersonalLogin(q,'test-owner-one','Invalid-But-Long-Password-For-Access-0000'))).ok,false);
  const needId=randomUUID();
  // (1) intake with channel/refs/terms
  assert.equal((await postNeed(post(admin,needBody(randomUUID())),tp(tenantA))).status,403,'only verified controllers may register needs');
@@ -79,6 +109,19 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await cmd(rafael,tenantA,needId,{command:'reject',commandKey:approvalKey,reason:'outra operacao'})).status,409,'same key cannot authorize a different command');
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[tenantA,approvalKey])).rows[0].n,1,'replay cannot duplicate audit');
  // Commercial snapshot: global sale, identifiable PO/RC, detailed operational inputs
+ // Durable commercial upload; a field employee cannot read prices or these files.
+ const commercialUpload=await putEvidence(abrahim,tenantA,needId,'commercial');
+ assert.equal(commercialUpload.status,201,JSON.stringify(await commercialUpload.clone().json()));
+ const commercialRef=(await commercialUpload.json() as any).file.evidenceRef as string;
+ assert.match(commercialRef,/^cisne-file:[a-f0-9-]{36}$/);
+ const commercialId=commercialRef.slice('cisne-file:'.length);
+ assert.equal((await evidenceFile(get(rafael),evidenceParams(tenantA,needId,commercialId))).status,200,'verified co-owner download');
+ assert.equal((await evidenceFile(get(employee),evidenceParams(tenantA,needId,commercialId))).status,404,'employee cannot download commercial file');
+ assert.equal((await evidenceFile(get(otherOwner),evidenceParams(tenantA,needId,commercialId))).status,404,'cross-tenant commercial file denied');
+ const docs=(await evidenceList(get(rafael),np(tenantA,needId))).status;
+ assert.equal(docs,400,'evidence listing requires explicit category');
+ assert.equal((await putEvidence(abrahim,tenantA,needId,'commercial',Buffer.from('not-a-pdf'))).status,415,'reject MIME spoofing');
+ await assert.rejects(()=>pool.query('DELETE FROM svc_evidence_files WHERE id=$1',[commercialId]),/APPEND_ONLY/);
  const termsId=randomUUID();
  const commercial={command:'set_commercial_terms',id:termsId,pricingMode:'global',globalSaleCents:600000,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:280000,customerRules:'Escopo global com transporte e material'};
  assert.equal((await cmd(abrahim,tenantA,needId,commercial)).status,200);
@@ -143,6 +186,16 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const started=await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId});
  assert.equal(started.status,200);
  assert.equal(started.body.orderStatus,'executing');
+ const fieldUpload=await putEvidence(employee,tenantA,needId,'field');
+ assert.equal(fieldUpload.status,201,JSON.stringify(await fieldUpload.clone().json()));
+ const fieldId=((await fieldUpload.json() as any).file.evidenceRef as string).slice('cisne-file:'.length);
+ const bytes=await evidenceFile(get(employee),evidenceParams(tenantA,needId,fieldId));
+ assert.equal(bytes.status,200);
+ assert.deepEqual(Buffer.from(await bytes.arrayBuffer()),pdfEvidence);
+ assert.equal((await evidenceFile(get(employee2),evidenceParams(tenantA,needId,fieldId))).status,404,'unassigned employee cannot access evidence');
+ const ownerListing=await evidenceList(setTestIdentity(new Request('http://localhost/list?category=field'),abrahim),np(tenantA,needId));
+ assert.equal(ownerListing.status,200);
+ assert.equal((await ownerListing.json() as any).items.length,1);
  assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'executing',version:3});
  assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='start'",[orderId])).rows[0].n,1);
  inbox=await (await inboxGet(get(employee),tp(tenantA))).json();
