@@ -259,6 +259,13 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    if(!n.rows[0].n)throw new ApiError(409,'INVALID_STATE','Planeje a necessidade antes de liberar.');
    const order=await q('SELECT status FROM service_orders WHERE id=$1 FOR SHARE',[need.order_id]);
    if(order.rows[0]?.status!=='authorized')throw new ApiError(409,'INVALID_STATE','Autorize a OS no fluxo operacional antes de liberar a execução.');
+   const terms=await q('SELECT pricing_mode,global_sale_cents,max_financial_cents FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+   if(terms.rows[0]?.pricing_mode==='itemized'){
+    const prices=await q('SELECT count(*)::int AS n,count(*) FILTER(WHERE sale_unit_price_cents IS NULL)::int AS missing FROM svc_commercial_price_lines p WHERE tenant_id=$1 AND need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]);
+    if(!prices.rows[0]?.n||prices.rows[0]?.missing)throw new ApiError(409,'INVALID_STATE','Regime itemizado exige preços de venda em todas as linhas ativas.');
+   }
+   if(terms.rows[0]?.pricing_mode==='global'&&terms.rows[0].max_financial_cents!=null&&BigInt(terms.rows[0].global_sale_cents)>BigInt(terms.rows[0].max_financial_cents))
+    throw new ApiError(409,'COMMERCIAL_LIMIT','Preço global excede o limite comercial.');
    await q('INSERT INTO svc_releases(need_id,tenant_id,released_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
    await setStatus('released');await log('released',null);
    return {ok:true,status:'released'};
@@ -308,10 +315,97 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
   case 'record_actual':{
    await ownAssignment(q,c,needId,cmd.assignmentId);
    state(need,['executing'],cmd.command);
+   const lastPause=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
+   if(lastPause.rows[0]?.event_type==='pause')throw new ApiError(409,'INVALID_STATE','Não é permitido registrar produção durante paralisação.');
    await q(`INSERT INTO svc_actual_lines(id,tenant_id,need_id,kind,resource_ref,quantity_milli,unit,recorded_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)`,
     [cmd.id,c.tenantId,needId,cmd.line.kind,cmd.line.resourceRef,cmd.line.quantityMilli,cmd.line.unit,c.actorId]);
    await log('actual_recorded',null,{lineId:cmd.id});
    return {ok:true};
+  }
+
+  case 'set_commercial_terms':{
+   await requireOwner(q,c,'definir condições comerciais');
+   state(need,['received','in_analysis','approved','converted'],cmd.command);
+   if((cmd.pricingMode==='global')!==(cmd.globalSaleCents!=null))
+    throw new ApiError(400,'VALIDATION_FAILED','Preço global obrigatório somente no regime global.');
+   await q('INSERT INTO svc_commercial_terms_versions(id,tenant_id,need_id,pricing_mode,global_sale_cents,payment_method,payment_terms,max_quantity_milli,max_financial_cents,customer_rules,entered_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[
+    cmd.id,c.tenantId,needId,cmd.pricingMode,cmd.globalSaleCents??null,cmd.paymentMethod,cmd.paymentTerms,
+    cmd.maxQuantityMilli??null,cmd.maxFinancialCents??null,cmd.customerRules,c.actorId]);
+   await q('UPDATE svc_needs SET row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId]);
+   await log('commercial_terms_recorded',null,{termsId:cmd.id,pricingMode:cmd.pricingMode});
+   return {ok:true,termsId:cmd.id,pricingMode:cmd.pricingMode};
+  }
+  case 'register_commercial_document':{
+   await requireOwner(q,c,'vincular documentos comerciais');
+   state(need,['received','in_analysis','approved','converted'],cmd.command);
+   await q('INSERT INTO svc_commercial_documents(id,tenant_id,need_id,document_type,reference,description,evidence_ref,registered_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[
+    cmd.id,c.tenantId,needId,cmd.documentType,cmd.reference,cmd.description,cmd.evidenceRef,c.actorId]);
+   await log('commercial_document_registered',null,{documentId:cmd.id,documentType:cmd.documentType,reference:cmd.reference});
+   return {ok:true,documentId:cmd.id};
+  }
+  case 'register_price_line':{
+   await requireOwner(q,c,'registrar custo interno e preço de venda');
+   state(need,['received','in_analysis','approved','converted'],cmd.command);
+   if(cmd.supersedesId){
+    const old=await q('SELECT id FROM svc_commercial_price_lines WHERE tenant_id=$1 AND need_id=$2 AND id=$3 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines p WHERE p.supersedes_id=$3)',[c.tenantId,needId,cmd.supersedesId]);
+    if(!old.rows.length)throw new ApiError(409,'INVALID_STATE','Linha de preço inexistente ou já substituída.');
+   }
+   const latest=await q('SELECT pricing_mode FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+   if(latest.rows[0]?.pricing_mode==='itemized'&&cmd.saleUnitPriceCents==null)
+    throw new ApiError(409,'VALIDATION_FAILED','Operação itemizada exige preço unitário de venda.');
+   await q('INSERT INTO svc_commercial_price_lines(id,tenant_id,need_id,supersedes_id,kind,item_ref,quantity_milli,unit,internal_unit_cost_cents,sale_unit_price_cents,recorded_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[
+    cmd.id,c.tenantId,needId,cmd.supersedesId??null,cmd.kind,cmd.itemRef,cmd.quantityMilli,cmd.unit,cmd.internalUnitCostCents,cmd.saleUnitPriceCents??null,c.actorId]);
+   await log('price_line_registered',null,{lineId:cmd.id,supersedesId:cmd.supersedesId??null,kind:cmd.kind});
+   return {ok:true,lineId:cmd.id};
+  }
+  case 'record_field_event':{
+   await ownAssignment(q,c,needId,cmd.assignmentId);
+   state(need,['executing'],cmd.command);
+   const meter=cmd.eventType==='odometer'||cmd.eventType==='hourmeter';
+   if(meter!==Boolean(cmd.quantityMilli!=null&&cmd.unit))
+    throw new ApiError(400,'VALIDATION_FAILED','Quilometragem e horímetro exigem valor e unidade; outros eventos não aceitam quantidade.');
+   if(['photo','document'].includes(cmd.eventType)&&!cmd.evidenceRef)
+    throw new ApiError(400,'VALIDATION_FAILED','Anexe referência verificável à evidência.');
+   if(['pause','resume'].includes(cmd.eventType)){
+    const last=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
+    const paused=last.rows[0]?.event_type==='pause';
+    if((cmd.eventType==='pause'&&paused)||(cmd.eventType==='resume'&&!paused))
+     throw new ApiError(409,'INVALID_STATE','Transição de paralisação/retomada incompatível com o estado atual.');
+   }
+   if(meter){
+    const previous=await q('SELECT quantity_milli FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND assignment_id=$3 AND event_type=$4 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId,cmd.assignmentId,cmd.eventType]);
+    if(previous.rows.length&&BigInt(cmd.quantityMilli!)<BigInt(previous.rows[0].quantity_milli))
+     throw new ApiError(409,'INVALID_STATE','Leitura de medidor inferior à anterior. Registre ocorrência para correção auditada.');
+   }
+   await q('INSERT INTO svc_field_events(id,tenant_id,need_id,assignment_id,event_type,description,quantity_milli,unit,evidence_ref,actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',[
+    cmd.id,c.tenantId,needId,cmd.assignmentId,cmd.eventType,cmd.description,cmd.quantityMilli??null,cmd.unit,cmd.evidenceRef,c.actorId]);
+   await log('field_event_recorded',null,{fieldEventId:cmd.id,eventType:cmd.eventType});
+   return {ok:true,fieldEventId:cmd.id,eventType:cmd.eventType};
+  }
+  case 'request_additional':{
+   await ownAssignment(q,c,needId,cmd.assignmentId);
+   state(need,['executing'],cmd.command);
+   await q('INSERT INTO svc_additional_requests(id,tenant_id,need_id,assignment_id,kind,description,reason,quantity_milli,unit,evidence_ref,requested_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[
+    cmd.id,c.tenantId,needId,cmd.assignmentId,cmd.kind,cmd.description,cmd.reason,cmd.quantityMilli,cmd.unit,cmd.evidenceRef,c.actorId]);
+   await log('additional_requested',cmd.reason,{requestId:cmd.id,kind:cmd.kind});
+   return {ok:true,requestId:cmd.id,status:'pending'};
+  }
+  case 'decide_additional':{
+   await requireOwner(q,c,'autorizar adicionais operacionais');
+   state(need,['executing'],cmd.command);
+   const requested=await q('SELECT r.id,r.description,r.reason,r.evidence_ref,r.requested_by_actor_id FROM svc_additional_requests r WHERE r.tenant_id=$1 AND r.need_id=$2 AND r.id=$3 AND NOT EXISTS(SELECT 1 FROM svc_additional_decisions d WHERE d.request_id=r.id) FOR UPDATE',[c.tenantId,needId,cmd.requestId]);
+   if(!requested.rows.length)throw new ApiError(409,'INVALID_STATE','Solicitação inexistente ou já decidida.');
+   const request=requested.rows[0];
+   await q('INSERT INTO svc_additional_decisions(request_id,tenant_id,need_id,decision,reason,approved_internal_cost_cents,approved_sale_price_cents,decided_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[
+    cmd.requestId,c.tenantId,needId,cmd.decision,cmd.reason,
+    cmd.decision==='approved'?cmd.approvedInternalCostCents??null:null,
+    cmd.decision==='approved'?cmd.approvedSalePriceCents??null:null,c.actorId]);
+   if(cmd.decision==='approved'){
+    await q('INSERT INTO svc_additionals(id,tenant_id,need_id,description,reason,evidence_ref,authorized_by_actor_id,recorded_by_actor_id) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7)',[
+     c.tenantId,needId,request.description,request.reason,request.evidence_ref,c.actorId,request.requested_by_actor_id]);
+   }
+   await log('additional_decided',cmd.reason,{requestId:cmd.requestId,decision:cmd.decision});
+   return {ok:true,requestId:cmd.requestId,decision:cmd.decision};
   }
   case 'add_additional':{
    // Authorization is the act of a verified owner: the caller is the authorizer, never a claimed name.
