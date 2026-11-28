@@ -9,7 +9,7 @@ import {issuePersonalStagingSession,validateStagingSession,issueStagingSession,C
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as listNeeds,POST as postNeed} from '../../app/api/enterprise/tenants/[id]/service-needs/route';
 import {GET as needDetail} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/route';
-import {POST as command} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/commands/route';
+import {POST as command,GET as fieldPreflight} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/commands/route';
 import {POST as linkEmployee} from '../../app/api/enterprise/tenants/[id]/employee-links/route';
 import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-inbox/route';
 import {POST as orderCommand} from '../../app/api/commands/route';
@@ -236,11 +236,25 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.deepEqual(inbox.items[0].events,['assigned','viewed','received']);assert.equal(inbox.items[0].status,'executing');
  // Field events cannot rewrite the plan; pausing prohibits new production quantities.
  const field=(eventType:string,more:Record<string,unknown>={})=>cmd(employee,tenantA,needId,{command:'record_field_event',id:randomUUID(),assignmentId,eventType,description:'Observação de campo auditada',...more});
+ const fieldState=(who:string,assignment:string)=>fieldPreflight(setTestIdentity(new Request(
+  'http://localhost/api/enterprise/tenants/'+tenantA+'/service-needs/'+needId+
+  '/commands?assignmentId='+assignment),who),np(tenantA,needId));
+ assert.equal((await fieldState(outsider,assignmentId)).status,404,'outsider cannot inspect assigned field state');
+ assert.equal((await fieldState(employee2,assignmentId)).status,404,'colleague cannot see another assignment');
+ assert.equal((await fieldState(employee,'bogus')).status,400);
+ assert.equal((await fieldState(employee,assignmentId)).status,200);
  assert.equal((await field('pause')).status,200);
+ const paused=await fieldState(employee,assignmentId);
+ const pausedStatus=await paused.json() as {paused:boolean;canRecordProduction:boolean};
+ assert.equal(pausedStatus.paused,true);
+ assert.equal(pausedStatus.canRecordProduction,false);
+ assert.equal((await field('odometer',{quantityMilli:18500200,unit:'km'})).status,409,'meter cannot accrue during pause');
+ assert.equal((await field('occurrence')).status,200,'safety incidents can be captured while paused');
  assert.equal((await cmd(employee,tenantA,needId,{command:'submit_work_report',id:randomUUID(),assignmentId,summary:'Relatório indevido em paralisação'})).status,409);
  assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',assignmentId,id:randomUUID(),line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409,'no work during pause');
  assert.equal((await field('pause')).status,409,'cannot pause twice');
  assert.equal((await field('resume')).status,200);
+ assert.equal((await (await fieldState(employee,assignmentId)).json() as {canRecordProduction:boolean}).canRecordProduction,true);
  assert.equal((await field('odometer',{quantityMilli:18500200,unit:'km'})).status,200);
  assert.equal((await field('odometer',{quantityMilli:18500000,unit:'km'})).status,409,'odometer cannot decrease');
  assert.equal((await field('photo',{evidenceRef:'foto-operacao-ficticia'})).status,200);
