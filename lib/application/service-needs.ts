@@ -31,7 +31,7 @@ export const needCommand=z.discriminatedUnion('command',[
  z.object({...base,command:z.literal('start_analysis')}).strict(),
  z.object({...base,command:z.literal('approve'),reason:text(3,1000),financials:z.object({estimatedCostCents:z.number().int().min(0).max(999999999999),marginBps:z.number().int().min(-10000).max(10000)}).strict().optional()}).strict(),
  z.object({...base,command:z.literal('reject'),reason:text(3,1000)}).strict(),
- z.object({...base,command:z.literal('convert'),orderId:uuid}).strict(),
+ z.object({...base,command:z.literal('convert'),orderId:uuid,category:z.enum(['Locação','Serviços','Transporte','Obra']).default('Serviços')}).strict(),
  z.object({...base,command:z.literal('set_plan'),lines:z.array(line).min(1).max(100)}).strict(),
  z.object({...base,command:z.literal('release')}).strict(),
  z.object({...base,command:z.literal('assign'),employeeActorId:text(1,200)}).strict(),
@@ -249,8 +249,8 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    state(need,['approved'],cmd.command);
    // Only a DRAFT service order is ever created; it needs the existing OS authorization flow afterwards.
    await q(`INSERT INTO service_orders(id,title,client,category,description,due_date,created_at,owner_id,status)
-    VALUES($1,$2,$3,'service',$4,$5,$6,$7,'draft')`,
-    [cmd.orderId,String(need.service_description).slice(0,120),need.client_name,need.service_description,need.requested_date,new Date().toISOString(),c.actorId]);
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8,'draft')`,
+    [cmd.orderId,String(need.service_description).slice(0,120),need.client_name,cmd.category,need.service_description,need.requested_date,new Date().toISOString(),c.actorId]);
    await q(`INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id)
     VALUES($1,$1,'create',1,$2,$3,$4,$1,$5,$6)`,[cmd.orderId,new Date().toISOString(),c.actorId,'svc-need:'+needId,JSON.stringify({ok:true,fromServiceNeed:needId}),c.correlationId]);
    await q('UPDATE svc_needs SET status=$3,order_id=$4,row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId,'converted',cmd.orderId]);
