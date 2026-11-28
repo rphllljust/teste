@@ -7,6 +7,7 @@ import ServiceNeedsReadinessPanel from './ServiceNeedsReadinessPanel';
 import ServiceNeedsPlanBuilder,{type PlanRevision} from './ServiceNeedsPlanBuilder';
 import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkReviewPanel';
 import ServiceNeedsMeasurementPanel from './ServiceNeedsMeasurementPanel';
+import ServiceNeedsControlTower from './ServiceNeedsControlTower';
 
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
@@ -136,7 +137,10 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
    </article>)}
   </div>}
   {tenantId&&mode==='needs'&&<>
-   {tenant?.role==='owner'&&<ServiceNeedsReadinessPanel tenantId={tenantId}/>}
+   {tenant?.role==='owner'&&<>
+    <ServiceNeedsControlTower tenantId={tenantId} revision={revision} onSelect={needId=>{setSelected(needId);setDetail(null);setNotice('');}}/>
+    <ServiceNeedsReadinessPanel tenantId={tenantId}/>
+   </>}
    <div className="enterprise-governance-panel">
     <details>
      <summary><strong>Nova necessidade de serviço</strong> · registrar canal, responsável e referências documentais</summary>
