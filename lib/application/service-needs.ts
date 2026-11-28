@@ -158,6 +158,16 @@ export async function needDetail(q:Query,c:Ctx,needId:string){
   ]);
   out.commercial={terms:terms.rows[0]??null,history:terms.rows,documents:documents.rows,priceLines:prices.rows,totals:totals.rows[0]};
   out.fieldEvents=fieldEvents.rows;out.additionalRequests=requests.rows;
+  const [plans,reports]=await Promise.all([
+   q('SELECT id,revision,reason,lines,actor_id AS "actorId",correlation_id AS "correlationId",created_at AS "createdAt" FROM svc_plan_revisions WHERE tenant_id=$1 AND need_id=$2 ORDER BY revision DESC LIMIT 25',[c.tenantId,needId]),
+   q(`SELECT r.id,r.assignment_id AS "assignmentId",r.summary,r.evidence_ref AS "evidenceRef",r.plan_revision AS "planRevision",
+      r.planned_snapshot AS "plannedSnapshot",r.actual_snapshot AS "actualSnapshot",r.submitted_by_actor_id AS "submittedByActorId",
+      r.submitted_at AS "submittedAt",COALESCE(v.decision,'pending') AS decision,v.reason AS "reviewReason",
+      v.reviewed_by_actor_id AS "reviewedByActorId",v.reviewed_at AS "reviewedAt"
+      FROM svc_work_reports r LEFT JOIN svc_work_report_reviews v ON v.report_id=r.id
+      WHERE r.tenant_id=$1 AND r.need_id=$2 ORDER BY r.submitted_at DESC,r.id DESC LIMIT 25`,[c.tenantId,needId]),
+  ]);
+  out.planHistory=plans.rows;out.workReports=reports.rows;
  }
  return out;
 }
@@ -170,7 +180,11 @@ export async function employeeInbox(q:Query,c:Ctx){
  const r=await q(`SELECT a.id AS "assignmentId",n.id AS "needId",n.status,n.client_name AS "clientName",n.service_description AS "serviceDescription",
    n.location,n.requested_date AS "requestedDate",n.priority,n.order_id AS "orderId",
    (SELECT COALESCE(jsonb_agg(jsonb_build_object('kind',p.kind,'resourceRef',p.resource_ref,'quantityMilli',p.quantity_milli::text,'unit',p.unit) ORDER BY p.created_at,p.id),'[]'::jsonb) FROM svc_plan_lines p WHERE p.tenant_id=n.tenant_id AND p.need_id=n.id) AS planned,
-   (SELECT array_agg(e.event ORDER BY e.created_at) FROM svc_inbox_events e WHERE e.assignment_id=a.id) AS events
+   (SELECT array_agg(e.event ORDER BY e.created_at) FROM svc_inbox_events e WHERE e.assignment_id=a.id) AS events,
+   (SELECT jsonb_build_object('reportId',r.id,'submittedAt',r.submitted_at,'status',COALESCE(v.decision,'pending'),'reason',v.reason)
+    FROM svc_work_reports r LEFT JOIN svc_work_report_reviews v ON v.report_id=r.id
+    WHERE r.tenant_id=n.tenant_id AND r.need_id=n.id AND r.assignment_id=a.id
+    ORDER BY r.submitted_at DESC,r.id DESC LIMIT 1) AS "workReview"
   FROM svc_assignments a JOIN svc_needs n ON n.tenant_id=a.tenant_id AND n.id=a.need_id
   WHERE a.tenant_id=$1 AND a.employee_actor_id=$2 ORDER BY a.created_at DESC,a.id LIMIT 200`,[c.tenantId,c.actorId]);
  return r.rows;
@@ -329,6 +343,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
   case 'mark_viewed':
   case 'mark_received':{
    await ownAssignment(q,c,needId,cmd.assignmentId);
+   state(need,['released','executing'],cmd.command);
    const ev=cmd.command==='mark_viewed'?'viewed':'received';
    if(ev==='received'&&!await hasInboxEvent(q,cmd.assignmentId,'viewed'))throw new ApiError(409,'INVALID_STATE','Visualize a atribuição antes de confirmar o recebimento.');
    await inbox(q,c,cmd.assignmentId,ev);
