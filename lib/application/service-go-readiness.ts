@@ -30,14 +30,23 @@ export async function serviceGoReadiness(q:Query,tenantId:string,actorId:string,
  const schema=['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence' ,'0037_service_plan_revision_and_acceptance','0038_service_measurement_finance_bridge'].every(x=>ledger.has(x));
  const evidence=await q("SELECT to_regclass('public.svc_evidence_files') IS NOT NULL AS installed",[]);
  const linkedFinance=await q("SELECT to_regclass('public.svc_measurement_links') IS NOT NULL AS installed, to_regclass('public.svc_measurement_approvals') IS NOT NULL AS approvals",[]);
- const posting=await q(`SELECT EXISTS(
- SELECT 1 FROM accounting_posting_rules p
- JOIN chart_accounts debit ON debit.id=p.debit_account_id
- JOIN chart_accounts credit ON credit.id=p.credit_account_id
- WHERE p.actor_id=$1 AND p.source_type='invoice_billing' AND p.active=1
-  AND debit.active=1 AND debit.type='asset' AND debit.actor_id=p.actor_id
-  AND credit.active=1 AND credit.type='revenue' AND credit.actor_id=p.actor_id
- ) AS configured`,[actorId]);
+ const posting=await q(`SELECT count(*)::int AS configured_owners FROM (
+ SELECT d.identity_actor_id FROM cisne_erp_owner_declarations d
+ JOIN enterprise_tenant_memberships m ON m.actor_id=d.identity_actor_id AND m.tenant_id=$1
+  AND m.role='owner' AND m.status='active'
+ JOIN accounting_posting_rules p ON p.actor_id=d.identity_actor_id AND p.active=1
+  AND p.source_type IN ('invoice_billing','receivable_receipt')
+ JOIN chart_accounts debit ON debit.id=p.debit_account_id AND debit.actor_id=d.identity_actor_id
+  AND debit.active=1 AND debit.type='asset'
+ JOIN chart_accounts credit ON credit.id=p.credit_account_id AND credit.actor_id=d.identity_actor_id
+  AND credit.active=1
+ WHERE d.owner_key IN ('abrahim','rafael') AND d.identity_state='verified'
+ GROUP BY d.identity_actor_id
+ HAVING count(DISTINCT p.source_type) FILTER(
+  WHERE (p.source_type='invoice_billing' AND credit.type='revenue')
+     OR (p.source_type='receivable_receipt' AND credit.type='asset')
+ )=2
+ ) configured`,[tenantId]);
  const results:Finding[]=[
   {code:'staging_personal_auth',ok:authMode==='individual',detail:'Autenticação individual ativada, sem identidade compartilhada'},
   {code:'dual_verified_owners',ok:controllers,detail:'Abrahim e Rafael vinculados a atores distintos, verificados e com credenciais pessoais'},
@@ -45,7 +54,7 @@ export async function serviceGoReadiness(q:Query,tenantId:string,actorId:string,
   {code:'schema_0034_0038',ok:schema,detail:'Migrações 0034–0038 de processo, comercial, planejamento, aceite e medição/faturamento estão registradas'},
   {code:'evidence_storage',ok:Boolean(evidence.rows[0]?.installed),detail:'Armazenamento binário com escopo empresarial está disponível'},
   {code:'measurement_finance_link',ok:Boolean(linkedFinance.rows[0]?.installed&&linkedFinance.rows[0]?.approvals),detail:'Vínculo imutável entre execução, medição, controle de quatro olhos e financeiro instalado'},
-  {code:'invoice_posting_rule',ok:Boolean(posting.rows[0]?.configured),detail:'Regra de lançamento automático de faturamento válida para este controlador'},
+  {code:'dual_owner_financial_posting',ok:Number(posting.rows[0]?.configured_owners??0)===2,detail:'Os dois controladores possuem regras válidas de faturamento e baixa em contas a receber no próprio razão'},
  ];
  return {
   status:results.every(x=>x.ok)?'READY_FOR_PERSONAL_UAT':'NO_GO',
