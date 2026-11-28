@@ -66,6 +66,12 @@ export async function POST(request: Request) {
         if (!rows.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
         const order = rows.rows[0] as { id: string; owner_id: string | null; status: string; version: number };
         if (order.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem mudou. Atualize o contexto.');
+        if (p.command === 'start') {
+          // Service-need orders start only through the employee's own signed
+          // assignment, after viewing and acknowledging receipt.
+          const delegated = await query('SELECT 1 FROM svc_needs WHERE order_id=$1 LIMIT 1',[p.id]);
+          if (delegated.rows.length) throw new ApiError(409,'INVALID_STATE','Esta OS exige confirmação de recebimento pelo empregado antes do início.');
+        }
         if (p.command === 'measure') {
           if (order.status !== 'completed') throw new ApiError(409, 'INVALID_STATE', 'A medição exige uma OS concluída.');
           const measurementId = crypto.randomUUID();
