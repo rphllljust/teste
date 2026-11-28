@@ -23,6 +23,7 @@ import {GET as measurementGet,POST as measurementPost} from '../../app/api/enter
 import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/service-needs/control-tower/route';
 import {GET as cashAssurance} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/finance-assurance/route';
 import {POST as recordReceipt} from '../../app/api/finance/receivables/settlements/route';
+import {POST as reconcileBatch} from '../../app/api/bank/reconciliation-batches/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -427,6 +428,67 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const closeAfterCash=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
  assert.equal(closeAfterCash.blockingInvoices,0,'invoice and receipt remain auditable during financial period close');
  assert.equal(closeAfterCash.invalidCashLinks,0,'receipt GL must link to the originating AR ledger');
+
+ // Complete the SAME synthetic, verified service-to-cash journey, including a
+ // second actual receipt, matching imported statement and double-entry GL.
+ // This is disposable CI PostgreSQL, never a real bank, transfer or customer.
+ const cashTwoKey=randomUUID();
+ const paidRemaining=await recordReceipt(post(abrahim,{
+  receivableId:billingBody.resource.receivableId,amount:'35000000',
+  effectiveDate:postingToday,reference:'Synthetic transfer - final installment',
+  commandKey:cashTwoKey,
+ }));
+ assert.equal(paidRemaining.status,201,JSON.stringify(await paidRemaining.clone().json()));
+ assert.equal((await recordReceipt(post(abrahim,{
+  receivableId:billingBody.resource.receivableId,amount:'1',
+  effectiveDate:postingToday,reference:'Synthetic over-settlement',
+  commandKey:randomUUID(),
+ }))).status,409,'no overpayment of fully settled receivable');
+ const statementId=randomUUID(),bankLineIds=[randomUUID(),randomUUID()];
+ const lastDay=new Date(Date.UTC(Number(postingToday.slice(0,4)),
+  Number(postingToday.slice(5,7)),0)).toISOString().slice(0,10);
+ await pool.query(`INSERT INTO bank_statements(id,account_reference,source_reference,
+  period_start,period_end,opening_balance,closing_balance,expected_count,status,
+  created_at,actor_id,request_hash,correlation_id)
+  VALUES($1,$2,$3,$4,$5,0,45000000,2,'imported',$6,$7,'synthetic','synthetic')`,
+  [statementId,'CI-OTC-'+randomUUID(),randomUUID(),currentMonthStart,lastDay,now,abrahim]);
+ for(const [i,amount] of ['10000000','35000000'].entries()){
+  await pool.query(`INSERT INTO bank_statement_lines(id,statement_id,external_key,
+   booked_date,description,amount) VALUES($1,$2,$3,$4,$5,$6)`,
+   [bankLineIds[i],statementId,randomUUID(),postingToday,'Synthetic bank evidence',
+    amount]);
+ }
+ const batchKey=randomUUID(),matches=[
+  {lineId:bankLineIds[0],targetType:'receipt',targetId:cashKey},
+  {lineId:bankLineIds[1],targetType:'receipt',targetId:cashTwoKey},
+ ];
+ const bankPreview=await reconcileBatch(post(abrahim,{
+  key:batchKey,statementId,mode:'preview',items:matches,
+ }));
+ assert.equal(bankPreview.status,200,JSON.stringify(await bankPreview.clone().json()));
+ const beforeBank=await (await cashAssurance(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(beforeBank.summary.outstandingScaled,'0','cash can be paid without the bank statement being reconciled');
+ assert.equal(beforeBank.steps.find((x:any)=>x.code==='BANK_RECONCILED').done,false,
+  'no inference of bank match from a paid receivable');
+ const bankCommit=await reconcileBatch(post(abrahim,{
+  key:batchKey,statementId,mode:'commit',items:matches,
+ }));
+ assert.equal(bankCommit.status,201,JSON.stringify(await bankCommit.clone().json()));
+ const bankReplay=await reconcileBatch(post(abrahim,{
+  key:batchKey,statementId,mode:'commit',items:matches,
+ }));
+ assert.equal(bankReplay.status,200,'bank match must be idempotent');
+ const finished=await cashAssurance(get(abrahim),np(tenantA,needId));
+ assert.equal(finished.status,200);
+ const closedProof=await finished.json() as any;
+ assert.equal(closedProof.status,'EVIDENCE_COMPLETE',
+  'all nine independently authenticated evidence stages must pass');
+ assert.equal(closedProof.steps.every((x:any)=>x.done),true);
+ assert.equal(closedProof.summary.settledScaled,'45000000');
+ assert.equal(closedProof.summary.outstandingScaled,'0');
+ assert.equal(closedProof.summary.bankMatchedReceipts,2);
+ assert.equal(closedProof.summary.activeReceipts,2);
+ assert.equal(closedProof.summary.unpostedCashEvents,0);
 
  assert.equal(tower.pendingAdditionals,0);
 
