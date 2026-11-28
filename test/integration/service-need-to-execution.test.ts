@@ -65,7 +65,14 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await cmd(outsider,tenantA,needId,{command:'approve',reason:'fora do tenant'})).status,404);
  assert.equal((await cmd(otherOwner,tenantA,needId,{command:'approve',reason:'owner de outro tenant'})).status,404);
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId:randomUUID()})).status,409,'cannot convert before approval');
- assert.equal((await cmd(rafael,tenantA,needId,{command:'approve',reason:'Escopo e limite conferidos',financials:{estimatedCostCents:120000,marginBps:2500}})).status,200);
+ const approvalKey=randomUUID();
+ const approval={command:'approve',commandKey:approvalKey,reason:'Escopo e limite conferidos',financials:{estimatedCostCents:120000,marginBps:2500}};
+ assert.equal((await cmd(rafael,tenantA,needId,approval)).status,200);
+ const approvalReplay=await cmd(rafael,tenantA,needId,approval);
+ assert.equal(approvalReplay.status,200,'same command key must replay without executing again');
+ assert.equal(approvalReplay.body.replayed,true);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'reject',commandKey:approvalKey,reason:'outra operacao'})).status,409,'same key cannot authorize a different command');
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[tenantA,approvalKey])).rows[0].n,1,'replay cannot duplicate audit');
  // (3) conversion creates only a DRAFT order
  const orderId=randomUUID();
  const conv=await cmd(admin,tenantA,needId,{command:'convert',orderId});assert.equal(conv.status,200);assert.equal(conv.body.orderStatus,'draft');
