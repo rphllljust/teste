@@ -437,6 +437,14 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const afterCashTower=await (await controlTowerGet(get(rafael),tp(tenantA))).json() as any;
  assert.equal(afterCashTower.finance.billed_cents,'450000','cash settlement does not rewrite original revenue');
  assert.equal(afterCashTower.finance.received_cents,'100000');
+ assert.equal(afterCashTower.financialIntegrity.invoiceJournalGaps,0,
+  'posted invoice with validated GL must not appear as accounting exception');
+ assert.equal(afterCashTower.financialIntegrity.receiptJournalGaps,0,
+  'posted receipt with matching journal must not be flagged');
+ assert.equal(afterCashTower.financialIntegrity.bankUnmatchedReceipts,1,
+  'a receipt without an imported statement remains visible in the operational control tower');
+ assert.ok(afterCashTower.exceptions.some((x:any)=>x.code==='BANK_RECONCILIATION_PENDING'),
+  'controller action queue must include bank reconciliation before GO');
  assert.equal(afterCashTower.finance.open_receivables,1);
  assert.equal(afterCashTower.finance.overdue_receivables,0);
  const closeAfterCash=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
