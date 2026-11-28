@@ -298,6 +298,11 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
  assert.equal(detail.additionals.length,3,'reviewed request becomes authorized operational additional');assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,2);
  assert.equal(detail.workReports.length,2);assert.equal(detail.workReports[0].decision,'accepted');
+ const hoursVariance=detail.executionVariance.find((v:any)=>v.kind==='hours'&&v.resourceRef==='Horas campo'&&v.unit==='h');
+ assert.deepEqual(hoursVariance,{kind:'hours',resourceRef:'Horas campo',unit:'h',plannedMilli:'16000',actualMilli:'19500',varianceMilli:'3500'},'variance is computed by PostgreSQL from immutable planned and real quantities');
+ const vehicleVariance=detail.executionVariance.find((v:any)=>v.kind==='vehicle'&&v.resourceRef==='Veículo ficticio V1');
+ assert.equal(vehicleVariance.plannedMilli,'1000');assert.equal(vehicleVariance.actualMilli,'0');assert.equal(vehicleVariance.varianceMilli,'-1000');
+
  assert.equal(detail.planHistory[0].revision,1);assert.equal(detail.need.status,'completed');
  assert.deepEqual(detail.financials,{estimatedCostCents:120000,marginBps:2500});
  // costs/margins hidden from non-owners
