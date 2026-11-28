@@ -375,7 +375,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(paymentResult.resource.accounting.status,'auto_posted');
  assert.ok(paymentResult.resource.accounting.journalId);
  assert.equal((await recordReceipt(post(abrahim,receiptCommand))).status,200,'receipt retry cannot double-post cash');
- assert.equal((await recordReceipt(post(rafael,{...receiptCommand,commandKey:randomUUID()}))).status,404,'the secondary administrator cannot post cash into the canonical owner's financial ledger');
+ assert.equal((await recordReceipt(post(rafael,{...receiptCommand,commandKey:randomUUID()}))).status,404,"the secondary administrator cannot post cash into the canonical owner\'s financial ledger");
  assert.equal((await recordReceipt(post(abrahim,{...receiptCommand,commandKey:randomUUID(),amount:'40000000'}))).status,409,'cannot settle more than remaining balance');
  const afterCash=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(afterCash.measurements[0].settledCents,'100000','native settlement converts back to cents exactly');
