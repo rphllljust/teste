@@ -6,7 +6,25 @@ const command = z.object({
   measurementId: z.string().uuid(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
   commandKey: z.string().uuid(),
+  expectedVersion: z.number().int().positive().optional(),
 }).strict();
+
+export async function GET(request: Request) {
+  let context: RequestContext | undefined;
+  try {
+    context = requestContext(request);
+    const commandKey = z.string().uuid().safeParse(new URL(request.url).searchParams.get('commandKey'));
+    if (!commandKey.success) throw new ApiError(400, 'VALIDATION_FAILED', 'Chave de cobrança inválida.');
+    const stored = await database().prepare(
+      "SELECT result FROM order_events WHERE id=? AND actor_id=? AND command='bill_measurement'",
+    ).bind(commandKey.data, context.actorId).first<{result: unknown}>();
+    if (!stored?.result) throw new ApiError(404, 'NOT_FOUND', 'Cobrança não localizada.');
+    const result = typeof stored.result === 'string' ? JSON.parse(stored.result) : stored.result;
+    return respond(result, context);
+  } catch (error) {
+    return failure(error, context);
+  }
+}
 
 export async function POST(request: Request) {
   let context: RequestContext | undefined;

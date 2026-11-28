@@ -1,6 +1,0 @@
-import {z} from 'zod';
-const optionalName=z.string().trim().min(2).max(200).nullable();
-export const clientFields=z.object({legalName:z.string().trim().min(2).max(200),tradeName:optionalName,document:z.string().trim().min(3).max(32).transform(s=>s.replace(/[.\/\s-]/g,'').toUpperCase()).refine(s=>s.length>=3).nullable(),email:z.string().trim().email().max(254).nullable(),phone:z.string().trim().min(3).max(40).nullable()}).strict();
-export type ClientFields=z.infer<typeof clientFields>;
-export type ClientRow={id:string;owner_id:string;legal_name:string;trade_name:string|null;document:string|null;email:string|null;phone:string|null;status:'active'|'inactive';row_version:number;created_at:string;updated_at:string};
-export function projectClient(row:ClientRow){return {id:row.id,legalName:row.legal_name,tradeName:row.trade_name,document:row.document,email:row.email,phone:row.phone,state:{code:row.status,label:row.status==='active'?'Ativo':'Inativo',rowVersion:row.row_version},createdAt:row.created_at,updatedAt:row.updated_at,availableCommands:[{id:'revise',label:'Atualizar cadastro',expectedVersion:row.row_version},{id:row.status==='active'?'deactivate':'activate',label:row.status==='active'?'Desativar cliente':'Ativar cliente',expectedVersion:row.row_version}]};}

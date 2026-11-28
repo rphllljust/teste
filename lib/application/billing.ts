@@ -7,6 +7,7 @@ export type BillApprovedMeasurementInput = {
   dueDate: string;
   commandKey: string;
   requestHash: string;
+  expectedVersion?: number;
 };
 
 function storedResult(value: unknown): Record<string, unknown> {
@@ -59,6 +60,9 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
     );
     if (!locked.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Medição não encontrada.');
     const measurement = locked.rows[0];
+    if (input.expectedVersion !== undefined && Number(measurement.version) !== input.expectedVersion) {
+      throw new ApiError(409, 'VERSION_CONFLICT', 'A medição mudou. Atualize o contexto.');
+    }
     if (measurement.status !== 'approved') {
       // A concurrent retry may have waited on the measurement lock while the
       // first transaction committed the event. Re-read the command key after

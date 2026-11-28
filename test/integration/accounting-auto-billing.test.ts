@@ -5,7 +5,8 @@ import {Pool} from 'pg';
 import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {GET as getRule,POST as configureRule} from '../../app/api/accounting/posting-rules/route';
-import {POST as bill} from '../../app/api/finance/billing/route';
+import {GET as verifyBilling,POST as bill} from '../../app/api/finance/billing/route';
+import {POST as postCommand} from '../../app/api/commands/route';
 import {GET as reconciliation} from '../../app/api/accounting/reconciliation/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
@@ -13,7 +14,7 @@ if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
 const pool=new Pool({connectionString:process.env.DATABASE_URL,max:3});
 const actor=randomUUID(),foreignActor=randomUUID(),orderId=randomUUID();
 const debitId=randomUUID(),creditId=randomUUID(),expenseId=randomUUID();
-const approved=[randomUUID(),randomUUID(),randomUUID()];
+const approved=[randomUUID(),randomUUID(),randomUUID(),randomUUID()];
 const request=(identity:string,path:string,body?:unknown)=>
   setTestIdentity(new Request('http://localhost'+path,{
     method:body===undefined?'GET':'POST',
@@ -75,7 +76,7 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   assert.equal(oldVersion.status,409);
   assert.equal((await oldVersion.json() as {code:string}).code,'STALE_VERSION');
 
-  const billingCommand={measurementId:approved[0],dueDate:'2027-03-20',commandKey:randomUUID()};
+  const billingCommand={measurementId:approved[0],dueDate:'2027-03-20',commandKey:randomUUID(),expectedVersion:1};
   assert.equal((await bill(request(foreignActor,billingPath,billingCommand))).status,404);
   const responses=await Promise.all([
     bill(request(actor,billingPath,billingCommand)),
@@ -90,6 +91,19 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   const replay=await responses.find(r=>r.status===200)!.json() as typeof body;
   assert.equal(replay.resource.accounting.journalId,body.resource.accounting.journalId);
   assert.equal(replay.resource.invoiceId,body.resource.invoiceId);
+  const verified=await verifyBilling(request(actor,billingPath+'?commandKey='+billingCommand.commandKey));
+  assert.equal(verified.status,200);
+  assert.equal((await verified.json() as typeof body).resource.invoiceId,body.resource.invoiceId);
+  assert.equal((await verifyBilling(request(foreignActor,billingPath+'?commandKey='+billingCommand.commandKey))).status,404);
+
+  const dispatched=await postCommand(request(actor,'/api/commands',{
+    id:approved[1],version:1,key:randomUUID(),command:'invoice',dueDate:'2027-03-20',
+  }));
+  assert.equal(dispatched.status,201,JSON.stringify(await dispatched.clone().json()));
+  const dispatchedBody=await dispatched.json() as {resource:{id:string;accounting:{status:string;journalId:string}}};
+  assert.equal(dispatchedBody.resource.accounting.status,'auto_posted');
+  assert.ok(dispatchedBody.resource.accounting.journalId);
+
   const duplicate=await bill(request(actor,billingPath,{
     ...billingCommand,commandKey:randomUUID(),
   }));
@@ -126,14 +140,15 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   ]);
   const reconciled=await reconciliation(request(actor,'/api/accounting/reconciliation'));
   assert.equal(reconciled.status,200);
-  assert.equal((await reconciled.json() as {summary:{verifiedPostingCount:number}}).summary.verifiedPostingCount,1);
+  assert.equal((await reconciled.json() as {summary:{verifiedPostingCount:number;automaticPostingCount:number}}).summary.verifiedPostingCount,2);
+  assert.equal((await reconciled.json() as {summary:{automaticPostingCount:number}}).summary.automaticPostingCount,2);
 
   const disabled=await configureRule(request(actor,rulePath,{
     ...input,commandKey:randomUUID(),expectedVersion:1,active:false,
   }));
   assert.equal(disabled.status,200);
   const noAuto=await bill(request(actor,billingPath,{
-    measurementId:approved[1],dueDate:'2027-03-20',commandKey:randomUUID(),
+    measurementId:approved[2],dueDate:'2027-03-20',commandKey:randomUUID(),
   }));
   assert.equal(noAuto.status,201);
   const noAutoBody=await noAuto.json() as {resource:{invoiceId:string;accounting:{status:string}}};
@@ -149,10 +164,10 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
     [randomUUID(),today(),actor,randomUUID(),new Date().toISOString()],
   );
   const closed=await bill(request(actor,billingPath,{
-    measurementId:approved[2],dueDate:'2027-03-20',commandKey:randomUUID(),
+    measurementId:approved[3],dueDate:'2027-03-20',commandKey:randomUUID(),
   }));
   assert.equal(closed.status,409);
   assert.equal((await closed.json() as {code:string}).code,'FINANCE_PERIOD_CLOSED');
   assert.equal((await pool.query('SELECT status FROM measurements WHERE id=$1',[approved[2]])).rows[0].status,'approved');
-  assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[approved[2]])).rows[0].n,0);
+  assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[approved[3]])).rows[0].n,0);
 });

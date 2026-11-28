@@ -1,3 +1,0 @@
-[submodule "integrations/nextcrm-upstream"]
-	path = integrations/nextcrm-upstream
-	url = https://github.com/pdovhomilja/nextcrm-app.git

@@ -1,5 +1,0 @@
-import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../../../lib/api/http';
-import { database } from '../../../../../db/raw';
-
-export const dynamic='force-dynamic';
-export async function GET(request:Request,{params}:{params:Promise<{id:string}>}){let context:RequestContext|undefined;try{context=requestContext(request);const {id}=await params;const entry=await database().prepare(`SELECT id,effective_date AS "effectiveDate",source_reference AS "sourceReference",description,status,reversal_of AS "reversalOf" FROM journal_entries WHERE id=? AND actor_id=?`).bind(id,context.actorId).first<Record<string,unknown>>();if(!entry)throw new ApiError(404,'NOT_FOUND','Lançamento contábil não encontrado.');const lines=await database().prepare(`SELECT l.id,a.code,a.name,CAST(l.debit AS TEXT) AS "debitScaled",CAST(l.credit AS TEXT) AS "creditScaled" FROM journal_lines l JOIN chart_accounts a ON a.id=l.account_id WHERE l.entry_id=? ORDER BY l.id`).bind(id).all();return respond({entry,lines:lines.results},context);}catch(error){return failure(error,context);}}
