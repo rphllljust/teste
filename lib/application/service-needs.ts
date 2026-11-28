@@ -213,7 +213,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    return {ok:true,status:to};
   }
   case 'convert':{
-   if(!manager)throw forbidden('Sua função não permite converter necessidades.');
+   await requireOwner(q,c,'converter necessidades em ordens de serviço');
    state(need,['approved'],cmd.command);
    // Only a DRAFT service order is ever created; it needs the existing OS authorization flow afterwards.
    await q(`INSERT INTO service_orders(id,title,client,category,description,due_date,created_at,owner_id,status)
@@ -240,6 +240,8 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    state(need,['converted'],cmd.command);
    const n=await q('SELECT count(*)::int AS n FROM svc_plan_lines WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
    if(!n.rows[0].n)throw new ApiError(409,'INVALID_STATE','Planeje a necessidade antes de liberar.');
+   const order=await q('SELECT status FROM service_orders WHERE id=$1 FOR SHARE',[need.order_id]);
+   if(order.rows[0]?.status!=='authorized')throw new ApiError(409,'INVALID_STATE','Autorize a OS no fluxo operacional antes de liberar a execução.');
    await q('INSERT INTO svc_releases(need_id,tenant_id,released_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
    await setStatus('released');await audit(q,c,needId,cmd.commandKey,'released',null);
    return {ok:true,status:'released'};
@@ -270,9 +272,21 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    await ownAssignment(q,c,needId,cmd.assignmentId);
    state(need,['released'],cmd.command);
    if(!await hasInboxEvent(q,cmd.assignmentId,'received'))throw new ApiError(409,'INVALID_STATE','Confirme o recebimento antes de iniciar a execução.');
+   // The employee's confirmed receipt is the only permitted start for an OS
+   // created from a service need. Advance both state machines atomically.
+   const os=await q('SELECT id,status,version FROM service_orders WHERE id=$1 FOR UPDATE',[need.order_id]);
+   if(os.rows[0]?.status!=='authorized')throw new ApiError(409,'INVALID_STATE','A OS deve estar autorizada para iniciar a execução.');
+   const nextVersion=Number(os.rows[0].version)+1;
+   await q("UPDATE service_orders SET status='executing',version=$2 WHERE id=$1",[need.order_id,nextVersion]);
+   await q(`INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id)
+    VALUES($1,$2,'start',$3,$4,$5,$6,$2,$7,$8)`,[
+    crypto.randomUUID(),need.order_id,nextVersion,new Date().toISOString(),c.actorId,
+    'svc-need:'+needId+':'+cmd.commandKey,
+    JSON.stringify({ok:true,source:'service_need',assignmentId:cmd.assignmentId}),c.correlationId,
+   ]);
    await q('INSERT INTO svc_executions(need_id,tenant_id,started_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
    await setStatus('executing');await audit(q,c,needId,cmd.commandKey,'execution_started',null,{assignmentId:cmd.assignmentId});
-   return {ok:true,status:'executing'};
+   return {ok:true,status:'executing',orderStatus:'executing',orderVersion:nextVersion};
   }
   case 'record_actual':{
    await ownAssignment(q,c,needId,cmd.assignmentId);
