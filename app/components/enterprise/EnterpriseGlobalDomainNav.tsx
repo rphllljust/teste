@@ -7,7 +7,7 @@ const domains=[
  {label:'Comercial',items:['CRM e Vendas','Clientes e propostas','Propostas e PO']},
  {label:'Contratos',items:['Contratos']},
  {label:'Compras',items:['Compras','Estoque e compras']},
- {label:'Operações',items:['Ordens de serviço','Execução','Field Service Cockpit','Resource Planning Board']},
+ {label:'Operações',items:['Ordens de serviço','Necessidades de serviço','Minha caixa de OS','Execução','Field Service Cockpit','Resource Planning Board']},
  {label:'Recursos',items:['Frota e ativos','Profissionais']},
  {label:'Medições',items:['Medições']},
  {label:'Faturamento',items:['Faturamento']},
