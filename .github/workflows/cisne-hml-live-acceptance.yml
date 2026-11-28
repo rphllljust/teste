@@ -2,7 +2,7 @@ name: CISNE HML — Chromium and enterprise ACL acceptance
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/tier1-enterprise-document-linking-20261127']
     paths:
       - '.github/workflows/cisne-hml-live-acceptance.yml'
       - 'test/hml-live-acceptance.mjs'
