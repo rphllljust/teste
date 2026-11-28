@@ -1,12 +1,14 @@
 'use client';
 import {useCallback,useEffect,useState,type FormEvent} from 'react';
 import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives';
+import ServiceNeedsCommercialPanel,{type Commercial,type Request as AdditionalRequest} from './ServiceNeedsCommercialPanel';
+import ServiceNeedEmployeeFieldPanel from './ServiceNeedEmployeeFieldPanel';
 
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
 type Event={event:string;actorId:string;reason:string|null;createdAt:string};
-type Detail={need:Need;events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null};
-type InboxItem={assignmentId:string;needId:string;clientName:string;serviceDescription:string;location:string;requestedDate:string;status:string;events:string[]};
+type Detail={need:Need;events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null;commercial?:Commercial;additionalRequests?:AdditionalRequest[];fieldEvents?:{id:string;eventType:string;description:string;quantityMilli:string|null;unit:string|null;evidenceRef:string|null;actorId:string;createdAt:string}[]};
+type InboxItem={assignmentId:string;needId:string;orderId:string|null;clientName:string;serviceDescription:string;location:string;requestedDate:string;status:string;events:string[];planned:{kind:string;resourceRef:string;quantityMilli:string;unit:string}[]};
 const uuid=()=>crypto.randomUUID();
 async function api<T>(url:string,body?:object):Promise<T>{
  const response=await fetch(url,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
@@ -28,6 +30,12 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
  const [revision,setRevision]=useState(0);
  const [reason,setReason]=useState('');
  const [employeeId,setEmployeeId]=useState('');
+ const [professionalId,setProfessionalId]=useState('');
+ const [proposalRef,setProposalRef]=useState('');
+ const [rcRef,setRcRef]=useState('');
+ const [otherRefs,setOtherRefs]=useState('');
+ const [contactPhone,setContactPhone]=useState('');
+ const [contactEmail,setContactEmail]=useState('');
  const [planRef,setPlanRef]=useState('');
  const [planQuantity,setPlanQuantity]=useState('1');
  const [planUnit,setPlanUnit]=useState('h');
@@ -90,7 +98,7 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
   submit(root+'/service-needs/'+encodeURIComponent(needId)+'/commands',{commandKey:uuid(),command:commandName,...data},'Comando registrado e auditado.');
  async function createNeed(e:FormEvent<HTMLFormElement>){
   e.preventDefault();
-  await submit(root+'/service-needs',{id:uuid(),commandKey:uuid(),channel,priority,originRef,clientName,contactName,serviceDescription:description,location,requestedDate,contractRef:contractRef||null,poRef:poRef||null,commercialTerms:commercialTerms||null},'Necessidade recebida e registrada.');
+  await submit(root+'/service-needs',{id:uuid(),commandKey:uuid(),channel,priority,originRef,clientName,contactName,contactPhone:contactPhone||null,contactEmail:contactEmail||null,serviceDescription:description,location,requestedDate,proposalRef:proposalRef||null,contractRef:contractRef||null,poRef:poRef||null,rcRef:rcRef||null,otherRefs:otherRefs||null,commercialTerms:commercialTerms||null},'Necessidade recebida e registrada.');
  }
  return <section className="enterprise-governance enterprise-governance-embedded" aria-label={mode==='needs'?'Necessidades de serviço':'Caixa do empregado'}>
   <EnterprisePageHeader eyebrow="OPERAÇÕES · FLUXO TRANSACIONAL"
@@ -118,7 +126,7 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
      {!x.events.includes('viewed')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_viewed',{assignmentId:x.assignmentId})}>Confirmar visualização</button>}
      {x.events.includes('viewed')&&!x.events.includes('received')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_received',{assignmentId:x.assignmentId})}>Confirmar recebimento</button>}
      {x.events.includes('received')&&x.status==='released'&&<button type="button" className="primary" disabled={pending} onClick={()=>void command(x.needId,'start_execution',{assignmentId:x.assignmentId})}>Iniciar execução</button>}
-     {x.status==='executing'&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'record_actual',{assignmentId:x.assignmentId,id:uuid(),line:{kind:'hours',resourceRef:'Apontamento de campo',quantityMilli:1000,unit:'h'}})}>Apontar 1 hora</button>}
+     {x.status==='executing'&&<ServiceNeedEmployeeFieldPanel key={x.assignmentId} tenantId={tenantId} needId={x.needId} assignmentId={x.assignmentId} planned={x.planned??[]} onRefresh={refresh}/> }
     </div>
    </article>)}
   </div>}
@@ -133,6 +141,11 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
        <label>Referência de origem<input required value={originRef} onChange={e=>setOriginRef(e.target.value)}/></label>
        <label>Cliente<input required minLength={2} value={clientName} onChange={e=>setClientName(e.target.value)}/></label>
        <label>Contato<input required minLength={2} value={contactName} onChange={e=>setContactName(e.target.value)}/></label>
+       <label>Telefone<input value={contactPhone} maxLength={40} onChange={e=>setContactPhone(e.target.value)}/></label>
+       <label>E-mail<input value={contactEmail} maxLength={200} onChange={e=>setContactEmail(e.target.value)}/></label>
+       <label>Proposta<input value={proposalRef} onChange={e=>setProposalRef(e.target.value)}/></label>
+       <label>RC<input value={rcRef} onChange={e=>setRcRef(e.target.value)}/></label>
+       <label>Outros documentos<input value={otherRefs} onChange={e=>setOtherRefs(e.target.value)}/></label>
        <label>Data solicitada<input type="date" required value={requestedDate} onChange={e=>setRequestedDate(e.target.value)}/></label>
        <label>Local<input required minLength={2} value={location} onChange={e=>setLocation(e.target.value)}/></label>
        <label>Contrato<input value={contractRef} onChange={e=>setContractRef(e.target.value)}/></label>
@@ -170,9 +183,25 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
      {detail.need.status==='converted'&&<label>Quantidade<input type="number" min="0.001" step="0.001" value={planQuantity} onChange={e=>setPlanQuantity(e.target.value)}/></label>}
      {detail.need.status==='converted'&&<label>Unidade<input value={planUnit} onChange={e=>setPlanUnit(e.target.value)}/></label>}
      {detail.need.status==='converted'&&<button type="button" disabled={pending||!planRef.trim()} onClick={()=>void command(selected,'set_plan',{lines:[{kind:'hours',resourceRef:planRef,quantityMilli:Math.round(Number(planQuantity)*1000),unit:planUnit}]})}>Registrar plano</button>}
-     {detail.need.status==='converted'&&<button type="button" disabled={pending||detail.planned.length===0} onClick={()=>void command(selected,'release')}>Liberar após autorização da OS</button>}
+     {detail.need.status==='converted'&&detail.need.orderId&&<button type="button" disabled={pending}
+        onClick={()=>void (async()=>{
+         setPending(true);setError('');setNotice('');
+         try{
+          const id=detail.need.orderId!;
+          const current=await api<{order:{id:string;status:string;version:number}}>('/api/orders/'+encodeURIComponent(id));
+          if(current.order.status!=='draft')throw Error('A OS deve estar em rascunho para autorização.');
+          await api('/api/commands',{id,version:current.order.version,key:uuid(),command:'authorize'});
+          setNotice('OS autorizada. Registre o plano e efetue a liberação.');
+          refresh();
+         }catch(e){setError(e instanceof Error?e.message:'Falha ao autorizar a OS.');}
+         finally{setPending(false);}
+        })()}>Autorizar OS antes da liberação</button>}
+     {detail.need.status==='converted'&&<button type="button" disabled={pending||detail.planned.length===0} onClick={()=>void command(selected,'release')}>Liberar OS preparada</button>}
      {detail.need.status==='released'&&<label>Identidade do empregado<input value={employeeId} onChange={e=>setEmployeeId(e.target.value)}/></label>}
-     {detail.need.status==='released'&&<button type="button" disabled={pending||employeeId.trim().length<8} onClick={()=>void command(selected,'assign',{employeeActorId:employeeId})}>Atribuir empregado já vinculado</button>}
+     {detail.need.status==='released'&&<label>ID do profissional cadastrado<input value={professionalId} onChange={e=>setProfessionalId(e.target.value)}/></label>}
+     {detail.need.status==='released'&&<button type="button" disabled={pending||employeeId.trim().length<8||professionalId.trim().length<8}
+      onClick={()=>void submit(root+'/employee-links',{commandKey:uuid(),employeeActorId:employeeId,professionalId},'Empregado vinculado ao profissional no contexto autorizado.')}>Vincular empregado</button>}
+     {detail.need.status==='released'&&<button type="button" disabled={pending||employeeId.trim().length<8} onClick={()=>void command(selected,'assign',{employeeActorId:employeeId})}>Atribuir OS ao empregado</button>}
     </div>
     {detail.need.status==='executing'&&<div className="enterprise-governance-panel">
      <h3>Adicional operacional · imutável</h3>
@@ -182,6 +211,20 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
      <button type="button" disabled={pending||additional.trim().length<3||reason.trim().length<3||evidence.trim().length<3}
       onClick={()=>void command(selected,'add_additional',{id:uuid(),description:additional,reason,evidenceRef:evidence})}>Registrar adicional (owner)</button>
     </div>}
+    {detail.commercial&&<ServiceNeedsCommercialPanel key={detail.need.id} tenantId={tenantId} needId={selected} status={detail.need.status} commercial={detail.commercial} requests={detail.additionalRequests??[]} onRefresh={refresh}/>}
+    {detail.fieldEvents&&<details><summary>Eventos operacionais registrados · {detail.fieldEvents.length}</summary>
+     {detail.fieldEvents.map(ev=><p key={ev.id}><strong>{ev.eventType}</strong> · {ev.description} · {ev.actorId} · {ev.createdAt}{ev.quantityMilli!=null?' · '+(Number(ev.quantityMilli)/1000)+' '+(ev.unit??''):''}{ev.evidenceRef?' · '+ev.evidenceRef:''}</p>)}
+    </details>}
+    {detail.actual.length>0&&<details><summary>Comparação planejado × executado</summary>
+     <table><thead><tr><th>Recurso</th><th>Planejado</th><th>Realizado</th><th>Diferença</th></tr></thead>
+      <tbody>{Array.from(new Set([...detail.planned,...detail.actual].map(p=>p.kind+'|'+p.resourceRef+'|'+p.unit))).map(k=>{
+       const [kind,ref,unit]=k.split('|');
+       const planned=detail.planned.filter(p=>p.kind===kind&&p.resourceRef===ref&&p.unit===unit).reduce((n,p)=>n+Number(p.quantityMilli),0);
+       const actual=detail.actual.filter(p=>p.kind===kind&&p.resourceRef===ref&&p.unit===unit).reduce((n,p)=>n+Number(p.quantityMilli),0);
+       return <tr key={k}><td>{ref} · {kind}</td><td>{planned/1000} {unit}</td><td>{actual/1000} {unit}</td><td>{(actual-planned)/1000} {unit}</td></tr>;
+      })}</tbody>
+     </table>
+    </details>}
     <details><summary>Trilha de auditoria · {detail.events.length} eventos</summary>
      <ol>{detail.events.map((ev,i)=><li key={i}><strong>{ev.event}</strong> · {ev.actorId} · {ev.createdAt}{ev.reason?' · '+ev.reason:''}</li>)}</ol>
     </details>
