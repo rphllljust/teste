@@ -98,8 +98,17 @@ export async function POST(request: Request) {
     await db.transaction(async query => {
      const item = await query('SELECT id FROM inventory_items WHERE id=$1 AND owner_id=$2 FOR UPDATE', [data.itemId, context!.actorId]);
      if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
+     // A reservation for a service order is a commitment, not an arbitrary
+     // reference string. Reject missing, foreign, concluded or cancelled OS.
+     // Other document types retain their existing legacy support; they must
+     // NEVER be consumed as if they were a service-order reservation.
+     if (data.sourceDocumentType === 'service-order') {
+      const source = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status IN ('planned','authorized','executing') FOR SHARE",
+       [data.sourceDocumentId, context!.actorId]);
+      if (!source.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Reserva exige OS existente, própria e operacionalmente elegível.');
+     }
      const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
-    const reserved = await query("SELECT COALESCE(SUM(quantity-consumed_quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
+     const reserved = await query("SELECT COALESCE(SUM(quantity-consumed_quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
      const available = Number(stock.rows[0]?.balance ?? 0) - Number(reserved.rows[0]?.reserved ?? 0);
      if (available < data.quantity) throw new ApiError(409, 'AVAILABILITY_CONFLICT', 'A reserva supera o saldo disponível.');
      await query(`INSERT INTO inventory_reservations
@@ -113,10 +122,11 @@ export async function POST(request: Request) {
      if (!item.rowCount) throw new ApiError(404, 'NOT_FOUND', 'Material indisponível.');
      const order = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status='executing' FOR UPDATE", [data.orderId, context!.actorId]);
      if (!order.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
-     const reservation = await query(`SELECT source_document_id, status, quantity, consumed_quantity
+     const reservation = await query(`SELECT source_document_id, source_document_type, status, quantity, consumed_quantity
        FROM inventory_reservations WHERE id=$1 AND item_id=$2 AND owner_id=$3 FOR UPDATE`, [data.reservationId, data.itemId, context!.actorId]);
      if (!reservation.rowCount) throw new ApiError(404, 'RESERVATION_NOT_FOUND', 'Reserva de material indisponível.');
-     const row = reservation.rows[0] as { source_document_id: string; status: string; quantity: number; consumed_quantity: number };
+     const row = reservation.rows[0] as { source_document_id: string; source_document_type: string; status: string; quantity: number; consumed_quantity: number };
+     if (row.source_document_type !== 'service-order') throw new ApiError(409, 'RESERVATION_CONFLICT', 'Somente reservas originadas de OS podem ser consumidas como OS.');
      if (row.source_document_id !== data.orderId) throw new ApiError(409, 'RESERVATION_CONFLICT', 'A reserva não pertence à OS informada.');
      const remaining = Number(row.quantity) - Number(row.consumed_quantity);
      if (row.status !== 'reserved' || remaining < data.quantity) throw new ApiError(409, 'RESERVATION_CONFLICT', 'O consumo supera a quantidade reservada.');
@@ -139,9 +149,18 @@ export async function POST(request: Request) {
      if (data.orderId) {
       const order = await query("SELECT id FROM service_orders WHERE id=$1 AND owner_id=$2 AND status='executing'", [data.orderId, context!.actorId]);
       if (!order.rowCount) throw new ApiError(409, 'ORDER_CONFLICT', 'Selecione uma OS sua em execução.');
+      // A managed service need has a governed material workflow. Requiring
+      // reserve+consume preserves the link to a PO/stock event and the OS.
+      const managed = await query('SELECT id FROM svc_needs WHERE order_id=$1 AND created_by_actor_id IN (SELECT actor_id FROM enterprise_tenant_memberships WHERE tenant_id=svc_needs.tenant_id AND role=\'owner\' AND status=\'active\') LIMIT 1', [data.orderId]);
+      if (managed.rowCount) throw new ApiError(409, 'RESERVATION_REQUIRED', 'A OS empresarial exige reserva e consumo auditável; saída direta é proibida.');
      }
      const stock = await query('SELECT COALESCE(SUM(delta),0)::bigint AS balance FROM inventory_movements WHERE item_id=$1 AND owner_id=$2', [data.itemId, context!.actorId]);
      const balance = Number(stock.rows[0]?.balance ?? 0);
+     // Outgoing direct movements must not consume quantities committed to
+     // another OS or document. Both mutations lock the same inventory item.
+     const pending = await query("SELECT COALESCE(SUM(quantity-consumed_quantity),0)::bigint AS reserved FROM inventory_reservations WHERE item_id=$1 AND owner_id=$2 AND status='reserved'", [data.itemId, context!.actorId]);
+     const free=balance-Number(pending.rows[0]?.reserved??0);
+     if (delta<0&&free+delta<0) throw new ApiError(409, 'AVAILABILITY_CONFLICT', 'Saldo disponível comprometido por reservas ativas de outras operações.');
      if (balance + delta < 0 || balance + delta > 1_000_000_000_000) {
       throw new ApiError(409, 'BALANCE_CONFLICT', 'A movimentação supera o saldo disponível ou o limite de estoque.');
      }
