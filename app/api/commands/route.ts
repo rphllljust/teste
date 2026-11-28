@@ -41,7 +41,7 @@ export async function POST(request: Request) {
         commandKey: p.key,
         requestHash,
         expectedVersion: p.version,
-      });
+      }) as { resource: Record<string, unknown>; replayed: boolean };
       const resource = billed.resource as Record<string, unknown>;
       const invoiceId = String(resource.invoiceId ?? resource.id ?? '');
       return respond({
