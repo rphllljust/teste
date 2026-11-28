@@ -37,7 +37,7 @@ export function cleanEvidenceFileName(value:string){
 /** Only a declared verified owner or an assigned employee sees evidence. */
 export async function requireServiceEvidenceAccess(q:Query,c:Context,category:ServiceEvidenceCategory,write=false){
  const role=await memberRole(q,c.tenantId,c.actorId);
- const found=await q('SELECT status FROM svc_needs WHERE tenant_id=$1 AND id=$2 FOR SHARE',[c.tenantId,c.needId]);
+ const found=await q('SELECT status FROM svc_needs WHERE tenant_id=$1 AND id=$2 '+(write?'FOR UPDATE':'FOR SHARE'),[c.tenantId,c.needId]);
  if(!found.rows.length)throw denied();
  const status=String(found.rows[0].status);
  const owner=role==='owner'&&await isVerifiedOwner(q,c.tenantId,c.actorId);
@@ -72,6 +72,11 @@ export async function saveServiceEvidence(q:Query,c:Context,category:ServiceEvid
  const access=await requireServiceEvidenceAccess(q,c,category,true);
  const safeFilename=cleanEvidenceFileName(filename);
  const sha256=validateServiceEvidenceBytes(mime,bytes);
+ // The need row was locked FOR UPDATE by requireServiceEvidenceAccess. This
+ // check is therefore serialized for concurrent uploads to the same need.
+ const usage=await q('SELECT count(*)::int AS n,COALESCE(sum(byte_size),0)::bigint AS bytes FROM svc_evidence_files WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,c.needId]);
+ if(Number(usage.rows[0].n)>=100||Number(usage.rows[0].bytes)+bytes.length>64*1024*1024)
+  throw new ApiError(409,'EVIDENCE_QUOTA','O limite de 100 arquivos ou 64 MiB por necessidade foi atingido.');
  const id=randomUUID();
  await q(`INSERT INTO svc_evidence_files
    (id,tenant_id,need_id,assignment_id,category,filename,mime_type,byte_size,sha256,contents,uploaded_by_actor_id)
