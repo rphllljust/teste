@@ -235,6 +235,13 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const decision=await pool.query('SELECT decision,approved_internal_cost_cents,approved_sale_price_cents FROM svc_additional_decisions WHERE request_id=$1',[requestId]);
  assert.equal(decision.rows[0].decision,'approved');
  assert.equal(Number(decision.rows[0].approved_internal_cost_cents),2800);
+ // Financial ceiling includes all approved additions; a rejected request has no price.
+ const overLimitId=randomUUID();
+ assert.equal((await cmd(employee,tenantA,needId,{command:'request_additional',id:overLimitId,assignmentId,kind:'hour',description:'Horas extras acima do limite',reason:'Tempo não previsto no escopo',quantityMilli:3000,unit:'h',evidenceRef:'boletim-teto-ficticio'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'decide_additional',requestId:overLimitId,decision:'approved',reason:'Tenta exceder orçamento',approvedInternalCostCents:0,approvedSalePriceCents:100000})).status,409,'commercial ceiling includes base global price and past accepted extras');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'decide_additional',requestId:overLimitId,decision:'rejected',reason:'Custo comercial ultrapassaria o limite',approvedSalePriceCents:100000})).status,400,'rejected additions cannot record approved values');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'decide_additional',requestId:overLimitId,decision:'rejected',reason:'Limite comercial impede a aprovação'})).status,200);
+
  // (8) additionals: append-only, owner-authorized, reason and evidence, history preserved
  const add1=randomUUID(),add2=randomUUID();
  const mk=(who:string,id:string,sup:string|null)=>cmd(who,tenantA,needId,{command:'add_additional',id,supersedesId:sup,description:'Escavação extra fictícia',reason:'Obstrução não prevista',evidenceRef:'foto-ficticia-001'});
@@ -286,7 +293,8 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const eventKinds=detail.events.map((e:any)=>e.event);
  for(const event of ['received','analysis_started','approved','commercial_terms_recorded','commercial_document_registered','price_line_registered','converted_to_draft_order','plan_set','released','assigned','viewed','execution_started','field_event_recorded','actual_recorded','additional_requested','additional_decided','additional_recorded','work_report_submitted','work_report_reviewed'])assert.ok(eventKinds.includes(event),event+' must be audited');
  assert.equal(detail.fieldEvents.length,4);
- assert.equal(detail.additionalRequests[0].status,'approved');
+ assert.equal(detail.additionalRequests.length,2);
+ assert.deepEqual(new Set(detail.additionalRequests.map((x:any)=>x.status)),new Set(['approved','rejected']));
  assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
  assert.equal(detail.additionals.length,3,'reviewed request becomes authorized operational additional');assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,2);
  assert.equal(detail.workReports.length,2);assert.equal(detail.workReports[0].decision,'accepted');
