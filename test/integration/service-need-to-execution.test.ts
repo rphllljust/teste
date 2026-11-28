@@ -479,6 +479,25 @@ test('each plan revision freezes the full prior set with reason, actor and disti
 });
 
 
+
+test('global release cannot exceed registered customer budget even when a contract version allows more',async()=>{
+ const needId=randomUUID(),orderId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'approve',reason:'Análise prévia concluída'})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'set_plan',lines:[{kind:'hours',resourceRef:'Teste teto cliente',quantityMilli:8000,unit:'h'}]})).status,200);
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}))).status,201);
+ const terms=(sale:number)=>({command:'set_commercial_terms',id:randomUUID(),pricingMode:'global',globalSaleCents:sale,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:200000});
+ assert.equal((await cmd(abrahim,tenantA,needId,terms(600000))).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,409,'higher contract ceiling cannot bypass lower customer limit');
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM svc_releases WHERE need_id=$1",[needId])).rows[0].n,0,'failed release must not persist any approval');
+ assert.equal((await cmd(rafael,tenantA,needId,terms(495000))).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM svc_releases WHERE need_id=$1",[needId])).rows[0].n,1);
+});
+
+
 test('itemized contract limits reject excess totals, preserve superseded prices and allow corrected release',async()=>{
  const needId=randomUUID(),orderId=randomUUID();
  assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
