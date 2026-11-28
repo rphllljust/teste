@@ -4,12 +4,14 @@ import {EnterprisePageHeader} from './components/enterprise/EnterprisePrimitives
 import ServiceNeedsCommercialPanel,{type Commercial,type Request as AdditionalRequest} from './ServiceNeedsCommercialPanel';
 import ServiceNeedEmployeeFieldPanel from './ServiceNeedEmployeeFieldPanel';
 import ServiceNeedsReadinessPanel from './ServiceNeedsReadinessPanel';
+import ServiceNeedsPlanBuilder,{type PlanRevision} from './ServiceNeedsPlanBuilder';
+import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkReviewPanel';
 
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
 type Event={event:string;actorId:string;reason:string|null;createdAt:string};
-type Detail={need:Need;events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null;commercial?:Commercial;additionalRequests?:AdditionalRequest[];fieldEvents?:{id:string;eventType:string;description:string;quantityMilli:string|null;unit:string|null;evidenceRef:string|null;actorId:string;createdAt:string}[]};
-type InboxItem={assignmentId:string;needId:string;orderId:string|null;clientName:string;serviceDescription:string;location:string;requestedDate:string;status:string;events:string[];planned:{kind:string;resourceRef:string;quantityMilli:string;unit:string}[]};
+type Detail={need:Need;planHistory?:PlanRevision[];workReports?:WorkReport[];events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null;commercial?:Commercial;additionalRequests?:AdditionalRequest[];fieldEvents?:{id:string;eventType:string;description:string;quantityMilli:string|null;unit:string|null;evidenceRef:string|null;actorId:string;createdAt:string}[]};
+type InboxItem={assignmentId:string;needId:string;orderId:string|null;clientName:string;serviceDescription:string;location:string;requestedDate:string;status:string;events:string[];workReview?:{reportId:string;submittedAt:string;status:string;reason:string|null}|null;planned:{kind:string;resourceRef:string;quantityMilli:string;unit:string}[]};
 const uuid=()=>crypto.randomUUID();
 async function api<T>(url:string,body?:object):Promise<T>{
  const response=await fetch(url,{method:body?'POST':'GET',credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:undefined,body:body?JSON.stringify(body):undefined});
@@ -38,9 +40,6 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
  const [otherRefs,setOtherRefs]=useState('');
  const [contactPhone,setContactPhone]=useState('');
  const [contactEmail,setContactEmail]=useState('');
- const [planRef,setPlanRef]=useState('');
- const [planQuantity,setPlanQuantity]=useState('1');
- const [planUnit,setPlanUnit]=useState('h');
  const [additional,setAdditional]=useState('');
  const [evidence,setEvidence]=useState('');
  const [clientName,setClientName]=useState('');
@@ -125,10 +124,13 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
     <strong>{x.clientName}</strong><p>{x.serviceDescription}</p>
     <p>{x.location} · {x.requestedDate} · {x.status} · {x.events.join(' → ')}</p>
     <div className="form-row">
-     {!x.events.includes('viewed')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_viewed',{assignmentId:x.assignmentId})}>Confirmar visualização</button>}
-     {x.events.includes('viewed')&&!x.events.includes('received')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_received',{assignmentId:x.assignmentId})}>Confirmar recebimento</button>}
+     {['released','executing'].includes(x.status)&&!x.events.includes('viewed')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_viewed',{assignmentId:x.assignmentId})}>Confirmar visualização</button>}
+     {['released','executing'].includes(x.status)&&x.events.includes('viewed')&&!x.events.includes('received')&&<button type="button" disabled={pending} onClick={()=>void command(x.needId,'mark_received',{assignmentId:x.assignmentId})}>Confirmar recebimento</button>}
      {x.events.includes('received')&&x.status==='released'&&<button type="button" className="primary" disabled={pending} onClick={()=>void command(x.needId,'start_execution',{assignmentId:x.assignmentId})}>Iniciar execução</button>}
-     {x.status==='executing'&&<ServiceNeedEmployeeFieldPanel key={x.assignmentId} tenantId={tenantId} needId={x.needId} assignmentId={x.assignmentId} planned={x.planned??[]} onRefresh={refresh}/> }
+     {x.status==='executing'&&<ServiceNeedEmployeeFieldPanel key={x.assignmentId} tenantId={tenantId} needId={x.needId} assignmentId={x.assignmentId} planned={x.planned??[]} onRefresh={refresh}/>}
+     {x.status==='review_pending'&&<p role="status">Relatório enviado. Aguardando conferência dos controladores; novos apontamentos estão bloqueados.</p>}
+     {x.status==='completed'&&<p role="status">OS concluída após aceite administrativo. Apontamentos encerrados.</p>}
+     {x.workReview?.status==='returned'&&x.status==='executing'&&<p role="alert">O relatório anterior foi devolvido: {x.workReview.reason}. Corrija e reenvie.</p>}
     </div>
    </article>)}
   </div>}
@@ -187,10 +189,7 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
       </select>
      </label>}
      {detail.need.status==='approved'&&<button type="button" disabled={pending} onClick={()=>void command(selected,'convert',{orderId:uuid(),category:orderCategory})}>Converter em OS rascunho</button>}
-     {detail.need.status==='converted'&&<label>Recurso do plano<input value={planRef} onChange={e=>setPlanRef(e.target.value)}/></label>}
-     {detail.need.status==='converted'&&<label>Quantidade<input type="number" min="0.001" step="0.001" value={planQuantity} onChange={e=>setPlanQuantity(e.target.value)}/></label>}
-     {detail.need.status==='converted'&&<label>Unidade<input value={planUnit} onChange={e=>setPlanUnit(e.target.value)}/></label>}
-     {detail.need.status==='converted'&&<button type="button" disabled={pending||!planRef.trim()} onClick={()=>void command(selected,'set_plan',{lines:[{kind:'hours',resourceRef:planRef,quantityMilli:Math.round(Number(planQuantity)*1000),unit:planUnit}]})}>Registrar plano</button>}
+
      {detail.need.status==='converted'&&detail.need.orderId&&<button type="button" disabled={pending}
         onClick={()=>void (async()=>{
          setPending(true);setError('');setNotice('');
@@ -211,6 +210,10 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
       onClick={()=>void submit(root+'/employee-links',{commandKey:uuid(),employeeActorId:employeeId,professionalId},'Empregado vinculado ao profissional no contexto autorizado.')}>Vincular empregado</button>}
      {detail.need.status==='released'&&<button type="button" disabled={pending||employeeId.trim().length<8} onClick={()=>void command(selected,'assign',{employeeActorId:employeeId})}>Atribuir OS ao empregado</button>}
     </div>
+    {detail.need.status==='converted'&&detail.planHistory&&
+      <ServiceNeedsPlanBuilder key={detail.need.id+'-plan-'+(detail.planHistory[0]?.revision??0)} tenantId={tenantId} needId={selected} current={detail.planned} history={detail.planHistory} onRefresh={refresh}/>}
+    {detail.workReports&&['executing','review_pending','completed'].includes(detail.need.status)&&
+      <ServiceNeedsWorkReviewPanel key={detail.need.id} tenantId={tenantId} needId={selected} status={detail.need.status} reports={detail.workReports} onRefresh={refresh}/>}
     {detail.need.status==='executing'&&<div className="enterprise-governance-panel">
      <h3>Adicional operacional · imutável</h3>
      <label>Descrição<input value={additional} onChange={e=>setAdditional(e.target.value)}/></label>
