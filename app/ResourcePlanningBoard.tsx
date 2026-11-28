@@ -251,7 +251,7 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
   {creating&&<div className="overlay planning-modal-overlay" onClick={()=>setCreating(false)}>
    <section role="dialog" aria-modal="true" aria-label="Nova alocação de recurso" className="planning-allocation-dialog" onClick={event=>event.stopPropagation()}>
     <header><h2>Registrar alocação de recurso</h2><button className="icon-button" type="button" onClick={()=>setCreating(false)} aria-label="Fechar formulário"><X size={20}/></button></header>
-    <p>Verifique o período antes de confirmar. A reserva só ocorre após validação transacional final no PostgreSQL.</p>
+    <p>Verifique o período antes de confirmar. A reserva só ocorre após validação transacional final no PostgreSQL. Conflitos retornam HTTP 409, sem criar reserva.</p>
     <form onSubmit={event=>void commit(event)}>
      <label>Recurso ativo<select required value={resourceId} onChange={event=>{setResourceId(event.target.value);setAvailability(null);}}>
        <option value="">Selecione</option>{activeResources.map(r=><option key={r.type+":"+r.id} value={r.type+":"+r.id}>{r.name} · {r.type==="professional"?"Profissional":"Ativo"} · {r.reference}</option>)}
