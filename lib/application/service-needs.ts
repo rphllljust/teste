@@ -108,7 +108,8 @@ export async function listNeeds(q:Query,c:Ctx){
  if(!['owner','admin','auditor'].includes(role))throw forbidden('Sua função não permite consultar a fila.');
  const r=await q(`SELECT ${NEED_COLS} FROM svc_needs WHERE tenant_id=$1 ORDER BY
   CASE priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,requested_date,id LIMIT 200`,[c.tenantId]);
- return r.rows;
+ if(await isVerifiedOwner(q,c.tenantId,c.actorId))return r.rows;
+ return r.rows.map(row=>{const safe={...row};delete safe.commercialLimitCents;delete safe.commercialTerms;return safe;});
 }
 
 export async function needDetail(q:Query,c:Ctx,needId:string){
@@ -126,10 +127,13 @@ export async function needDetail(q:Query,c:Ctx,needId:string){
   q('SELECT released_by_actor_id AS "releasedByActorId",released_at AS "releasedAt" FROM svc_releases WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]),
   q('SELECT started_by_actor_id AS "startedByActorId",started_at AS "startedAt" FROM svc_executions WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]),
  ]);
- const out:Record<string,unknown>={need:n.rows[0],events:events.rows,planned:plan.rows,actual:actual.rows,additionals:adds.rows,
+ const verified=await isVerifiedOwner(q,c.tenantId,c.actorId);
+ const safeNeed={...n.rows[0]};
+ if(!verified){delete safeNeed.commercialLimitCents;delete safeNeed.commercialTerms;}
+ const out:Record<string,unknown>={need:safeNeed,events:events.rows,planned:plan.rows,actual:actual.rows,additionals:adds.rows,
   assignments:assign.rows,release:rel.rows[0]??null,execution:exec.rows[0]??null};
  // Costs and margins are visible only to the authorized owners.
- if(await isVerifiedOwner(q,c.tenantId,c.actorId)){
+ if(verified){
   const f=await q('SELECT estimated_cost_cents::float8 AS "estimatedCostCents",margin_bps AS "marginBps" FROM svc_need_financials WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
   out.financials=f.rows[0]??null;
   const [terms,documents,prices,totals,fieldEvents,requests]=await Promise.all([
@@ -277,6 +281,11 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    }
    if(terms.rows[0]?.pricing_mode==='global'&&terms.rows[0].max_financial_cents!=null&&BigInt(terms.rows[0].global_sale_cents)>BigInt(terms.rows[0].max_financial_cents))
     throw new ApiError(409,'COMMERCIAL_LIMIT','Preço global excede o limite comercial.');
+   if(terms.rows[0]?.pricing_mode==='itemized'&&terms.rows[0].max_financial_cents!=null){
+    const total=await q('SELECT COALESCE(sum(round(p.quantity_milli::numeric*p.sale_unit_price_cents/1000)),0)::text AS total FROM svc_commercial_price_lines p WHERE p.tenant_id=$1 AND p.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]);
+    if(BigInt(total.rows[0].total)>BigInt(terms.rows[0].max_financial_cents))
+     throw new ApiError(409,'COMMERCIAL_LIMIT','O total itemizado excede o limite financeiro aprovado.');
+   }
    await q('INSERT INTO svc_releases(need_id,tenant_id,released_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
    await setStatus('released');await log('released',null);
    return {ok:true,status:'released'};
@@ -361,7 +370,9 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     const old=await q('SELECT id FROM svc_commercial_price_lines WHERE tenant_id=$1 AND need_id=$2 AND id=$3 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines p WHERE p.supersedes_id=$3)',[c.tenantId,needId,cmd.supersedesId]);
     if(!old.rows.length)throw new ApiError(409,'INVALID_STATE','Linha de preço inexistente ou já substituída.');
    }
-   const latest=await q('SELECT pricing_mode FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+   const latest=await q('SELECT pricing_mode,max_quantity_milli FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+   if(latest.rows[0]?.max_quantity_milli!=null&&BigInt(cmd.quantityMilli)>BigInt(latest.rows[0].max_quantity_milli))
+    throw new ApiError(409,'COMMERCIAL_LIMIT','Quantidade do item superior ao limite autorizado.');
    if(latest.rows[0]?.pricing_mode==='itemized'&&cmd.saleUnitPriceCents==null)
     throw new ApiError(409,'VALIDATION_FAILED','Operação itemizada exige preço unitário de venda.');
    await q('INSERT INTO svc_commercial_price_lines(id,tenant_id,need_id,supersedes_id,kind,item_ref,quantity_milli,unit,internal_unit_cost_cents,sale_unit_price_cents,recorded_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',[
