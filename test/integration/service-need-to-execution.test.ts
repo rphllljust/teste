@@ -60,8 +60,8 @@ after(async()=>{
 });
 
 test('migration 0034 is registered and recorded',async()=>{
- const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence') ORDER BY id");
- assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence']);
+ const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance') ORDER BY id");
+ assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance']);
 });
 
 test('full journey: intake, owner decision, draft OS, plan, release, assignment, receipt, execution, additionals',async()=>{
@@ -216,6 +216,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  // Field events cannot rewrite the plan; pausing prohibits new production quantities.
  const field=(eventType:string,more:Record<string,unknown>={})=>cmd(employee,tenantA,needId,{command:'record_field_event',id:randomUUID(),assignmentId,eventType,description:'Observação de campo auditada',...more});
  assert.equal((await field('pause')).status,200);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'submit_work_report',id:randomUUID(),assignmentId,summary:'Relatório indevido em paralisação'})).status,409);
  assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',assignmentId,id:randomUUID(),line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409,'no work during pause');
  assert.equal((await field('pause')).status,409,'cannot pause twice');
  assert.equal((await field('resume')).status,200);
@@ -245,14 +246,51 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  await assert.rejects(()=>pool.query('UPDATE svc_actual_lines SET quantity_milli=1'),/APPEND_ONLY/);
  await assert.rejects(()=>pool.query('DELETE FROM svc_inbox_events'),/APPEND_ONLY/);
  await assert.rejects(()=>pool.query('UPDATE svc_need_events SET actor_id=$1 WHERE need_id=$2',['forged',needId]),/APPEND_ONLY/);
+
+ // (9) Real field closure: employee request, owner return, correction, owner approval.
+ // Generic complete/cancel cannot bypass the independently audited service-need flow.
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:3,key:randomUUID(),command:'complete'}))).status,409);
+ assert.equal((await orderCommand(post(rafael,{id:orderId,version:3,key:randomUUID(),command:'cancel'}))).status,409);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:randomUUID(),decision:'accepted',reason:'Sem relatório'})).status,409);
+ assert.equal((await cmd(employee2,tenantA,needId,{command:'submit_work_report',id:randomUUID(),assignmentId,summary:'Tentativa de terceiro sem atribuição'})).status,404);
+ const report1=randomUUID(),report2=randomUUID();
+ assert.equal((await cmd(employee,tenantA,needId,{command:'submit_work_report',id:randomUUID(),assignmentId,summary:'Evidência de outra categoria',evidenceRef:commercialRef})).status,409);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'submit_work_report',id:report1,assignmentId,summary:'Atividades concluídas, sujeito à conferência do plano e evidências.',evidenceRef:'cisne-file:'+fieldId})).status,200);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',id:randomUUID(),assignmentId,line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409,'new actual locked during owner review');
+ assert.equal((await cmd(admin,tenantA,needId,{command:'review_work_report',reportId:report1,decision:'accepted',reason:'Sem permissão'})).status,403);
+ const duringReview=await (await inboxGet(get(employee),tp(tenantA))).json() as any;
+ assert.equal(duringReview.items[0].status,'review_pending');
+ assert.equal(duringReview.items[0].workReview.status,'pending');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'review_work_report',reportId:report1,decision:'returned',reason:'Conferir duas horas de deslocamento'})).status,200);
+ assert.equal((await pool.query('SELECT status FROM service_orders WHERE id=$1',[orderId])).rows[0].status,'executing');
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report1,decision:'accepted',reason:'Tentar aceitar devolvido'})).status,409);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',id:randomUUID(),assignmentId,line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:2000,unit:'h'}})).status,200);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'submit_work_report',id:report2,assignmentId,summary:'Relatório corrigido com duas horas adicionais de deslocamento.',evidenceRef:'cisne-file:'+fieldId})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report1,decision:'accepted',reason:'Relatório antigo'})).status,409,'cannot review an outdated report');
+ assert.equal((await cmd(employee,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Tentativa indevida'})).status,403);
+ const finish=await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Conferido e aceito mediante evidência operacional'});
+ assert.equal(finish.status,200);assert.equal(finish.body.status,'completed');assert.equal(finish.body.readyForMeasurement,true);
+ assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'completed',version:4});
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='complete'",[orderId])).rows[0].n,1);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Duplicar aceite'})).status,409);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',id:randomUUID(),assignmentId,line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'mark_viewed',assignmentId})).status,409);
+ const reportSnapshots=await pool.query('SELECT id,plan_revision,jsonb_array_length(actual_snapshot)::int AS actual_count FROM svc_work_reports WHERE need_id=$1 ORDER BY submitted_at,id',[needId]);
+ assert.deepEqual(reportSnapshots.rows.map(x=>x.actual_count),[1,2],'each submitted report freezes its own execution snapshot');
+ assert.ok(reportSnapshots.rows.every(x=>x.plan_revision===1));
+ await assert.rejects(()=>pool.query('DELETE FROM svc_work_reports WHERE id=$1',[report1]),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('UPDATE svc_work_report_reviews SET decision=$1 WHERE report_id=$2',['accepted',report1]),/APPEND_ONLY/);
+
  // audit trail records the real actors, kept separate from tenant
  const detail=await (await needDetail(get(rafael),np(tenantA,needId))).json() as any;
  const eventKinds=detail.events.map((e:any)=>e.event);
- for(const event of ['received','analysis_started','approved','commercial_terms_recorded','commercial_document_registered','price_line_registered','converted_to_draft_order','plan_set','released','assigned','viewed','execution_started','field_event_recorded','actual_recorded','additional_requested','additional_decided','additional_recorded'])assert.ok(eventKinds.includes(event),event+' must be audited');
+ for(const event of ['received','analysis_started','approved','commercial_terms_recorded','commercial_document_registered','price_line_registered','converted_to_draft_order','plan_set','released','assigned','viewed','execution_started','field_event_recorded','actual_recorded','additional_requested','additional_decided','additional_recorded','work_report_submitted','work_report_reviewed'])assert.ok(eventKinds.includes(event),event+' must be audited');
  assert.equal(detail.fieldEvents.length,4);
  assert.equal(detail.additionalRequests[0].status,'approved');
  assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
- assert.equal(detail.additionals.length,3,'reviewed request becomes authorized operational additional');assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,1);
+ assert.equal(detail.additionals.length,3,'reviewed request becomes authorized operational additional');assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,2);
+ assert.equal(detail.workReports.length,2);assert.equal(detail.workReports[0].decision,'accepted');
+ assert.equal(detail.planHistory[0].revision,1);assert.equal(detail.need.status,'completed');
  assert.deepEqual(detail.financials,{estimatedCostCents:120000,marginBps:2500});
  // costs/margins hidden from non-owners
  const adminView=await (await needDetail(get(admin),np(tenantA,needId))).json() as any;
