@@ -39,9 +39,9 @@ export async function getPeriodCloseReadiness(query: Query, actorId: string, per
     'AND (SELECT COALESCE(SUM(jl.credit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount)',
     [actorId,periodStart,periodEnd],
   );
-  // Existing legacy cash events without a source journal are reported as
-  // adoption gaps, not retroactively made blocking. However a persisted
-  // accounting source link MUST reconcile exactly or the close fails.
+  // Legacy cash events without a source journal are evidence gaps. They are
+  // never backfilled automatically, and block a new certified close. Any
+  // persisted accounting link must also reconcile exactly.
   const cashValid =
     "l.actor_id=o.owner_id AND s.actor_id=o.owner_id AND l.kind=s.kind AND l.amount=s.amount AND l.effective_date=s.effective_date "+
     "AND j.status='posted' AND j.effective_date=s.effective_date "+
@@ -87,6 +87,13 @@ export async function assertPeriodReadyToClose(query: Query, actorId: string, pe
   if(readiness.invalidPayableLinks>0||readiness.invalidPayablePaymentLinks>0)
     throw new ApiError(409,'FINANCE_PAYABLE_LEDGER_INTEGRITY',
       'Fechamento bloqueado: obrigações ou pagamentos têm vínculo contábil de origem inconsistente.');
+  // A financial close certifies the books, not merely the absence of corrupt links.
+  // Historical documents without journals are surfaced as adoption blockers;
+  // they are never silently written to the ledger or waived by a UI checkbox.
+  if(readiness.unpostedCashEvents>0||readiness.unpostedPayables>0||
+     readiness.unpostedPayablePayments>0)
+    throw new ApiError(409,'FINANCE_UNPOSTED_SOURCE_BLOCKED',
+      'Fechamento Tier 1 bloqueado: existem baixas, obrigações ou pagamentos sem diário contábil comprovado. Regularize os fatos antes de encerrar.');
   return readiness;
 }
 

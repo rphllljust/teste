@@ -77,7 +77,7 @@ async function putJournalAndLink(i:number,amount:number,settlementDate:string,jo
  );
 }
 
-test('period preflight separates legacy cash gaps from inconsistent persisted GL; closes fail securely',async()=>{
+test('period close blocks legacy cash without journal and inconsistent persisted GL',async()=>{
  const health=await readiness();
  assert.equal(health.status,200);
  assert.equal((await health.json() as {ready:boolean}).ready,true);
@@ -94,9 +94,17 @@ test('period preflight separates legacy cash gaps from inconsistent persisted GL
  assert.equal(initial.invalidCashLinks,0);
  assert.equal(initial.unpostedCashEvents,1);
  assert.equal(initial.unpostedCashAmountScaled,'4000');
- assert.equal(initial.canClose,true); // legacy remains advisory until adopted
+ assert.equal(initial.canClose,false); // unposted legacy cash blocks NEW certified close
  assert.equal(initial.tier1Readiness.ready,false);
  assert.deepEqual(initial.tier1Readiness.blockers.filter(item=>item.code==='unpostedCashEvents'),[{code:'unpostedCashEvents',count:1}]);
+ const legacyCloseId=randomUUID();
+ const legacyDenied=await closePeriod(req(actor,'/api/finance/periods/close',{
+  id:legacyCloseId,periodStart:'2027-05-01',periodEnd:'2027-05-31',
+  reference:'CI must not certify unposted receipt',
+ }));
+ assert.equal(legacyDenied.status,409);
+ assert.equal((await legacyDenied.json() as {code:string}).code,'FINANCE_UNPOSTED_SOURCE_BLOCKED');
+ assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM finance_period_closes WHERE id=$1',[legacyCloseId])).rows[0].n,0);
  const foreign=await preflight(req(outsider,preflightPath));
  assert.equal((await foreign.json() as {unpostedCashEvents:number}).unpostedCashEvents,0);
 

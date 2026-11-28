@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { database } from '../../../../db/raw';
 import { ApiError, failure, requestContext, respond, type RequestContext } from '../../../../lib/api/http';
+import { verifyProcurementReceiptEvidence } from '../../../../lib/domain/procurement-receipt-evidence.mjs';
 
 const idSchema = z.string().uuid();
 
@@ -19,6 +20,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         WHERE p.id=? AND p.owner_id=?`).bind(id, context.actorId),
       db.prepare(`SELECT l.id,l.item_id AS "itemId",i.name AS item,i.sku,i.unit,l.quantity,l.unit_price AS "unitPrice",
         l.discount,l.tax,l.subtotal,
+        COALESCE((SELECT SUM(im.delta)::bigint FROM inventory_movements im
+          JOIN procurement_receipt_lines rl ON rl.id=im.procurement_receipt_line_id
+          JOIN procurement_receipts pr ON pr.id=rl.receipt_id
+            AND pr.order_id=l.order_id AND pr.owner_id=l.owner_id
+          WHERE rl.order_line_id=l.id AND im.owner_id=l.owner_id
+            AND im.procurement_order_id=l.order_id AND im.item_id=l.item_id),0)::text AS "stockQuantity",
+        (SELECT COUNT(*)::int FROM inventory_movements im
+          JOIN procurement_receipt_lines rl ON rl.id=im.procurement_receipt_line_id
+          JOIN procurement_receipts pr ON pr.id=rl.receipt_id
+            AND pr.order_id=l.order_id AND pr.owner_id=l.owner_id
+          WHERE rl.order_line_id=l.id AND im.owner_id=l.owner_id
+            AND im.procurement_order_id=l.order_id AND im.item_id=l.item_id) AS "movementCount",
         COALESCE((SELECT SUM(r.accepted_quantity) FROM procurement_receipt_lines r
           JOIN procurement_receipts pr ON pr.id=r.receipt_id
           WHERE r.order_line_id=l.id AND pr.owner_id=?),0) AS "receivedQuantity",
@@ -42,13 +55,14 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const lines = result[1].results;
     const receipts = result[2].results;
     const movements = result[3].results[0] as { linkedMovements: number; linkedQuantity: number };
-    const linkedMovements = Number(movements.linkedMovements);
-    const linkedQuantity = Number(movements.linkedQuantity);
-    const acceptedQuantity = receipts.reduce((sum, r) => sum + Number((r as { acceptedQuantity: number }).acceptedQuantity), 0);
-    const complete = lines.length > 0 && lines.every((line) => {
-      const row = line as { quantity: number; receivedQuantity: number; rejectedQuantity: number };
-      return Number(row.receivedQuantity) + Number(row.rejectedQuantity) >= Number(row.quantity);
+    // Three-way control is evaluated per PO line and inventory receipt line,
+    // not by a total that can hide offsetting stock postings across items.
+    const receiptEvidence = verifyProcurementReceiptEvidence(lines, {
+      receiptCount: receipts.length,
+      linkedMovements: movements.linkedMovements,
+      linkedQuantity: movements.linkedQuantity,
     });
-    return respond({ order, lines, receipts, reconciled: receipts.length > 0 && linkedMovements > 0 && linkedQuantity === acceptedQuantity && complete }, context);
+    return respond({ order, lines, receipts, reconciled: receiptEvidence.reconciled,
+      receiptEvidence }, context);
   } catch (error) { return failure(error, context); }
 }

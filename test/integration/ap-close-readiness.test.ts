@@ -47,7 +47,7 @@ async function accepted(response:Response,expected:number,step:string){
  return body;
 }
 
-test('AP close: legacy gaps advisory, valid source journals reconciled, malformed persisted links block closure',async()=>{
+test('AP close: legacy gaps block new closure; valid journals reconcile; corrupt links fail closed',async()=>{
  for(const a of [acct(e,'expense'),acct(l,'liability'),acct(b,'asset')]){
   await accepted(await account(req(owner,'/api/accounting/accounts',a)),201,'Account');
  }
@@ -69,7 +69,7 @@ test('AP close: legacy gaps advisory, valid source journals reconciled, malforme
   }>;
  };
  const clean=await read(owner);
- assert.equal(clean.canClose,true);
+ assert.equal(clean.canClose,false);
  assert.equal(clean.advisoryOnly,true);
  assert.equal(clean.unpostedPayables,1);
  assert.equal(clean.unpostedPayablesAmountScaled,'100000');
@@ -78,6 +78,13 @@ test('AP close: legacy gaps advisory, valid source journals reconciled, malforme
  assert.equal(clean.invalidPayableLinks,0);
  assert.equal(clean.invalidPayablePaymentLinks,0);
  assert.equal((await read(other)).unpostedPayables,0);
+ const unpostedCloseId=randomUUID(),legacyBlocked=await close(req(owner,'/api/finance/periods/close',{
+  id:unpostedCloseId,periodStart:first,periodEnd:last,
+  reference:'CI must not certify AP without source journals',
+ }));
+ assert.equal(legacyBlocked.status,409);
+ assert.equal((await legacyBlocked.json() as {code:string}).code,'FINANCE_UNPOSTED_SOURCE_BLOCKED');
+ assert.equal((await pool.query('SELECT COUNT(*)::int AS n FROM finance_period_closes WHERE id=$1',[unpostedCloseId])).rows[0].n,0);
 
  // A direct SQL fixture deliberately violates organization ownership.
  // It MUST remain invisible to another owner and prevent a false clean close

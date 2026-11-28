@@ -179,3 +179,13 @@ disposable PostgreSQL, synthetic actors, and fictional financial facts.
 | Accounting | Canonical ledger owner, correct money scale, balanced journals, period close | Not fiscal issuance or bank match |
 | Railway staging | Exact final commit deploy SUCCESS and /api/health/ready passes | Not production |
 | Functional UAT | Abrahim, Rafael and employee use real distinct sessions and approve end-to-end | Synthetic actors are insufficient |
+
+## Tier 1 extension: fail-closed financial period certification
+
+A new financial period close MUST refuse to certify any source invoice without
+verified posting, any corrupt accounting link, or any receipt/AP obligation/AP
+payment without a native journal. Preflight and POST share the same no-GO
+criteria; the POST rechecks inside the existing finance advisory-lock
+transaction. Legacy gaps are not silently auto-posted, and existing closed
+period history is not rewritten. Operators must investigate and regularize
+sources using existing authorized accounting commands before a NEW close.
