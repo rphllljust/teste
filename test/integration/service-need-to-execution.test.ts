@@ -11,6 +11,8 @@ import {POST as command} from '../../app/api/enterprise/tenants/[id]/service-nee
 import {POST as linkEmployee} from '../../app/api/enterprise/tenants/[id]/employee-links/route';
 import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-inbox/route';
 import {POST as orderCommand} from '../../app/api/commands/route';
+import {GET as orderDetail} from '../../app/api/orders/[id]/route';
+import {GET as orderList} from '../../app/api/orders/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -103,8 +105,12 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
   {kind:'material',resourceRef:'Material M1',quantityMilli:5500,unit:'kg'},{kind:'hours',resourceRef:'Horas campo',quantityMilli:16000,unit:'h'}]});
  assert.equal(plan.status,200);
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,409,'release requires canonical OS authorization');
- const auth=await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}));
+ const auth=await orderCommand(post(rafael,{id:orderId,version:1,key:randomUUID(),command:'authorize'}));
  assert.equal(auth.status,201,JSON.stringify(await auth.clone().json()));
+ assert.equal((await orderDetail(get(rafael),{params:Promise.resolve({id:orderId})})).status,200,'co-owner sees order');
+ assert.equal((await orderDetail(get(admin),{params:Promise.resolve({id:orderId})})).status,404,'admin not owner of linked OS');
+ const otherOwnerWorklist=await (await orderList(get(rafael))).json() as any;
+ assert.ok(otherOwnerWorklist.items.some((x:any)=>x.id===orderId),'verified co-owner sees linked order in canonical worklist');
  assert.equal((await cmd(admin,tenantA,needId,{command:'release'})).status,403,'admin cannot release');
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
  const bypass=await orderCommand(post(abrahim,{id:orderId,version:2,key:randomUUID(),command:'start'}));
@@ -191,6 +197,28 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  // no fiscal side effects
  const fiscal=await pool.query("SELECT to_regclass('public.fiscal_documents') IS NOT NULL AS has");
  if(fiscal.rows[0].has)assert.equal((await pool.query('SELECT count(*)::int AS n FROM fiscal_documents')).rows[0].n,0);
+});
+
+
+test('itemized contract limits reject excess totals, preserve superseded prices and allow corrected release',async()=>{
+ const needId=randomUUID(),orderId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'approve',reason:'Operação itemizada aprovada'})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'set_commercial_terms',id:randomUUID(),pricingMode:'itemized',globalSaleCents:null,paymentMethod:'boleto',paymentTerms:'15 dias',maxFinancialCents:100000,maxQuantityMilli:280000,customerRules:'Referência obrigatória'})).status,200);
+ const oversized=randomUUID(),corrected=randomUUID();
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'register_price_line',id:oversized,kind:'material',itemRef:'Brita fictícia',quantityMilli:280000,unit:'m3',internalUnitCostCents:100,saleUnitPriceCents:500})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'set_plan',lines:[{kind:'material',resourceRef:'Brita fictícia',quantityMilli:280000,unit:'m3'}]})).status,200);
+ assert.equal((await orderCommand(post(rafael,{id:orderId,version:1,key:randomUUID(),command:'authorize'}))).status,201);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,409,'sale of 140000 cents exceeds 100000 cents limit');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'register_price_line',id:corrected,supersedesId:oversized,kind:'material',itemRef:'Brita fictícia',quantityMilli:280000,unit:'m3',internalUnitCostCents:100,saleUnitPriceCents:300})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,200,'corrected total 84000 cents meets limit');
+ const detail=await (await needDetail(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(detail.commercial.totals.itemizedSaleCents,'84000');
+ assert.equal(detail.commercial.priceLines.length,2);
+ assert.equal(detail.commercial.priceLines.find((x:any)=>x.id===oversized).superseded,true);
+ await assert.rejects(()=>pool.query("DELETE FROM svc_commercial_price_lines WHERE id=$1",[corrected]),/APPEND_ONLY/);
 });
 
 test('tenant isolation: tenant B cannot read, list, or command tenant A needs; orphan rows are impossible',async()=>{
