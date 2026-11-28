@@ -22,7 +22,7 @@ test('0035 is additive with immutable pricing, commercial history and employee f
   r('lib/application/service-needs.ts'),r('app/ServiceNeedsCommercialPanel.tsx'),r('app/ServiceNeedEmployeeFieldPanel.tsx')
  ]);
  assert.match(m,/0035_service_ops_enterprise_commercial_field/);
- assert.doesNotMatch(sql,/DROP\\s+TABLE|TRUNCATE|ALTER\\s+TABLE\\s+(?!svc_)/i);
+ assert.doesNotMatch(sql,/DROP\s+TABLE|TRUNCATE|ALTER\s+TABLE\s+(?!svc_)/i);
  for(const table of ['svc_commercial_terms_versions','svc_commercial_documents','svc_commercial_price_lines','svc_field_events','svc_additional_requests','svc_additional_decisions'])
   assert.ok(sql.includes('CREATE TABLE '+table),'missing '+table);
  for(const command of ['set_commercial_terms','register_commercial_document','register_price_line','record_field_event','request_additional','decide_additional'])
