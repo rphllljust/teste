@@ -379,8 +379,18 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await recordReceipt(post(abrahim,{...receiptCommand,commandKey:randomUUID(),amount:'40000000'}))).status,409,'cannot settle more than remaining balance');
  const afterCash=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(afterCash.measurements[0].settledCents,'100000','native settlement converts back to cents exactly');
+ assert.equal(afterCash.canSettleReceivable,true);
+ assert.equal(afterCash.settlements.length,1);
+ assert.equal(afterCash.settlements[0].kind,'receipt');
+ assert.equal(afterCash.settlements[0].amountCents,100000);
+ const secondaryDossier=await (await measurementGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(secondaryDossier.canSettleReceivable,false,'secondary controller sees amounts but cannot book cash in wrong ledger');
+ assert.equal(secondaryDossier.settlements.length,0);
  const afterCashTower=await (await controlTowerGet(get(rafael),tp(tenantA))).json() as any;
  assert.equal(afterCashTower.finance.billed_cents,'450000','cash settlement does not rewrite original revenue');
+ assert.equal(afterCashTower.finance.received_cents,'100000');
+ assert.equal(afterCashTower.finance.open_receivables,1);
+ assert.equal(afterCashTower.finance.overdue_receivables,0);
  const closeAfterCash=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
  assert.equal(closeAfterCash.blockingInvoices,0,'invoice and receipt remain auditable during financial period close');
  assert.equal(closeAfterCash.invalidCashLinks,0,'receipt GL must link to the originating AR ledger');
