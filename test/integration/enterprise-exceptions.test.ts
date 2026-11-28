@@ -35,6 +35,8 @@ before(async()=>{
   [ids.cancelledMeasure,ids.completedCancelled,now]);
  await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Approval pending CI',10000,'draft',$3)",
   [ids.draftMeasure,ids.completedPending,now]);
+ await pool.query("INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,correlation_id) VALUES($1,$2,'report',1,$3,$4,'ci',$1,'ci')",
+  [ids.unmeasuredExecution,ids.completedExecution,now,owner]);
  await pool.query("INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,resource_reference,effective_date,reference,actor_id,created_at) VALUES($1,$2,'report','labor','Unmeasured CI execution',10000,'hora','CI-PROF','2027-12-10','CI-EXEC-UNMEASURED',$3,$4)",
   [ids.unmeasuredExecution,ids.completedExecution,owner,now]);
  await pool.query("INSERT INTO measurements(id,order_id,description,amount,status,created_at) VALUES($1,$2,'Pending CI measurement',20000,'approved',$3)",
