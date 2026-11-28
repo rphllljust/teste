@@ -12,6 +12,7 @@ type Resources={id:string;type:"professional"|"asset";name:string;reference:stri
 type Props={onOpenOrder:(id:string)=>void;onNavigate:(module:string)=>void};
 type Loadable={items?:Professional[]|Asset[];orders?:Order[];error?:string};
 type AllocationResult={items:Allocation[];limited:boolean;source:string};
+type Availability={ready:boolean;findings:Array<{code:string;ok:boolean;detail:string}>;conflicts:Array<{allocationId:string;orderTitle:string;startsAt:string;endsAt:string}>;caution:string};
 const DAY=86400000;
 const allowedOrder=new Set(["planned","authorized","executing"]);
 const labelByStatus:Record<string,string>={draft:"Rascunho",prepared:"Preparada",planned:"Planejada",authorized:"Autorizada",executing:"Em execução",completed:"Concluída",cancelled:"Cancelada"};
@@ -42,6 +43,8 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
  const [notice,setNotice]=useState("");
  const [limited,setLimited]=useState(false);
  const [creating,setCreating]=useState(false);
+ const [checking,setChecking]=useState(false);
+ const [availability,setAvailability]=useState<Availability|null>(null);
  const [resourceId,setResourceId]=useState("");
  const [orderId,setOrderId]=useState("");
  const [startTime,setStartTime]=useState(()=>localizedDateTime(new Date()));
@@ -87,28 +90,44 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
  const activeResources=resources.filter(r=>r.status==="active");
  const eligibleResources=activeResources.filter(r=>r.type+":"+r.id===resourceId);
  const selectedResource=eligibleResources[0];
+ async function checkAvailability(){
+  if(!selectedResource||!openOrders.some(order=>order.id===orderId))
+   throw new Error("Selecione recurso ativo e OS elegível.");
+  const start=new Date(startTime),end=new Date(endTime);
+  if(!Number.isFinite(start.valueOf())||!Number.isFinite(end.valueOf())||end<=start)
+   throw new Error("Informe uma janela válida.");
+  const candidate={orderId,resourceType:selectedResource.type,resourceId:selectedResource.id,
+   startsAt:start.toISOString(),endsAt:end.toISOString()};
+  const r=await fetch("/api/resources/allocations/preflight",{method:"POST",credentials:"same-origin",
+   headers:{"content-type":"application/json"},body:JSON.stringify(candidate)});
+  const detail=await r.json() as Availability&{error?:string};
+  if(!r.ok)throw new Error(detail.error||"Consulta de disponibilidade recusada.");
+  setAvailability(detail);
+  return {candidate,detail};
+ }
+ async function previewAvailability(){
+  if(checking||saving)return;
+  setChecking(true);setError("");setAvailability(null);
+  try{await checkAvailability();}
+  catch(cause){setError(cause instanceof Error?cause.message:"Falha de consulta.");}
+  finally{setChecking(false);}
+ }
  async function commit(event:FormEvent<HTMLFormElement>){
   event.preventDefault();
-  if(saving)return;
-  setError("");setNotice("");
-  if(!selectedResource||!openOrders.some(order=>order.id===orderId)){
-   setError("Selecione um recurso ativo e uma OS em estado que permite alocação.");return;
-  }
-  const start=new Date(startTime),end=new Date(endTime);
-  if(!Number.isFinite(start.valueOf())||!Number.isFinite(end.valueOf())||end<=start){
-   setError("Informe uma janela de início e fim válida.");return;
-  }
-  setSaving(true);
+  if(saving||checking)return;
+  setSaving(true);setError("");setNotice("");
   try{
+   const {candidate,detail}=await checkAvailability();
+   if(!detail.ready)throw new Error(detail.findings.filter(x=>!x.ok).map(x=>x.detail).join(" "));
    const r=await fetch("/api/resources/allocations",{method:"POST",credentials:"same-origin",
     headers:{"content-type":"application/json"},
-    body:JSON.stringify({id:crypto.randomUUID(),orderId,resourceType:selectedResource.type,
-     resourceId:selectedResource.id,startsAt:start.toISOString(),endsAt:end.toISOString()}),
+    body:JSON.stringify({id:crypto.randomUUID(),...candidate}),
    });
    const payload=await r.json() as {error?:string};
    if(!r.ok)throw new Error(payload.error || ("A alocação foi recusada (HTTP "+r.status+")."));
    setNotice("Recurso alocado e registrado no PostgreSQL. A agenda foi atualizada.");
    setCreating(false);
+   setAvailability(null);
    await load();
   }catch(cause){setError(cause instanceof Error?cause.message:"Não foi possível alocar o recurso.");}
   finally{setSaving(false);}
@@ -232,20 +251,27 @@ export default function ResourcePlanningBoard({onOpenOrder,onNavigate}:Props){
   {creating&&<div className="overlay planning-modal-overlay" onClick={()=>setCreating(false)}>
    <section role="dialog" aria-modal="true" aria-label="Nova alocação de recurso" className="planning-allocation-dialog" onClick={event=>event.stopPropagation()}>
     <header><h2>Registrar alocação de recurso</h2><button className="icon-button" type="button" onClick={()=>setCreating(false)} aria-label="Fechar formulário"><X size={20}/></button></header>
-    <p>O PostgreSQL valida identidade, estado da OS, disponibilidade cadastral e sobreposição. Conflitos retornam HTTP 409, sem criar reserva.</p>
+    <p>Verifique o período antes de confirmar. A reserva só ocorre após validação transacional final no PostgreSQL.</p>
     <form onSubmit={event=>void commit(event)}>
-     <label>Recurso ativo<select required value={resourceId} onChange={event=>setResourceId(event.target.value)}>
+     <label>Recurso ativo<select required value={resourceId} onChange={event=>{setResourceId(event.target.value);setAvailability(null);}}>
        <option value="">Selecione</option>{activeResources.map(r=><option key={r.type+":"+r.id} value={r.type+":"+r.id}>{r.name} · {r.type==="professional"?"Profissional":"Ativo"} · {r.reference}</option>)}
       </select></label>
-     <label>OS com transição autorizada<select required value={orderId} onChange={event=>setOrderId(event.target.value)}>
+     <label>OS com transição autorizada<select required value={orderId} onChange={event=>{setOrderId(event.target.value);setAvailability(null);}}>
        <option value="">Selecione a OS</option>{openOrders.map(o=><option key={o.id} value={o.id}>{o.title} · {o.client}</option>)}
       </select></label>
      <div className="planning-time-fields">
-      <label>Início<input required type="datetime-local" value={startTime} onChange={event=>setStartTime(event.target.value)}/></label>
-      <label>Fim<input required type="datetime-local" min={startTime} value={endTime} onChange={event=>setEndTime(event.target.value)}/></label>
+      <label>Início<input required type="datetime-local" value={startTime} onChange={event=>{setStartTime(event.target.value);setAvailability(null);}}/></label>
+      <label>Fim<input required type="datetime-local" min={startTime} value={endTime} onChange={event=>{setEndTime(event.target.value);setAvailability(null);}}/></label>
      </div>
+     {availability&&<div className="planning-preflight" role={availability.ready?"status":"alert"}>
+      <strong>{availability.ready?"Janela livre na consulta":"Alocação bloqueada"}</strong>
+      {availability.findings.filter(x=>!x.ok).map(x=><p key={x.code}>{x.detail}</p>)}
+      {availability.conflicts.map(x=><p key={x.allocationId}>{x.orderTitle} · {scheduleLabel(x.startsAt)} a {scheduleLabel(x.endsAt)}</p>)}
+      <small>{availability.caution}</small>
+     </div>}
      <div className="planning-dialog-actions"><button type="button" className="secondary" onClick={()=>setCreating(false)}>Cancelar</button>
-      <button type="submit" className="primary" disabled={saving}>{saving?"Registrando…":"Confirmar alocação"}</button></div>
+      <button type="button" className="secondary" disabled={saving||checking} onClick={()=>void previewAvailability()}>{checking?"Verificando…":"Verificar disponibilidade"}</button>
+      <button type="submit" className="primary" disabled={saving||checking}>{saving?"Registrando…":"Confirmar alocação"}</button></div>
     </form>
    </section>
   </div>}
