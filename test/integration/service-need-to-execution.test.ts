@@ -16,6 +16,7 @@ import {POST as orderCommand} from '../../app/api/commands/route';
 import {GET as orderDetail} from '../../app/api/orders/[id]/route';
 import {GET as orderList} from '../../app/api/orders/route';
 import {serviceGoReadiness} from '../../lib/application/service-go-readiness';
+import {getPeriodCloseReadiness} from '../../lib/application/finance';
 import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
@@ -327,6 +328,20 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.ok(billingBody.resource?.receivableId,'receivable identity must exist');
  assert.equal(billingBody.resource.accounting.status,'auto_posted','real configured dual-control AR/revenue rule must post the journal atomically');
  assert.ok(billingBody.resource.accounting.journalId,'journal must be linked in billing transaction');
+ const journal=await pool.query('SELECT actor_id,status FROM journal_entries WHERE id=$1',[billingBody.resource.accounting.journalId]);
+ assert.equal(journal.rows[0].actor_id,abrahim,'canonical OS financial ledger owns posted accounting, not the personal clicking identity');
+ assert.equal(journal.rows[0].status,'posted');
+ const invoiceLink=await pool.query('SELECT actor_id FROM accounting_invoice_links WHERE invoice_id=$1',[billingBody.resource.invoiceId]);
+ assert.equal(invoiceLink.rows[0].actor_id,abrahim,'invoice origin links preserve canonical ledger ownership');
+ const billAudit=await pool.query("SELECT actor_id,metadata FROM finance_audit_events WHERE entity_type='invoice' AND entity_id=$1 AND action='invoice_auto_posted'",[billingBody.resource.invoiceId]);
+ assert.equal(billAudit.rows[0].actor_id,rafael,'audit preserves who actually initiated the invoice');
+ assert.equal(billAudit.rows[0].metadata.ledgerOwnerId,abrahim);
+ const postingToday=new Date().toISOString().slice(0,10);
+ const currentMonthStart=postingToday.slice(0,8)+'01';
+ const nextMonthStart=new Date(Date.UTC(Number(postingToday.slice(0,4)),Number(postingToday.slice(5,7)),1)).toISOString().slice(0,10);
+ const closing=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
+ assert.equal(closing.blockingInvoices,0,'financial closure must recognize a verified co-owner posting into the canonical GL');
+
  assert.equal((await orderCommand(post(rafael,invoiceCommand))).status,200,'same controller invoice replay');
  const dossier=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(dossier.measurements[0].status,'billed');
