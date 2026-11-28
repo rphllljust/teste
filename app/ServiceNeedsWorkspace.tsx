@@ -29,6 +29,7 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
  const [notice,setNotice]=useState('');
  const [revision,setRevision]=useState(0);
  const [reason,setReason]=useState('');
+ const [orderCategory,setOrderCategory]=useState('Serviços');
  const [employeeId,setEmployeeId]=useState('');
  const [professionalId,setProfessionalId]=useState('');
  const [proposalRef,setProposalRef]=useState('');
@@ -178,7 +179,12 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
      {detail.need.status==='in_analysis'&&<label>Justificativa da decisão<input value={reason} onChange={e=>setReason(e.target.value)} minLength={3}/></label>}
      {detail.need.status==='in_analysis'&&<button type="button" disabled={pending||reason.trim().length<3} onClick={()=>void command(selected,'approve',{reason})}>Aprovar (owner verificado)</button>}
      {detail.need.status==='in_analysis'&&<button type="button" disabled={pending||reason.trim().length<3} onClick={()=>void command(selected,'reject',{reason})}>Rejeitar (owner verificado)</button>}
-     {detail.need.status==='approved'&&<button type="button" disabled={pending} onClick={()=>void command(selected,'convert',{orderId:uuid()})}>Converter em OS rascunho</button>}
+     {detail.need.status==='approved'&&<label>Categoria da Ordem de Serviço
+      <select value={orderCategory} onChange={e=>setOrderCategory(e.target.value)}>
+       <option value="Serviços">Serviços</option><option value="Locação">Locação</option><option value="Transporte">Transporte</option><option value="Obra">Obra</option>
+      </select>
+     </label>}
+     {detail.need.status==='approved'&&<button type="button" disabled={pending} onClick={()=>void command(selected,'convert',{orderId:uuid(),category:orderCategory})}>Converter em OS rascunho</button>}
      {detail.need.status==='converted'&&<label>Recurso do plano<input value={planRef} onChange={e=>setPlanRef(e.target.value)}/></label>}
      {detail.need.status==='converted'&&<label>Quantidade<input type="number" min="0.001" step="0.001" value={planQuantity} onChange={e=>setPlanQuantity(e.target.value)}/></label>}
      {detail.need.status==='converted'&&<label>Unidade<input value={planUnit} onChange={e=>setPlanUnit(e.target.value)}/></label>}
