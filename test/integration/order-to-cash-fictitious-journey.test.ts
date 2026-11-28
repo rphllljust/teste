@@ -303,44 +303,6 @@ async () => {
   assert.equal(bankLedger.totals.debitScaled, String(scaledAmount));
   assert.equal(bankLedger.totals.creditScaled, '0');
 
-  // A used execution stays in immutable history, but must disappear from the
-  // measurement source picker. A second, free synthetic execution remains
-  // selectable and can create exactly one measurement through the real UI API.
-  await db.query(
-    "INSERT INTO service_orders(id,owner_id,title,client,category,description,status,version,created_at) "+
-    "VALUES($1,$2,'OS fictícia para reuso de origem','Cliente UAT','Serviços','Fixture de teste','completed',4,$3)",
-    [reuseOrderId,owner,new Date().toISOString()],
-  );
-  await db.query(
-    "INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id) "+
-    "VALUES($1,$2,'report',3,$3,$4,'synthetic-uatreuse',$1)",
-    [reuseExecutionId,reuseOrderId,new Date().toISOString(),owner],
-  );
-  await db.query(
-    "INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,effective_date,reference,actor_id,created_at) "+
-    "VALUES($1,$2,'report','labor','Origem livre fictícia',10000,'hora',$3,'EXECUCAO-LIVRE-UAT',$4,$5)",
-    [reuseExecutionId,reuseOrderId,today,owner,new Date().toISOString()],
-  );
-  const sourcePath='/api/orders/'+reuseOrderId+'/execution?state=active';
-  const sourceBefore=await record<{items:Array<{id:string}>}>(
-    await listExecution(req(owner,sourcePath),paths(reuseOrderId)),
-    '12 Origem fictícia livre listada para medição',200,
-  );
-  assert.deepEqual(sourceBefore.items.map(row=>row.id),[reuseExecutionId]);
-  const syntheticMeasurement=await record<{resource:{id:string}}>(
-    await orderAction(req(owner,'/api/commands',{
-      id:reuseOrderId,version:4,key:randomUUID(),command:'measure',
-      description:'Medição sintética UAT sem serviço real',amount:'1,00',evidenceIds:[reuseExecutionId],
-    })),
-    '12a Medição fictícia criada com origem disponível',201,
-  );
-  assert.ok(syntheticMeasurement.resource.id);
-  const sourceAfter=await record<{items:Array<{id:string}>}>(
-    await listExecution(req(owner,sourcePath),paths(reuseOrderId)),
-    '12b Origem consumida removida do seletor',200,
-  );
-  assert.deepEqual(sourceAfter.items,[]);
-
   const existingJournals = await db.query(
     'SELECT COUNT(*)::int AS count FROM journal_entries WHERE actor_id=$1', [owner]);
   assert.equal(existingJournals.rows[0].count, 2,
@@ -505,6 +467,47 @@ async () => {
     '/api/enterprise/operations?pageSize=999'))).status,400);
   assert.equal((await readOperationalCenter(req(owner,
     '/api/enterprise/operations?queue=invalid'))).status,400);
+
+  // Keep the independent source-reuse fixture after the original E2E
+  // assertions: its draft measurement must not influence the dashboard
+  // summary for the fully billed and settled primary service order.
+  // A used execution stays in immutable history, but must disappear from the
+  // measurement source picker. A second, free synthetic execution remains
+  // selectable and can create exactly one measurement through the real UI API.
+  await db.query(
+    "INSERT INTO service_orders(id,owner_id,title,client,category,description,status,version,created_at) "+
+    "VALUES($1,$2,'OS fictícia para reuso de origem','Cliente UAT','Serviços','Fixture de teste','completed',4,$3)",
+    [reuseOrderId,owner,new Date().toISOString()],
+  );
+  await db.query(
+    "INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id) "+
+    "VALUES($1,$2,'report',3,$3,$4,'synthetic-uatreuse',$1)",
+    [reuseExecutionId,reuseOrderId,new Date().toISOString(),owner],
+  );
+  await db.query(
+    "INSERT INTO execution_entries(id,order_id,kind,resource_kind,description,quantity,unit,effective_date,reference,actor_id,created_at) "+
+    "VALUES($1,$2,'report','labor','Origem livre fictícia',10000,'hora',$3,'EXECUCAO-LIVRE-UAT',$4,$5)",
+    [reuseExecutionId,reuseOrderId,today,owner,new Date().toISOString()],
+  );
+  const sourcePath='/api/orders/'+reuseOrderId+'/execution?state=active';
+  const sourceBefore=await record<{items:Array<{id:string}>}>(
+    await listExecution(req(owner,sourcePath),paths(reuseOrderId)),
+    '15 Origem fictícia livre listada para medição',200,
+  );
+  assert.deepEqual(sourceBefore.items.map(row=>row.id),[reuseExecutionId]);
+  const syntheticMeasurement=await record<{resource:{id:string}}>(
+    await orderAction(req(owner,'/api/commands',{
+      id:reuseOrderId,version:4,key:randomUUID(),command:'measure',
+      description:'Medição sintética UAT sem serviço real',amount:'1,00',evidenceIds:[reuseExecutionId],
+    })),
+    '15a Medição fictícia criada com origem disponível',201,
+  );
+  assert.ok(syntheticMeasurement.resource.id);
+  const sourceAfter=await record<{items:Array<{id:string}>}>(
+    await listExecution(req(owner,sourcePath),paths(reuseOrderId)),
+    '15b Origem consumida removida do seletor',200,
+  );
+  assert.deepEqual(sourceAfter.items,[]);
 
   console.log(JSON.stringify({
     event: 'CISNE_ORDER_TO_CASH_FICTITIOUS_CI',
