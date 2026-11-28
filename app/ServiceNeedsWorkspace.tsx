@@ -7,6 +7,7 @@ import ServiceNeedsReadinessPanel from './ServiceNeedsReadinessPanel';
 import ServiceNeedsPlanBuilder,{type PlanRevision} from './ServiceNeedsPlanBuilder';
 import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkReviewPanel';
 import ServiceNeedsMeasurementPanel from './ServiceNeedsMeasurementPanel';
+import ServiceNeedsFinanceIntegrityPanel from './ServiceNeedsFinanceIntegrityPanel';
 import ServiceNeedsControlTower from './ServiceNeedsControlTower';
 
 type Tenant={id:string;name:string;role:string};
@@ -221,6 +222,8 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
       <ServiceNeedsWorkReviewPanel key={detail.need.id} tenantId={tenantId} needId={selected} status={detail.need.status} reports={detail.workReports} onRefresh={refresh}/>}
     {detail.need.status==='completed'&&detail.commercial&&<ServiceNeedsMeasurementPanel
      key={selected} tenantId={tenantId} needId={selected} onRefresh={refresh}/>}
+    {detail.need.status==='completed'&&<ServiceNeedsFinanceIntegrityPanel
+     tenantId={tenantId} needId={selected} revision={revision}/>}
     {detail.need.status==='executing'&&<div className="enterprise-governance-panel">
      <h3>Adicional operacional · imutável</h3>
      <label>Descrição<input value={additional} onChange={e=>setAdditional(e.target.value)}/></label>
