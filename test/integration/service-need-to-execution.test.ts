@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any -- dynamic SQL rows and JSON test payloads */
 import test,{after} from 'node:test';
 import assert from 'node:assert/strict';
-import {randomUUID} from 'node:crypto';
+import {randomUUID,createHash} from 'node:crypto';
 import {Pool} from 'pg';
 import {closeDatabase,database} from '../../db/raw';
 import {hashPersonalPassword,verifyPersonalLogin} from '../../lib/api/personal-login.mjs';
@@ -84,6 +84,12 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const shared=issueStagingSession('shared-disabled-actor',secret);
  assert.equal(validateStagingSession(new Request('https://cisne-web-staging-staging.up.railway.app',{headers:{cookie:CISNE_STAGING_COOKIE+'='+shared}}),personalEnv),null);
  assert.equal((await database().transaction(q=>verifyPersonalLogin(q,'test-owner-one','Invalid-But-Long-Password-For-Access-0000'))).ok,false);
+ for(let i=0;i<5;i++)assert.equal((await database().transaction(q=>verifyPersonalLogin(q,'unknown-account','Invalid-But-Long-Password-For-Access-0000'))).ok,false);
+ const fp=createHash('sha256').update('cisne-login/v1:unknown-account').digest('hex');
+ const locked=await pool.query('SELECT failures,locked_until FROM cisne_login_attempts WHERE login_fingerprint=$1',[fp]);
+ assert.equal(locked.rows[0].failures,5);
+ assert.ok(new Date(locked.rows[0].locked_until).getTime()>Date.now(),'persistent lockout prevents guessing');
+
  const needId=randomUUID();
  // (1) intake with channel/refs/terms
  assert.equal((await postNeed(post(admin,needBody(randomUUID())),tp(tenantA))).status,403,'only verified controllers may register needs');
