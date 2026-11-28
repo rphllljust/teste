@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { database } from '../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext, validDate } from '../../../lib/api/http';
 import { transitions, parseAmount } from '../../../lib/domain/orders';
+import { billApprovedMeasurement } from '../../../lib/application/billing';
 
 const input = z.object({
   id: z.string().uuid(),
@@ -32,6 +33,22 @@ export async function POST(request: Request) {
     const amount = p.amount ? parseAmount(p.amount) : null;
     if (p.command === 'measure' && amount === null) throw new ApiError(400, 'VALIDATION_FAILED', 'Valor da medição inválido.');
     const requestHash = await fingerprint({ actor: context.actorId, scope: 'command', payload: p });
+
+    if (p.command === 'invoice') {
+      const billed = await billApprovedMeasurement(context, {
+        measurementId: p.id,
+        dueDate: p.dueDate!,
+        commandKey: p.key,
+        requestHash,
+        expectedVersion: p.version,
+      }) as { resource: Record<string, unknown>; replayed: boolean };
+      const resource = billed.resource as Record<string, unknown>;
+      const invoiceId = String(resource.invoiceId ?? resource.id ?? '');
+      return respond({
+        ...billed,
+        resource: { ...resource, type: 'invoice', id: invoiceId },
+      }, context, billed.replayed ? 200 : 201);
+    }
 
     const result = await database().transaction(async query => {
       const prior = await query('SELECT request_hash,result FROM order_events WHERE id=$1', [p.key]);
@@ -93,15 +110,8 @@ export async function POST(request: Request) {
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, p.id, JSON.stringify(result), context!.correlationId]);
         return result;
       }
-      if (measurement.status !== 'approved') throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição aprovada pode gerar cobrança.');
-      const invoiceId = crypto.randomUUID();
-      const receivableId = crypto.randomUUID();
-      await query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)', [invoiceId, p.id, measurement.order_id, measurement.amount, p.dueDate, now]);
-      await query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)', [receivableId, invoiceId, measurement.amount, p.dueDate, now]);
-      await query('UPDATE measurements SET status=\'billed\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
-      const result = { ...eventResult(p.id, 'invoice', p.version + 1), resource: { type: 'invoice', id: invoiceId, receivableId, measurementId: p.id, rowVersion: p.version + 1 } };
-      await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, invoiceId, JSON.stringify(result), context!.correlationId]);
-      return result;
+      throw new ApiError(400, 'VALIDATION_FAILED', 'Comando financeiro não suportado.');
+
     });
     return respond(result, context, replayed ? 200 : 201);
   } catch (error) {
