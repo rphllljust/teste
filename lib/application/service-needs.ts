@@ -32,7 +32,7 @@ export const needCommand=z.discriminatedUnion('command',[
  z.object({...base,command:z.literal('approve'),reason:text(3,1000),financials:z.object({estimatedCostCents:z.number().int().min(0).max(999999999999),marginBps:z.number().int().min(-10000).max(10000)}).strict().optional()}).strict(),
  z.object({...base,command:z.literal('reject'),reason:text(3,1000)}).strict(),
  z.object({...base,command:z.literal('convert'),orderId:uuid,category:z.enum(['Locação','Serviços','Transporte','Obra']).default('Serviços')}).strict(),
- z.object({...base,command:z.literal('set_plan'),lines:z.array(line).min(1).max(100)}).strict(),
+ z.object({...base,command:z.literal('set_plan'),reason:text(3,500).optional(),lines:z.array(line).min(1).max(100)}).strict(),
  z.object({...base,command:z.literal('release')}).strict(),
  z.object({...base,command:z.literal('assign'),employeeActorId:text(1,200)}).strict(),
  z.object({...base,command:z.literal('mark_viewed'),assignmentId:uuid}).strict(),
@@ -46,6 +46,8 @@ export const needCommand=z.discriminatedUnion('command',[
  z.object({...base,command:z.literal('record_field_event'),id:uuid,assignmentId:uuid,eventType:fieldKind,description:text(3,1000),quantityMilli:z.number().int().min(0).max(999999999999).nullable().optional(),unit:opt(20),evidenceRef:opt(500)}).strict(),
  z.object({...base,command:z.literal('request_additional'),id:uuid,assignmentId:uuid,kind:priceKind,description:text(3,1000),reason:text(3,1000),quantityMilli:z.number().int().positive().max(999999999999),unit:text(1,20),evidenceRef:text(3,500)}).strict(),
  z.object({...base,command:z.literal('decide_additional'),requestId:uuid,decision:z.enum(['approved','rejected']),reason:text(3,1000),approvedInternalCostCents:cents.nullable().optional(),approvedSalePriceCents:cents.nullable().optional()}).strict(),
+ z.object({...base,command:z.literal('submit_work_report'),id:uuid,assignmentId:uuid,summary:text(10,2000),evidenceRef:opt(500)}).strict(),
+ z.object({...base,command:z.literal('review_work_report'),reportId:uuid,decision:z.enum(['accepted','returned']),reason:text(3,1000)}).strict(),
 ]);
 export const linkEmployee=z.object({commandKey:uuid,employeeActorId:text(1,200),professionalId:text(1,200)}).strict();
 
@@ -225,6 +227,8 @@ const eventByCommand: Record<z.infer<typeof needCommand>['command'], string> = {
   record_field_event: 'field_event_recorded',
   request_additional: 'additional_requested',
   decide_additional: 'additional_decided',
+  submit_work_report: 'work_report_submitted',
+  review_work_report: 'work_report_reviewed',
 };
 
 export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typeof needCommand>){
@@ -270,12 +274,21 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
   case 'set_plan':{
    await requireOwner(q,c,'planejar a OS');
    state(need,['converted'],cmd.command);
+   const latest=await q('SELECT COALESCE(max(revision),0)::int AS version FROM svc_plan_revisions WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
+   const revision=Number(latest.rows[0].version)+1;
+   if(revision>1&&!cmd.reason)throw new ApiError(400,'VALIDATION_FAILED','A alteração do planejamento exige justificativa auditável.');
+   // The mutable working plan is an operational projection, never the historical source of truth.
+   // Save the full replacement as an immutable version before updating that projection.
+   const snapshot=cmd.lines.map(l=>({kind:l.kind,resourceRef:l.resourceRef,quantityMilli:l.quantityMilli,unit:l.unit}));
+   await q(`INSERT INTO svc_plan_revisions(id,tenant_id,need_id,revision,reason,lines,actor_id,correlation_id)
+    VALUES(gen_random_uuid(),$1,$2,$3,$4,$5::jsonb,$6,$7)`,[c.tenantId,needId,revision,cmd.reason??'Planejamento inicial',JSON.stringify(snapshot),c.actorId,c.correlationId]);
    await q('DELETE FROM svc_plan_lines WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
    for(const l of cmd.lines)
     await q(`INSERT INTO svc_plan_lines(id,tenant_id,need_id,kind,resource_ref,quantity_milli,unit,planned_by_actor_id) VALUES(gen_random_uuid(),$1,$2,$3,$4,$5,$6,$7)`,
      [c.tenantId,needId,l.kind,l.resourceRef,l.quantityMilli,l.unit,c.actorId]);
-   await log('plan_set',null,{lines:cmd.lines.length});
-   return {ok:true,lines:cmd.lines.length};
+   await q('UPDATE svc_needs SET row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId]);
+   await log('plan_set',cmd.reason??null,{lines:cmd.lines.length,revision,snapshot});
+   return {ok:true,lines:cmd.lines.length,revision};
   }
   case 'release':{
    await requireOwner(q,c,'liberar a execução');
@@ -441,6 +454,58 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    }
    await log('additional_decided',cmd.reason,{requestId:cmd.requestId,decision:cmd.decision});
    return {ok:true,requestId:cmd.requestId,decision:cmd.decision};
+  }
+
+  case 'submit_work_report':{
+   // Only the real assigned employee can put execution into owner review.
+   await ownAssignment(q,c,needId,cmd.assignmentId);
+   state(need,['executing'],cmd.command);
+   await validateInternalEvidence(q,c,needId,cmd.evidenceRef,'field');
+   const paused=await q("SELECT event_type FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 AND event_type IN ('pause','resume') ORDER BY created_at DESC,id DESC LIMIT 1",[c.tenantId,needId]);
+   if(paused.rows[0]?.event_type==='pause')throw new ApiError(409,'INVALID_STATE','Retome a execução antes de solicitar conferência.');
+   const pending=await q("SELECT count(*)::int AS n FROM svc_additional_requests r WHERE r.tenant_id=$1 AND r.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_additional_decisions d WHERE d.request_id=r.id)",[c.tenantId,needId]);
+   if(pending.rows[0].n)throw new ApiError(409,'PENDING_ADDITIONAL','Decida os adicionais pendentes antes da conferência final.');
+   const actual=await q(`SELECT COALESCE(jsonb_agg(jsonb_build_object('kind',a.kind,'resourceRef',a.resource_ref,'quantityMilli',a.quantity_milli,'unit',a.unit,'recordedBy',a.recorded_by_actor_id) ORDER BY a.created_at,a.id),'[]'::jsonb) AS lines
+     FROM svc_actual_lines a WHERE a.tenant_id=$1 AND a.need_id=$2`,[c.tenantId,needId]);
+   const actualLines=actual.rows[0]?.lines??[];
+   if(!actualLines.length)throw new ApiError(409,'INVALID_STATE','Registre pelo menos um apontamento real antes do relatório final.');
+   const version=await q('SELECT revision,lines FROM svc_plan_revisions WHERE tenant_id=$1 AND need_id=$2 ORDER BY revision DESC LIMIT 1',[c.tenantId,needId]);
+   if(!version.rows.length)throw new ApiError(409,'INVALID_STATE','Não existe versão do planejamento para conferência.');
+   await q(`INSERT INTO svc_work_reports(id,tenant_id,need_id,assignment_id,summary,evidence_ref,plan_revision,planned_snapshot,actual_snapshot,submitted_by_actor_id)
+    VALUES($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9::jsonb,$10)`,[
+    cmd.id,c.tenantId,needId,cmd.assignmentId,cmd.summary,cmd.evidenceRef,
+    version.rows[0].revision,JSON.stringify(version.rows[0].lines),JSON.stringify(actualLines),c.actorId]);
+   await setStatus('review_pending');
+   await log('work_report_submitted',null,{reportId:cmd.id,assignmentId:cmd.assignmentId,planRevision:version.rows[0].revision});
+   return {ok:true,status:'review_pending',reportId:cmd.id};
+  }
+  case 'review_work_report':{
+   await requireOwner(q,c,'conferir e encerrar a execução');
+   state(need,['review_pending'],cmd.command);
+   const latest=await q('SELECT id FROM svc_work_reports WHERE tenant_id=$1 AND need_id=$2 ORDER BY submitted_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+   if(!latest.rows.length||String(latest.rows[0].id)!==cmd.reportId)throw new ApiError(409,'INVALID_STATE','A conferência exige o relatório atual.');
+   const old=await q('SELECT decision FROM svc_work_report_reviews WHERE report_id=$1',[cmd.reportId]);
+   if(old.rows.length)throw new ApiError(409,'INVALID_STATE','O relatório já recebeu decisão.');
+   if(cmd.decision==='accepted'){
+    const pending=await q("SELECT count(*)::int AS n FROM svc_additional_requests r WHERE r.tenant_id=$1 AND r.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_additional_decisions d WHERE d.request_id=r.id)",[c.tenantId,needId]);
+    if(pending.rows[0].n)throw new ApiError(409,'PENDING_ADDITIONAL','Há adicionais aguardando decisão administrativa.');
+    const os=await q('SELECT status,version FROM service_orders WHERE id=$1 FOR UPDATE',[need.order_id]);
+    if(os.rows[0]?.status!=='executing')throw new ApiError(409,'INVALID_STATE','OS canônica não está em execução.');
+    const nextVersion=Number(os.rows[0].version)+1;
+    await q("UPDATE service_orders SET status='completed',version=$2 WHERE id=$1",[need.order_id,nextVersion]);
+    await q(`INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id)
+     VALUES($1,$2,'complete',$3,$4,$5,$6,$2,$7,$8)`,[
+     crypto.randomUUID(),need.order_id,nextVersion,new Date().toISOString(),c.actorId,
+     'svc-need:'+needId+':'+cmd.commandKey,
+     JSON.stringify({ok:true,source:'service_need',reportId:cmd.reportId}),c.correlationId,
+    ]);
+   }
+   await q(`INSERT INTO svc_work_report_reviews(report_id,tenant_id,need_id,decision,reason,reviewed_by_actor_id)
+    VALUES($1,$2,$3,$4,$5,$6)`,[cmd.reportId,c.tenantId,needId,cmd.decision,cmd.reason,c.actorId]);
+   const nextStatus=cmd.decision==='accepted'?'completed':'executing';
+   await setStatus(nextStatus);
+   await log('work_report_reviewed',cmd.reason,{reportId:cmd.reportId,decision:cmd.decision});
+   return {ok:true,status:nextStatus,reportId:cmd.reportId,decision:cmd.decision,readyForMeasurement:cmd.decision==='accepted'};
   }
   case 'add_additional':{
    // Authorization is the act of a verified owner: the caller is the authorizer, never a claimed name.
