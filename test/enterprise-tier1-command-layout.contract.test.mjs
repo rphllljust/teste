@@ -9,7 +9,9 @@ const layout=read('app/layout.tsx');
 const css=read('app/components/enterprise/enterprise-operations-tier1.css');
 
 test('the command center separates operational work, analytics and finance while retaining authenticated evidence',()=>{
- assert.match(workbench,/useState<'work'\|'insights'\|'finance'>\('work'\)/);
+ assert.match(workbench,/useState<'work'\|'insights'\|'finance'>\(mode==='command'\?'insights':'work'\)/);
+ assert.ok(workbench.indexOf('id="cisne-view-insights"')<workbench.indexOf('id="cisne-view-work"'));
+ assert.match(workbench,/onClick=\{\(\)=>setSurface\('work'\)\}/);
  assert.match(workbench,/role="tablist"/);
  for(const tab of ['cisne-view-work','cisne-view-insights','cisne-view-finance'])assert.ok(workbench.includes(tab));
  assert.match(workbench,/surface==='insights'&&/);

@@ -111,7 +111,7 @@ test('contract activation requires signed evidence; linked OS is created only af
   const invalidActivation=await command({key:randomUUID(),version:1,command:'activate',signedReference:''});
   assert.equal(invalidActivation.status,400);
   const orderBody={id:orderId,title:'OS vinculada ao contrato CI',category:'Serviços',
-    description:'Manutenção somente após ativação',dueDate:null,clientId,
+    description:'Manutenção somente após ativação',dueDate:'2026-12-01',clientId,
     clientVersion:1,contractId,contractVersion:1};
   assert.equal((await createOrder(post('/api/orders',actor,orderBody))).status,409);
   const revised=await command(revise);
@@ -125,14 +125,22 @@ test('contract activation requires signed evidence; linked OS is created only af
   assert.equal((await command(activation)).status,200);
   const stale=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:2}));
   assert.equal(stale.status,409);
+  const outsideBefore=await createOrder(post('/api/orders',actor,{...orderBody,
+    id:randomUUID(),dueDate:'1999-12-31',contractVersion:3}));
+  assert.equal(outsideBefore.status,409);
+  assert.equal((await read(outsideBefore)).code,'OUTSIDE_CONTRACT_TERM');
+  const outsideAfter=await createOrder(post('/api/orders',actor,{...orderBody,
+    id:randomUUID(),dueDate:'2100-01-01',contractVersion:3}));
+  assert.equal(outsideAfter.status,409);
+  assert.equal((await read(outsideAfter)).code,'OUTSIDE_CONTRACT_TERM');
   const created=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:3}));
   assert.equal(created.status,201,JSON.stringify(await read(created)));
   const replay=await createOrder(post('/api/orders',actor,{...orderBody,contractVersion:3}));
   assert.equal(replay.status,201);
   const linked=await db.query(
-    'SELECT owner_id,client_id,contract_id,status FROM service_orders WHERE id=$1',[orderId]);
+    'SELECT owner_id,client_id,contract_id,status,due_date FROM service_orders WHERE id=$1',[orderId]);
   assert.deepEqual(linked.rows[0],{owner_id:actor,client_id:clientId,
-    contract_id:contractId,status:'draft'});
+    contract_id:contractId,status:'draft',due_date:'2026-12-01'});
   const openContract=(await read(await detailContract(
     req('GET','/api/contracts/'+contractId,actor),param(contractId))) as {
       projection:{canCreateOrder:boolean;related:{orders:{total:number;openTotal:number}}};

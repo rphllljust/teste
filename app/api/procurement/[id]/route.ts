@@ -33,19 +33,22 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
         FROM procurement_receipts pr LEFT JOIN procurement_receipt_lines rl ON rl.receipt_id=pr.id
         WHERE pr.order_id=? AND pr.owner_id=? GROUP BY pr.id,pr.reference,pr.created_at
         ORDER BY pr.created_at DESC,pr.id DESC`).bind(id, context.actorId),
-      db.prepare(`SELECT COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE im.procurement_order_id=? )::int AS "linkedMovements"
-        FROM inventory_movements im WHERE im.owner_id=?`).bind(id, context.actorId),
+      db.prepare(`SELECT COUNT(*) FILTER (WHERE im.procurement_order_id=?)::int AS "linkedMovements",
+        COALESCE(SUM(im.delta) FILTER (WHERE im.procurement_order_id=?),0)::bigint AS "linkedQuantity"
+        FROM inventory_movements im WHERE im.owner_id=?`).bind(id, id, context.actorId),
     ]);
     if (!result[0].results.length) throw new ApiError(404, 'NOT_FOUND', 'Pedido indisponível.');
     const order = result[0].results[0];
     const lines = result[1].results;
     const receipts = result[2].results;
-    const linkedMovements = Number((result[3].results[0] as { linkedMovements: number }).linkedMovements);
+    const movements = result[3].results[0] as { linkedMovements: number; linkedQuantity: number };
+    const linkedMovements = Number(movements.linkedMovements);
+    const linkedQuantity = Number(movements.linkedQuantity);
+    const acceptedQuantity = receipts.reduce((sum, r) => sum + Number((r as { acceptedQuantity: number }).acceptedQuantity), 0);
     const complete = lines.length > 0 && lines.every((line) => {
       const row = line as { quantity: number; receivedQuantity: number; rejectedQuantity: number };
       return Number(row.receivedQuantity) + Number(row.rejectedQuantity) >= Number(row.quantity);
     });
-    return respond({ order, lines, receipts, reconciled: linkedMovements === receipts.reduce((sum, r) => sum + Number((r as { acceptedQuantity: number }).acceptedQuantity), 0) && (receipts.length === 0 || complete) }, context);
+    return respond({ order, lines, receipts, reconciled: receipts.length > 0 && linkedMovements > 0 && linkedQuantity === acceptedQuantity && complete }, context);
   } catch (error) { return failure(error, context); }
 }

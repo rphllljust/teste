@@ -118,3 +118,69 @@
 #governance-audit > button.secondary{margin-top:14px;min-height:36px}
 #governance-audit .enterprise-governance-empty{margin-bottom:12px}
 @media(max-width:720px){#governance-audit .enterprise-governance-panel-heading > button{width:100%}}
+/* Company activity register: same legal-entity scope as the CNPJ. */
+.enterprise-cnaes { margin-top: 22px; padding-top: 22px; border-top: 1px solid var(--cisne-color-border, #dfe6ee); }
+.enterprise-cnaes .primary { min-height: 40px; margin-top: 12px; }
+.enterprise-cnaes-facts { display:flex; flex-wrap:wrap; gap: 9px; margin: 14px 0; }
+.enterprise-cnaes-facts span {
+  border: 1px solid #dfe8f0; background: #f8fafc; border-radius: 8px;
+  padding: 9px 12px; color: #34536a; font-size: 12px;
+}
+.enterprise-cnaes-table { padding: 16px; display:grid; gap: 14px; min-width:0; }
+.enterprise-cnaes-table label { display:grid; gap:6px; max-width:440px; font-size:12px; font-weight:650; }
+.enterprise-cnaes-table input {
+  min-height: 40px; width:100%; min-width:0; border:1px solid #ccdbe6;
+  border-radius:6px; padding:9px 12px;
+}
+.enterprise-cnaes-table td:first-child { white-space: nowrap; }
+@media (max-width: 480px) {
+  .enterprise-cnaes-facts span { flex: 1 1 150px; }
+  .enterprise-cnaes-table { padding: 12px; }
+}
+
+/* ERP-native governance uses the same Tier 1 content frame as the other modules. */
+.app[data-layout-system="tier1"] .enterprise-governance-embedded {
+  min-height: 0; width: 100%; min-width: 0; max-width: 100%;
+  padding: 0; margin: 0; box-sizing: border-box; background: transparent; color: inherit;
+}
+.app[data-layout-system="tier1"] .enterprise-governance-embedded .enterprise-governance-layout {
+  max-width: none; width: 100%; min-width: 0; margin: 0;
+}
+.app[data-layout-system="tier1"] .enterprise-governance-embedded .enterprise-governance-anchors {
+  position: relative; top: auto;
+}
+
+/* Immediate CNAE visibility even without a tenant; same ERP Tier 1 content frame. */
+.enterprise-cnae-catalog-panel { scroll-margin-top: 70px; }
+.enterprise-cnae-context-note {
+  margin: 0 0 14px; padding: 12px 14px; border: 1px solid #d8e5ee;
+  border-left: 3px solid var(--cisne-color-primary, #146c79);
+  background: #f6f9fc; border-radius: 6px; color: #344f64;
+  font-size: 12px; line-height: 1.6;
+}
+.enterprise-cnae-context-note a { text-decoration: underline; font-weight: 650; }
+.enterprise-cnae-catalog-facts { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+.enterprise-cnae-catalog-facts > span {
+  padding: 9px 12px; background: #f6f9fc; border: 1px solid #dae6ed;
+  border-radius: 6px; font-size: 12px; color: #344f64;
+}
+.enterprise-cnae-catalog-facts strong { font-size: 14px; color: #172f45; }
+.enterprise-cnae-catalog-search { display: grid; max-width: 540px; gap: 6px; margin-bottom: 12px; font-size: 12px; font-weight: 650; }
+.enterprise-cnae-catalog-search input {
+  width: 100%; min-height: var(--cisne-tier1-control, 36px); border: 1px solid #ccdbe6;
+  border-radius: 6px; padding: 8px 12px; color: #1b2b41; background: #fff;
+}
+.enterprise-cnae-catalog-scroll { max-height: 360px; overflow: auto; margin-bottom: 12px; }
+.enterprise-cnae-catalog-scroll th { position: sticky; top: 0; z-index: 1; }
+.enterprise-cnae-catalog-scroll td:first-child { white-space: nowrap; }
+@media (max-width: 820px) {
+  .enterprise-cnae-catalog-panel { scroll-margin-top: 56px; }
+  .enterprise-cnae-catalog-scroll { max-height: 320px; }
+}
+
+/* Platform owner declarations are visible before selecting an organization. */
+.enterprise-owners-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-bottom:14px}
+.enterprise-owner-item{display:flex;flex-direction:column;gap:5px;padding:15px;border:1px solid #d5e2ee;background:#f8fbfd;border-radius:8px}
+.enterprise-owner-item strong{font-size:15px;color:#172f45}
+.enterprise-owner-item span,.enterprise-owner-item small{font-size:12px;color:#52677c}
+@media(max-width:640px){.enterprise-owners-list{grid-template-columns:1fr}}

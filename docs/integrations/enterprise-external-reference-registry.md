@@ -1,18 +1,20 @@
-# Registro de referências externas empresariais
+# Registro e revisão de referências empresariais externas
 
-Esta frente cria o primeiro ponto de integração transversal do CISNE ERP. Ela não importa, replica ou presume dados de uma fonte externa. Apenas registra uma referência fornecida pelo usuário, vinculada a um tenant e, quando aplicável, a uma unidade empresarial.
+Esta frente cria uma âncora auditável para referências externas ligadas a tenants e entidades legais. A referência nunca é tratada como comprovante validado apenas porque uma URL foi informada.
 
-## Fluxo implementado
+## Registro e revisão
 
-1. Um membro autorizado cria uma referência por `POST /api/enterprise/tenants/:tenantId/external-references`.
-2. O payload guarda sistema, identificador externo, URL da fonte, rótulo da fonte, nome do responsável informado e CNPJ normalizado.
-3. O estado inicial é sempre `pending_review`; nenhum registro é tratado como verificado automaticamente.
-4. A leitura é isolada ao tenant e permite filtrar por objeto e estado.
-5. A chave de comando e a combinação tenant/sistema/identificador tornam o retry idempotente.
-6. O evento de permissão e o comando de negócio preservam correlação e auditoria.
+- `POST /api/enterprise/tenants/:tenantId/external-references` registra uma referência com CNPJ de 14 dígitos, fonte e identificador externo.
+- O estado inicial é `pending_review`.
+- `POST /api/enterprise/tenants/:tenantId/external-references/:referenceId/commands` aceita `verify` ou `reject`, com versão esperada, command key, autor e nota opcional.
+- Somente owner, admin ou auditor ativo no tenant pode revisar.
+- Revisão é transacional, versionada, idempotente e registrada em eventos imutáveis de auditoria.
+- Referências de objetos transacionais exigem uma entidade legal ativa do mesmo tenant.
 
-## Aplicação ao cadastro fornecido
+## Cadastro fornecido
 
-O cadastro fornecido pelo usuário pode ser registrado como uma referência da fonte `cnpj.biz`, usando o identificador `11897171000181`, o nome informado `Abrahim Jabour Junior` e a URL original. O ERP deve manter o estado `pending_review` até que um usuário autorizado confira a razão social, a unidade empresarial e a correspondência com o tenant.
+O usuário informou a referência `11897171000181`, o nome `Abrahim Jabour Junior` e a URL do CNPJ.biz. Esses dados devem ser registrados em `pending_review` e conferidos por um membro autorizado. Não se presume que o responsável seja a própria pessoa que opera o ERP nem que a empresa pertença ao tenant atual.
 
-Não há transmissão fiscal, emissão financeira, alteração de produção ou criação automática de cliente nesta etapa.
+## Limites do escopo
+
+Esta etapa fornece a revisão administrativa e a âncora externa. As transações de CRM, contratos, OS, faturamento e contabilidade seguem seus comandos nativos com permissões próprias. O fiscal continua sem transmissão automática.

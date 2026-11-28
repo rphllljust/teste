@@ -81,6 +81,23 @@ try {
 
       // Wave 7 release UAT: verify the two NEW document-first command workspaces
       // on the LIVE Railway deployment, without session or business fixtures.
+      const legalEntitiesApi=await context.request.get(base.origin+'/api/enterprise/tenants',time);
+      assert.equal(legalEntitiesApi.status(),200,profile.name+' authenticated tenant list');
+      const tenantRows=(await legalEntitiesApi.json()).items;
+      assert.ok(Array.isArray(tenantRows),'tenant list must be persisted and scoped');
+      for(const tenant of tenantRows.slice(0,5)){
+        const entities=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/legal-entities',time);
+        assert.equal(entities.status(),200,profile.name+' tenant legal entities scoped');
+        const references=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/external-references',time);
+        assert.equal(references.status(),200,profile.name+' tenant external references scoped');
+        assert.ok(Array.isArray((await references.json()).items),'external reference registry must return persisted items');
+      }
+      const externalRouteUnauth=await context.request.get(base.origin+'/api/enterprise/tenants/00000000-0000-4000-8000-000000000000/external-references',time);
+      assert.equal(externalRouteUnauth.status(),403,profile.name+' reference registry denies anonymous access');
+      const externalRouteForged=await context.request.get(base.origin+'/api/enterprise/tenants/00000000-0000-4000-8000-000000000000/external-references',{
+        ...time,headers:{'oai-authenticated-user-id':'forged-actor','x-cisne-dispatch-secret':'forged'},
+      });
+      assert.equal(externalRouteForged.status(),403,profile.name+' reference registry denies forged identity');
       const opsApi = await context.request.get(base.origin +
         '/api/enterprise/operations?queue=attention&page=1&pageSize=5',time);
       assert.equal(opsApi.status(),403,profile.name+' deny anonymous owner-scoped command center');

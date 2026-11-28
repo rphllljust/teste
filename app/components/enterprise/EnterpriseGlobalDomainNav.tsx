@@ -14,7 +14,7 @@ const domains=[
  {label:'Financeiro',items:['Visão financeira','Financeiro','Fluxo de caixa','Tesouraria','Contas a pagar','Lotes de pagamentos','Cobrança e inadimplência','Caixa e conciliação']},
  {label:'Fiscal',items:['Fiscal e tributos']},
  {label:'Contabilidade',items:['Contabilidade','Razão contábil','Fechamentos']},
- {label:'Administração',items:['Dossiês empresariais']},
+ {label:'Administração',items:['Governança empresarial','Dossiês empresariais']},
 ] as const;
 
 export default function EnterpriseGlobalDomainNav({currentPage,navigate}:{

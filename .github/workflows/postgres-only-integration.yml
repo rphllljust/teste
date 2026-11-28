@@ -130,6 +130,8 @@ jobs:
         run: node scripts/verify-resource-allocation-test-fail-closed.mjs
       - name: Run real enterprise handlers against PostgreSQL
         run: pnpm test:integration
+      - name: Verify enterprise external reference registry and review lifecycle
+        run: pnpm test:integration:external-references
       - name: Apply additive NextCRM migration idempotently
         run: |
           pnpm db:migrate
@@ -169,6 +171,10 @@ jobs:
             '0027_finance_collection_cases',
             '0028_enterprise_project_cost_allocations',
             '0029_enterprise_os_work_packages',
+            '0030_enterprise_external_references',
+            '0031_enterprise_external_reference_review',
+            '0032_enterprise_cnae_activities',
+            '0033_cisne_dual_owner_declarations',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;

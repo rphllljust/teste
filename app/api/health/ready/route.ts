@@ -13,7 +13,7 @@ export async function GET(){
   const result=await database().prepare(
    "SELECT (to_regclass('public.service_orders') IS NOT NULL AND "+
    "to_regclass('public.journal_entries') IS NOT NULL AND "+
-   "to_regclass('public.enterprise_tenants') IS NOT NULL AND "+
+   "to_regclass('public.enterprise_tenants') IS NOT NULL AND to_regclass('public.enterprise_external_references') IS NOT NULL AND to_regclass('public.enterprise_external_reference_events') IS NOT NULL AND "+
    "to_regclass('public.accounting_settlement_links') IS NOT NULL AND "+
    "to_regclass('public.accounting_payable_links') IS NOT NULL AND "+
    "to_regclass('public.accounting_payable_payment_links') IS NOT NULL AND "+
@@ -25,7 +25,7 @@ export async function GET(){
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0022_native_payable_accounting') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
-   "WHERE id='0023_procurement_supplier_three_way_match')) AS ready",
+   "WHERE id='0023_procurement_supplier_three_way_match') AND EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0030_enterprise_external_references') AND EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0031_enterprise_external_reference_review')) AS ready",
   ).bind().first<{ready:boolean}>();
   if(result?.ready===true)return Response.json({ready:true},{status:200,headers});
  }catch{

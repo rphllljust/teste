@@ -87,7 +87,7 @@ export default function EnterpriseOperationsWorkbench({
  const [detail,setDetail]=useState<Detail|null>(null);
  const [detailError,setDetailError]=useState('');
  const [detailLoading,setDetailLoading]=useState(false);
- const [surface,setSurface]=useState<'work'|'insights'|'finance'>('work');
+ const [surface,setSurface]=useState<'work'|'insights'|'finance'>(mode==='command'?'insights':'work');
  const [inspectorVisible,setInspectorVisible]=useState(true);
  const [mobileInspectorOpen,setMobileInspectorOpen]=useState(false);
  const [narrow,setNarrow]=useState(false);
@@ -227,10 +227,10 @@ export default function EnterpriseOperationsWorkbench({
   {mode==='command'&&<EnterpriseAccountingExceptionRibbon revision={revision} onOpen={()=>setSurface('finance')}/>}
   {mode==='command'&&<div className="cisne-workstation-views">
    <div className="cisne-workstation-view-tabs" role="tablist" aria-label="Espaços da estação de trabalho">
-    <button type="button" role="tab" id="cisne-view-work" aria-controls="cisne-panel-work"
-     aria-selected={surface==='work'} onClick={()=>setSurface('work')}><LayoutList size={16}/> Trabalho</button>
     <button type="button" role="tab" id="cisne-view-insights" aria-controls="cisne-panel-insights"
      aria-selected={surface==='insights'} onClick={()=>setSurface('insights')}><ChartNoAxesCombined size={16}/> Análise operacional</button>
+    <button type="button" role="tab" id="cisne-view-work" aria-controls="cisne-panel-work"
+     aria-selected={surface==='work'} onClick={()=>setSurface('work')}><LayoutList size={16}/> Trabalho</button>
     <button type="button" role="tab" id="cisne-view-finance" aria-controls="cisne-panel-finance"
      aria-selected={surface==='finance'} onClick={()=>setSurface('finance')}><BookOpenCheck size={16}/> Controladoria</button>
    </div>
