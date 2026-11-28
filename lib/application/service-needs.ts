@@ -144,6 +144,26 @@ export async function needDetail(q:Query,c:Ctx,needId:string){
  if(!verified){delete safeNeed.commercialLimitCents;delete safeNeed.commercialTerms;}
  const out:Record<string,unknown>={need:safeNeed,events:events.rows,planned:plan.rows,actual:actual.rows,additionals:adds.rows,
   assignments:assign.rows,release:rel.rows[0]??null,execution:exec.rows[0]??null};
+ const variance=await q(`WITH planned AS (
+   SELECT kind,resource_ref,unit,sum(quantity_milli)::bigint AS planned
+   FROM svc_plan_lines WHERE tenant_id=$1 AND need_id=$2
+   GROUP BY kind,resource_ref,unit
+  ), executed AS (
+   SELECT kind,resource_ref,unit,sum(quantity_milli)::bigint AS executed
+   FROM svc_actual_lines WHERE tenant_id=$1 AND need_id=$2
+   GROUP BY kind,resource_ref,unit
+  )
+  SELECT COALESCE(p.kind,a.kind) AS kind,
+    COALESCE(p.resource_ref,a.resource_ref) AS "resourceRef",
+    COALESCE(p.unit,a.unit) AS unit,
+    COALESCE(p.planned,0)::text AS "plannedMilli",
+    COALESCE(a.executed,0)::text AS "actualMilli",
+    (COALESCE(a.executed,0)-COALESCE(p.planned,0))::text AS "varianceMilli"
+  FROM planned p FULL OUTER JOIN executed a
+   ON p.kind=a.kind AND p.resource_ref=a.resource_ref AND p.unit=a.unit
+  ORDER BY 1,2,3`,[c.tenantId,needId]);
+ out.executionVariance=variance.rows;
+
  // Costs and margins are visible only to the authorized owners.
  if(verified){
   const f=await q('SELECT estimated_cost_cents::float8 AS "estimatedCostCents",margin_bps AS "marginBps" FROM svc_need_financials WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
