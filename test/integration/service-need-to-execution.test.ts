@@ -15,6 +15,7 @@ import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-in
 import {POST as orderCommand} from '../../app/api/commands/route';
 import {GET as orderDetail} from '../../app/api/orders/[id]/route';
 import {GET as orderList} from '../../app/api/orders/route';
+import {serviceGoReadiness} from '../../lib/application/service-go-readiness';
 import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 
@@ -168,6 +169,12 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await lk(admin,employee,professional)).status,403);
  assert.equal((await lk(abrahim,outsider,professional)).status,404,'link target must be tenant member');
  assert.equal((await lk(rafael,employee,professional)).status,201);
+ const readiness=await database().transaction(q=>serviceGoReadiness(q,tenantA,abrahim,'individual'));
+ assert.equal(readiness.status,'READY_FOR_PERSONAL_UAT','all three synthetic actors are configured and linked');
+ assert.equal(readiness.findings.every(x=>x.ok),true);
+ const disabledMode=await database().transaction(q=>serviceGoReadiness(q,tenantA,abrahim,'shared'));
+ assert.equal(disabledMode.status,'NO_GO','shared actor mode must fail an integral GO');
+ assert.equal((await database().transaction(q=>serviceGoReadiness(q,tenantA,admin,'individual')).catch(()=>null)),null,'admins cannot self-approve GO');
  assert.equal((await lk(rafael,employee,professional2)).status,409);
  const asg=await cmd(rafael,tenantA,needId,{command:'assign',employeeActorId:employee});assert.equal(asg.status,200);
  const assignmentId=asg.body.assignmentId as string;
