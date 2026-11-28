@@ -8,6 +8,7 @@ import ServiceNeedsPlanBuilder,{type PlanRevision} from './ServiceNeedsPlanBuild
 import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkReviewPanel';
 import ServiceNeedsMeasurementPanel from './ServiceNeedsMeasurementPanel';
 import ServiceNeedsFinanceIntegrityPanel from './ServiceNeedsFinanceIntegrityPanel';
+import ServiceNeedsLogisticsPanel from './ServiceNeedsLogisticsPanel';
 import ServiceNeedsControlTower from './ServiceNeedsControlTower';
 
 type Tenant={id:string;name:string;role:string};
@@ -220,6 +221,8 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
       <ServiceNeedsPlanBuilder key={detail.need.id+'-plan-'+(detail.planHistory[0]?.revision??0)} tenantId={tenantId} needId={selected} current={detail.planned} history={detail.planHistory} onRefresh={refresh}/>}
     {detail.workReports&&['executing','review_pending','completed'].includes(detail.need.status)&&
       <ServiceNeedsWorkReviewPanel key={detail.need.id} tenantId={tenantId} needId={selected} status={detail.need.status} reports={detail.workReports} onRefresh={refresh}/>}
+    {detail.need.orderId&&<ServiceNeedsLogisticsPanel
+     tenantId={tenantId} needId={selected} revision={revision} onRefresh={refresh}/>}
     {detail.need.status==='completed'&&detail.commercial&&<ServiceNeedsMeasurementPanel
      key={selected} tenantId={tenantId} needId={selected} onRefresh={refresh}/>}
     {detail.need.status==='completed'&&<ServiceNeedsFinanceIntegrityPanel

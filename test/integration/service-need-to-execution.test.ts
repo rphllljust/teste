@@ -24,6 +24,9 @@ import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/serv
 import {POST as recordReceipt} from '../../app/api/finance/receivables/settlements/route';
 import {GET as cashAssurance} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/finance-assurance/route';
 import {POST as reconcileBatch} from '../../app/api/bank/reconciliation-batches/route';
+import {GET as logisticsGet} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/logistics/route';
+import {POST as inventoryPost} from '../../app/api/inventory/route';
+import {POST as allocateResource} from '../../app/api/resources/allocations/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -186,6 +189,32 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.ok(otherOwnerWorklist.items.some((x:any)=>x.id===orderId),'verified co-owner sees linked order in canonical worklist');
  assert.equal((await cmd(admin,tenantA,needId,{command:'release'})).status,403,'admin cannot release');
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
+ // Concrete supply chain and workforce transactions before the assignment.
+ // Neither a draft OS nor a tenant outsider can reserve this stock.
+ const materialId=randomUUID(),materialReservationId=randomUUID();
+ assert.equal((await logisticsGet(get(employee),np(tenantA,needId))).status,403);
+ assert.equal((await logisticsGet(get(otherOwner),np(tenantA,needId))).status,404);
+ const initialLogistics=await (await logisticsGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(initialLogistics.status,'ATTENTION_REQUIRED','planned materials and staff cannot invent reservations or bookings');
+ assert.equal(initialLogistics.summary.plannedMaterialLines,1);
+ assert.equal(initialLogistics.summary.plannedResourceLines,2);
+ assert.equal(initialLogistics.canMutate,true);
+ const ownerView=await (await logisticsGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(ownerView.canMutate,false,'co-owner can inspect but cannot post into other financial/stock principal');
+ const inv=(who:string,data:Record<string,unknown>)=>inventoryPost(post(who,data));
+ assert.equal((await inv(abrahim,{type:'create',id:materialId,sku:'CI-'+materialId.slice(0,8),name:'Material Ficticio',unit:'kg',minimum:'0'})).status,201);
+ assert.equal((await inv(abrahim,{type:'move',id:randomUUID(),itemId:materialId,direction:'in',quantity:'10',reference:'Synthetic receipt into inventory',orderId:null})).status,201);
+ const reserve={type:'reserve',id:materialReservationId,itemId:materialId,sourceDocumentType:'service-order',
+  sourceDocumentId:orderId,quantity:'5.5',reference:'Material for synthetic service order'};
+ assert.equal((await inv(abrahim,reserve)).status,201);
+ const allocationId=randomUUID();
+ const allocation={id:allocationId,orderId,resourceType:'professional',resourceId:professional,
+  startsAt:'2026-12-10T08:00:00.000Z',endsAt:'2026-12-10T17:00:00.000Z'};
+ assert.equal((await allocateResource(post(abrahim,allocation))).status,201,'booked staff capacity must persist in canonical resource calendar');
+ const linkedLogistics=await (await logisticsGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(linkedLogistics.status,'EVIDENCE_RECORDED','stock reservation and staff booking have persisted evidence');
+ assert.equal(linkedLogistics.summary.reservationCount,1);
+ assert.equal(linkedLogistics.summary.activeAllocationCount,1);
  const bypass=await orderCommand(post(abrahim,{id:orderId,version:2,key:randomUUID(),command:'start'}));
  assert.equal(bypass.status,409,'canonical start cannot bypass employee receipt');
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'set_plan',lines:[{kind:'team',resourceRef:'x',quantityMilli:1,unit:'p'}]})).status,409,'plan frozen');
@@ -222,6 +251,18 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const started=await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId});
  assert.equal(started.status,200);
  assert.equal(started.body.orderStatus,'executing');
+ // Actual warehouse debit uses the exact reservation/source document, not an
+ // unreserved direct movement; it remains observable from the OS dossier.
+ const invConsume=await inventoryPost(post(abrahim,{
+  type:'consume',id:randomUUID(),itemId:materialId,orderId,
+  reservationId:materialReservationId,quantity:'2',reference:'Synthetic field material issued'
+ }));
+ assert.equal(invConsume.status,201,JSON.stringify(await invConsume.clone().json()));
+ const afterMaterial=await (await logisticsGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(afterMaterial.summary.consumptionEvents,1);
+ assert.equal(afterMaterial.summary.brokenConsumptionEvidence,0);
+ assert.equal(afterMaterial.consumption[0].sourceVerified,true);
+ assert.equal(afterMaterial.reservations[0].consumedMilli,'2000');
  const fieldUpload=await putEvidence(employee,tenantA,needId,'field');
  assert.equal(fieldUpload.status,201,JSON.stringify(await fieldUpload.clone().json()));
  const fieldId=((await fieldUpload.json() as any).file.evidenceRef as string).slice('cisne-file:'.length);
