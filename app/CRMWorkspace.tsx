@@ -80,7 +80,7 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
     try{
       const response=await fetch('/api/crm',{cache:'no-store'});
       const data=await response.json() as Snapshot;
-      if(!response.ok){if(response.status===403||response.status===401){setNeedsAuth(true);void fetch('/api/auth/staging-login',{cache:'no-store'}).then(r=>r.json()).then((v:{authMode?:string})=>setAuthMode(v.authMode==='individual'?'individual':'shared')).catch(()=>{});}throw new Error(data.error||'CRM indisponível.');}
+      if(!response.ok){if(response.status===403||response.status===401){setNeedsAuth(true);void fetch('/api/auth/staging-login',{cache:'no-store'}).then(r=>r.json()).then((v:unknown)=>{const mode=v as {authMode?:string};setAuthMode(mode?.authMode==='individual'?'individual':'shared');}).catch(()=>{});}throw new Error(data.error||'CRM indisponível.');}
       setNeedsAuth(false);setSnapshot(data);
     }catch(e){setError(e instanceof Error?e.message:'Não foi possível consultar o CRM.');}
     finally{setLoading(false);}
