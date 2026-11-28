@@ -25,6 +25,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
  const [kind,setKind]=useState('hours'),[resourceRef,setResourceRef]=useState(''),[quantity,setQuantity]=useState('1'),[unit,setUnit]=useState('h');
  const [fieldType,setFieldType]=useState('observation'),[description,setDescription]=useState(''),[fieldQuantity,setFieldQuantity]=useState(''),[fieldUnit,setFieldUnit]=useState(''),[evidenceRef,setEvidenceRef]=useState('');
  const [additionalKind,setAdditionalKind]=useState('hour'),[additionalDescription,setAdditionalDescription]=useState(''),[reason,setReason]=useState(''),[additionalQuantity,setAdditionalQuantity]=useState('1'),[additionalUnit,setAdditionalUnit]=useState('h'),[additionalEvidence,setAdditionalEvidence]=useState('');
+ const [reportSummary,setReportSummary]=useState(''),[reportEvidence,setReportEvidence]=useState('');
  const send=async(command:string,data:Record<string,unknown>)=>{
   setBusy(true);setError('');setNotice('');
   try{
@@ -57,6 +58,11 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
   if(q===null){setError('Quantidade adicional inválida.');return;}
   void send('request_additional',{id:crypto.randomUUID(),assignmentId,kind:additionalKind,description:additionalDescription,reason,quantityMilli:q,unit:additionalUnit,evidenceRef:additionalEvidence});
  };
+ const finish=(e:FormEvent<HTMLFormElement>)=>{
+  e.preventDefault();
+  if(reportSummary.trim().length<10){setError('Descreva o trabalho concluído com pelo menos 10 caracteres.');return;}
+  void send('submit_work_report',{id:crypto.randomUUID(),assignmentId,summary:reportSummary.trim(),evidenceRef:reportEvidence||null});
+ };
  return <section className="enterprise-governance-panel" aria-label="Apontamentos de execução">
   <h4>Execução de campo · registros verificáveis</h4>
   <p>O apontamento não modifica o plano original. Custos, margens e preços comerciais não são disponibilizados ao empregado.</p>
@@ -76,7 +82,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
     <button className="primary" disabled={busy}>Registrar execução real</button>
    </form>
   </details>
-  <ServiceEvidenceAttachmentsPanel tenantId={tenantId} needId={needId} category="field" onUploaded={ref=>{setEvidenceRef(ref);setAdditionalEvidence(ref);}}/>
+  <ServiceEvidenceAttachmentsPanel tenantId={tenantId} needId={needId} category="field" onUploaded={ref=>{setEvidenceRef(ref);setAdditionalEvidence(ref);setReportEvidence(ref);}}/>
   <details><summary>Registrar ocorrência, paralisação, retomada, fotografia ou medidor</summary>
    <form onSubmit={event} className="enterprise-governance-panel">
     <div className="form-row">
@@ -104,6 +110,16 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
     </div>
     <button disabled={busy}>Enviar para autorização administrativa</button>
     <p>A solicitação não concede aprovação, gasto ou faturamento automaticamente. Apenas um proprietário verificado decide.</p>
+   </form>
+  </details>
+  <details><summary>Solicitar conferência e conclusão da OS</summary>
+   <form onSubmit={finish} className="enterprise-governance-panel">
+    <p>A solicitação exige execução apontada e ausência de paralisações ou adicionais pendentes. Apenas um controlador verificado aceita a conclusão.</p>
+    <label>Relatório do serviço executado<textarea required minLength={10} maxLength={2000} rows={4}
+     value={reportSummary} onChange={e=>setReportSummary(e.target.value)} placeholder="Descreva os serviços realizados, diferenças e condições finais."/></label>
+    <label>Referência de evidência operacional (opcional conforme a OS)<input maxLength={500}
+     value={reportEvidence} onChange={e=>setReportEvidence(e.target.value)} placeholder="cisne-file:..."/></label>
+    <button type="submit" className="primary" disabled={busy||reportSummary.trim().length<10}>Enviar relatório para aceite administrativo</button>
    </form>
   </details>
  </section>;
