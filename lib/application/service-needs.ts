@@ -171,12 +171,27 @@ function state(need:Record<string,any>,allowed:string[],cmd:string){
  if(!allowed.includes(need.status))throw new ApiError(409,'INVALID_STATE',`Comando ${cmd} não permitido no estado ${need.status}.`);
 }
 
+const eventByCommand: Record<z.infer<typeof needCommand>['command'], string> = {
+  start_analysis: 'analysis_started',
+  approve: 'approved',
+  reject: 'rejected',
+  convert: 'converted_to_draft_order',
+  set_plan: 'plan_set',
+  release: 'released',
+  assign: 'assigned',
+  mark_viewed: 'viewed',
+  mark_received: 'received',
+  start_execution: 'execution_started',
+  record_actual: 'actual_recorded',
+  add_additional: 'additional_recorded',
+};
+
 export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typeof needCommand>){
  const role=await memberRole(q,c.tenantId,c.actorId);
  const locked=await q('SELECT * FROM svc_needs WHERE tenant_id=$1 AND id=$2 FOR UPDATE',[c.tenantId,needId]);
  if(!locked.rows.length)throw notFound();
  const need=locked.rows[0];
- const prior=await replay(q,c,needId,cmd.commandKey,cmd.command);
+ const prior=await replay(q,c,needId,cmd.commandKey,eventByCommand[cmd.command]);
  if(prior)return prior;
  const setStatus=(s:string)=>q('UPDATE svc_needs SET status=$3,row_version=row_version+1 WHERE tenant_id=$1 AND id=$2',[c.tenantId,needId,s]);
  const manager=['owner','admin'].includes(role);
