@@ -91,6 +91,16 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   const replay=await responses.find(r=>r.status===200)!.json() as typeof body;
   assert.equal(replay.resource.accounting.journalId,body.resource.accounting.journalId);
   assert.equal(replay.resource.invoiceId,body.resource.invoiceId);
+  // A completed invoice has incremented the measurement version. A retry with
+  // the original command key and expectedVersion must still replay successfully.
+  const completedReplay=await bill(request(actor,billingPath,billingCommand));
+  assert.equal(completedReplay.status,200);
+  const completedBody=await completedReplay.json() as typeof body;
+  assert.equal(completedBody.resource.invoiceId,body.resource.invoiceId);
+  assert.equal(completedBody.resource.accounting.journalId,body.resource.accounting.journalId);
+  const verified=await verifyBilling(request(actor,billingPath+'?commandKey='+billingCommand.commandKey));
+  assert.equal(verified.status,200);
+  assert.equal((await verified.json() as typeof body).resource.invoiceId,body.resource.invoiceId);
   assert.equal((await verifyBilling(request(foreignActor,billingPath+'?commandKey='+billingCommand.commandKey))).status,404);
 
   const dispatched=await postCommand(request(actor,'/api/commands',{
