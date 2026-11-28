@@ -16,8 +16,11 @@ export default function ServiceEvidenceAttachmentsPanel({tenantId,needId,categor
  },[root,category]);
  useEffect(()=>{
   const ac=new AbortController();
-  void load(ac.signal).catch(e=>{if(!ac.signal.aborted)setError(e instanceof Error?e.message:'Consulta indisponível.');});
-  return()=>ac.abort();
+  // Schedule network work after commit to avoid synchronous state cascades.
+  const timer=window.setTimeout(()=>{
+   void load(ac.signal).catch(e=>{if(!ac.signal.aborted)setError(e instanceof Error?e.message:'Consulta indisponível.');});
+  },0);
+  return()=>{ac.abort();window.clearTimeout(timer);};
  },[load]);
  async function submit(e:FormEvent<HTMLFormElement>){
   e.preventDefault();if(busy)return;
