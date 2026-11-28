@@ -45,6 +45,7 @@ const migrations = [
   { id: '0033_cisne_dual_owner_declarations', file: '../drizzle-pg/0033_cisne_dual_owner_declarations.sql' },
   { id: '0034_service_need_to_execution', file: '../drizzle-pg/0034_service_need_to_execution.sql' },
   { id: '0035_service_ops_enterprise_commercial_field', file: '../drizzle-pg/0035_service_ops_enterprise_commercial_field.sql' },
+  { id: '0036_cisne_individual_auth_and_evidence', file: '../drizzle-pg/0036_cisne_individual_auth_and_evidence.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
