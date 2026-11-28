@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import test, { after } from 'node:test';
 import { Pool } from 'pg';
-import { GET } from '../../app/api/accounting/journals/route';
+import { GET, POST } from '../../app/api/accounting/journals/route';
 import { closeDatabase } from '../../db/raw';
 import { setTestIdentity } from '../../lib/api/test-identity.mjs';
 
@@ -75,5 +75,58 @@ test('GET paginates persisted journals for the current actor and returns scaled 
     await pool.query('DELETE FROM journal_lines WHERE entry_id=$1', [journalId]);
     await pool.query('DELETE FROM journal_entries WHERE actor_id=$1', [actor]);
     await pool.query('DELETE FROM chart_accounts WHERE id=$1', [accountId]);
+  }
+});
+
+
+test('POST journals persists balanced double-entry accounting and replays the same command idempotently', async () => {
+  const actor = randomUUID();
+  const debitAccount = randomUUID();
+  const creditAccount = randomUUID();
+  const journalId = randomUUID();
+  const debitLine = randomUUID();
+  const creditLine = randomUUID();
+  const now = new Date().toISOString();
+  const payload = {
+    id: journalId,
+    effectiveDate: '2026-11-27',
+    sourceReference: 'CI-MANUAL-JOURNAL',
+    description: 'Prova fictícia de lançamento contábil idempotente',
+    lines: [
+      { id: debitLine, accountId: debitAccount, debit: '125000', credit: '0' },
+      { id: creditLine, accountId: creditAccount, debit: '0', credit: '125000' },
+    ],
+  };
+  const request = () => setTestIdentity(new Request(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(payload),
+  }), actor);
+  try {
+    await pool.query(`INSERT INTO chart_accounts(id,code,name,type,created_at,actor_id,request_hash)
+      VALUES($1,$1,'Conta devedora fictícia','asset',$3,$4,'ci'),
+            ($2,$2,'Conta credora fictícia','revenue',$3,$4,'ci')`,
+      [debitAccount, creditAccount, now, actor]);
+    const first = await POST(request());
+    const response = await first.json() as { ok?: boolean; replayed?: boolean; code?: string; resource?: { id: string; status: string } };
+    assert.equal(first.status, 201, JSON.stringify(response));
+    assert.equal(response.ok, true);
+    assert.equal(response.resource?.id, journalId);
+    assert.equal(response.resource?.status, 'posted');
+    const stored = await pool.query('SELECT debit,credit FROM journal_lines WHERE entry_id=$1 ORDER BY id',[journalId]);
+    assert.equal(stored.rowCount, 2);
+    assert.equal(stored.rows.reduce((total,row)=>total+Number(row.debit),0), 125000);
+    assert.equal(stored.rows.reduce((total,row)=>total+Number(row.credit),0), 125000);
+    const replay = await POST(request());
+    const replayBody = await replay.json() as { replayed?: boolean; code?: string };
+    assert.equal(replay.status, 200, JSON.stringify(replayBody));
+    assert.equal(replayBody.replayed, true);
+    const count = await pool.query('SELECT COUNT(*)::int AS count FROM journal_lines WHERE entry_id=$1',[journalId]);
+    assert.equal(count.rows[0].count,2,'replay must not duplicate ledger rows');
+  } finally {
+    await pool.query('DELETE FROM business_commands WHERE id=$1',[journalId]);
+    await pool.query('DELETE FROM journal_lines WHERE entry_id=$1',[journalId]);
+    await pool.query('DELETE FROM journal_entries WHERE id=$1',[journalId]);
+    await pool.query('DELETE FROM chart_accounts WHERE id IN ($1,$2)',[debitAccount,creditAccount]);
   }
 });

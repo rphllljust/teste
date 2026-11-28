@@ -57,13 +57,12 @@ try {
   // document-first ledgers use different IDs for the SAME NextCRM objects.
   // A transaction rollback preserves the existing ledger and domain records.
   const knownIds = Object.values(NEXTCRM_BRIDGE_MIGRATIONS);
-  const [appliedNextcrm, existingNextcrmTables] = await Promise.all([
-    client.query('SELECT id FROM _cisne_schema_migrations WHERE id = ANY($1::text[])', [knownIds]),
-    client.query(`SELECT c.relname AS name FROM pg_catalog.pg_class AS c
+  // A single PostgreSQL client owns this transaction; do not issue concurrent queries on it.
+  const appliedNextcrm = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id = ANY($1::text[])', [knownIds]);
+  const existingNextcrmTables = await client.query(`SELECT c.relname AS name FROM pg_catalog.pg_class AS c
       JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
       WHERE n.nspname=current_schema() AND c.relkind IN ('r','p')
-        AND c.relname = ANY($1::text[])`, [NEXTCRM_BRIDGE_TABLES]),
-  ]);
+        AND c.relname = ANY($1::text[])`, [NEXTCRM_BRIDGE_TABLES]);
   assertNextcrmMigrationPreflight({
     manifestIds: migrations.map(migration => migration.id),
     appliedIds: appliedNextcrm.rows.map(row => row.id),
@@ -73,16 +72,14 @@ try {
   // lock. No user tables/views/sequences in ANY non-system schema and no history
   // are allowed. If any object exists, protected migrations demand real
   // restore evidence exactly as before.
-  const [catalog, ledger, namespace] = await Promise.all([
-    client.query(`SELECT COUNT(*)::integer AS count FROM pg_catalog.pg_class AS c
+  const catalog = await client.query(`SELECT COUNT(*)::integer AS count FROM pg_catalog.pg_class AS c
       JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
       WHERE n.nspname NOT IN ('pg_catalog','information_schema')
         AND n.nspname !~ '^pg_'
         AND c.relkind IN ('r','p','v','m','f','S')
-        AND NOT(n.nspname='public' AND c.relname='_cisne_schema_migrations')`),
-    client.query('SELECT COUNT(*)::integer AS count FROM _cisne_schema_migrations'),
-    client.query('SELECT current_schema() AS schema'),
-  ]);
+        AND NOT(n.nspname='public' AND c.relname='_cisne_schema_migrations')`);
+  const ledger = await client.query('SELECT COUNT(*)::integer AS count FROM _cisne_schema_migrations');
+  const namespace = await client.query('SELECT current_schema() AS schema');
   const firstInstall=namespace.rows[0]?.schema==='public'&&isVerifiedEmptyInstallation({
     userRelations:catalog.rows[0]?.count,
     ledgerRows:ledger.rows[0]?.count,
