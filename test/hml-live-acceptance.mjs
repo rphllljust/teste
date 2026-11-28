@@ -191,6 +191,8 @@ try {
         if(finance.label==='Visão financeira'){
           await page.getByRole('region',{name:'Filas de exceção e encaminhamento'})
             .waitFor({state:'visible',...time});
+          // Aging is a separate financial workspace, not mounted in Pendências.
+          await page.getByRole('button',{name:/Carteira e liquidez/}).click();
           await page.getByRole('region',{name:'Análise de vencimentos e liquidez documental'})
             .waitFor({state:'visible',...time});
           await page.locator('.finance-tier1-aging-heading')
