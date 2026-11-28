@@ -18,6 +18,7 @@ import {GET as orderList} from '../../app/api/orders/route';
 import {serviceGoReadiness} from '../../lib/application/service-go-readiness';
 import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
+import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -39,6 +40,7 @@ const putEvidence=(who:string,tenant:string,need:string,category:'field'|'commer
   body:new Uint8Array(bytes)
  }),who),np(tenant,need));
 const evidenceParams=(tenant:string,need:string,fileId:string)=>({params:Promise.resolve({id:tenant,needId:need,fileId})});
+const measurePost=(who:string,t:string,n:string,body:Record<string,unknown>)=>measurementPost(post(who,body),np(t,n));
 const cmd=async(who:string,t:string,n:string,body:Record<string,unknown>)=>{const r=await command(post(who,{commandKey:randomUUID(),...body}),np(t,n));return {status:r.status,body:await r.json() as Record<string,any>};};
 const needBody=(id:string)=>({id,commandKey:randomUUID(),channel:'whatsapp',originRef:'ficticio-0001',clientName:'Cliente Ficticio Ltda',contactName:'Contato Ficticio',
  contactEmail:'contato@exemplo.invalid',serviceDescription:'Manutenção preventiva fictícia',location:'Local ficticio A',requestedDate:'2026-12-10',priority:'high',
@@ -60,8 +62,8 @@ after(async()=>{
 });
 
 test('migration 0034 is registered and recorded',async()=>{
- const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance') ORDER BY id");
- assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance']);
+ const r=await pool.query("SELECT id FROM _cisne_schema_migrations WHERE id IN ('0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance','0038_service_measurement_finance_bridge') ORDER BY id");
+ assert.deepEqual(r.rows.map(x=>x.id),['0034_service_need_to_execution','0035_service_ops_enterprise_commercial_field','0036_cisne_individual_auth_and_evidence','0037_service_plan_revision_and_acceptance','0038_service_measurement_finance_bridge']);
 });
 
 test('full journey: intake, owner decision, draft OS, plan, release, assignment, receipt, execution, additionals',async()=>{
@@ -278,6 +280,50 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const finish=await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Conferido e aceito mediante evidência operacional'});
  assert.equal(finish.status,200);assert.equal(finish.body.status,'completed');assert.equal(finish.body.readyForMeasurement,true);
  assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'completed',version:4});
+
+ // Tier 1 vertical slice: accepted report -> linked measurement -> independent approval -> billing -> A/R.
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:4,key:randomUUID(),command:'measure',description:'Medição genérica sem relatório',amount:'4500,00'}))).status,409,'generic endpoint cannot bypass accepted field report');
+ const measureId=randomUUID(),measureKey=randomUUID();
+ const prepare={action:'prepare',id:measureId,commandKey:measureKey,description:'Medição das horas e materiais conferidos na OS fictícia',amountCents:450000};
+ assert.equal((await measurePost(admin,tenantA,needId,prepare)).status,403,'admin without verified dual ownership cannot measure');
+ assert.equal((await measurePost(otherOwner,tenantA,needId,prepare)).status,404,'different tenant denied');
+ assert.equal((await measurePost(abrahim,tenantA,needId,{...prepare,id:randomUUID(),commandKey:randomUUID(),amountCents:510000})).status,409,'commercial limit from original need is enforced');
+ const measured=await measurePost(abrahim,tenantA,needId,prepare);
+ assert.equal(measured.status,201,JSON.stringify(await measured.clone().json()));
+ assert.equal((await measurePost(abrahim,tenantA,needId,prepare)).status,200,'same measurement command idempotent');
+ assert.equal((await measurePost(abrahim,tenantA,needId,{...prepare,id:randomUUID(),commandKey:randomUUID()})).status,409,'one accepted report never gets duplicate measurement');
+ assert.equal((await measurementGet(get(employee),np(tenantA,needId))).status,403,'commercial dossier inaccessible to employee');
+ const draftMeas=await (await measurementGet(get(rafael),np(tenantA,needId))).json() as any;
+ assert.equal(draftMeas.measurements[0].status,'draft');
+ assert.equal(draftMeas.measurements[0].commercialSnapshot.authorizedCeilingCents,'500000');
+ assert.equal(draftMeas.measurements[0].commercialSnapshot.reportId,report2);
+ assert.equal(draftMeas.measurements[0].executedSnapshot.length,2);
+ assert.equal((await orderCommand(post(abrahim,{id:measureId,version:1,key:randomUUID(),command:'approve_measurement'}))).status,409,'generic approval never bypasses four eyes');
+ const approve={action:'approve',measurementId:measureId,commandKey:randomUUID(),reason:'Valores e relatório operacional conferidos pelo segundo controlador',expectedVersion:1};
+ assert.equal((await measurePost(abrahim,tenantA,needId,approve)).status,403,'maker cannot authorize their measurement');
+ assert.equal((await measurePost(admin,tenantA,needId,approve)).status,403,'non-owner cannot approve');
+ const approval=await measurePost(rafael,tenantA,needId,approve);
+ assert.equal(approval.status,201,JSON.stringify(await approval.clone().json()));
+ assert.equal((await measurePost(rafael,tenantA,needId,approve)).status,200,'approval idempotency');
+ await assert.rejects(()=>pool.query('DELETE FROM svc_measurement_approvals WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
+ const billingKey=randomUUID();
+ const invoiceCommand={id:measureId,version:2,key:billingKey,command:'invoice',dueDate:'2026-12-20'};
+ const billed=await orderCommand(post(rafael,invoiceCommand));
+ assert.equal(billed.status,201,JSON.stringify(await billed.clone().json()));
+ const billingBody=await billed.json() as any;
+ assert.ok(billingBody.resource?.invoiceId,'invoice identity must exist');
+ assert.ok(billingBody.resource?.receivableId,'receivable identity must exist');
+ assert.equal((await orderCommand(post(rafael,invoiceCommand))).status,200,'same controller invoice replay');
+ const dossier=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(dossier.measurements[0].status,'billed');
+ assert.equal(dossier.measurements[0].invoiceId,billingBody.resource.invoiceId);
+ assert.equal(dossier.measurements[0].receivableId,billingBody.resource.receivableId);
+ assert.equal(dossier.measurements[0].amountCents,450000);
+ assert.equal(dossier.measurements[0].settledCents,'0');
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measureId])).rows[0].n,1);
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM receivables WHERE invoice_id=$1',[billingBody.resource.invoiceId])).rows[0].n,1);
+ await assert.rejects(()=>pool.query('UPDATE svc_measurement_links SET proposed_amount_cents=1 WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
+
  assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='complete'",[orderId])).rows[0].n,1);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'review_work_report',reportId:report2,decision:'accepted',reason:'Duplicar aceite'})).status,409);
  assert.equal((await cmd(employee,tenantA,needId,{command:'record_actual',id:randomUUID(),assignmentId,line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:1000,unit:'h'}})).status,409);
