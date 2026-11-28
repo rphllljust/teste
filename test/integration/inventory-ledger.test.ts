@@ -37,7 +37,23 @@ test('Inventory consumption atomically debits a reserved OS quantity and is owne
   assert.equal((await inventoryCommand(req('/api/inventory', 'POST', { type: 'create', id: itemId, sku: `CON-${itemId.slice(0, 8)}`, name: 'Consumable material', unit: 'un', minimum: '0' }, owner))).status, 201);
   assert.equal((await inventoryCommand(req('/api/inventory', 'POST', { type: 'move', id: randomUUID(), itemId, direction: 'in', quantity: '5', reference: 'Receipt for consumption', orderId: null }, owner))).status, 201);
   const reservation = { type: 'reserve', id: reservationId, itemId, sourceDocumentType: 'service-order', sourceDocumentId: orderId, quantity: '4', reference: 'Reserve for OS' };
+  assert.equal((await inventoryCommand(req('/api/inventory', 'POST', {...reservation,id:randomUUID(),sourceDocumentId:randomUUID()}, owner))).status,409,
+   'fake source OS cannot create reservation');
+  assert.equal((await inventoryCommand(req('/api/inventory', 'POST', {...reservation,id:randomUUID(),sourceDocumentType:'purchase-order'}, owner))).status,201,
+   'legacy generic references remain possible, but not interchangeable with service order consumption');
+  // The test must not leave a second active reservation, which would reduce
+  // availability. The non-service reservation is independently tested below.
+  await pool.query('DELETE FROM inventory_reservations WHERE owner_id=$1 AND source_document_type=$2',[owner,'purchase-order']);
   assert.equal((await inventoryCommand(req('/api/inventory', 'POST', reservation, owner))).status, 201);
+  const otherTypeReservationId=randomUUID();
+  assert.equal((await inventoryCommand(req('/api/inventory','POST',{
+   type:'reserve',id:otherTypeReservationId,itemId,sourceDocumentType:'work-order',
+   sourceDocumentId:orderId,quantity:'1',reference:'Wrong document type'
+  },owner))).status,201);
+  assert.equal((await inventoryCommand(req('/api/inventory','POST',{
+   type:'consume',id:randomUUID(),itemId,orderId,reservationId:otherTypeReservationId,
+   quantity:'1',reference:'Forged consumption as OS'
+  },owner))).status,409,'work-order reservation cannot masquerade as canonical OS');
   const consume = { type: 'consume', id: randomUUID(), itemId, orderId, reservationId, quantity: '2', reference: 'Consume on OS' };
   const first = await inventoryCommand(req('/api/inventory', 'POST', consume, owner));
   assert.equal(first.status, 201);
@@ -46,6 +62,11 @@ test('Inventory consumption atomically debits a reserved OS quantity and is owne
   const second = await inventoryCommand(req('/api/inventory', 'POST', { ...consume, id: randomUUID() }, owner));
   assert.equal(second.status, 201);
   assert.equal((await inventoryCommand(req('/api/inventory', 'POST', { ...consume, id: randomUUID(), quantity: '1' }, owner))).status, 409);
+  const directOut=await inventoryCommand(req('/api/inventory','POST',{
+   type:'move',id:randomUUID(),itemId,direction:'out',quantity:'2',
+   reference:'Would consume committed reserved stock',orderId:null
+  },owner));
+  assert.equal(directOut.status,409,'outgoing transfer cannot consume another document reservation');
   const state = await pool.query(`SELECT r.status,r.quantity,r.consumed_quantity,
       (SELECT COALESCE(SUM(delta),0) FROM inventory_movements WHERE item_id=r.item_id AND owner_id=r.owner_id) AS balance,
       (SELECT COUNT(*) FROM inventory_consumption_events WHERE reservation_id=r.id) AS events
