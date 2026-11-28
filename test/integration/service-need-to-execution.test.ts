@@ -304,6 +304,45 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
 });
 
 
+
+test('each plan revision freezes the full prior set with reason, actor and distinct release gates',async()=>{
+ const needId=randomUUID(),orderId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'approve',reason:'Recurso disponível para planejar'})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId})).status,200);
+ const first=[
+  {kind:'vehicle',resourceRef:'CP-07',quantityMilli:1000,unit:'un'},
+  {kind:'hours',resourceRef:'CP-07',quantityMilli:8000,unit:'h'},
+ ];
+ const revised=[
+  {kind:'vehicle',resourceRef:'CP-07',quantityMilli:2000,unit:'un'},
+  {kind:'hours',resourceRef:'CP-07',quantityMilli:10000,unit:'h'},
+  {kind:'team',resourceRef:'Ajudantes',quantityMilli:3000,unit:'pessoa'},
+ ];
+ const v1=await cmd(abrahim,tenantA,needId,{command:'set_plan',lines:first});
+ assert.equal(v1.status,200);assert.equal(v1.body.revision,1);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'set_plan',lines:revised})).status,400,'revision requires reason');
+ const v2=await cmd(rafael,tenantA,needId,{command:'set_plan',reason:'Duas viaturas e ajudante extra para o novo horário',lines:revised});
+ assert.equal(v2.status,200);assert.equal(v2.body.revision,2);
+ const detail=await (await needDetail(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(detail.planHistory.length,2);
+ assert.equal(detail.planHistory[0].revision,2);
+ assert.equal(detail.planHistory[0].actorId,rafael);
+ assert.deepEqual(detail.planHistory[1].lines,first);
+ assert.deepEqual(detail.planHistory[0].lines,revised);
+ assert.equal(detail.planned.length,3,'only latest plan is the operational projection');
+ assert.equal(detail.events.filter((e:any)=>e.event==='plan_set').length,2);
+ await assert.rejects(()=>pool.query('UPDATE svc_plan_revisions SET reason=$1 WHERE need_id=$2',['Editar historico',needId]),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('DELETE FROM svc_plan_revisions WHERE need_id=$1',[needId]),/APPEND_ONLY/);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,409);
+ assert.equal((await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}))).status,201);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'release'})).status,200);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'set_plan',reason:'Alteração tardia',lines:first})).status,409);
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_plan_revisions WHERE need_id=$1',[needId])).rows[0].n,2,'no post-release revision');
+});
+
+
 test('itemized contract limits reject excess totals, preserve superseded prices and allow corrected release',async()=>{
  const needId=randomUUID(),orderId=randomUUID();
  assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
