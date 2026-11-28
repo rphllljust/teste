@@ -132,6 +132,16 @@ export async function needDetail(q:Query,c:Ctx,needId:string){
  if(await isVerifiedOwner(q,c.tenantId,c.actorId)){
   const f=await q('SELECT estimated_cost_cents::float8 AS "estimatedCostCents",margin_bps AS "marginBps" FROM svc_need_financials WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,needId]);
   out.financials=f.rows[0]??null;
+  const [terms,documents,prices,totals,fieldEvents,requests]=await Promise.all([
+   q('SELECT id,pricing_mode AS "pricingMode",global_sale_cents::text AS "globalSaleCents",payment_method AS "paymentMethod",payment_terms AS "paymentTerms",max_quantity_milli::text AS "maxQuantityMilli",max_financial_cents::text AS "maxFinancialCents",customer_rules AS "customerRules",entered_by_actor_id AS "enteredByActorId",created_at AS "createdAt" FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 25',[c.tenantId,needId]),
+   q('SELECT id,document_type AS "documentType",reference,description,evidence_ref AS "evidenceRef",registered_by_actor_id AS "registeredByActorId",created_at AS "createdAt" FROM svc_commercial_documents WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 100',[c.tenantId,needId]),
+   q('SELECT p.id,p.supersedes_id AS "supersedesId",p.kind,p.item_ref AS "itemRef",p.quantity_milli::text AS "quantityMilli",p.unit,p.internal_unit_cost_cents::text AS "internalUnitCostCents",p.sale_unit_price_cents::text AS "saleUnitPriceCents",p.recorded_by_actor_id AS "recordedByActorId",p.created_at AS "createdAt",EXISTS(SELECT 1 FROM svc_commercial_price_lines x WHERE x.supersedes_id=p.id) AS superseded FROM svc_commercial_price_lines p WHERE p.tenant_id=$1 AND p.need_id=$2 ORDER BY p.created_at DESC,p.id DESC LIMIT 200',[c.tenantId,needId]),
+   q('SELECT COALESCE(sum(round(p.quantity_milli::numeric*p.internal_unit_cost_cents/1000)),0)::text AS "estimatedInternalCostCents",COALESCE(sum(round(p.quantity_milli::numeric*COALESCE(p.sale_unit_price_cents,0)/1000)),0)::text AS "itemizedSaleCents" FROM svc_commercial_price_lines p WHERE p.tenant_id=$1 AND p.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]),
+   q('SELECT id,assignment_id AS "assignmentId",event_type AS "eventType",description,quantity_milli::text AS "quantityMilli",unit,evidence_ref AS "evidenceRef",actor_id AS "actorId",created_at AS "createdAt" FROM svc_field_events WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 200',[c.tenantId,needId]),
+   q('SELECT r.id,r.assignment_id AS "assignmentId",r.kind,r.description,r.reason,r.quantity_milli::text AS "quantityMilli",r.unit,r.evidence_ref AS "evidenceRef",r.requested_by_actor_id AS "requestedByActorId",r.created_at AS "createdAt",COALESCE(d.decision,\'pending\') AS status,d.reason AS "decisionReason",d.decided_by_actor_id AS "decidedByActorId",d.approved_internal_cost_cents::text AS "approvedInternalCostCents",d.approved_sale_price_cents::text AS "approvedSalePriceCents" FROM svc_additional_requests r LEFT JOIN svc_additional_decisions d ON d.request_id=r.id WHERE r.tenant_id=$1 AND r.need_id=$2 ORDER BY r.created_at DESC,r.id DESC LIMIT 200',[c.tenantId,needId])
+  ]);
+  out.commercial={terms:terms.rows[0]??null,history:terms.rows,documents:documents.rows,priceLines:prices.rows,totals:totals.rows[0]};
+  out.fieldEvents=fieldEvents.rows;out.additionalRequests=requests.rows;
  }
  return out;
 }
@@ -142,7 +152,8 @@ export async function employeeInbox(q:Query,c:Ctx){
  const link=await q('SELECT professional_id FROM svc_employee_links WHERE tenant_id=$1 AND employee_actor_id=$2',[c.tenantId,c.actorId]);
  if(!link.rows.length)return [];
  const r=await q(`SELECT a.id AS "assignmentId",n.id AS "needId",n.status,n.client_name AS "clientName",n.service_description AS "serviceDescription",
-   n.location,n.requested_date AS "requestedDate",n.priority,
+   n.location,n.requested_date AS "requestedDate",n.priority,n.order_id AS "orderId",
+   (SELECT COALESCE(jsonb_agg(jsonb_build_object('kind',p.kind,'resourceRef',p.resource_ref,'quantityMilli',p.quantity_milli::text,'unit',p.unit) ORDER BY p.created_at,p.id),'[]'::jsonb) FROM svc_plan_lines p WHERE p.tenant_id=n.tenant_id AND p.need_id=n.id) AS planned,
    (SELECT array_agg(e.event ORDER BY e.created_at) FROM svc_inbox_events e WHERE e.assignment_id=a.id) AS events
   FROM svc_assignments a JOIN svc_needs n ON n.tenant_id=a.tenant_id AND n.id=a.need_id
   WHERE a.tenant_id=$1 AND a.employee_actor_id=$2 ORDER BY a.created_at DESC,a.id LIMIT 200`,[c.tenantId,c.actorId]);
