@@ -34,7 +34,7 @@ export async function GET(request:Request){
       .map(([code,count])=>({code,count}));
     return respond({
       periodStart:dates.data.periodStart,periodEnd:dates.data.periodEnd,
-      ...result,canClose:result.blockingInvoices===0&&result.invalidCashLinks===0&&result.invalidPayableLinks===0&&result.invalidPayablePaymentLinks===0,
+      ...result,canClose:tier1Blockers.length===0,
       tier1Readiness:{
         ready:tier1Blockers.length===0,
         status:tier1Blockers.length===0?'ready':'blocked',
@@ -42,7 +42,7 @@ export async function GET(request:Request){
         policy:'Verificação estrita de faturas, obrigações e eventos de caixa antes de atestar fechamento contábil.',
       },
       advisoryOnly:true,
-      policy:'A decisão revalida faturas, baixas, obrigações e pagamentos com diário de origem sob lock. Fatos legados sem diário continuam avisos, nunca são contabilizados retroativamente.',
+      policy:'A decisão revalida faturas, baixas, obrigações e pagamentos com diário de origem sob lock. Fatos legados sem diário bloqueiam um novo fechamento; não são contabilizados retroativamente.',
     },context);
   }catch(error){return failure(error,context);}
 }
