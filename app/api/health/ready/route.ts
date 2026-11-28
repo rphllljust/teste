@@ -18,12 +18,20 @@ export async function GET(){
    "to_regclass('public.accounting_payable_links') IS NOT NULL AND "+
    "to_regclass('public.accounting_payable_payment_links') IS NOT NULL AND "+
    "to_regclass('public.procurement_supplier_invoices') IS NOT NULL AND "+
+   "to_regclass('public.enterprise_declared_cnaes') IS NOT NULL AND "+
+   "to_regclass('public.cisne_erp_owner_declarations') IS NOT NULL AND "+
+   "EXISTS(SELECT 1 FROM public.enterprise_declared_cnaes GROUP BY is_primary HAVING is_primary=true AND COUNT(*)=1) AND "+
+   "(SELECT COUNT(*)=49 FROM public.enterprise_declared_cnaes) AND "+
+   "EXISTS(SELECT 1 FROM public.cisne_erp_owner_declarations WHERE owner_key='abrahim' AND declared_role='owner') AND "+
+   "EXISTS(SELECT 1 FROM public.cisne_erp_owner_declarations WHERE owner_key='rafael' AND declared_role='owner') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0017_enterprise_tenancy_foundation') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0020_receivable_cash_ledger') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0022_native_payable_accounting') AND "+
+   "EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0032_enterprise_cnae_activities') AND "+
+   "EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0033_cisne_dual_owner_declarations') AND "+
    "EXISTS(SELECT 1 FROM public._cisne_schema_migrations "+
    "WHERE id='0023_procurement_supplier_three_way_match') AND EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0030_enterprise_external_references') AND EXISTS(SELECT 1 FROM public._cisne_schema_migrations WHERE id='0031_enterprise_external_reference_review')) AS ready",
   ).bind().first<{ready:boolean}>();

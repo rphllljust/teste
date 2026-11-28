@@ -1,6 +1,6 @@
-// Fail-closed validation of *persisted* AP source links. Historical obligations
-// and payments without a journal remain explicit adoption warnings: no
-// retroactive GL amounts are fabricated, and no pre-existing record is mutated.
+// Fail-closed validation of AP source links. Historical obligations and
+// payments without a journal are certification blockers for NEW closes.
+// No retroactive GL amounts are fabricated; historical facts stay immutable.
 type Query=(sql:string,params?:unknown[])=>Promise<{rows:Array<Record<string,unknown>>;rowCount:number|null}>;
 
 export async function getPayableCloseReadiness(query:Query,actorId:string,start:string,end:string){

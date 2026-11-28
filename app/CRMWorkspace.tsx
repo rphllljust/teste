@@ -50,6 +50,7 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
   const [loading,setLoading]=useState(true),[sending,setSending]=useState(false);
   const [error,setError]=useState(''),[notice,setNotice]=useState<Notice|null>(null);
   const [needsAuth,setNeedsAuth]=useState(false),[loginBusy,setLoginBusy]=useState(false);
+  const [authMode,setAuthMode]=useState<'shared'|'individual'>('shared');
   const [tab,setTab]=useState<'leads'|'opportunities'>('leads');
   const [query,setQuery]=useState('');
   const [leadStatus,setLeadStatus]=useState<'all'|'new'|'qualified'|'disqualified'>('all');
@@ -79,7 +80,7 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
     try{
       const response=await fetch('/api/crm',{cache:'no-store'});
       const data=await response.json() as Snapshot;
-      if(!response.ok){if(response.status===403||response.status===401)setNeedsAuth(true);throw new Error(data.error||'CRM indisponível.');}
+      if(!response.ok){if(response.status===403||response.status===401){setNeedsAuth(true);void fetch('/api/auth/staging-login',{cache:'no-store'}).then(r=>r.json()).then((v:unknown)=>{const mode=v as {authMode?:string};setAuthMode(mode?.authMode==='individual'?'individual':'shared');}).catch(()=>{});}throw new Error(data.error||'CRM indisponível.');}
       setNeedsAuth(false);setSnapshot(data);
     }catch(e){setError(e instanceof Error?e.message:'Não foi possível consultar o CRM.');}
     finally{setLoading(false);}
@@ -95,12 +96,14 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
     e.preventDefault();if(loginBusy)return;
     setLoginBusy(true);setNotice(null);
     const form=e.currentTarget;
-    const passphrase=String(new FormData(form).get('passphrase')||'');
+    const fields=new FormData(form);
+    const passphrase=String(fields.get('passphrase')||'');
+    const loginHandle=String(fields.get('login')||'');
     try{
       const response=await fetch('/api/auth/staging-login',{
         method:'POST',credentials:'same-origin',
         headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({passphrase}),
+        body:JSON.stringify(authMode==='individual'?{login:loginHandle,passphrase}:{passphrase}),
       });
       const body=await response.json() as {authenticated?:boolean;error?:string};
       if(!response.ok||!body.authenticated)throw new Error(body.error||'Acesso não autorizado.');
@@ -224,10 +227,11 @@ function CRMWorkspace({onClients,onProposals}:{onClients:()=>void;onProposals:(p
       <CircleAlert size={19}/><span><strong>Dados do CRM não disponíveis.</strong> {error}
       <small>Os registros só são exibidos após autenticação válida. Nenhum dado é inventado durante a falha de acesso.</small>
       {needsAuth&&<form onSubmit={e=>void login(e)} className="cisne-crm-login">
-        <label>Credencial de homologação <input name="passphrase" type="password" autoComplete="off"
-          minLength={24} maxLength={160} placeholder="Credencial de acesso ao CISNE HML" required/></label>
+        {authMode==='individual'&&<label>Conta individual <input name="login" autoComplete="username" minLength={3} maxLength={80} required/></label>}
+        <label>Credencial de homologação <input name="passphrase" type="password" autoComplete="current-password"
+          minLength={authMode==='individual'?32:24} maxLength={160} placeholder="Credencial de acesso ao CISNE HML" required/></label>
         <button className="primary" disabled={loginBusy}>{loginBusy?'Autenticando…':'Entrar no CISNE'}</button>
-        <small>Uma sessão segura de até 8 horas libera o CRM e os módulos operacionais no mesmo Field.</small>
+        <small>{authMode==='individual'?'Sessão individual assinada de 30 minutos; acesso por perfil.':'Sessão compartilhada legada de até 8 horas; não valida segregação individual.'}</small>
       </form>}</span>
     </div>}
     {notice&&<div className={'cisne-crm-notice '+(notice.error?'is-error':'is-success')} role={notice.error?'alert':'status'}>

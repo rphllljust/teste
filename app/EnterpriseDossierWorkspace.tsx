@@ -31,6 +31,11 @@ type Dossier = {
     createdAt: string; dueDate: string | null;
   };
   financials: { billedScaled: string; settledScaled: string; outstandingScaled: string; note: string };
+  assurance: {
+    invoicePostings: {total:number;verified:number};
+    settlementPostings: {total:number;verified:number};
+    scope:'limited_to_displayed_documents';truncated:boolean;
+  };
   stages: Stage[];
   alerts: Array<{ code: string; severity: 'info'|'warning'; message: string }>;
   history: Array<{ id: string; command: string; createdAt: string }>;
@@ -323,6 +328,13 @@ export default function EnterpriseDossierWorkspace({navigate,onOpenOrder,initial
             <div><span>Recebimentos líquidos</span><strong>{scaledMoney(detail.financials.settledScaled)}</strong></div>
             <div><span>Diferença documental</span><strong>{scaledMoney(detail.financials.outstandingScaled)}</strong></div>
             <p>{detail.financials.note} Não equivale ao saldo contábil global do cliente.</p>
+            <p role="note"><strong>Evidências de integração contábil:</strong> faturas verificadas
+              {' '+detail.assurance.invoicePostings.verified+' de '+detail.assurance.invoicePostings.total}
+              {' · '}baixas/estornos verificados
+              {' '+detail.assurance.settlementPostings.verified+' de '+detail.assurance.settlementPostings.total}.
+              {' '}Os números comprovam apenas os documentos exibidos neste dossiê.
+              {detail.assurance.truncated&&' A lista foi truncada; esta proporção não representa a jornada completa.'}
+            </p>
           </div>
           {detail.alerts.length>0&&<section className="enterprise-dossier-alerts" aria-label="Pontos de atenção da rastreabilidade">
             <h3>Pontos de atenção</h3>

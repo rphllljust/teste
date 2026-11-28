@@ -79,19 +79,9 @@ try {
         console.warn('HML_VIEWPORT_WARNING '+profile.name+' root overflow '+overflow+'px');
       }
 
-      // Wave 7 release UAT: verify the two NEW document-first command workspaces
-      // on the LIVE Railway deployment, without session or business fixtures.
-      const legalEntitiesApi=await context.request.get(base.origin+'/api/enterprise/tenants',time);
-      assert.equal(legalEntitiesApi.status(),200,profile.name+' authenticated tenant list');
-      const tenantRows=(await legalEntitiesApi.json()).items;
-      assert.ok(Array.isArray(tenantRows),'tenant list must be persisted and scoped');
-      for(const tenant of tenantRows.slice(0,5)){
-        const entities=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/legal-entities',time);
-        assert.equal(entities.status(),200,profile.name+' tenant legal entities scoped');
-        const references=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/external-references',time);
-        assert.equal(references.status(),200,profile.name+' tenant external references scoped');
-        assert.ok(Array.isArray((await references.json()).items),'external reference registry must return persisted items');
-      }
+      // Anonymous access must be denied; the persisted tenant list is tested only after login.
+      const unauthorizedTenants = await context.request.get(base.origin+'/api/enterprise/tenants',time);
+      assert.equal(unauthorizedTenants.status(),403,profile.name+' deny anonymous tenant list');
       const externalRouteUnauth=await context.request.get(base.origin+'/api/enterprise/tenants/00000000-0000-4000-8000-000000000000/external-references',time);
       assert.equal(externalRouteUnauth.status(),403,profile.name+' reference registry denies anonymous access');
       const externalRouteForged=await context.request.get(base.origin+'/api/enterprise/tenants/00000000-0000-4000-8000-000000000000/external-references',{
@@ -120,7 +110,6 @@ try {
           .waitFor({state:'visible',...time});
         const indicators = await page.locator('.enterprise-operations-indicators button').count();
         assert.equal(indicators,5,profile.name+' '+command.key+' factual work queue shortcuts');
-        assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
         // Tier 1 workstation: verify the three genuine work surfaces, not just HTML markers.
         if(command.key==='operations'){
           const tabs=page.getByRole('tablist',{name:'Espaços da estação de trabalho'});
@@ -128,7 +117,7 @@ try {
           const work=page.getByRole('tab',{name:'Trabalho',exact:true});
           const analysis=page.getByRole('tab',{name:'Análise operacional',exact:true});
           const finance=page.getByRole('tab',{name:'Controladoria',exact:true});
-          assert.equal(await work.getAttribute('aria-selected'),'true');
+          assert.equal(await analysis.getAttribute('aria-selected'),'true');
           await analysis.click();
           await page.getByRole('heading',{name:'OS por situação',exact:true}).waitFor({state:'visible',...time});
           assert.equal(await analysis.getAttribute('aria-selected'),'true');
@@ -144,6 +133,8 @@ try {
             base.origin+'/api/accounting/reconciliation',time);
           assert.equal(forbiddenAccounting.status(),403,profile.name+' anonymous accounting denied');
         }
+        // Queue controls are in the Trabalho surface, not the default analytical tab.
+        assert.equal(await page.getByRole('combobox',{name:'Fila operacional'}).isVisible(),true);
         await page.screenshot({
           path:join(artifactDir,'unauthenticated-'+command.key+'-'+profile.name+'.png'),
           fullPage:false,
@@ -176,9 +167,9 @@ try {
         assert.equal(response.status(),403,profile.name+' denied anonymous financial ledger '+route);
       }
       const financePages=[
-        {label:'Visão financeira',heading:'Centro financeiro'},
+        {label:'Visão financeira',heading:'Visão financeira'},
         {label:'Contas a pagar',heading:'Contas a pagar'},
-        {label:'Caixa e conciliação',heading:'Conciliação bancária'},
+        {label:'Caixa e conciliação',heading:'Caixa e conciliação'},
         {label:'Fiscal e tributos',heading:'Fiscal manual'},
         {label:'Fechamentos',heading:'Fechamento financeiro'},
       ];
@@ -200,6 +191,8 @@ try {
         if(finance.label==='Visão financeira'){
           await page.getByRole('region',{name:'Filas de exceção e encaminhamento'})
             .waitFor({state:'visible',...time});
+          // Aging is a separate financial workspace, not mounted in Pendências.
+          await page.getByRole('button',{name:/Carteira e liquidez/}).click();
           await page.getByRole('region',{name:'Análise de vencimentos e liquidez documental'})
             .waitFor({state:'visible',...time});
           await page.locator('.finance-tier1-aging-heading')
@@ -235,6 +228,18 @@ try {
       const auth = await context.request.get(base.origin + '/api/auth/staging-login',time);
       assert.equal(auth.status(),200);
       assert.equal((await auth.json()).authenticated,true,'server must verify HML session');
+      // Authenticated tenant and legal-entity reads use the same verified session.
+      const legalEntitiesApi=await context.request.get(base.origin+'/api/enterprise/tenants',time);
+      assert.equal(legalEntitiesApi.status(),200,profile.name+' authenticated tenant list');
+      const tenantRows=(await legalEntitiesApi.json()).items;
+      assert.ok(Array.isArray(tenantRows),'tenant list must be persisted and scoped');
+      for(const tenant of tenantRows.slice(0,5)){
+        const entities=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/legal-entities',time);
+        assert.equal(entities.status(),200,profile.name+' tenant legal entities scoped');
+        const references=await context.request.get(base.origin+'/api/enterprise/tenants/'+encodeURIComponent(tenant.id)+'/external-references',time);
+        assert.equal(references.status(),200,profile.name+' tenant external references scoped');
+        assert.ok(Array.isArray((await references.json()).items),'external reference registry must return persisted items');
+      }
 
       const list = await context.request.get(base.origin + publicApi,time);
       assert.equal(list.status(),200,profile.name+' actor-scoped dossier list');
@@ -301,6 +306,7 @@ try {
         {waitUntil:'domcontentloaded',...time});
       await page.getByRole('tab',{name:'Trabalho',exact:true})
         .waitFor({state:'visible',...time});
+      await page.getByRole('tab',{name:'Trabalho',exact:true}).click();
       await page.getByRole('combobox',{name:'Fila operacional'}).selectOption('all');
       if(scoped.items.length){
         if(profile.width<=800){

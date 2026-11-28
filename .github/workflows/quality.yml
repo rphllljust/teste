@@ -3,7 +3,7 @@ on:
   push:
     branches: [main, 'feat/**', 'fix/**', 'test/**']
   pull_request:
-    branches: [main]
+    branches: [main, 'feat/tier1-enterprise-document-linking-20261127', 'fix/cisne-hml-parallel-audit-20261127']
 jobs:
   quality:
     runs-on: ubuntu-latest

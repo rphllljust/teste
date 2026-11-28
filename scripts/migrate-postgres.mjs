@@ -43,6 +43,11 @@ const migrations = [
   { id: '0031_enterprise_external_reference_review', file: '../drizzle-pg/0031_enterprise_external_reference_review.sql' },
   { id: '0032_enterprise_cnae_activities', file: '../drizzle-pg/0032_enterprise_cnae_activities.sql' },
   { id: '0033_cisne_dual_owner_declarations', file: '../drizzle-pg/0033_cisne_dual_owner_declarations.sql' },
+  { id: '0034_service_need_to_execution', file: '../drizzle-pg/0034_service_need_to_execution.sql' },
+  { id: '0035_service_ops_enterprise_commercial_field', file: '../drizzle-pg/0035_service_ops_enterprise_commercial_field.sql' },
+  { id: '0036_cisne_individual_auth_and_evidence', file: '../drizzle-pg/0036_cisne_individual_auth_and_evidence.sql' },
+  { id: '0037_service_plan_revision_and_acceptance', file: '../drizzle-pg/0037_service_plan_revision_and_acceptance.sql' },
+  { id: '0038_service_measurement_finance_bridge', file: '../drizzle-pg/0038_service_measurement_finance_bridge.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
@@ -57,13 +62,12 @@ try {
   // document-first ledgers use different IDs for the SAME NextCRM objects.
   // A transaction rollback preserves the existing ledger and domain records.
   const knownIds = Object.values(NEXTCRM_BRIDGE_MIGRATIONS);
-  const [appliedNextcrm, existingNextcrmTables] = await Promise.all([
-    client.query('SELECT id FROM _cisne_schema_migrations WHERE id = ANY($1::text[])', [knownIds]),
-    client.query(`SELECT c.relname AS name FROM pg_catalog.pg_class AS c
+  // A single PostgreSQL client owns this transaction; do not issue concurrent queries on it.
+  const appliedNextcrm = await client.query('SELECT id FROM _cisne_schema_migrations WHERE id = ANY($1::text[])', [knownIds]);
+  const existingNextcrmTables = await client.query(`SELECT c.relname AS name FROM pg_catalog.pg_class AS c
       JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
       WHERE n.nspname=current_schema() AND c.relkind IN ('r','p')
-        AND c.relname = ANY($1::text[])`, [NEXTCRM_BRIDGE_TABLES]),
-  ]);
+        AND c.relname = ANY($1::text[])`, [NEXTCRM_BRIDGE_TABLES]);
   assertNextcrmMigrationPreflight({
     manifestIds: migrations.map(migration => migration.id),
     appliedIds: appliedNextcrm.rows.map(row => row.id),
@@ -73,16 +77,14 @@ try {
   // lock. No user tables/views/sequences in ANY non-system schema and no history
   // are allowed. If any object exists, protected migrations demand real
   // restore evidence exactly as before.
-  const [catalog, ledger, namespace] = await Promise.all([
-    client.query(`SELECT COUNT(*)::integer AS count FROM pg_catalog.pg_class AS c
+  const catalog = await client.query(`SELECT COUNT(*)::integer AS count FROM pg_catalog.pg_class AS c
       JOIN pg_catalog.pg_namespace AS n ON n.oid=c.relnamespace
       WHERE n.nspname NOT IN ('pg_catalog','information_schema')
         AND n.nspname !~ '^pg_'
         AND c.relkind IN ('r','p','v','m','f','S')
-        AND NOT(n.nspname='public' AND c.relname='_cisne_schema_migrations')`),
-    client.query('SELECT COUNT(*)::integer AS count FROM _cisne_schema_migrations'),
-    client.query('SELECT current_schema() AS schema'),
-  ]);
+        AND NOT(n.nspname='public' AND c.relname='_cisne_schema_migrations')`);
+  const ledger = await client.query('SELECT COUNT(*)::integer AS count FROM _cisne_schema_migrations');
+  const namespace = await client.query('SELECT current_schema() AS schema');
   const firstInstall=namespace.rows[0]?.schema==='public'&&isVerifiedEmptyInstallation({
     userRelations:catalog.rows[0]?.count,
     ledgerRows:ledger.rows[0]?.count,

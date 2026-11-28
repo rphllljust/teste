@@ -53,17 +53,25 @@ test('cash, bank, treasury, ledger and fiscal provide legitimate paths and event
  assert.ok(shell.includes("onImport={()=>navigate('Caixa e conciliação')}"));
 });
 
-test('finance close is differentiated from accounting certification and keeps server locks',()=>{
+test('Tier 1 close requires posted GL, authoritative preflight and server transaction locks',()=>{
  for(const item of ['tier1Readiness?:','Prévia sem bloqueios detectados',
-  'certificação contábil Tier 1 NÃO está pronta','aria-label="Prontidão contábil Tier 1"',
-  'blockerDestinations[block.code]','onNavigate(item.module)','!preflight?.canClose'])
+  'Fechamento Tier 1 bloqueado: existem origens sem escrituração',
+  'aria-label="Prontidão contábil Tier 1"',
+  'blockerDestinations[block.code]','onNavigate(item.module)',
+  '!preflight?.canClose','!preflight?.tier1Readiness?.ready'])
   assert.ok(close.includes(item),'missing close gate '+item);
  const route=read('app/api/finance/periods/close/route.ts');
  const preflight=read('app/api/finance/periods/preflight/route.ts');
+ const service=read('lib/application/finance.ts');
  assert.ok(route.includes('assertPeriodReadyToClose'));
  assert.ok(route.includes('lockFinancePeriodScope'));
  assert.ok(preflight.includes('advisoryOnly:true'));
  assert.ok(preflight.includes('tier1Readiness:'));
+ assert.ok(preflight.includes('canClose:tier1Blockers.length===0'));
+ assert.ok(service.includes('FINANCE_UNPOSTED_SOURCE_BLOCKED'));
+ assert.ok(service.includes('readiness.unpostedCashEvents>0'));
+ assert.ok(service.includes('readiness.unpostedPayables>0'));
+ assert.ok(service.includes('readiness.unpostedPayablePayments>0'));
 });
 test('finance stylesheet braces are balanced',()=>{
  let count=0;

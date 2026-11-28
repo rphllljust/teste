@@ -171,7 +171,13 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
       read(`SELECT i.id,i.amount::text AS amount_scaled,i.due_date,i.created_at,
         m.status AS measurement_status,m.id AS measurement_id,
         r.id AS receivable_id,r.amount::text AS receivable_amount,
-        ail.journal_id AS journal_id,j.status AS journal_status,j.effective_date AS journal_date
+        ail.journal_id AS journal_id,j.status AS journal_status,j.effective_date AS journal_date,
+        (ail.id IS NOT NULL AND ail.amount=i.amount AND j.status='posted'
+          AND j.reversal_of IS NULL
+          AND NOT EXISTS(SELECT 1 FROM journal_entries undone WHERE undone.reversal_of=j.id)
+          AND (SELECT COALESCE(SUM(jl.debit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount
+          AND (SELECT COALESCE(SUM(jl.credit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=i.amount
+        ) AS journal_verified
         FROM invoices i
         JOIN measurements m ON m.id=i.measurement_id AND m.order_id=i.order_id
         LEFT JOIN receivables r ON r.invoice_id=i.id
@@ -181,7 +187,18 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
         [orderId,actorId]),
       read(`SELECT s.id,s.kind,s.amount::text AS amount_scaled,s.reference,s.created_at,
         s.effective_date,s.receivable_id,asl.journal_id,j.status AS journal_status,
-        j.effective_date AS journal_date
+        j.effective_date AS journal_date,
+        (asl.id IS NOT NULL AND asl.amount=s.amount AND asl.kind=s.kind
+          AND asl.effective_date=s.effective_date AND j.status='posted'
+          AND j.effective_date=s.effective_date
+          AND (SELECT COALESCE(SUM(jl.debit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=s.amount
+          AND (SELECT COALESCE(SUM(jl.credit),0) FROM journal_lines jl WHERE jl.entry_id=j.id)=s.amount
+          AND ((s.kind='receipt' AND j.reversal_of IS NULL
+            AND NOT EXISTS(SELECT 1 FROM journal_entries undone WHERE undone.reversal_of=j.id))
+            OR (s.kind='reversal' AND j.reversal_of=(
+              SELECT original.journal_id FROM accounting_settlement_links original
+              WHERE original.settlement_id=s.reverses_id AND original.actor_id=$2)))
+        ) AS journal_verified
         FROM receivable_settlements s
         JOIN receivables r ON r.id=s.receivable_id
         JOIN invoices i ON i.id=r.invoice_id
@@ -209,10 +226,14 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
     for (const row of [...invoices,...settlements]) {
       const journalId = asText(row.journal_id);
       if (!journalId) continue;
-      journalIds.push(journalId);
-      if (!journalById.has(journalId)) journalById.set(journalId,
+      // A foreign, reversed, imbalanced or mismatched journal is evidence of a
+      // link, never evidence of accounting assurance or a verified close.
+      const verified = row.journal_verified === true;
+      if (verified) journalIds.push(journalId);
+      const previous = journalById.get(journalId);
+      if (!previous || !verified) journalById.set(journalId,
         {id:journalId,reference:'Lançamento '+journalId.slice(0,8).toUpperCase(),
-         state:asText(row.journal_status)||'vínculo não confirmado',
+         state:verified?'contabilização verificada':'vínculo não comprovado',
          createdAt:row.journal_date?asText(row.journal_date):null,module:'Contabilidade'});
     }
     const periods = journalIds.length ? await read(`SELECT DISTINCT p.id,p.period_start,p.period_end,
@@ -230,13 +251,13 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
       code:'AR_LINK_MISSING',severity:'warning',
       message:'Existe faturamento sem vínculo recuperável com um recebível neste dossiê.',
     });
-    if (invoices.some(row => !row.journal_id)) alerts.push({
-      code:'INVOICE_JOURNAL_UNVERIFIED',severity:'info',
-      message:'Existem faturas sem vínculo de escrituração comprovado; isso não implica lançamento automático.',
+    if (invoices.some(row => row.journal_verified !== true)) alerts.push({
+      code:'INVOICE_JOURNAL_UNVERIFIED',severity:'warning',
+      message:'Há faturas com diário ausente, estornado, desequilibrado ou divergente do valor de origem.',
     });
-    if (settlements.some(row => !row.journal_id)) alerts.push({
-      code:'RECEIPT_JOURNAL_UNVERIFIED',severity:'info',
-      message:'Existem baixas sem vínculo contábil comprovado neste escopo.',
+    if (settlements.some(row => row.journal_verified !== true)) alerts.push({
+      code:'RECEIPT_JOURNAL_UNVERIFIED',severity:'warning',
+      message:'Há recebimentos ou estornos com diário ausente, incorreto ou não conciliado com a baixa.',
     });
     const matchedReceiptIds=new Set(bankMatches.map(v=>asText(v.receipt_id)));
     if (settlements.some(v=>v.kind==='receipt'&&!matchedReceiptIds.has(asText(v.id))))
@@ -302,6 +323,11 @@ export async function getEnterpriseDossier(actorId: string, orderId: string) {
         note:'Valores em unidades de 1/10.000 de real; o saldo é apenas da cadeia faturada identificada.',
       },
       stages, alerts,
+      assurance: {
+        invoicePostings: {total:invoices.length,verified:invoices.filter(v=>v.journal_verified===true).length},
+        settlementPostings: {total:settlements.length,verified:settlements.filter(v=>v.journal_verified===true).length},
+        scope:'limited_to_displayed_documents',truncated:invoices.length===readOnlyLimit||settlements.length===readOnlyLimit,
+      },
       history:events.map(v=>({id:asText(v.id),command:asText(v.command),createdAt:asText(v.created_at)})),
       provenance: {
         source:'postgres_read_only_snapshot',ownerScoped:true,consistency:'repeatable_read',

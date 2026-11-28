@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { database } from '../../../db/raw';
 import { ApiError, failure, fingerprint, jsonBody, requestContext, respond, type RequestContext, validDate } from '../../../lib/api/http';
 import { transitions, parseAmount } from '../../../lib/domain/orders';
+import { billApprovedMeasurement } from '../../../lib/application/billing';
 
 const input = z.object({
   id: z.string().uuid(),
@@ -33,6 +34,22 @@ export async function POST(request: Request) {
     if (p.command === 'measure' && amount === null) throw new ApiError(400, 'VALIDATION_FAILED', 'Valor da medição inválido.');
     const requestHash = await fingerprint({ actor: context.actorId, scope: 'command', payload: p });
 
+    if (p.command === 'invoice') {
+      const billed = await billApprovedMeasurement(context, {
+        measurementId: p.id,
+        dueDate: p.dueDate!,
+        commandKey: p.key,
+        requestHash,
+        expectedVersion: p.version,
+      }) as { resource: Record<string, unknown>; replayed: boolean };
+      const resource = billed.resource as Record<string, unknown>;
+      const invoiceId = String(resource.invoiceId ?? resource.id ?? '');
+      return respond({
+        ...billed,
+        resource: { ...resource, type: 'invoice', id: invoiceId },
+      }, context, billed.replayed ? 200 : 201);
+    }
+
     const result = await database().transaction(async query => {
       const prior = await query('SELECT request_hash,result FROM order_events WHERE id=$1', [p.key]);
       if (prior.rows.length) {
@@ -45,11 +62,26 @@ export async function POST(request: Request) {
         // Operational commands are tenant/owner scoped. Legacy ownerless rows
         // may remain readable for migration purposes, but they must never be
         // mutated by an authenticated actor.
-        const rows = await query('SELECT id,owner_id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [p.id, context!.actorId]);
+        const rows = await query(`SELECT o.id,o.owner_id,o.status,o.version FROM service_orders o WHERE o.id=$1 AND (o.owner_id=$2 OR EXISTS (SELECT 1 FROM svc_needs n
+ JOIN cisne_erp_owner_declarations d ON d.identity_actor_id=$2 AND d.identity_state='verified'
+ JOIN enterprise_tenant_memberships m ON m.tenant_id=n.tenant_id AND m.actor_id=$2 AND m.role='owner' AND m.status='active'
+ JOIN enterprise_tenants t ON t.id=n.tenant_id AND t.status='active'
+ WHERE n.order_id=o.id)) FOR UPDATE OF o`, [p.id, context!.actorId]);
         if (!rows.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
         const order = rows.rows[0] as { id: string; owner_id: string | null; status: string; version: number };
         if (order.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem mudou. Atualize o contexto.');
+        if (['start','complete','cancel'].includes(p.command)) {
+          // Linked work never bypasses need-side employee receipt, reviewed closure
+          // or the auditable owner-controlled cancellation workflow.
+          // Measure/invoice remain separate commands after an accepted closure.
+          const delegated = await query('SELECT 1 FROM svc_needs WHERE order_id=$1 LIMIT 1',[p.id]);
+          if (delegated.rows.length) throw new ApiError(409,'INVALID_STATE',
+            'Esta OS tem fluxo próprio de recebimento, execução e aceite. Use o dossiê da necessidade.');
+        }
         if (p.command === 'measure') {
+          const delegated=await query('SELECT 1 FROM svc_needs WHERE order_id=$1 LIMIT 1',[p.id]);
+          if(delegated.rows.length)throw new ApiError(409,'INVALID_STATE',
+            'Esta OS exige medição vinculada ao relatório aceito e ao limite comercial da necessidade.');
           if (order.status !== 'completed') throw new ApiError(409, 'INVALID_STATE', 'A medição exige uma OS concluída.');
           const measurementId = crypto.randomUUID();
           const now = new Date().toISOString();
@@ -87,21 +119,17 @@ export async function POST(request: Request) {
       if (measurement.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A medição mudou. Atualize o contexto.');
       const now = new Date().toISOString();
       if (p.command === 'approve_measurement') {
+        const linked=await query('SELECT 1 FROM svc_measurement_links WHERE measurement_id=$1',[p.id]);
+        if(linked.rows.length)throw new ApiError(409,'INVALID_STATE',
+          'A medição desta necessidade requer aprovação independente de outro controlador no dossiê.');
         if (measurement.status !== 'draft') throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição em rascunho pode ser aprovada.');
         await query('UPDATE measurements SET status=\'approved\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
         const result = eventResult(p.id, 'measurement', p.version + 1);
         await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, p.id, JSON.stringify(result), context!.correlationId]);
         return result;
       }
-      if (measurement.status !== 'approved') throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição aprovada pode gerar cobrança.');
-      const invoiceId = crypto.randomUUID();
-      const receivableId = crypto.randomUUID();
-      await query('INSERT INTO invoices(id,measurement_id,order_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5,$6)', [invoiceId, p.id, measurement.order_id, measurement.amount, p.dueDate, now]);
-      await query('INSERT INTO receivables(id,invoice_id,amount,due_date,created_at) VALUES($1,$2,$3,$4,$5)', [receivableId, invoiceId, measurement.amount, p.dueDate, now]);
-      await query('UPDATE measurements SET status=\'billed\',version=version+1 WHERE id=$1 AND version=$2', [p.id, p.version]);
-      const result = { ...eventResult(p.id, 'invoice', p.version + 1), resource: { type: 'invoice', id: invoiceId, receivableId, measurementId: p.id, rowVersion: p.version + 1 } };
-      await query('INSERT INTO order_events(id,order_id,command,version,created_at,actor_id,request_hash,target_id,result,correlation_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)', [p.key, measurement.order_id, p.command, p.version + 1, now, context!.actorId, requestHash, invoiceId, JSON.stringify(result), context!.correlationId]);
-      return result;
+      throw new ApiError(400, 'VALIDATION_FAILED', 'Comando financeiro não suportado.');
+
     });
     return respond(result, context, replayed ? 200 : 201);
   } catch (error) {
