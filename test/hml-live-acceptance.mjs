@@ -167,9 +167,9 @@ try {
         assert.equal(response.status(),403,profile.name+' denied anonymous financial ledger '+route);
       }
       const financePages=[
-        {label:'Visão financeira',heading:'Centro financeiro'},
+        {label:'Visão financeira',heading:'Visão financeira'},
         {label:'Contas a pagar',heading:'Contas a pagar'},
-        {label:'Caixa e conciliação',heading:'Conciliação bancária'},
+        {label:'Caixa e conciliação',heading:'Caixa e conciliação'},
         {label:'Fiscal e tributos',heading:'Fiscal manual'},
         {label:'Fechamentos',heading:'Fechamento financeiro'},
       ];
