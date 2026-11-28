@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm';
-import { pgTable, text, integer, bigint, boolean, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
+import { pgTable, text, integer, bigint, boolean, timestamp, foreignKey, check, index, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
 export const orders = pgTable('service_orders', {
  contractId:text('contract_id'),clientId:text('client_id'),ownerId:text('owner_id'),id: text('id').primaryKey(), title: text('title').notNull(), client: text('client').notNull(),
  category: text('category').notNull(), description: text('description').notNull(),
@@ -458,4 +458,21 @@ export const enterpriseProjectCostAllocations=pgTable('enterprise_project_cost_a
  check('project_cost_kind_reversal',sql`(${t.kind}='allocate' AND ${t.reversesId} IS NULL) OR (${t.kind}='reverse' AND ${t.reversesId} IS NOT NULL)`),
  index('enterprise_project_costs_order_idx').on(t.actorId,t.serviceOrderId,t.createdAt,t.id),
  index('enterprise_project_costs_payable_idx').on(t.actorId,t.payableId,t.createdAt,t.id),
+]);
+
+/** Persistent declared owners; not equivalent to authenticated tenant memberships. */
+export const cisneErpOwnerDeclarations = pgTable('cisne_erp_owner_declarations', {
+ ownerKey:text('owner_key').primaryKey(),
+ displayName:text('display_name').notNull().unique(),
+ declaredRole:text('declared_role').notNull().default('owner'),
+ identityActorId:text('identity_actor_id').unique(),
+ identityState:text('identity_state').notNull().default('unlinked'),
+ declaredSource:text('declared_source').notNull().default('user_explicit_declaration_2026_11_27'),
+ recordedAt:timestamp('recorded_at',{withTimezone:true}).notNull().defaultNow(),
+},t=>[
+ check('cisne_erp_owner_key_check',sql`${t.ownerKey} IN ('abrahim','rafael')`),
+ check('cisne_erp_owner_role_check',sql`${t.declaredRole} = 'owner'`),
+ check('cisne_erp_owner_state_check',sql`${t.identityState} IN ('unlinked','verified')`),
+ check('cisne_erp_owner_name_matches_key',sql`(${t.ownerKey} = 'abrahim' AND ${t.displayName} = 'Abrahim') OR (${t.ownerKey} = 'rafael' AND ${t.displayName} = 'Rafael')`),
+ check('cisne_erp_owner_verified_identity',sql`(${t.identityState} = 'unlinked' AND ${t.identityActorId} IS NULL) OR (${t.identityState} = 'verified' AND ${t.identityActorId} IS NOT NULL)`),
 ]);

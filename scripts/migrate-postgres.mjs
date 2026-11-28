@@ -42,6 +42,7 @@ const migrations = [
   { id: '0030_enterprise_external_references', file: '../drizzle-pg/0030_enterprise_external_references.sql' },
   { id: '0031_enterprise_external_reference_review', file: '../drizzle-pg/0031_enterprise_external_reference_review.sql' },
   { id: '0032_enterprise_cnae_activities', file: '../drizzle-pg/0032_enterprise_cnae_activities.sql' },
+  { id: '0033_cisne_dual_owner_declarations', file: '../drizzle-pg/0033_cisne_dual_owner_declarations.sql' },
 ];
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 5000 });
