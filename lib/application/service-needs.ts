@@ -459,6 +459,26 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    const requested=await q('SELECT r.id,r.description,r.reason,r.evidence_ref,r.requested_by_actor_id FROM svc_additional_requests r WHERE r.tenant_id=$1 AND r.need_id=$2 AND r.id=$3 AND NOT EXISTS(SELECT 1 FROM svc_additional_decisions d WHERE d.request_id=r.id) FOR UPDATE',[c.tenantId,needId,cmd.requestId]);
    if(!requested.rows.length)throw new ApiError(409,'INVALID_STATE','Solicitação inexistente ou já decidida.');
    const request=requested.rows[0];
+   if(cmd.decision==='rejected'&&(cmd.approvedInternalCostCents!=null||cmd.approvedSalePriceCents!=null))
+    throw new ApiError(400,'VALIDATION_FAILED','Uma rejeição não pode registrar custos ou preços aprovados.');
+   // Additional prices are total amounts, NOT unit rates. Include already
+   // approved additions in the same audited commercial ceiling established
+   // before release, irrespective of the number of revisions.
+   if(cmd.decision==='approved'&&cmd.approvedSalePriceCents!=null){
+    const terms=await q('SELECT pricing_mode,global_sale_cents,max_financial_cents FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
+    const max=terms.rows[0]?.max_financial_cents;
+    if(max!=null){
+     const sold=await q('SELECT COALESCE(sum(approved_sale_price_cents),0)::text AS total FROM svc_additional_decisions WHERE tenant_id=$1 AND need_id=$2 AND decision=\'approved\'',[c.tenantId,needId]);
+     let baseline=BigInt(terms.rows[0]?.global_sale_cents??0);
+     if(terms.rows[0]?.pricing_mode==='itemized'){
+      const active=await q('SELECT COALESCE(sum(round(p.quantity_milli::numeric*p.sale_unit_price_cents/1000)),0)::text AS total FROM svc_commercial_price_lines p WHERE p.tenant_id=$1 AND p.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]);
+      baseline=BigInt(active.rows[0].total);
+     }
+     const finalAmount=baseline+BigInt(sold.rows[0].total)+BigInt(cmd.approvedSalePriceCents);
+     if(finalAmount>BigInt(max))
+      throw new ApiError(409,'COMMERCIAL_LIMIT','A aprovação do adicional excederia o limite financeiro comercial.');
+    }
+   }
    await q('INSERT INTO svc_additional_decisions(request_id,tenant_id,need_id,decision,reason,approved_internal_cost_cents,approved_sale_price_cents,decided_by_actor_id) VALUES($1,$2,$3,$4,$5,$6,$7,$8)',[
     cmd.requestId,c.tenantId,needId,cmd.decision,cmd.reason,
     cmd.decision==='approved'?cmd.approvedInternalCostCents??null:null,
