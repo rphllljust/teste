@@ -6,6 +6,7 @@ const read = (path) => readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const model = read('lib/application/process-dossier.ts');
 const list = read('app/api/enterprise/journeys/route.ts');
 const detail = read('app/api/enterprise/journeys/[id]/route.ts');
+const workspace = read('app/EnterpriseDossierWorkspace.tsx');
 
 test('enterprise dossier APIs authenticate before reading and reject invalid IDs',()=>{
   assert.match(list,/context = requestContext\(request\)/);
@@ -59,4 +60,17 @@ test('financial summaries remain exact and never claim completeness from linked 
   assert.match(model,/BANK_MATCH_UNVERIFIED/);
   assert.match(model,/HISTORICAL_CLIENT/);
   assert.match(model,/truncated: records\.length > 50/);
+});
+
+
+test('dossier displays verified GL coverage without claiming completeness for truncated records',()=>{
+  assert.match(model,/AS journal_verified/);
+  assert.match(model,/SUM\(jl\.debit\)/);
+  assert.match(model,/SUM\(jl\.credit\)/);
+  assert.match(model,/undone\.reversal_of=j\.id/);
+  assert.match(model,/row\.journal_verified !== true/);
+  assert.match(model,/scope:'limited_to_displayed_documents'/);
+  assert.match(workspace,/detail\.assurance\.invoicePostings\.verified/);
+  assert.match(workspace,/detail\.assurance\.settlementPostings\.verified/);
+  assert.match(workspace,/detail\.assurance\.truncated/);
 });
