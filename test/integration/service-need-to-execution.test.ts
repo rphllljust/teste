@@ -433,7 +433,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const detail=await (await needDetail(get(rafael),np(tenantA,needId))).json() as any;
  const eventKinds=detail.events.map((e:any)=>e.event);
  for(const event of ['received','analysis_started','approved','commercial_terms_recorded','commercial_document_registered','price_line_registered','converted_to_draft_order','plan_set','released','assigned','viewed','execution_started','field_event_recorded','actual_recorded','additional_requested','additional_decided','additional_recorded','work_report_submitted','work_report_reviewed'])assert.ok(eventKinds.includes(event),event+' must be audited');
- assert.equal(detail.fieldEvents.length,4);
+ assert.equal(detail.fieldEvents.length,5,'the safety occurrence recorded during pause must remain in the immutable field audit');
  assert.equal(detail.additionalRequests.length,2);
  assert.deepEqual(new Set(detail.additionalRequests.map((x:any)=>x.status)),new Set(['approved','rejected']));
  assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
