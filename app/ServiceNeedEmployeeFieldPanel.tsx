@@ -1,5 +1,6 @@
 'use client';
 import {useState,type FormEvent} from 'react';
+import ServiceEvidenceAttachmentsPanel from './ServiceEvidenceAttachmentsPanel';
 
 type Plan={kind:string;resourceRef:string;quantityMilli:string;unit:string};
 const items=[['team','Equipe'],['vehicle','Veículo'],['equipment','Equipamento'],['material','Material'],['hours','Horas'],['quantity','Quantidade']] as const;
@@ -75,6 +76,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
     <button className="primary" disabled={busy}>Registrar execução real</button>
    </form>
   </details>
+  <ServiceEvidenceAttachmentsPanel tenantId={tenantId} needId={needId} category="field" onUploaded={ref=>{setEvidenceRef(ref);setAdditionalEvidence(ref);}}/>
   <details><summary>Registrar ocorrência, paralisação, retomada, fotografia ou medidor</summary>
    <form onSubmit={event} className="enterprise-governance-panel">
     <div className="form-row">
