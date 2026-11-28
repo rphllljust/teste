@@ -64,12 +64,26 @@ test('receivable settlement is idempotent, concurrent-safe by lock, and reversab
   const audit = await pool.query("SELECT action,entity_type,entity_id,actor_id FROM finance_audit_events WHERE entity_id=$1 ORDER BY occurred_at, id", [receivableId]);
   assert.deepEqual(audit.rows, [{ action: 'receipt_registered', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }, { action: 'receipt_reversed', entity_type: 'receivable', entity_id: receivableId, actor_id: actor }]);
   const periodId = randomUUID();
-  const closed = await closePeriod(req('/api/finance/periods/close', 'POST', { id: periodId, periodStart: '2026-11-01', periodEnd: '2026-11-30', reference: 'CI close' }));
-  assert.equal(closed.status, 201);
+  // New Tier 1 rule: historical receipts/reversals without GL cannot be
+  // certified just because the net cash balance returned to zero.
+  const denied = await closePeriod(req('/api/finance/periods/close', 'POST', {
+    id: randomUUID(), periodStart: '2026-11-01', periodEnd: '2026-11-30',
+    reference: 'CI unposted cash must block',
+  }));
+  assert.equal(denied.status, 409);
+  assert.equal((await json(denied)).code, 'FINANCE_UNPOSTED_SOURCE_BLOCKED');
+  // Close a clean month to preserve independent retroactive-posting coverage.
+  const closed = await closePeriod(req('/api/finance/periods/close', 'POST', {
+    id: periodId, periodStart: '2026-10-01', periodEnd: '2026-10-31', reference: 'CI clean close',
+  }));
+  assert.equal(closed.status, 201, JSON.stringify(await json(closed)));
   const listed = await listClosedPeriods(req('/api/finance/periods/close', 'GET', {}));
   assert.equal(listed.status, 200);
   assert.equal(((await json(listed)) as { items: Array<{ id: string }> }).items[0].id, periodId);
-  const blocked = await settle(req('/api/finance/receivables/settlements', 'POST', { receivableId, amount: '1000', effectiveDate: '2026-11-20', reference: 'CI blocked', commandKey: randomUUID() }));
+  const blocked = await settle(req('/api/finance/receivables/settlements', 'POST', {
+    receivableId, amount: '1000', effectiveDate: '2026-10-20',
+    reference: 'CI blocked', commandKey: randomUUID(),
+  }));
   assert.equal(blocked.status, 409);
 });
 
