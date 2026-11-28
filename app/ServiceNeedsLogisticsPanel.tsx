@@ -160,3 +160,4 @@ export default function ServiceNeedsLogisticsPanel({tenantId,needId,revision=0,o
    <p>{d.caution}</p>
   </>}
  </section>;
+}
