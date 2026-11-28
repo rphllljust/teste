@@ -32,6 +32,19 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
     // Hold the owner financial-scope lock before any business-row lock: this
     // serializes policy changes, period closes and concurrent invoice posting.
     await lockFinancePeriodScope(query, context.actorId);
+    // A same-owner request can have passed the first idempotency read while a
+    // concurrent request was still committing. Recheck after acquiring the
+    // shared scope lock so retries observe and replay the committed result.
+    const concurrentReplay = await query(
+      'SELECT request_hash,result FROM order_events WHERE id=$1',
+      [input.commandKey],
+    );
+    if (concurrentReplay.rows.length) {
+      if (concurrentReplay.rows[0].request_hash !== input.requestHash || !concurrentReplay.rows[0].result) {
+        throw new ApiError(409, 'IDEMPOTENCY_CONFLICT', 'Chave de comando já utilizada.');
+      }
+      return { ...storedResult(concurrentReplay.rows[0].result), replayed: true };
+    }
     const postingRule = await query(
       "SELECT p.id,p.debit_account_id,p.credit_account_id,p.row_version, "+
       "d.active AS debit_active,d.type AS debit_type,d.actor_id AS debit_owner, "+
