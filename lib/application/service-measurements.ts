@@ -162,5 +162,20 @@ export async function getServiceMeasurementDossier(q:Query,c:Context){
  LEFT JOIN invoices i ON i.measurement_id=m.id
  LEFT JOIN receivables rec ON rec.invoice_id=i.id
  WHERE l.tenant_id=$1 AND l.need_id=$2 ORDER BY l.created_at DESC,l.id DESC`,[c.tenantId,c.needId]);
- return {status:String(need.rows[0].status),orderId:need.rows[0].order_id,measurements:rows.rows};
+ // Cash application belongs to the canonical ledger principal. A co-owner
+ // has read access to the financial dossier but cannot silently book into a
+ // different GL; the original financial owner can enter and reverse receipts.
+ const owner=need.rows[0].order_id
+  ?await q('SELECT owner_id FROM service_orders WHERE id=$1',[need.rows[0].order_id])
+  :{rows:[]};
+ const canSettleReceivable=String(owner.rows[0]?.owner_id??'')===c.actorId;
+ const settlements=canSettleReceivable?await q(`SELECT s.id,s.kind,(s.amount/100)::integer AS "amountCents",
+  s.effective_date AS "effectiveDate",s.reference,s.created_at AS "createdAt",
+  s.reverses_id AS "reversesId",EXISTS(SELECT 1 FROM receivable_settlements rev WHERE rev.reverses_id=s.id) AS reversed
+ FROM svc_measurement_links link JOIN invoices i ON i.measurement_id=link.measurement_id
+ JOIN receivables rec ON rec.invoice_id=i.id JOIN receivable_settlements s ON s.receivable_id=rec.id
+ WHERE link.tenant_id=$1 AND link.need_id=$2
+ ORDER BY s.created_at DESC,s.id DESC LIMIT 100`,[c.tenantId,c.needId]):{rows:[]};
+ return {status:String(need.rows[0].status),orderId:need.rows[0].order_id,measurements:rows.rows,
+  canSettleReceivable,settlements:settlements.rows};
 }
