@@ -10,7 +10,7 @@ import ServiceNeedsWorkReviewPanel,{type WorkReport} from './ServiceNeedsWorkRev
 type Tenant={id:string;name:string;role:string};
 type Need={id:string;channel:string;originRef:string;clientName:string;contactName:string;serviceDescription:string;requestedDate:string;priority:string;status:string;orderId:string|null};
 type Event={event:string;actorId:string;reason:string|null;createdAt:string};
-type Detail={need:Need;planHistory?:PlanRevision[];workReports?:WorkReport[];events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null;commercial?:Commercial;additionalRequests?:AdditionalRequest[];fieldEvents?:{id:string;eventType:string;description:string;quantityMilli:string|null;unit:string|null;evidenceRef:string|null;actorId:string;createdAt:string}[]};
+type Detail={need:Need;planHistory?:PlanRevision[];workReports?:WorkReport[];executionVariance?:{kind:string;resourceRef:string;unit:string;plannedMilli:string;actualMilli:string;varianceMilli:string}[];events:Event[];planned:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];actual:{kind:string;resourceRef:string;quantityMilli:number;unit:string}[];assignments:{id:string;employeeActorId:string;events:string[]}[];financials?:{estimatedCostCents:number;marginBps:number}|null;commercial?:Commercial;additionalRequests?:AdditionalRequest[];fieldEvents?:{id:string;eventType:string;description:string;quantityMilli:string|null;unit:string|null;evidenceRef:string|null;actorId:string;createdAt:string}[]};
 type InboxItem={assignmentId:string;needId:string;orderId:string|null;clientName:string;serviceDescription:string;location:string;requestedDate:string;status:string;events:string[];workReview?:{reportId:string;submittedAt:string;status:string;reason:string|null}|null;planned:{kind:string;resourceRef:string;quantityMilli:string;unit:string}[]};
 const uuid=()=>crypto.randomUUID();
 async function api<T>(url:string,body?:object):Promise<T>{
@@ -226,15 +226,17 @@ export default function ServiceNeedsWorkspace({mode='needs',onOpenOrder}:{mode?:
     {detail.fieldEvents&&<details><summary>Eventos operacionais registrados · {detail.fieldEvents.length}</summary>
      {detail.fieldEvents.map(ev=><p key={ev.id}><strong>{ev.eventType}</strong> · {ev.description} · {ev.actorId} · {ev.createdAt}{ev.quantityMilli!=null?' · '+(Number(ev.quantityMilli)/1000)+' '+(ev.unit??''):''}{ev.evidenceRef?' · '+ev.evidenceRef:''}</p>)}
     </details>}
-    {detail.actual.length>0&&<details><summary>Comparação planejado × executado</summary>
-     <table><thead><tr><th>Recurso</th><th>Planejado</th><th>Realizado</th><th>Diferença</th></tr></thead>
-      <tbody>{Array.from(new Set([...detail.planned,...detail.actual].map(p=>p.kind+'|'+p.resourceRef+'|'+p.unit))).map(k=>{
-       const [kind,ref,unit]=k.split('|');
-       const planned=detail.planned.filter(p=>p.kind===kind&&p.resourceRef===ref&&p.unit===unit).reduce((n,p)=>n+Number(p.quantityMilli),0);
-       const actual=detail.actual.filter(p=>p.kind===kind&&p.resourceRef===ref&&p.unit===unit).reduce((n,p)=>n+Number(p.quantityMilli),0);
-       return <tr key={k}><td>{ref} · {kind}</td><td>{planned/1000} {unit}</td><td>{actual/1000} {unit}</td><td>{(actual-planned)/1000} {unit}</td></tr>;
-      })}</tbody>
-     </table>
+    {detail.executionVariance&&detail.executionVariance.length>0&&<details open>
+     <summary>Planejado × realizado · diferenças por recurso</summary>
+     <p>Apuração no servidor, sem substituição retroativa das quantidades originais. Cada combinação de recurso, tipo e unidade é conciliada separadamente.</p>
+     <table><thead><tr><th>Recurso / natureza</th><th>Planejado</th><th>Executado</th><th>Diferença</th></tr></thead><tbody>
+      {detail.executionVariance.map(v=><tr key={JSON.stringify([v.kind,v.resourceRef,v.unit])}>
+       <td>{v.resourceRef} · {v.kind}</td>
+       <td>{(Number(v.plannedMilli)/1000).toLocaleString('pt-BR',{maximumFractionDigits:3})} {v.unit}</td>
+       <td>{(Number(v.actualMilli)/1000).toLocaleString('pt-BR',{maximumFractionDigits:3})} {v.unit}</td>
+       <td>{Number(v.varianceMilli)>0?'+':''}{(Number(v.varianceMilli)/1000).toLocaleString('pt-BR',{maximumFractionDigits:3})} {v.unit}</td>
+      </tr>)}
+     </tbody></table>
     </details>}
     <details><summary>Trilha de auditoria · {detail.events.length} eventos</summary>
      <ol>{detail.events.map((ev,i)=><li key={i}><strong>{ev.event}</strong> · {ev.actorId} · {ev.createdAt}{ev.reason?' · '+ev.reason:''}</li>)}</ol>
