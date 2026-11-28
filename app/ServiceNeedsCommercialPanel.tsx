@@ -1,5 +1,6 @@
 'use client';
 import {useState,type FormEvent} from 'react';
+import ServiceEvidenceAttachmentsPanel from './ServiceEvidenceAttachmentsPanel';
 
 export type Terms={id:string;pricingMode:'global'|'itemized'|'unpriced';globalSaleCents:string|null;paymentMethod:string|null;paymentTerms:string|null;maxQuantityMilli:string|null;maxFinancialCents:string|null;customerRules:string|null;createdAt:string};
 export type Doc={id:string;documentType:string;reference:string;description:string;evidenceRef:string|null;createdAt:string};
@@ -99,6 +100,7 @@ export default function ServiceNeedsCommercialPanel({tenantId,needId,status,comm
     <button className="primary" disabled={working}>Registrar nova versão</button>
    </form>
   </details>}
+  <ServiceEvidenceAttachmentsPanel tenantId={tenantId} needId={needId} category="commercial" onUploaded={setDocEvidence}/>
   <details><summary>Documentos vinculados · {commercial.documents.length}</summary>
    {commercial.documents.map(d=><p key={d.id}><strong>{d.documentType} · {d.reference}</strong> — {d.description} {d.evidenceRef?' · '+d.evidenceRef:''}</p>)}
    {!commercial.documents.length&&<p>Sem documentação estruturada vinculada.</p>}
