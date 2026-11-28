@@ -55,6 +55,8 @@ export async function prepareServiceMeasurement(q:Query,c:Context,p:Prepare){
  if(canonical.rows[0]?.status!=='completed')throw new ApiError(409,'INVALID_STATE','OS canônica não está concluída.');
  const exists=await q('SELECT measurement_id FROM svc_measurement_links WHERE tenant_id=$1 AND need_id=$2',[c.tenantId,c.needId]);
  if(exists.rows.length)throw new ApiError(409,'ALREADY_MEASURED','A OS já possui medição vinculada. Não duplique cobrança.');
+ const historical=await q('SELECT 1 FROM measurements WHERE order_id=$1 LIMIT 1',[need.order_id]);
+ if(historical.rows.length)throw new ApiError(409,'ALREADY_MEASURED','Há medição legada desta OS; regularize antes de criar outra para evitar cobrança duplicada.');
  const reports=await q(`SELECT r.id,r.actual_snapshot,r.plan_revision,r.planned_snapshot
  FROM svc_work_reports r JOIN svc_work_report_reviews v
  ON v.report_id=r.id AND v.tenant_id=r.tenant_id AND v.need_id=r.need_id AND v.decision='accepted'
