@@ -34,3 +34,38 @@ test('0035 is additive with immutable pricing, commercial history and employee f
  assert.match(employee,/request_additional/);
  assert.doesNotMatch(employee,/InternalCost|SalePrice|margin|preço de venda/i);
 });
+
+test('0037 preserves every plan revision and only accepts employee work after owner review',async()=>{
+ const [sql,migration,app,orders,ownerUi,employeeUi,planUi,reviewUi,integration]=await Promise.all([
+  r('drizzle-pg/0037_service_plan_revision_and_acceptance.sql'),
+  r('scripts/migrate-postgres.mjs'),
+  r('lib/application/service-needs.ts'),
+  r('app/api/commands/route.ts'),
+  r('app/ServiceNeedsWorkspace.tsx'),
+  r('app/ServiceNeedEmployeeFieldPanel.tsx'),
+  r('app/ServiceNeedsPlanBuilder.tsx'),
+  r('app/ServiceNeedsWorkReviewPanel.tsx'),
+  r('test/integration/service-need-to-execution.test.ts'),
+ ]);
+ for(const table of ['svc_plan_revisions','svc_work_reports','svc_work_report_reviews'])
+  assert.ok(sql.includes('CREATE TABLE '+table),'missing immutable table '+table);
+ assert.match(sql,/INSERT INTO svc_plan_revisions/);
+ assert.match(sql,/svc_work_reports_immutable/);
+ assert.match(sql,/svc_work_report_reviews_immutable/);
+ assert.match(migration,/0037_service_plan_revision_and_acceptance/);
+ for(const command of ['submit_work_report','review_work_report','set_plan'])
+  assert.ok(app.includes("case '"+command+"'"),'missing workflow '+command);
+ assert.match(app,/PENDING_ADDITIONAL/);
+ assert.match(app,/planRevision/);
+ assert.match(app,/status='completed'/);
+ assert.match(app,/review_pending/);
+ assert.match(orders,/\['start','complete','cancel'\]\.includes\(p\.command\)/);
+ assert.match(ownerUi,/ServiceNeedsPlanBuilder/);
+ assert.match(ownerUi,/ServiceNeedsWorkReviewPanel/);
+ assert.match(employeeUi,/submit_work_report/);
+ assert.match(planUi,/Publicar nova versão auditável/);
+ assert.match(reviewUi,/Aceitar relatório e concluir OS/);
+ assert.match(integration,/planHistory\.length/);
+ assert.match(integration,/reportSnapshots/);
+ assert.doesNotMatch(employeeUi,/approvedInternalCostCents|approvedSalePriceCents|marginBps/);
+});
