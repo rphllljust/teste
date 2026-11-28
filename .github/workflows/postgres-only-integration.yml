@@ -179,6 +179,7 @@ jobs:
             '0035_service_ops_enterprise_commercial_field',
             '0036_cisne_individual_auth_and_evidence',
             '0037_service_plan_revision_and_acceptance',
+            '0038_service_measurement_finance_bridge',
           ];
           if (r.rows.length !== expected.length || r.rows.some(x => x.n !== 1) ||
               r.rows.some((x, i) => x.id !== expected[i])) process.exitCode=1;
