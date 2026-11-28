@@ -119,6 +119,13 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
     if (measurement.status !== 'approved') {
       throw new ApiError(409, 'INVALID_STATE', 'Somente uma medição aprovada pode gerar faturamento.');
     }
+    // Tier 1: a linked service-need invoice cannot be posted without a valid,
+    // balanced automatic AR/revenue rule in the canonical financial ledger.
+    // Legacy free-standing orders retain their previously supported optional mode.
+    const linked=await query('SELECT 1 FROM svc_measurement_links WHERE measurement_id=$1 LIMIT 1',[input.measurementId]);
+    if(linked.rows.length&&!rule)
+      throw new ApiError(409,'ACCOUNTING_RULE_REQUIRED',
+        'Configure a regra contábil ativa de Clientes a Receber / Receita antes de faturar esta OS empresarial.');
 
     const now = new Date().toISOString();
     const postingDate = now.slice(0, 10);

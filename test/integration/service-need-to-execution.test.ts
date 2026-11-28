@@ -327,6 +327,10 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  await assert.rejects(()=>pool.query('DELETE FROM svc_measurement_approvals WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
  const billingKey=randomUUID();
  const invoiceCommand={id:measureId,version:2,key:billingKey,command:'invoice',dueDate:'2026-12-20'};
+ await pool.query("UPDATE accounting_posting_rules SET active=0 WHERE actor_id=$1 AND source_type='invoice_billing'",[abrahim]);
+ assert.equal((await orderCommand(post(rafael,invoiceCommand))).status,409,'linked service cannot create unposted invoice with no configured AR/revenue rule');
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measureId])).rows[0].n,0,'rejected invoice leaves no financial side effects');
+ await pool.query("UPDATE accounting_posting_rules SET active=1 WHERE actor_id=$1 AND source_type='invoice_billing'",[abrahim]);
  const billed=await orderCommand(post(rafael,invoiceCommand));
  assert.equal(billed.status,201,JSON.stringify(await billed.clone().json()));
  const billingBody=await billed.json() as any;

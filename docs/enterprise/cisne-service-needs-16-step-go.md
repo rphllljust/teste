@@ -141,8 +141,10 @@ disposable PostgreSQL, synthetic actors, and fictional financial facts.
    `measure`/`approve_measurement` commands cannot bypass this invariant.
 5. Only an approved measurement can be invoiced using the existing
    `invoice` lifecycle. The invoice and receivable share a transaction;
-   when the canonical financial owner has an active `invoice_billing`
-   rule, the transaction also posts a balanced asset/revenue journal.
+   for this service-need flow only when the canonical financial owner
+   has a valid active `invoice_billing` rule. Invoice and balanced
+   asset/revenue journal are posted atomically; missing rules reject
+   billing without creating invoice, receivable or ledger activity.
    The actual initiating actor remains in the audit record.
 6. Receipts and reversals use the canonical financial ledger principal;
    another verified owner may review the status but cannot divert cash
