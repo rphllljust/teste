@@ -19,6 +19,7 @@ import {serviceGoReadiness} from '../../lib/application/service-go-readiness';
 import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/route';
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
+import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/service-needs/control-tower/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -333,6 +334,17 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(dossier.measurements[0].receivableId,billingBody.resource.receivableId);
  assert.equal(dossier.measurements[0].amountCents,450000);
  assert.equal(dossier.measurements[0].settledCents,'0');
+ assert.equal((await controlTowerGet(get(employee),tp(tenantA))).status,403,'employees cannot access enterprise KPIs');
+ assert.equal((await controlTowerGet(get(admin),tp(tenantA))).status,403,'admins without declaration cannot access owner financial indicators');
+ assert.equal((await controlTowerGet(get(otherOwner),tp(tenantA))).status,404,'tenants must be invisible to outsiders');
+ const tower=await (await controlTowerGet(get(abrahim),tp(tenantA))).json() as any;
+ assert.equal(tower.kpis.completed,1);
+ assert.equal(tower.finance.not_measured,0);
+ assert.equal(tower.finance.awaiting_invoice,0);
+ assert.equal(tower.finance.billed,1);
+ assert.equal(tower.finance.billed_cents,'450000');
+ assert.equal(tower.pendingAdditionals,0);
+
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measureId])).rows[0].n,1);
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM receivables WHERE invoice_id=$1',[billingBody.resource.invoiceId])).rows[0].n,1);
  await assert.rejects(()=>pool.query('UPDATE svc_measurement_links SET proposed_amount_cents=1 WHERE measurement_id=$1',[measureId]),/APPEND_ONLY/);
