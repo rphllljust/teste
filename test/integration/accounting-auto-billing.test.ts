@@ -8,6 +8,7 @@ import {GET as getRule,POST as configureRule} from '../../app/api/accounting/pos
 import {GET as verifyBilling,POST as bill} from '../../app/api/finance/billing/route';
 import {POST as postCommand} from '../../app/api/commands/route';
 import {GET as reconciliation} from '../../app/api/accounting/reconciliation/route';
+import {getEnterpriseDossier} from '../../lib/application/process-dossier';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)
   throw new Error('Automatic accounting integration requires isolated PostgreSQL and NODE_ENV=test');
@@ -110,6 +111,11 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   const dispatchedBody=await dispatched.json() as {resource:{id:string;accounting:{status:string;journalId:string}}};
   assert.equal(dispatchedBody.resource.accounting.status,'auto_posted');
   assert.ok(dispatchedBody.resource.accounting.journalId);
+  const verifiedDossier=await getEnterpriseDossier(actor,orderId);
+  assert.deepEqual(verifiedDossier.assurance.invoicePostings,{total:2,verified:2});
+  assert.ok(verifiedDossier.stages.find(v=>v.key==='accounting')?.items
+    .some(v=>v.state==='contabilização verificada'));
+  assert.ok(!verifiedDossier.alerts.some(v=>v.code==='INVOICE_JOURNAL_UNVERIFIED'));
 
   const duplicate=await bill(request(actor,billingPath,{
     ...billingCommand,commandKey:randomUUID(),
@@ -159,6 +165,10 @@ test('configured revenue recognition posts exactly once within invoice/receivabl
   assert.equal(noAuto.status,201);
   const noAutoBody=await noAuto.json() as {resource:{invoiceId:string;accounting:{status:string}}};
   assert.equal(noAutoBody.resource.accounting.status,'not_enabled');
+  const unpostedDossier=await getEnterpriseDossier(actor,orderId);
+  assert.deepEqual(unpostedDossier.assurance.invoicePostings,{total:3,verified:2});
+  assert.ok(unpostedDossier.alerts.some(v=>v.code==='INVOICE_JOURNAL_UNVERIFIED'&&v.severity==='warning'));
+  await assert.rejects(()=>getEnterpriseDossier(foreignActor,orderId),/Dossiê empresarial não encontrado/);
   assert.equal((await pool.query(
     'SELECT count(*)::int AS n FROM accounting_invoice_links WHERE invoice_id=$1',
     [noAutoBody.resource.invoiceId],
