@@ -148,3 +148,4 @@ export default function ServiceNeedsCommercialPanel({tenantId,needId,status,comm
    {requests.filter(r=>r.status!=='pending').map(r=><p key={r.id}>{r.description} — {r.status} · {r.decisionReason}</p>)}
   </details>}
  </section>;
+}
