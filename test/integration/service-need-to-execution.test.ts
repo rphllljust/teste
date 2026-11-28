@@ -346,7 +346,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(invoiceLink.rows[0].actor_id,abrahim,'invoice origin links preserve canonical ledger ownership');
  const billAudit=await pool.query("SELECT actor_id,metadata FROM finance_audit_events WHERE entity_type='invoice' AND entity_id=$1 AND action='invoice_auto_posted'",[billingBody.resource.invoiceId]);
  assert.equal(billAudit.rows[0].actor_id,rafael,'audit preserves who actually initiated the invoice');
- assert.equal(billAudit.rows[0].metadata.ledgerOwnerId,abrahim);
+ assert.equal(JSON.parse(String(billAudit.rows[0].metadata)).ledgerOwnerId,abrahim,'audit metadata is persisted as JSON text in legacy finance ledger');
  const postingToday=new Date().toISOString().slice(0,10);
  const currentMonthStart=postingToday.slice(0,8)+'01';
  const nextMonthStart=new Date(Date.UTC(Number(postingToday.slice(0,4)),Number(postingToday.slice(5,7)),1)).toISOString().slice(0,10);
