@@ -33,6 +33,7 @@ import MRPWorkspace from "./MRPWorkspace";
 import ProfessionalsWorkspace from "./ProfessionalsWorkspace";
 import AssetsWorkspace from "./AssetsWorkspace";
 import ServiceOperationsAgenda from "./ServiceOperationsAgenda";
+import ServiceNeedsWorkspace from "./ServiceNeedsWorkspace";
 import EnterpriseServiceOrderExceptionQueue from "./EnterpriseServiceOrderExceptionQueue";
 import FieldServiceCockpit from "./FieldServiceCockpit";
 import ResourcePlanningBoard from "./ResourcePlanningBoard";
@@ -1497,6 +1498,8 @@ function HomeView() {
               "Resource Planning Board",
               "Dossiês empresariais",
               "Governança empresarial",
+              "Necessidades de serviço",
+              "Minha caixa de OS",
               "Visão operacional",
             ].includes(page) && (
               <>
@@ -2642,6 +2645,10 @@ function HomeView() {
                 </span>
               </footer>
             </section>
+          ) : page === "Necessidades de serviço" ? (
+            <ServiceNeedsWorkspace onOpenOrder={id=>{navigate("Ordens de serviço",id);void openOrigin(id);}}/>
+          ) : page === "Minha caixa de OS" ? (
+            <ServiceNeedsWorkspace mode="inbox"/>
           ) : page === "Governança empresarial" ? (
             <EnterpriseGovernanceWorkspace />
           ) : page === "Dossiês empresariais" ? (
