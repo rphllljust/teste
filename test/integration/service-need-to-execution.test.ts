@@ -10,6 +10,7 @@ import {GET as needDetail} from '../../app/api/enterprise/tenants/[id]/service-n
 import {POST as command} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/commands/route';
 import {POST as linkEmployee} from '../../app/api/enterprise/tenants/[id]/employee-links/route';
 import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-inbox/route';
+import {POST as orderCommand} from '../../app/api/commands/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -75,7 +76,8 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[tenantA,approvalKey])).rows[0].n,1,'replay cannot duplicate audit');
  // (3) conversion creates only a DRAFT order
  const orderId=randomUUID();
- const conv=await cmd(admin,tenantA,needId,{command:'convert',orderId});assert.equal(conv.status,200);assert.equal(conv.body.orderStatus,'draft');
+ assert.equal((await cmd(admin,tenantA,needId,{command:'convert',orderId})).status,403,'admin cannot become owner of OS');
+ const conv=await cmd(abrahim,tenantA,needId,{command:'convert',orderId});assert.equal(conv.status,200);assert.equal(conv.body.orderStatus,'draft');
  assert.equal((await pool.query('SELECT status FROM service_orders WHERE id=$1',[orderId])).rows[0].status,'draft');
  // (4) planning separate from actuals; (5) explicit release before assignment
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'assign',employeeActorId:employee})).status,409,'no assignment before release');
@@ -84,8 +86,13 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
   {kind:'team',resourceRef:'Equipe A',quantityMilli:2000,unit:'pessoa'},{kind:'vehicle',resourceRef:'Veículo ficticio V1',quantityMilli:1000,unit:'un'},
   {kind:'material',resourceRef:'Material M1',quantityMilli:5500,unit:'kg'},{kind:'hours',resourceRef:'Horas campo',quantityMilli:16000,unit:'h'}]});
  assert.equal(plan.status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,409,'release requires canonical OS authorization');
+ const auth=await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}));
+ assert.equal(auth.status,201,JSON.stringify(await auth.clone().json()));
  assert.equal((await cmd(admin,tenantA,needId,{command:'release'})).status,403,'admin cannot release');
  assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
+ const bypass=await orderCommand(post(abrahim,{id:orderId,version:2,key:randomUUID(),command:'start'}));
+ assert.equal(bypass.status,409,'canonical start cannot bypass employee receipt');
  assert.equal((await cmd(admin,tenantA,needId,{command:'set_plan',lines:[{kind:'team',resourceRef:'x',quantityMilli:1,unit:'p'}]})).status,409,'plan frozen');
  await assert.rejects(()=>pool.query('DELETE FROM svc_plan_lines WHERE need_id=$1',[needId]),/APPEND_ONLY/);
  // (6) authenticated link, assignment, inbox events
@@ -109,7 +116,11 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await cmd(employee,tenantA,needId,{command:'mark_viewed',assignmentId})).status,200);
  assert.equal((await cmd(employee,tenantA,needId,{command:'mark_received',assignmentId})).status,200);
  assert.equal((await cmd(employee2,tenantA,needId,{command:'start_execution',assignmentId})).status,404);
- assert.equal((await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId})).status,200);
+ const started=await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId});
+ assert.equal(started.status,200);
+ assert.equal(started.body.orderStatus,'executing');
+ assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'executing',version:3});
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='start'",[orderId])).rows[0].n,1);
  inbox=await (await inboxGet(get(employee),tp(tenantA))).json();
  assert.deepEqual(inbox.items[0].events,['assigned','viewed','received']);assert.equal(inbox.items[0].status,'executing');
  // actuals stay separate from plan
