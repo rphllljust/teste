@@ -6,7 +6,7 @@ type Context={tenantId:string;needId:string;actorId:string;correlationId:string}
 const uuid=z.string().uuid();
 export const prepareServiceMeasurementInput=z.object({
  id:uuid,commandKey:uuid,description:z.string().trim().min(10).max(1000),
- amountCents:z.number().int().positive().max(2147483647),
+ amountCents:z.number().int().positive().max(21474836),
 }).strict();
 export const approveServiceMeasurementInput=z.object({
  commandKey:uuid,reason:z.string().trim().min(3).max(1000),
@@ -100,9 +100,11 @@ export async function prepareServiceMeasurement(q:Query,c:Context,p:Prepare){
   clientName:need.client_name,planRevision:Number(report.plan_revision),reportId:String(report.id),
   paymentMethod:commercial.payment_method,paymentTerms:commercial.payment_terms,
  };
+ // Commercial amounts are cents (1/100). Native finance amounts use 1/10,000.
+ // Convert exactly by *100; all generated native rows remain integral cents.
  const now=new Date().toISOString();
  await q(`INSERT INTO measurements(id,order_id,description,amount,status,version,created_at)
- VALUES($1,$2,$3,$4,'draft',1,$5)`,[p.id,need.order_id,p.description,p.amountCents,now]);
+ VALUES($1,$2,$3,$4,'draft',1,$5)`,[p.id,need.order_id,p.description,p.amountCents*100,now]);
  await q(`INSERT INTO svc_measurement_links(id,tenant_id,need_id,report_id,measurement_id,commercial_snapshot,executed_snapshot,proposed_amount_cents,created_by_actor_id,correlation_id)
  VALUES(gen_random_uuid(),$1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9)`,[
   c.tenantId,c.needId,report.id,p.id,JSON.stringify(snapshot),JSON.stringify(report.actual_snapshot),
@@ -149,12 +151,12 @@ export async function getServiceMeasurementDossier(q:Query,c:Context){
  const rows=await q(`SELECT l.measurement_id AS "measurementId",l.report_id AS "reportId",
  l.created_by_actor_id AS "preparedByActorId",l.created_at AS "preparedAt",
  l.commercial_snapshot AS "commercialSnapshot",l.executed_snapshot AS "executedSnapshot",
- m.description,m.amount AS "amountCents",m.status,m.version,
+ m.description,(m.amount/100)::integer AS "amountCents",m.status,m.version,
  a.approved_by_actor_id AS "approvedByActorId",a.reason AS "approvalReason",a.approved_at AS "approvedAt",
- i.id AS "invoiceId",i.amount AS "invoiceAmountCents",i.due_date AS "dueDate",
- rec.id AS "receivableId",rec.amount AS "receivableAmountCents",
+ i.id AS "invoiceId",(i.amount/100)::integer AS "invoiceAmountCents",i.due_date AS "dueDate",
+ rec.id AS "receivableId",(rec.amount/100)::integer AS "receivableAmountCents",
  COALESCE((SELECT sum(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END)
- FROM receivable_settlements s WHERE s.receivable_id=rec.id),0)::bigint AS "settledCents"
+ FROM receivable_settlements s WHERE s.receivable_id=rec.id),0)::bigint/100 AS "settledCents"
  FROM svc_measurement_links l JOIN measurements m ON m.id=l.measurement_id
  LEFT JOIN svc_measurement_approvals a ON a.measurement_id=m.id
  LEFT JOIN invoices i ON i.measurement_id=m.id
