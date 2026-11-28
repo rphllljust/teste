@@ -39,7 +39,7 @@ export async function getServiceControlTower(q:Query,c:Context){
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='draft')::int AS measurements_draft,
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='approved')::int AS awaiting_invoice,
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='billed')::int AS billed,
-  COALESCE(sum(CASE WHEN m.status='billed' THEN m.amount ELSE 0 END),0)::text AS billed_cents
+  (COALESCE(sum(CASE WHEN m.status='billed' THEN m.amount ELSE 0 END),0)::bigint/100)::text AS billed_cents
  FROM svc_needs n
  LEFT JOIN svc_measurement_links l ON l.tenant_id=n.tenant_id AND l.need_id=n.id
  LEFT JOIN measurements m ON m.id=l.measurement_id
