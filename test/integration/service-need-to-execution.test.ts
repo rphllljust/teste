@@ -186,7 +186,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(detail.fieldEvents.length,4);
  assert.equal(detail.additionalRequests[0].status,'approved');
  assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
- assert.equal(detail.additionals.length,2);assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,1);
+ assert.equal(detail.additionals.length,3,'reviewed request becomes authorized operational additional');assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,1);
  assert.deepEqual(detail.financials,{estimatedCostCents:120000,marginBps:2500});
  // costs/margins hidden from non-owners
  const adminView=await (await needDetail(get(admin),np(tenantA,needId))).json() as any;
