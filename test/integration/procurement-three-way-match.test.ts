@@ -6,6 +6,7 @@ import {closeDatabase} from '../../db/raw';
 import {setTestIdentity} from '../../lib/api/test-identity.mjs';
 import {POST as inventory} from '../../app/api/inventory/route';
 import {POST as procure} from '../../app/api/procurement/route';
+import {GET as purchaseDetail} from '../../app/api/procurement/[id]/route';
 import {POST as approve} from '../../app/api/procurement/[id]/commands/route';
 import {POST as receive} from '../../app/api/procurement/[id]/receipts/route';
 import {GET as supplierInvoiceDetails,POST as matchInvoice} from '../../app/api/procurement/[id]/supplier-invoice/route';
@@ -93,6 +94,17 @@ test('synthetic three-way: approved PO, two partial deliveries, exact invoice an
  const partial=await supplierMatch(actor,orderId,input);
  assert.equal((await expect(partial,409,'partial delivery')).code,'THREE_WAY_ORDER_NOT_READY');
  await receiveOrder(orderId,3,[{lineId:lineA,accepted:'2',rejected:'0'},{lineId:lineB,accepted:'1',rejected:'0'}]);
+ const realReceipt=await purchaseDetail(req(actor,'/api/procurement/'+orderId),
+  {params:Promise.resolve({id:orderId})});
+ assert.equal(realReceipt.status,200);
+ const receiptProof=await realReceipt.json() as {
+  reconciled:boolean;receiptEvidence:{reconciled:boolean;issues:unknown[];lineEvidence:Array<{stockQuantity:string;receivedQuantity:string}>};
+ };
+ assert.equal(receiptProof.reconciled,true,'stock must reconcile per PO line');
+ assert.deepEqual(receiptProof.receiptEvidence.issues,[]);
+ assert.equal(receiptProof.receiptEvidence.lineEvidence.length,2);
+ assert.ok(receiptProof.receiptEvidence.lineEvidence.every(
+  line=>line.stockQuantity===line.receivedQuantity));
 
  const badSupplier=await supplierMatch(actor,orderId,command(randomUUID(),'48.00','NF-CI-ERR',outsider));
  assert.equal((await expect(badSupplier,409,'supplier mismatch')).code,'SUPPLIER_MISMATCH');
@@ -156,6 +168,12 @@ test('a PO with rejected physical units cannot generate a payable even if status
  const rejectedOrderId=randomUUID(),lineId=randomUUID();
  await postOrder(rejectedOrderId,[{id:lineId,itemId:itemA,quantity:'2',unitPrice:'1.00'}]);
  await receiveOrder(rejectedOrderId,2,[{lineId,accepted:'1',rejected:'1'}]);
+ const rejectionProof=await purchaseDetail(req(actor,'/api/procurement/'+rejectedOrderId),
+  {params:Promise.resolve({id:rejectedOrderId})});
+ assert.equal(rejectionProof.status,200);
+ const rejectionDetail=await rejectionProof.json() as {reconciled:boolean;receiptEvidence:{issues:Array<{code:string}>}};
+ assert.equal(rejectionDetail.reconciled,false,'physical rejection must not count as successful stock reconciliation');
+ assert.ok(rejectionDetail.receiptEvidence.issues.some(x=>x.code==='REJECTED_QUANTITY'));
  const result=await supplierMatch(actor,rejectedOrderId,
   command(randomUUID(),'5.00','NF-CI-REJECTED'));
  assert.equal((await expect(result,409,'rejected quantity')).code,'THREE_WAY_RECEIPT_MISMATCH');
