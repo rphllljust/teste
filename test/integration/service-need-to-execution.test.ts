@@ -67,7 +67,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  await seed();
  // Three distinct personal credentials in disposable PostgreSQL; never provision real actors.
  const secret='Test-Only-Highly-Random-Session-Key-For-Full-Journey'.repeat(2);
- const personalEnv={RAILWAY_ENVIRONMENT_NAME:'staging',CISNE_STAGING_AUTH_MODE:'individual',
+ const personalEnv={...process.env,RAILWAY_ENVIRONMENT_NAME:'staging',CISNE_STAGING_AUTH_MODE:'individual',
   CISNE_STAGING_SESSION_SECRET:secret,CISNE_STAGING_ACTOR_ID:'shared-disabled-actor'};
  for(const [actor,handle] of [[abrahim,'test-owner-one'],[rafael,'test-owner-two'],[employee,'test-employee']] as const){
   const phrase='Synthetic-Only-Private-Password-2026-'+handle;
