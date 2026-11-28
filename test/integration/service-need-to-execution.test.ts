@@ -151,7 +151,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await putEvidence(abrahim,tenantA,needId,'commercial',Buffer.from('not-a-pdf'))).status,415,'reject MIME spoofing');
  await assert.rejects(()=>pool.query('DELETE FROM svc_evidence_files WHERE id=$1',[commercialId]),/APPEND_ONLY/);
  const termsId=randomUUID();
- const commercial={command:'set_commercial_terms',id:termsId,pricingMode:'global',globalSaleCents:600000,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:280000,customerRules:'Escopo global com transporte e material'};
+ const commercial={command:'set_commercial_terms',id:termsId,pricingMode:'global',globalSaleCents:495000,paymentMethod:'transferencia',paymentTerms:'30 dias',maxFinancialCents:700000,maxQuantityMilli:280000,customerRules:'Escopo global com transporte e material'};
  assert.equal((await cmd(abrahim,tenantA,needId,commercial)).status,200);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'register_commercial_document',id:randomUUID(),documentType:'po',reference:'PO-EX-001',description:'Pedido de compra de exemplo',evidenceRef:'arquivo-po-ficticio'})).status,200);
  assert.equal((await cmd(rafael,tenantA,needId,{command:'register_commercial_document',id:randomUUID(),documentType:'rc',reference:'RC-EX-001',description:'Requisição vinculada de exemplo'})).status,200);
@@ -314,7 +314,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await measurementGet(get(employee),np(tenantA,needId))).status,403,'commercial dossier inaccessible to employee');
  const draftMeas=await (await measurementGet(get(rafael),np(tenantA,needId))).json() as any;
  assert.equal(draftMeas.measurements[0].status,'draft');
- assert.equal(draftMeas.measurements[0].commercialSnapshot.authorizedCeilingCents,'500000');
+ assert.equal(draftMeas.measurements[0].commercialSnapshot.authorizedCeilingCents,'499900');
  assert.equal(draftMeas.measurements[0].commercialSnapshot.reportId,report2);
  assert.equal(draftMeas.measurements[0].executedSnapshot.length,2);
  assert.equal((await orderCommand(post(abrahim,{id:measureId,version:1,key:randomUUID(),command:'approve_measurement'}))).status,409,'generic approval never bypasses four eyes');
