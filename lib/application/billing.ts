@@ -68,7 +68,7 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
          FROM measurements m
          JOIN service_orders o ON o.id=m.order_id
         WHERE m.id=$1 AND (
-          (o.owner_id=$2 AND NOT EXISTS (SELECT 1 FROM svc_measurement_links l WHERE l.measurement_id=m.id))
+          (o.owner_id=$2 AND NOT EXISTS (SELECT 1 FROM svc_needs n WHERE n.order_id=o.id))
           OR EXISTS (
             SELECT 1 FROM svc_measurement_links l
             JOIN svc_needs n ON n.id=l.need_id AND n.tenant_id=l.tenant_id AND n.order_id=m.order_id
