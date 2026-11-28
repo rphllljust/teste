@@ -14,7 +14,8 @@ type Measurement={
  invoiceId:string|null;invoiceAmountCents:number|null;dueDate:string|null;
  receivableId:string|null;receivableAmountCents:number|null;settledCents:string;
 };
-type Dossier={status:string;orderId:string|null;measurements:Measurement[]};
+type Settlement={id:string;kind:'receipt'|'reversal';amountCents:number;effectiveDate:string;reference:string;createdAt:string;reversesId:string|null;reversed:boolean};
+type Dossier={status:string;orderId:string|null;measurements:Measurement[];canSettleReceivable:boolean;settlements:Settlement[]};
 const money=(cents:number|string)=>Number(cents||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL',minimumFractionDigits:2,maximumFractionDigits:2});
 function cents(text:string){
  const m=text.trim().match(/^(\d{1,10})(?:[,.](\d{1,2}))?$/);
@@ -30,6 +31,8 @@ export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}
  const [pending,setPending]=useState(false),[reload,setReload]=useState(0);
  const [amount,setAmount]=useState(''),[description,setDescription]=useState(''),[reason,setReason]=useState('');
  const [dueDate,setDueDate]=useState('');
+ const [receiptAmount,setReceiptAmount]=useState(''),[receiptReference,setReceiptReference]=useState('');
+ const [receiptDate,setReceiptDate]=useState(()=>new Date().toISOString().slice(0,10));
  const refresh=useCallback(()=>{setReload(v=>v+1);onRefresh();},[onRefresh]);
  useEffect(()=>{
   const ac=new AbortController();
@@ -57,6 +60,14 @@ export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}
   void command(base(tenantId,needId),{
    action:'prepare',id:crypto.randomUUID(),commandKey:crypto.randomUUID(),description:description.trim(),amountCents,
   },'Medição criada em rascunho. Outro controlador deve conferi-la e aprová-la.');
+ }
+ function collect(e:FormEvent<HTMLFormElement>,receivableId:string){
+  e.preventDefault();const amountCents=cents(receiptAmount);
+  if(amountCents===null){setError('Valor de recebimento inválido.');return;}
+  void command('/api/finance/receivables/settlements',{
+   receivableId,amount:String(amountCents*100),effectiveDate:receiptDate,
+   reference:receiptReference.trim(),commandKey:crypto.randomUUID(),
+  },'Recebimento aplicado ao título; saldo e razão devem ser conciliados no Financeiro.');
  }
  const current=data?.measurements[0];
  const canPrepare=data?.status==='completed'&&data.measurements.length===0;
@@ -107,6 +118,32 @@ export default function ServiceNeedsMeasurementPanel({tenantId,needId,onRefresh}
     <p><strong>Documento de cobrança:</strong> {current.invoiceId} · {money(current.invoiceAmountCents??0)} · vencimento {current.dueDate}</p>
     <p><strong>Conta a receber:</strong> {current.receivableId} · total {money(current.receivableAmountCents??0)} · liquidado {money(current.settledCents)}</p>
     <p>Saldo em aberto: {money(Math.max(0,Number(current.receivableAmountCents??0)-Number(current.settledCents)))}</p>
+    {data?.canSettleReceivable&&current.receivableId&&
+     Number(current.receivableAmountCents??0)>Number(current.settledCents)&&
+     <form className="enterprise-governance-panel" onSubmit={e=>collect(e,current.receivableId!)}>
+      <h4>Registrar recebimento comprovado</h4>
+      <p>Disponível somente à identidade titular do razão financeiro da OS. Não equivale a conciliação bancária nem a quitação presumida.</p>
+      <label>Valor efetivamente recebido (R$)<input required inputMode="decimal" value={receiptAmount}
+       onChange={e=>setReceiptAmount(e.target.value)} placeholder="1000,00"/></label>
+      <label>Data de crédito<input required type="date" value={receiptDate} onChange={e=>setReceiptDate(e.target.value)}/></label>
+      <label>Referência bancária / comprovante<input required minLength={1} maxLength={160}
+       value={receiptReference} onChange={e=>setReceiptReference(e.target.value)}/></label>
+      <button type="submit" className="primary" disabled={pending||cents(receiptAmount)===null||!receiptReference.trim()||!receiptDate}>
+       Registrar baixa financeira
+      </button>
+     </form>}
+    {!data?.canSettleReceivable&&<p>O recebimento é registrado no módulo financeiro pela identidade titular do razão contábil desta OS; o segundo controlador permanece com acesso de consulta.</p>}
+    {data?.canSettleReceivable&&data.settlements.length>0&&<details>
+     <summary>Histórico imutável de recebimentos e estornos · {data.settlements.length}</summary>
+     {data.settlements.map(s=><div key={s.id} className="enterprise-governance-panel">
+      <p><strong>{s.kind==='receipt'?'Recebimento':'Estorno'}:</strong> {money(s.amountCents)} · {s.effectiveDate} · {s.reference}
+       {s.reversed?' · já estornado':''}</p>
+      {s.kind==='receipt'&&!s.reversed&&<button type="button" disabled={pending}
+       onClick={()=>void command('/api/finance/receivables/settlements/'+encodeURIComponent(s.id)+'/reverse',{
+        commandKey:crypto.randomUUID(),effectiveDate:receiptDate,reference:'Estorno autorizado: '+s.reference.slice(0,130),
+       },'Estorno solicitado; a origem e a competência são validadas pelo razão contábil.')}>Estornar lançamento incorreto</button>}
+     </div>)}
+    </details>}
    </div>}
   </div>}
   <button type="button" disabled={pending} onClick={()=>setReload(x=>x+1)}>Atualizar medição e recebíveis</button>
