@@ -4,11 +4,11 @@ Base de referência: módulo nativo da onda 5, descendente de `main`
 Fonte: `app/page.tsx` (navegação por hash)  
 Escopo: inventário de navegação e integração com o dossiê empresarial autenticado (APIs próprias da onda 5).
 
-O contrato `test/enterprise-route-inventory.contract.test.mjs` verifica as 27 entradas de navegação, sua ordem, os componentes de destino e a consistência com este documento. Ele roda no gate `quality` e na verificação da branch `main`. A verificação é estática e não substitui testes de APIs, autorização, persistência e fluxos ponta a ponta.
+O contrato `test/enterprise-route-inventory.contract.test.mjs` verifica as 29 entradas de navegação, sua ordem, os componentes de destino e a consistência com este documento. Ele roda no gate `quality` e na verificação da branch `main`. A verificação é estática e não substitui testes de APIs, autorização, persistência e fluxos ponta a ponta.
 
 | Grupo | Entradas existentes |
 |---|---|
-| Início e operação | Visão operacional; Dossiês empresariais; Field Service Cockpit; Resource Planning Board; Ordens de serviço; Execução; Medições |
+| Início e operação | Visão operacional; Dossiês empresariais; Field Service Cockpit; Resource Planning Board; Ordens de serviço; Necessidades de serviço; Minha caixa de OS; Execução; Medições |
 | Comercial e relacionamento | CRM e Vendas; Clientes e propostas; Propostas e PO |
 | Contratos e suprimentos | Contratos; Compras; Estoque e compras |
 | Recursos e logística | Frota e ativos; Profissionais |

@@ -1,0 +1,177 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- dynamic SQL rows and JSON test payloads */
+import test,{after} from 'node:test';
+import assert from 'node:assert/strict';
+import {randomUUID} from 'node:crypto';
+import {Pool} from 'pg';
+import {closeDatabase} from '../../db/raw';
+import {setTestIdentity} from '../../lib/api/test-identity.mjs';
+import {GET as listNeeds,POST as postNeed} from '../../app/api/enterprise/tenants/[id]/service-needs/route';
+import {GET as needDetail} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/route';
+import {POST as command} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/commands/route';
+import {POST as linkEmployee} from '../../app/api/enterprise/tenants/[id]/employee-links/route';
+import {GET as inboxGet} from '../../app/api/enterprise/tenants/[id]/employee-inbox/route';
+import {POST as orderCommand} from '../../app/api/commands/route';
+
+if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
+const u=new URL(process.env.DATABASE_URL);
+if(!['127.0.0.1','localhost'].includes(u.hostname)||!['/cisne_test','/cisne_ci'].includes(u.pathname))throw new Error('NO-GO: refuses non-disposable database');
+const pool=new Pool({connectionString:process.env.DATABASE_URL,max:4});
+// Synthetic fictional identities only.
+const abrahim=randomUUID(),rafael=randomUUID(),admin=randomUUID(),employee=randomUUID(),employee2=randomUUID(),outsider=randomUUID(),otherOwner=randomUUID();
+const tenantA=randomUUID(),tenantB=randomUUID(),professional=randomUUID(),professional2=randomUUID();
+const now=new Date().toISOString();
+const tp=(t:string)=>({params:Promise.resolve({id:t})});
+const np=(t:string,n:string)=>({params:Promise.resolve({id:t,needId:n})});
+const post=(who:string,body:unknown)=>setTestIdentity(new Request('http://localhost/x',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)}),who);
+const get=(who:string)=>setTestIdentity(new Request('http://localhost/x'),who);
+const cmd=async(who:string,t:string,n:string,body:Record<string,unknown>)=>{const r=await command(post(who,{commandKey:randomUUID(),...body}),np(t,n));return {status:r.status,body:await r.json() as Record<string,any>};};
+const needBody=(id:string)=>({id,commandKey:randomUUID(),channel:'whatsapp',originRef:'ficticio-0001',clientName:'Cliente Ficticio Ltda',contactName:'Contato Ficticio',
+ contactEmail:'contato@exemplo.invalid',serviceDescription:'Manutenção preventiva fictícia',location:'Local ficticio A',requestedDate:'2026-12-10',priority:'high',
+ proposalRef:'PROP-F-1',contractRef:'CT-F-1',poRef:'PO-F-1',rcRef:'RC-F-1',commercialTerms:'30 dias fictícios',commercialLimitCents:500000});
+
+async function seed(){
+ for(const [t,s] of [[tenantA,'a'],[tenantB,'b']])await pool.query("INSERT INTO enterprise_tenants(id,slug,name,created_by,created_at) VALUES($1,$2,$3,$4,$5)",[t,'svc-'+s+'-'+t.slice(0,8),'Empresa Ficticia '+s,abrahim,now]);
+ const m=(t:string,a:string,r:string)=>pool.query("INSERT INTO enterprise_tenant_memberships(tenant_id,actor_id,role,created_at) VALUES($1,$2,$3,$4)",[t,a,r,now]);
+ await m(tenantA,abrahim,'owner');await m(tenantA,rafael,'owner');await m(tenantA,admin,'admin');await m(tenantA,employee,'operator');await m(tenantA,employee2,'operator');
+ await m(tenantB,otherOwner,'owner');
+ await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=$1,identity_state='verified' WHERE owner_key='abrahim'",[abrahim]);
+ await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=$1,identity_state='verified' WHERE owner_key='rafael'",[rafael]);
+ for(const [p,reg] of [[professional,'F-1'],[professional2,'F-2']])
+  await pool.query("INSERT INTO professionals(id,owner_id,name,registration,specialty,department,status,created_at,updated_at) VALUES($1,$2,'Profissional Ficticio',$3,'Field','Ops','active',$4,$4)",[p,abrahim,reg+p.slice(0,6),now]);
+}
+after(async()=>{
+ await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=NULL,identity_state='unlinked'");
+ await closeDatabase();await pool.end();
+});
+
+test('migration 0034 is registered and recorded',async()=>{
+ const r=await pool.query("SELECT 1 FROM _cisne_schema_migrations WHERE id='0034_service_need_to_execution'");
+ assert.equal(r.rowCount,1);
+});
+
+test('full journey: intake, owner decision, draft OS, plan, release, assignment, receipt, execution, additionals',async()=>{
+ await seed();
+ const needId=randomUUID();
+ // (1) intake with channel/refs/terms
+ const r=await postNeed(post(admin,needBody(needId)),tp(tenantA));assert.equal(r.status,201,JSON.stringify(await r.clone().json()));
+ const body=needBody(needId);
+ const replayed=await postNeed(post(admin,{...body,commandKey:(await pool.query('SELECT command_key FROM svc_need_events WHERE need_id=$1',[needId])).rows[0].command_key}),tp(tenantA));
+ assert.equal(replayed.status,201);assert.equal((await replayed.json() as any).replayed,true);
+ const q=await listNeeds(get(abrahim),tp(tenantA));const items=(await q.json() as any).items;
+ assert.equal(items.length,1);assert.equal(items[0].channel,'whatsapp');assert.equal(items[0].poRef,'PO-F-1');assert.equal(items[0].commercialLimitCents,500000);
+ // (2) analysis and decision: admin may analyze but never approve; employee/outsider cannot
+ assert.equal((await cmd(admin,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(admin,tenantA,needId,{command:'approve',reason:'tentativa de admin'})).status,403);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'approve',reason:'tentativa de empregado'})).status,403);
+ assert.equal((await cmd(outsider,tenantA,needId,{command:'approve',reason:'fora do tenant'})).status,404);
+ assert.equal((await cmd(otherOwner,tenantA,needId,{command:'approve',reason:'owner de outro tenant'})).status,404);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'convert',orderId:randomUUID()})).status,409,'cannot convert before approval');
+ const approvalKey=randomUUID();
+ const approval={command:'approve',commandKey:approvalKey,reason:'Escopo e limite conferidos',financials:{estimatedCostCents:120000,marginBps:2500}};
+ assert.equal((await cmd(rafael,tenantA,needId,approval)).status,200);
+ const approvalReplay=await cmd(rafael,tenantA,needId,approval);
+ assert.equal(approvalReplay.status,200,'same command key must replay without executing again');
+ assert.equal(approvalReplay.body.replayed,true);
+ assert.equal((await cmd(rafael,tenantA,needId,{command:'reject',commandKey:approvalKey,reason:'outra operacao'})).status,409,'same key cannot authorize a different command');
+ assert.equal((await pool.query('SELECT count(*)::int AS n FROM svc_need_events WHERE tenant_id=$1 AND command_key=$2',[tenantA,approvalKey])).rows[0].n,1,'replay cannot duplicate audit');
+ // (3) conversion creates only a DRAFT order
+ const orderId=randomUUID();
+ assert.equal((await cmd(admin,tenantA,needId,{command:'convert',orderId})).status,403,'admin cannot become owner of OS');
+ const conv=await cmd(abrahim,tenantA,needId,{command:'convert',orderId});assert.equal(conv.status,200);assert.equal(conv.body.orderStatus,'draft');
+ assert.equal((await pool.query('SELECT status FROM service_orders WHERE id=$1',[orderId])).rows[0].status,'draft');
+ // (4) planning separate from actuals; (5) explicit release before assignment
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'assign',employeeActorId:employee})).status,409,'no assignment before release');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,409,'release needs a plan');
+ const plan=await cmd(admin,tenantA,needId,{command:'set_plan',lines:[
+  {kind:'team',resourceRef:'Equipe A',quantityMilli:2000,unit:'pessoa'},{kind:'vehicle',resourceRef:'Veículo ficticio V1',quantityMilli:1000,unit:'un'},
+  {kind:'material',resourceRef:'Material M1',quantityMilli:5500,unit:'kg'},{kind:'hours',resourceRef:'Horas campo',quantityMilli:16000,unit:'h'}]});
+ assert.equal(plan.status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,409,'release requires canonical OS authorization');
+ const auth=await orderCommand(post(abrahim,{id:orderId,version:1,key:randomUUID(),command:'authorize'}));
+ assert.equal(auth.status,201,JSON.stringify(await auth.clone().json()));
+ assert.equal((await cmd(admin,tenantA,needId,{command:'release'})).status,403,'admin cannot release');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'release'})).status,200);
+ const bypass=await orderCommand(post(abrahim,{id:orderId,version:2,key:randomUUID(),command:'start'}));
+ assert.equal(bypass.status,409,'canonical start cannot bypass employee receipt');
+ assert.equal((await cmd(admin,tenantA,needId,{command:'set_plan',lines:[{kind:'team',resourceRef:'x',quantityMilli:1,unit:'p'}]})).status,409,'plan frozen');
+ await assert.rejects(()=>pool.query('DELETE FROM svc_plan_lines WHERE need_id=$1',[needId]),/APPEND_ONLY/);
+ // (6) authenticated link, assignment, inbox events
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'assign',employeeActorId:employee})).status,409,'unlinked employee');
+ const lk=(who:string,actorId:string,prof:string)=>linkEmployee(post(who,{commandKey:randomUUID(),employeeActorId:actorId,professionalId:prof}),tp(tenantA));
+ assert.equal((await lk(admin,employee,professional)).status,403);
+ assert.equal((await lk(abrahim,outsider,professional)).status,404,'link target must be tenant member');
+ assert.equal((await lk(rafael,employee,professional)).status,201);
+ assert.equal((await lk(rafael,employee,professional2)).status,409);
+ const asg=await cmd(rafael,tenantA,needId,{command:'assign',employeeActorId:employee});assert.equal(asg.status,200);
+ const assignmentId=asg.body.assignmentId as string;
+ let inbox=await (await inboxGet(get(employee),tp(tenantA))).json() as any;
+ assert.deepEqual(inbox.items[0].events,['assigned']);
+ assert.ok(!('commercialLimitCents' in inbox.items[0])&&!('commercialTerms' in inbox.items[0]));
+ assert.equal((await (await inboxGet(get(employee2),tp(tenantA))).json() as any).items.length,0,'other employee sees nothing');
+ // (7) execution only after receipt, only by the assigned employee
+ assert.equal((await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId})).status,409,'not received yet');
+ assert.equal((await cmd(employee,tenantA,needId,{command:'mark_received',assignmentId})).status,409,'must view first');
+ assert.equal((await cmd(employee2,tenantA,needId,{command:'mark_viewed',assignmentId})).status,404,'not own assignment');
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'mark_received',assignmentId})).status,404,'owner cannot fake receipt');
+ assert.equal((await cmd(employee,tenantA,needId,{command:'mark_viewed',assignmentId})).status,200);
+ assert.equal((await cmd(employee,tenantA,needId,{command:'mark_received',assignmentId})).status,200);
+ assert.equal((await cmd(employee2,tenantA,needId,{command:'start_execution',assignmentId})).status,404);
+ const started=await cmd(employee,tenantA,needId,{command:'start_execution',assignmentId});
+ assert.equal(started.status,200);
+ assert.equal(started.body.orderStatus,'executing');
+ assert.deepEqual((await pool.query('SELECT status,version FROM service_orders WHERE id=$1',[orderId])).rows[0],{status:'executing',version:3});
+ assert.equal((await pool.query("SELECT count(*)::int AS n FROM order_events WHERE order_id=$1 AND command='start'",[orderId])).rows[0].n,1);
+ inbox=await (await inboxGet(get(employee),tp(tenantA))).json();
+ assert.deepEqual(inbox.items[0].events,['assigned','viewed','received']);assert.equal(inbox.items[0].status,'executing');
+ // actuals stay separate from plan
+ const act=await cmd(employee,tenantA,needId,{command:'record_actual',assignmentId,id:randomUUID(),line:{kind:'hours',resourceRef:'Horas campo',quantityMilli:17500,unit:'h'}});
+ assert.equal(act.status,200);
+ // (8) additionals: append-only, owner-authorized, reason and evidence, history preserved
+ const add1=randomUUID(),add2=randomUUID();
+ const mk=(who:string,id:string,sup:string|null)=>cmd(who,tenantA,needId,{command:'add_additional',id,supersedesId:sup,description:'Escavação extra fictícia',reason:'Obstrução não prevista',evidenceRef:'foto-ficticia-001'});
+ assert.equal((await mk(employee,add1,null)).status,403,'employee cannot self-authorize');
+ assert.equal((await mk(abrahim,add1,null)).status,200);
+ assert.equal((await mk(rafael,add2,add1)).status,200);
+ await assert.rejects(()=>pool.query("UPDATE svc_additionals SET reason='x' WHERE id=$1",[add1]),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('DELETE FROM svc_additionals WHERE id=$1',[add1]),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('UPDATE svc_actual_lines SET quantity_milli=1'),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('DELETE FROM svc_inbox_events'),/APPEND_ONLY/);
+ await assert.rejects(()=>pool.query('UPDATE svc_need_events SET actor_id=$1 WHERE need_id=$2',['forged',needId]),/APPEND_ONLY/);
+ // audit trail records the real actors, kept separate from tenant
+ const detail=await (await needDetail(get(rafael),np(tenantA,needId))).json() as any;
+ assert.deepEqual(detail.events.map((e:any)=>e.event),['received','analysis_started','approved','converted_to_draft_order','plan_set','released','assigned','viewed','received','execution_started','actual_recorded','additional_recorded','additional_recorded']);
+ assert.equal(detail.events.find((e:any)=>e.event==='approved').actorId,rafael);
+ assert.equal(detail.additionals.length,2);assert.equal(detail.planned.length,4);assert.equal(detail.actual.length,1);
+ assert.deepEqual(detail.financials,{estimatedCostCents:120000,marginBps:2500});
+ // costs/margins hidden from non-owners
+ const adminView=await (await needDetail(get(admin),np(tenantA,needId))).json() as any;
+ assert.ok(!('financials' in adminView));
+ assert.equal((await needDetail(get(employee),np(tenantA,needId))).status,403);
+ assert.equal((await needDetail(get(outsider),np(tenantA,needId))).status,404);
+ // no fiscal side effects
+ const fiscal=await pool.query("SELECT to_regclass('public.fiscal_documents') IS NOT NULL AS has");
+ if(fiscal.rows[0].has)assert.equal((await pool.query('SELECT count(*)::int AS n FROM fiscal_documents')).rows[0].n,0);
+});
+
+test('tenant isolation: tenant B cannot read, list, or command tenant A needs; orphan rows are impossible',async()=>{
+ const needId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await needDetail(get(otherOwner),np(tenantB,needId))).status,404,'cross-tenant id probe');
+ assert.equal((await needDetail(get(otherOwner),np(tenantA,needId))).status,404);
+ assert.equal((await (await listNeeds(get(otherOwner),tp(tenantB))).json() as any).items.length,0);
+ assert.equal((await cmd(otherOwner,tenantB,needId,{command:'start_analysis'})).status,404);
+ assert.equal((await postNeed(post(otherOwner,needBody(randomUUID())),tp(tenantA))).status,404);
+ assert.equal((await postNeed(setTestIdentity(new Request('http://localhost/x',{method:'POST',body:'{}'}),outsider),tp(tenantA))).status,400);
+ await assert.rejects(()=>pool.query("INSERT INTO svc_needs(id,tenant_id,channel,origin_ref,client_name,contact_name,service_description,location,requested_date,priority,created_by_actor_id) VALUES(gen_random_uuid(),NULL,'phone','x','Cli','Con','desc','loc','2026-12-01','low','a')"),/null value/);
+ await assert.rejects(()=>pool.query("INSERT INTO svc_needs(id,tenant_id,channel,origin_ref,client_name,contact_name,service_description,location,requested_date,priority,created_by_actor_id) VALUES(gen_random_uuid(),$1,'phone','x','Cli','Con','desc','loc','2026-12-01','low','')",[tenantA]),/check/);
+ // unauthenticated
+ assert.equal((await listNeeds(new Request('http://localhost/x'),tp(tenantA))).status,401);
+});
+
+test('unverified owner declarations grant nothing (fail closed)',async()=>{
+ await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=NULL,identity_state='unlinked'");
+ const needId=randomUUID();
+ assert.equal((await postNeed(post(abrahim,needBody(needId)),tp(tenantA))).status,201);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'start_analysis'})).status,200);
+ assert.equal((await cmd(abrahim,tenantA,needId,{command:'approve',reason:'sem verificacao'})).status,403);
+});
