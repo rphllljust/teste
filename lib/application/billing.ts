@@ -67,8 +67,21 @@ export async function billApprovedMeasurement(context: RequestContext, input: Bi
       `SELECT m.id,m.order_id,m.amount,m.status,m.version,o.owner_id
          FROM measurements m
          JOIN service_orders o ON o.id=m.order_id
-        WHERE m.id=$1 AND o.owner_id=$2
-        FOR UPDATE`,
+        WHERE m.id=$1 AND (
+          (o.owner_id=$2 AND NOT EXISTS (SELECT 1 FROM svc_measurement_links l WHERE l.measurement_id=m.id))
+          OR EXISTS (
+            SELECT 1 FROM svc_measurement_links l
+            JOIN svc_needs n ON n.id=l.need_id AND n.tenant_id=l.tenant_id AND n.order_id=m.order_id
+            JOIN svc_measurement_approvals a ON a.measurement_id=l.measurement_id AND a.need_id=l.need_id
+            JOIN enterprise_tenant_memberships tm
+              ON tm.tenant_id=l.tenant_id AND tm.actor_id=$2 AND tm.role='owner' AND tm.status='active'
+            JOIN enterprise_tenants t ON t.id=tm.tenant_id AND t.status='active'
+            JOIN cisne_erp_owner_declarations d
+              ON d.identity_actor_id=$2 AND d.identity_state='verified' AND d.owner_key IN ('abrahim','rafael')
+           WHERE l.measurement_id=m.id AND n.status='completed'
+          )
+        )
+        FOR UPDATE OF m`,
       [input.measurementId, context.actorId],
     );
     if (!locked.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Medição não encontrada.');
