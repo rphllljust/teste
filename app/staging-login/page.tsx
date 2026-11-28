@@ -9,7 +9,8 @@ export default function StagingLogin(){
   let mounted=true;
   void fetch('/api/auth/staging-login',{cache:'no-store',credentials:'same-origin'})
    .then(r=>r.json())
-   .then((x:{authenticated?:boolean;authMode?:string})=>{
+   .then((data:unknown)=>{
+    const x=data as {authenticated?:boolean;authMode?:string};
     if(!mounted)return;
     setMode(x.authMode==='individual'?'individual':'shared');
     if(x.authenticated)window.location.replace('/');
