@@ -55,6 +55,17 @@ async function seed(){
  await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=$1,identity_state='verified' WHERE owner_key='rafael'",[rafael]);
  for(const [p,reg] of [[professional,'F-1'],[professional2,'F-2']])
   await pool.query("INSERT INTO professionals(id,owner_id,name,registration,specialty,department,status,created_at,updated_at) VALUES($1,$2,'Profissional Ficticio',$3,'Field','Ops','active',$4,$4)",[p,abrahim,reg+p.slice(0,6),now]);
+ // Completely synthetic but fully posted AR/revenue chart rules for both controllers.
+ for(const actor of [abrahim,rafael]){
+  const debit=randomUUID(),credit=randomUUID();
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Accounts receivable','asset',1,$3,$4,$5)",
+   [debit,'AR-'+actor.slice(0,8),now,actor,'synthetic-gl-ar']);
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Service revenue','revenue',1,$3,$4,$5)",
+   [credit,'RV-'+actor.slice(0,8),now,actor,'synthetic-gl-revenue']);
+  await pool.query("INSERT INTO accounting_posting_rules(id,actor_id,source_type,debit_account_id,credit_account_id,active,row_version,created_at,updated_at) VALUES($1,$2,'invoice_billing',$3,$4,1,1,$5,$5)",
+   [randomUUID(),actor,debit,credit,now]);
+ }
+
 }
 after(async()=>{
  await pool.query("UPDATE cisne_erp_owner_declarations SET identity_actor_id=NULL,identity_state='unlinked'");
@@ -313,6 +324,8 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const billingBody=await billed.json() as any;
  assert.ok(billingBody.resource?.invoiceId,'invoice identity must exist');
  assert.ok(billingBody.resource?.receivableId,'receivable identity must exist');
+ assert.equal(billingBody.resource.accounting.status,'auto_posted','real configured dual-control AR/revenue rule must post the journal atomically');
+ assert.ok(billingBody.resource.accounting.journalId,'journal must be linked in billing transaction');
  assert.equal((await orderCommand(post(rafael,invoiceCommand))).status,200,'same controller invoice replay');
  const dossier=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(dossier.measurements[0].status,'billed');
