@@ -1,10 +1,11 @@
 'use client';
-import {useState,type FormEvent} from 'react';
+import {useEffect,useState,type FormEvent} from 'react';
 import ServiceEvidenceAttachmentsPanel from './ServiceEvidenceAttachmentsPanel';
 
 type Plan={kind:string;resourceRef:string;quantityMilli:string;unit:string};
 const items=[['team','Equipe'],['vehicle','Veículo'],['equipment','Equipamento'],['material','Material'],['hours','Horas'],['quantity','Quantidade']] as const;
 const fieldTypes=[['observation','Observação'],['occurrence','Ocorrência'],['pause','Paralisação'],['resume','Retomada'],['odometer','Odômetro / km'],['hourmeter','Horímetro'],['photo','Fotografia'],['document','Documento']] as const;
+type FieldState={status:string;paused:boolean;canRecordProduction:boolean;canSubmitReport:boolean;policy:string};
 const additions=[['labor','Mão de obra'],['vehicle','Veículo'],['equipment','Equipamento'],['material','Material'],['transport','Transporte'],['daily','Diária'],['hour','Hora'],['displacement','Deslocamento'],['service','Serviço adicional'],['other','Outro']] as const;
 function milli(value:string):number|null{
  const m=value.trim().match(/^(\d{1,9})(?:[,.](\d{1,3}))?$/);
@@ -22,6 +23,18 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
  tenantId:string;needId:string;assignmentId:string;planned:Plan[];onRefresh:()=>void;
 }){
  const [busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
+ const [fieldState,setFieldState]=useState<FieldState|null>(null),[revision,setRevision]=useState(0);
+ useEffect(()=>{
+  const ac=new AbortController();
+  const url='/api/enterprise/tenants/'+encodeURIComponent(tenantId)+'/service-needs/'+encodeURIComponent(needId)+
+   '/commands?assignmentId='+encodeURIComponent(assignmentId);
+  void fetch(url,{credentials:'same-origin',cache:'no-store',signal:ac.signal}).then(async r=>{
+   const x=await r.json() as FieldState&{error?:string};
+   if(!r.ok)throw Error(x.error??'Prévia de campo indisponível.');
+   if(!ac.signal.aborted){setFieldState(x);setError('');}
+  }).catch(e=>{if(!ac.signal.aborted){setFieldState(null);setError(e instanceof Error?e.message:'Falha ao consultar estado de campo.');}});
+  return()=>ac.abort();
+ },[tenantId,needId,assignmentId,revision]);
  const [kind,setKind]=useState('hours'),[resourceRef,setResourceRef]=useState(''),[quantity,setQuantity]=useState('1'),[unit,setUnit]=useState('h');
  const [fieldType,setFieldType]=useState('observation'),[description,setDescription]=useState(''),[fieldQuantity,setFieldQuantity]=useState(''),[fieldUnit,setFieldUnit]=useState(''),[evidenceRef,setEvidenceRef]=useState('');
  const [additionalKind,setAdditionalKind]=useState('hour'),[additionalDescription,setAdditionalDescription]=useState(''),[reason,setReason]=useState(''),[additionalQuantity,setAdditionalQuantity]=useState('1'),[additionalUnit,setAdditionalUnit]=useState('h'),[additionalEvidence,setAdditionalEvidence]=useState('');
@@ -35,12 +48,14 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
    });
    const result=await response.json() as {error?:string};
    if(!response.ok)throw Error(result.error??'Não foi possível registrar a operação.');
-   setNotice('Registro salvo com responsável, data e trilha de auditoria.');onRefresh();
+   setNotice('Registro salvo com responsável, data e trilha de auditoria.');setRevision(v=>v+1);onRefresh();
   }catch(e){setError(e instanceof Error?e.message:'Falha ao registrar.');}
   finally{setBusy(false);}
  };
  const actual=(e:FormEvent<HTMLFormElement>)=>{
-  e.preventDefault();const q=milli(quantity);
+  e.preventDefault();
+  if(!fieldState?.canRecordProduction){setError('Produção bloqueada: retome a execução e consulte o estado da OS.');return;}
+  const q=milli(quantity);
   if(q===null){setError('Quantidade inválida. Utilize até três casas decimais.');return;}
   void send('record_actual',{id:crypto.randomUUID(),assignmentId,line:{kind,resourceRef,quantityMilli:q,unit}});
  };
@@ -48,6 +63,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
   e.preventDefault();
   const meter=['odometer','hourmeter'].includes(fieldType);
   const q=meter?nonNegativeMilli(fieldQuantity):null;
+  if(meter&&!fieldState?.canRecordProduction){setError('Não registre medidores enquanto a operação estiver paralisada.');return;}
   if((meter&&(!fieldUnit.trim()||q===null))||(['photo','document'].includes(fieldType)&&evidenceRef.trim().length<3)){
    setError('Informe medidor e unidade ou referência documental, conforme o tipo de evento.');return;
   }
@@ -60,12 +76,19 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
  };
  const finish=(e:FormEvent<HTMLFormElement>)=>{
   e.preventDefault();
+  if(!fieldState?.canSubmitReport){setError('Retome a execução antes do relatório final.');return;}
   if(reportSummary.trim().length<10){setError('Descreva o trabalho concluído com pelo menos 10 caracteres.');return;}
   void send('submit_work_report',{id:crypto.randomUUID(),assignmentId,summary:reportSummary.trim(),evidenceRef:reportEvidence||null});
  };
  return <section className="enterprise-governance-panel" aria-label="Apontamentos de execução">
   <h4>Execução de campo · registros verificáveis</h4>
   <p>O apontamento não modifica o plano original. Custos, margens e preços comerciais não são disponibilizados ao empregado.</p>
+  {fieldState?<div role={fieldState.paused?'alert':'status'} className="planning-ledger-note">
+   <strong>{fieldState.paused?'Execução paralisada':'Execução '+fieldState.status}</strong>
+   <p>{fieldState.paused?'Produção e medidores bloqueados. Registre ocorrências de segurança e retome antes de apontar.':'O servidor revalida permissões e recursos em cada comando.'}</p>
+   <small>{fieldState.policy}</small>
+  </div>:<p role={error?'alert':'status'}>Estado de campo ainda não validado.</p>}
+  <button type="button" className="secondary" disabled={busy} onClick={()=>setRevision(v=>v+1)}>Verificar estado de campo</button>
   {error&&<p role="alert" className="form-error">{error}</p>}
   {notice&&<p role="status" className="linked-info">{notice}</p>}
   <details><summary>Plano recebido · {planned.length} itens</summary>
@@ -79,7 +102,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
      <label>Quantidade real<input value={quantity} onChange={e=>setQuantity(e.target.value)} required placeholder="10,000"/></label>
      <label>Unidade<input value={unit} onChange={e=>setUnit(e.target.value)} required maxLength={20}/></label>
     </div>
-    <button className="primary" disabled={busy}>Registrar execução real</button>
+    <button className="primary" disabled={busy||!fieldState?.canRecordProduction}>Registrar execução real</button>
    </form>
   </details>
   <ServiceEvidenceAttachmentsPanel tenantId={tenantId} needId={needId} category="field" onUploaded={ref=>{setEvidenceRef(ref);setAdditionalEvidence(ref);setReportEvidence(ref);}}/>
@@ -119,7 +142,7 @@ export default function ServiceNeedEmployeeFieldPanel({tenantId,needId,assignmen
      value={reportSummary} onChange={e=>setReportSummary(e.target.value)} placeholder="Descreva os serviços realizados, diferenças e condições finais."/></label>
     <label>Referência de evidência operacional (opcional conforme a OS)<input maxLength={500}
      value={reportEvidence} onChange={e=>setReportEvidence(e.target.value)} placeholder="cisne-file:..."/></label>
-    <button type="submit" className="primary" disabled={busy||reportSummary.trim().length<10}>Enviar relatório para aceite administrativo</button>
+    <button type="submit" className="primary" disabled={busy||!fieldState?.canSubmitReport||reportSummary.trim().length<10}>Enviar relatório para aceite administrativo</button>
    </form>
   </details>
  </section>;
