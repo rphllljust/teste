@@ -39,10 +39,18 @@ export async function getServiceControlTower(q:Query,c:Context){
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='draft')::int AS measurements_draft,
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='approved')::int AS awaiting_invoice,
   count(*) FILTER(WHERE l.measurement_id IS NOT NULL AND m.status='billed')::int AS billed,
-  (COALESCE(sum(CASE WHEN m.status='billed' THEN m.amount ELSE 0 END),0)::bigint/100)::text AS billed_cents
+  (COALESCE(sum(CASE WHEN m.status='billed' THEN m.amount ELSE 0 END),0)::bigint/100)::text AS billed_cents,
+  (COALESCE(sum(COALESCE((SELECT sum(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END)
+     FROM receivable_settlements s WHERE s.receivable_id=rec.id),0)),0)::bigint/100)::text AS received_cents,
+  count(*) FILTER(WHERE rec.id IS NOT NULL AND rec.amount>COALESCE(
+     (SELECT sum(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END) FROM receivable_settlements s WHERE s.receivable_id=rec.id),0))::int AS open_receivables,
+  count(*) FILTER(WHERE rec.id IS NOT NULL AND rec.due_date<current_date::text AND rec.amount>COALESCE(
+     (SELECT sum(CASE WHEN s.kind='receipt' THEN s.amount ELSE -s.amount END) FROM receivable_settlements s WHERE s.receivable_id=rec.id),0))::int AS overdue_receivables
  FROM svc_needs n
  LEFT JOIN svc_measurement_links l ON l.tenant_id=n.tenant_id AND l.need_id=n.id
  LEFT JOIN measurements m ON m.id=l.measurement_id
+ LEFT JOIN invoices i ON i.measurement_id=m.id
+ LEFT JOIN receivables rec ON rec.invoice_id=i.id
  WHERE n.tenant_id=$1`,[c.tenantId]);
  const pending=await q(`SELECT count(*)::int AS n FROM svc_additional_requests r
  WHERE r.tenant_id=$1 AND NOT EXISTS(SELECT 1 FROM svc_additional_decisions d WHERE d.request_id=r.id)`,[c.tenantId]);
