@@ -28,7 +28,11 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
     const { page, pageSize, state, q, resourceKind } = parsed.data;
     const offset = (page - 1) * pageSize;
     const from = 'FROM execution_entries e JOIN service_orders o ON o.id=e.order_id WHERE e.order_id=? AND o.owner_id=?';
-    const stateFilter = state === 'active' ? "e.kind='report' AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)" : "e.kind='report' AND EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)";
+    // Active execution rows already consumed by a measurement remain part of
+    // the audit history, but are not eligible as a source for another one.
+    const stateFilter = state === 'active'
+      ? "e.kind='report' AND NOT EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id) AND NOT EXISTS (SELECT 1 FROM measurements m WHERE m.execution_entry_id=e.id)"
+      : "e.kind='report' AND EXISTS (SELECT 1 FROM execution_entries reversal WHERE reversal.reverses_id=e.id)";
     const conditions = [stateFilter];
     const values = [id, context.actorId];
     if (q) {
