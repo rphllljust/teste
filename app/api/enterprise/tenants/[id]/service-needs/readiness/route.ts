@@ -1,7 +1,7 @@
 import {z} from 'zod';
-import {database} from '../../../../../../../../db/raw';
-import {ApiError,failure,requestContext,respond,type RequestContext} from '../../../../../../../../lib/api/http';
-import {serviceGoReadiness} from '../../../../../../../../lib/application/service-go-readiness';
+import {database} from '../../../../../../../db/raw';
+import {ApiError,failure,requestContext,respond,type RequestContext} from '../../../../../../../lib/api/http';
+import {serviceGoReadiness} from '../../../../../../../lib/application/service-go-readiness';
 
 export const dynamic='force-dynamic';
 export async function GET(request:Request,route:{params:Promise<{id:string}>}){
