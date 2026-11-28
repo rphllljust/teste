@@ -336,12 +336,15 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
     const prices=await q('SELECT count(*)::int AS n,count(*) FILTER(WHERE sale_unit_price_cents IS NULL)::int AS missing FROM svc_commercial_price_lines p WHERE tenant_id=$1 AND need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]);
     if(!prices.rows[0]?.n||prices.rows[0]?.missing)throw new ApiError(409,'INVALID_STATE','Regime itemizado exige preços de venda em todas as linhas ativas.');
    }
-   if(terms.rows[0]?.pricing_mode==='global'&&terms.rows[0].max_financial_cents!=null&&BigInt(terms.rows[0].global_sale_cents)>BigInt(terms.rows[0].max_financial_cents))
-    throw new ApiError(409,'COMMERCIAL_LIMIT','Preço global excede o limite comercial.');
-   if(terms.rows[0]?.pricing_mode==='itemized'&&terms.rows[0].max_financial_cents!=null){
+   const ceilings=[terms.rows[0]?.max_financial_cents,need.commercial_limit_cents]
+    .filter((v:unknown)=>v!=null).map((v:unknown)=>BigInt(String(v)));
+   const ceiling=ceilings.length?ceilings.reduce((a,b)=>a<b?a:b):null;
+   if(terms.rows[0]?.pricing_mode==='global'&&ceiling!=null&&BigInt(terms.rows[0].global_sale_cents)>ceiling)
+    throw new ApiError(409,'COMMERCIAL_LIMIT','Preço global excede o limite comercial registrado ou o teto do cliente.');
+   if(terms.rows[0]?.pricing_mode==='itemized'&&ceiling!=null){
     const total=await q('SELECT COALESCE(sum(round(p.quantity_milli::numeric*p.sale_unit_price_cents/1000)),0)::text AS total FROM svc_commercial_price_lines p WHERE p.tenant_id=$1 AND p.need_id=$2 AND NOT EXISTS(SELECT 1 FROM svc_commercial_price_lines s WHERE s.supersedes_id=p.id)',[c.tenantId,needId]);
-    if(BigInt(total.rows[0].total)>BigInt(terms.rows[0].max_financial_cents))
-     throw new ApiError(409,'COMMERCIAL_LIMIT','O total itemizado excede o limite financeiro aprovado.');
+    if(BigInt(total.rows[0].total)>ceiling)
+     throw new ApiError(409,'COMMERCIAL_LIMIT','Itens excedem o limite financeiro aprovado ou o teto do cliente.');
    }
    await q('INSERT INTO svc_releases(need_id,tenant_id,released_by_actor_id) VALUES($1,$2,$3)',[needId,c.tenantId,c.actorId]);
    await setStatus('released');await log('released',null);
@@ -486,7 +489,9 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
    // before release, irrespective of the number of revisions.
    if(cmd.decision==='approved'&&cmd.approvedSalePriceCents!=null){
     const terms=await q('SELECT pricing_mode,global_sale_cents,max_financial_cents FROM svc_commercial_terms_versions WHERE tenant_id=$1 AND need_id=$2 ORDER BY created_at DESC,id DESC LIMIT 1',[c.tenantId,needId]);
-    const max=terms.rows[0]?.max_financial_cents;
+    const boundaries=[terms.rows[0]?.max_financial_cents,need.commercial_limit_cents]
+     .filter((v:unknown)=>v!=null).map((v:unknown)=>BigInt(String(v)));
+    const max=boundaries.length?boundaries.reduce((a,b)=>a<b?a:b):null;
     if(max!=null){
      const sold=await q('SELECT COALESCE(sum(approved_sale_price_cents),0)::text AS total FROM svc_additional_decisions WHERE tenant_id=$1 AND need_id=$2 AND decision=\'approved\'',[c.tenantId,needId]);
      let baseline=BigInt(terms.rows[0]?.global_sale_cents??0);
@@ -495,7 +500,7 @@ export async function runNeedCommand(q:Query,c:Ctx,needId:string,cmd:z.infer<typ
       baseline=BigInt(active.rows[0].total);
      }
      const finalAmount=baseline+BigInt(sold.rows[0].total)+BigInt(cmd.approvedSalePriceCents);
-     if(finalAmount>BigInt(max))
+     if(finalAmount>max)
       throw new ApiError(409,'COMMERCIAL_LIMIT','A aprovação do adicional excederia o limite financeiro comercial.');
     }
    }
