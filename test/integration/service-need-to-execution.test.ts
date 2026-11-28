@@ -21,6 +21,7 @@ import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
 import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/service-needs/control-tower/route';
+import {POST as recordReceipt} from '../../app/api/finance/receivables/settlements/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
 const u=new URL(process.env.DATABASE_URL);
@@ -66,6 +67,11 @@ async function seed(){
    [credit,'RV-'+actor.slice(0,8),now,actor,'synthetic-gl-revenue']);
   await pool.query("INSERT INTO accounting_posting_rules(id,actor_id,source_type,debit_account_id,credit_account_id,active,row_version,created_at,updated_at) VALUES($1,$2,'invoice_billing',$3,$4,1,1,$5,$5)",
    [randomUUID(),actor,debit,credit,now]);
+  const bank=randomUUID();
+  await pool.query("INSERT INTO chart_accounts(id,code,name,type,active,created_at,actor_id,request_hash) VALUES($1,$2,'Operating bank','asset',1,$3,$4,$5)",
+   [bank,'BANK-'+actor.slice(0,8),now,actor,'synthetic-gl-bank']);
+  await pool.query("INSERT INTO accounting_posting_rules(id,actor_id,source_type,debit_account_id,credit_account_id,active,row_version,created_at,updated_at) VALUES($1,$2,'receivable_receipt',$3,$4,1,1,$5,$5)",
+   [randomUUID(),actor,bank,debit,now]);
  }
 
 }
@@ -326,6 +332,7 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  const billingBody=await billed.json() as any;
  assert.ok(billingBody.resource?.invoiceId,'invoice identity must exist');
  assert.ok(billingBody.resource?.receivableId,'receivable identity must exist');
+ assert.equal(billingBody.resource.amount,'45000000','native financial book stores R$ 4.500,00 as units of 1/10,000');
  assert.equal(billingBody.resource.accounting.status,'auto_posted','real configured dual-control AR/revenue rule must post the journal atomically');
  assert.ok(billingBody.resource.accounting.journalId,'journal must be linked in billing transaction');
  const journal=await pool.query('SELECT actor_id,status FROM journal_entries WHERE id=$1',[billingBody.resource.accounting.journalId]);
@@ -358,6 +365,26 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(tower.finance.awaiting_invoice,0);
  assert.equal(tower.finance.billed,1);
  assert.equal(tower.finance.billed_cents,'450000');
+ // The canonical financial owner receives the cash in the same originating GL.
+ const cashKey=randomUUID();
+ const receiptCommand={receivableId:billingBody.resource.receivableId,amount:'10000000',
+  effectiveDate:postingToday,reference:'Synthetic transfer - first installment',commandKey:cashKey};
+ const payment=await recordReceipt(post(abrahim,receiptCommand));
+ assert.equal(payment.status,201,JSON.stringify(await payment.clone().json()));
+ const paymentResult=await payment.json() as any;
+ assert.equal(paymentResult.resource.accounting.status,'auto_posted');
+ assert.ok(paymentResult.resource.accounting.journalId);
+ assert.equal((await recordReceipt(post(abrahim,receiptCommand))).status,200,'receipt retry cannot double-post cash');
+ assert.equal((await recordReceipt(post(rafael,{...receiptCommand,commandKey:randomUUID()}))).status,404,'the secondary administrator cannot post cash into the canonical owner's financial ledger');
+ assert.equal((await recordReceipt(post(abrahim,{...receiptCommand,commandKey:randomUUID(),amount:'40000000'}))).status,409,'cannot settle more than remaining balance');
+ const afterCash=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
+ assert.equal(afterCash.measurements[0].settledCents,'100000','native settlement converts back to cents exactly');
+ const afterCashTower=await (await controlTowerGet(get(rafael),tp(tenantA))).json() as any;
+ assert.equal(afterCashTower.finance.billed_cents,'450000','cash settlement does not rewrite original revenue');
+ const closeAfterCash=await database().transaction(q=>getPeriodCloseReadiness(q,abrahim,currentMonthStart,nextMonthStart));
+ assert.equal(closeAfterCash.blockingInvoices,0,'invoice and receipt remain auditable during financial period close');
+ assert.equal(closeAfterCash.invalidCashLinks,0,'receipt GL must link to the originating AR ledger');
+
  assert.equal(tower.pendingAdditionals,0);
 
  assert.equal((await pool.query('SELECT count(*)::int AS n FROM invoices WHERE measurement_id=$1',[measureId])).rows[0].n,1);
