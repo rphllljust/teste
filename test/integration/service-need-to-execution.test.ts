@@ -258,6 +258,14 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
   reservationId:materialReservationId,quantity:'2',reference:'Synthetic field material issued'
  }));
  assert.equal(invConsume.status,201,JSON.stringify(await invConsume.clone().json()));
+ // Regression across #391 + #392: a managed service may not forge a direct
+ // warehouse exit after reserving materials, even when unreserved stock remains.
+ const unmanagedOut=await inventoryPost(post(abrahim,{
+  type:'move',id:randomUUID(),itemId:materialId,direction:'out',
+  quantity:'1',reference:'Attempted bypass of governed service reservation',
+  orderId,
+ }));
+ assert.equal(unmanagedOut.status,409,'enterprise OS cannot bypass reservation/consumption audit through generic stock move');
  const afterMaterial=await (await logisticsGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(afterMaterial.summary.consumptionEvents,1);
  assert.equal(afterMaterial.summary.brokenConsumptionEvidence,0);
@@ -552,6 +560,13 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal(closedProof.summary.bankMatchedReceipts,2);
  assert.equal(closedProof.summary.activeReceipts,2);
  assert.equal(closedProof.summary.unpostedCashEvents,0);
+ const finalTower=await (await controlTowerGet(get(rafael),tp(tenantA))).json() as any;
+ assert.equal(finalTower.financialIntegrity.invoiceJournalGaps,0);
+ assert.equal(finalTower.financialIntegrity.receiptJournalGaps,0);
+ assert.equal(finalTower.financialIntegrity.bankUnmatchedReceipts,0,
+  'after two distinct bank matches no stale service-need cash exception remains');
+ assert.equal(finalTower.exceptions.some((x:any)=>x.code==='BANK_RECONCILIATION_PENDING'),false,
+  'operational control-tower must close a bank exception after real reconciliation');
 
  assert.equal(tower.pendingAdditionals,0);
 
