@@ -21,6 +21,7 @@ import {POST as evidencePost,GET as evidenceList} from '../../app/api/enterprise
 import {GET as evidenceFile} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/attachments/[fileId]/route';
 import {GET as measurementGet,POST as measurementPost} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/measurements/route';
 import {GET as controlTowerGet} from '../../app/api/enterprise/tenants/[id]/service-needs/control-tower/route';
+import {GET as cashAssurance} from '../../app/api/enterprise/tenants/[id]/service-needs/[needId]/finance-assurance/route';
 import {POST as recordReceipt} from '../../app/api/finance/receivables/settlements/route';
 
 if(process.env.NODE_ENV!=='test'||!process.env.DATABASE_URL)throw new Error('Service need integration requires disposable PostgreSQL');
@@ -383,6 +384,34 @@ test('full journey: intake, owner decision, draft OS, plan, release, assignment,
  assert.equal((await recordReceipt(post(abrahim,{...receiptCommand,commandKey:randomUUID(),amount:'40000000'}))).status,409,'cannot settle more than remaining balance');
  const afterCash=await (await measurementGet(get(abrahim),np(tenantA,needId))).json() as any;
  assert.equal(afterCash.measurements[0].settledCents,'100000','native settlement converts back to cents exactly');
+ // The new read model proves real linked documents, native GL posting,
+ // partial payment and the ABSENCE of bank reconciliation; it never grants GO.
+ assert.equal((await cashAssurance(get(employee),np(tenantA,needId))).status,403,'employee cannot read cash or pricing evidence');
+ assert.equal((await cashAssurance(get(otherOwner),np(tenantA,needId))).status,404,'unrelated tenant cannot read the process');
+ const sourceResponse=await cashAssurance(get(abrahim),np(tenantA,needId));
+ assert.equal(sourceResponse.status,200,JSON.stringify(await sourceResponse.clone().json()));
+ const auditProof=await sourceResponse.json() as {status:string;readOnly:boolean;steps:Array<{code:string;done:boolean}>;
+  summary:{invoiceAmountScaled:string;settledScaled:string;outstandingScaled:string;cashEvents:number;unpostedCashEvents:number;activeReceipts:number;bankMatchedReceipts:number}};
+ const verified=(code:string)=>auditProof.steps.find(x=>x.code===code)?.done;
+ assert.equal(verified('OPERATION_ACCEPTED'),true);
+ assert.equal(verified('FOUR_EYES_MEASUREMENT'),true);
+ assert.equal(verified('INVOICE_PERSISTED'),true);
+ assert.equal(verified('INVOICE_GL_VERIFIED'),true);
+ assert.equal(verified('RECEIVABLE_VERIFIED'),true);
+ assert.equal(verified('RECEIPTS_GL_VERIFIED'),true);
+ assert.equal(verified('BANK_RECONCILED'),false,'a bank match cannot be manufactured from AR settlement');
+ assert.equal(verified('RECEIVABLE_PAID'),false,'partial settlement cannot be marked fully paid');
+ assert.equal(auditProof.summary.invoiceAmountScaled,'45000000');
+ assert.equal(auditProof.summary.settledScaled,'10000000');
+ assert.equal(auditProof.summary.outstandingScaled,'35000000');
+ assert.equal(auditProof.summary.cashEvents,1);
+ assert.equal(auditProof.summary.unpostedCashEvents,0);
+ assert.equal(auditProof.summary.activeReceipts,1);
+ assert.equal(auditProof.summary.bankMatchedReceipts,0);
+ assert.equal(auditProof.status,'PENDING');
+ assert.equal(auditProof.readOnly,true);
+ const coOwnerProof=await cashAssurance(get(rafael),np(tenantA,needId));
+ assert.equal(coOwnerProof.status,200,'other verified owner can inspect GL and cash provenance without posting');
  assert.equal(afterCash.canSettleReceivable,true);
  assert.equal(afterCash.settlements.length,1);
  assert.equal(afterCash.settlements[0].kind,'receipt');
