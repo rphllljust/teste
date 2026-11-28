@@ -62,7 +62,11 @@ export async function POST(request: Request) {
         // Operational commands are tenant/owner scoped. Legacy ownerless rows
         // may remain readable for migration purposes, but they must never be
         // mutated by an authenticated actor.
-        const rows = await query('SELECT id,owner_id,status,version FROM service_orders WHERE id=$1 AND owner_id=$2 FOR UPDATE', [p.id, context!.actorId]);
+        const rows = await query(`SELECT o.id,o.owner_id,o.status,o.version FROM service_orders o WHERE o.id=$1 AND (o.owner_id=$2 OR EXISTS (SELECT 1 FROM svc_needs n
+ JOIN cisne_erp_owner_declarations d ON d.identity_actor_id=$2 AND d.identity_state='verified'
+ JOIN enterprise_tenant_memberships m ON m.tenant_id=n.tenant_id AND m.actor_id=$2 AND m.role='owner' AND m.status='active'
+ JOIN enterprise_tenants t ON t.id=n.tenant_id AND t.status='active'
+ WHERE n.order_id=o.id)) FOR UPDATE OF o`, [p.id, context!.actorId]);
         if (!rows.rows.length) throw new ApiError(404, 'NOT_FOUND', 'Ordem de serviço não encontrada.');
         const order = rows.rows[0] as { id: string; owner_id: string | null; status: string; version: number };
         if (order.version !== p.version) throw new ApiError(409, 'VERSION_CONFLICT', 'A ordem mudou. Atualize o contexto.');
